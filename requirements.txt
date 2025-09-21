@@ -1,0 +1,68 @@
+# CommerceBox - Sistema de Inventario Comercial Dual
+# Dependencias del proyecto
+
+# Django Core
+Django==4.2.7
+djangorestframework==3.14.0
+django-cors-headers==4.3.1
+django-extensions==3.2.3
+
+# Base de datos
+psycopg2-binary==2.9.9
+redis==5.0.1
+
+# Tareas asíncronas
+celery==5.3.4
+celery[redis]==5.3.4
+
+# Autenticación y seguridad
+django-allauth==0.57.0
+djangorestframework-simplejwt==5.3.0
+cryptography==41.0.7
+
+# APIs y servicios web
+requests==2.31.0
+httpx==0.25.2
+
+# Códigos de barras y reportes
+python-barcode==0.15.1
+Pillow==10.1.0
+reportlab==4.0.7
+openpyxl==3.1.2
+
+# Hardware integration
+pyserial==3.5
+python-escpos==3.0
+
+# Utilidades
+python-decouple==3.8
+python-dateutil==2.8.2
+pytz==2023.3
+
+# Desarrollo y testing
+pytest==7.4.3
+pytest-django==4.6.0
+factory-boy==3.3.0
+coverage==7.3.2
+
+# Formato y calidad de código
+black==23.11.0
+flake8==6.1.0
+isort==5.12.0
+
+# Monitoreo y logs
+sentry-sdk==1.38.0
+django-debug-toolbar==4.2.0
+
+# Facturación electrónica (específico por país)
+lxml==4.9.3
+xmltodict==0.13.0
+
+# Optimización de imágenes
+django-imagekit==5.0.0
+
+# Internacionalización
+django-rosetta==0.9.9
+
+# Backup y exportación
+django-dbbackup==4.0.2
