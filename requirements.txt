@@ -9,7 +9,7 @@ django-extensions==3.2.3
 
 # Base de datos
 psycopg2-binary==2.9.9
-redis==5.0.1
+redis==4.6.0
 
 # Tareas asíncronas
 celery==5.3.4
