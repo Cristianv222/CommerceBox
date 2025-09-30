@@ -1,3 +1,591 @@
-from django.db import models
+# apps/sales_management/models.py
 
-# Create your models here.
+from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils import timezone
+from django.db.models import Sum, F, Q
+from decimal import Decimal
+import uuid
+
+
+# ============================================================================
+# CLIENTE
+# ============================================================================
+
+class Cliente(models.Model):
+    """
+    Clientes del sistema - pueden ser frecuentes o walk-in
+    """
+    TIPO_CLIENTE_CHOICES = [
+        ('FRECUENTE', 'Cliente Frecuente'),
+        ('OCASIONAL', 'Cliente Ocasional'),
+        ('MAYORISTA', 'Cliente Mayorista'),
+    ]
+    
+    TIPO_DOCUMENTO_CHOICES = [
+        ('CEDULA', 'Cédula'),
+        ('RUC', 'RUC'),
+        ('PASAPORTE', 'Pasaporte'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Identificación
+    tipo_documento = models.CharField(max_length=20, choices=TIPO_DOCUMENTO_CHOICES)
+    numero_documento = models.CharField(max_length=20, unique=True, db_index=True)
+    
+    # Información personal
+    nombres = models.CharField(max_length=100)
+    apellidos = models.CharField(max_length=100)
+    nombre_comercial = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Para clientes mayoristas/empresas"
+    )
+    
+    # Contacto
+    telefono = models.CharField(max_length=20, blank=True)
+    email = models.EmailField(blank=True)
+    direccion = models.TextField(blank=True)
+    
+    # Clasificación
+    tipo_cliente = models.CharField(
+        max_length=20,
+        choices=TIPO_CLIENTE_CHOICES,
+        default='OCASIONAL'
+    )
+    
+    # Crédito (para clientes frecuentes/mayoristas)
+    limite_credito = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Límite de crédito disponible"
+    )
+    credito_disponible = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0
+    )
+    dias_credito = models.IntegerField(default=0)
+    
+    # Descuentos especiales
+    descuento_general = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Descuento general en % para este cliente"
+    )
+    
+    # Control
+    activo = models.BooleanField(default=True)
+    
+    # Auditoría
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+    fecha_ultima_compra = models.DateTimeField(null=True, blank=True)
+    total_compras = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="Total acumulado de compras"
+    )
+    
+    class Meta:
+        verbose_name = 'Cliente'
+        verbose_name_plural = 'Clientes'
+        ordering = ['apellidos', 'nombres']
+        db_table = 'sales_cliente'
+        indexes = [
+            models.Index(fields=['numero_documento']),
+            models.Index(fields=['tipo_cliente', 'activo']),
+        ]
+    
+    def __str__(self):
+        if self.nombre_comercial:
+            return f"{self.nombre_comercial} ({self.numero_documento})"
+        return f"{self.nombres} {self.apellidos} ({self.numero_documento})"
+    
+    def nombre_completo(self):
+        return f"{self.nombres} {self.apellidos}"
+    
+    def tiene_credito_disponible(self, monto):
+        """Verifica si tiene crédito suficiente"""
+        return self.credito_disponible >= monto
+    
+    def actualizar_credito(self, monto):
+        """Actualiza el crédito disponible"""
+        self.credito_disponible -= monto
+        self.save()
+
+
+# ============================================================================
+# VENTA (Núcleo del módulo)
+# ============================================================================
+
+class Venta(models.Model):
+    """
+    Registro de ventas - puede incluir quintales y productos normales
+    """
+    ESTADO_CHOICES = [
+        ('PENDIENTE', 'Pendiente'),
+        ('COMPLETADA', 'Completada'),
+        ('ANULADA', 'Anulada'),
+    ]
+    
+    TIPO_VENTA_CHOICES = [
+        ('CONTADO', 'Contado'),
+        ('CREDITO', 'Crédito'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Identificadores
+    numero_venta = models.CharField(
+        max_length=20,
+        unique=True,
+        db_index=True,
+        help_text="Número único de venta (VNT-2025-00001)"
+    )
+    numero_factura = models.CharField(
+        max_length=50,
+        blank=True,
+        db_index=True,
+        help_text="Número de factura física/electrónica"
+    )
+    
+    # Relaciones
+    cliente = models.ForeignKey(
+        Cliente,
+        on_delete=models.PROTECT,
+        related_name='ventas',
+        null=True,
+        blank=True,
+        help_text="Cliente (opcional para ventas al público)"
+    )
+    vendedor = models.ForeignKey(
+        'authentication.Usuario',
+        on_delete=models.PROTECT,
+        related_name='ventas_realizadas'
+    )
+    
+    # Fechas
+    fecha_venta = models.DateTimeField(default=timezone.now, db_index=True)
+    fecha_vencimiento = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Fecha de vencimiento si es crédito"
+    )
+    
+    # Tipo de venta
+    tipo_venta = models.CharField(
+        max_length=20,
+        choices=TIPO_VENTA_CHOICES,
+        default='CONTADO'
+    )
+    
+    # Montos
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    descuento = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    impuestos = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # Pagos
+    monto_pagado = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    cambio = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # Estado
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default='PENDIENTE',
+        db_index=True
+    )
+    
+    # Facturación electrónica (para integración futura)
+    factura_electronica_enviada = models.BooleanField(default=False)
+    factura_electronica_clave = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Clave de acceso factura electrónica"
+    )
+    factura_electronica_xml = models.TextField(
+        blank=True,
+        help_text="XML de la factura electrónica"
+    )
+    
+    # Observaciones
+    observaciones = models.TextField(blank=True)
+    
+    # Auditoría
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    
+    # Relación con caja
+    caja = models.ForeignKey(
+        'financial_management.Caja',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ventas'
+    )
+    
+    class Meta:
+        verbose_name = 'Venta'
+        verbose_name_plural = 'Ventas'
+        ordering = ['-fecha_venta']
+        db_table = 'sales_venta'
+        indexes = [
+            models.Index(fields=['numero_venta']),
+            models.Index(fields=['numero_factura']),
+            models.Index(fields=['-fecha_venta', 'estado']),
+            models.Index(fields=['cliente', '-fecha_venta']),
+            models.Index(fields=['vendedor', '-fecha_venta']),
+        ]
+    
+    def __str__(self):
+        return f"{self.numero_venta} - ${self.total} - {self.get_estado_display()}"
+    
+    def calcular_totales(self):
+        """Recalcula los totales de la venta basándose en los detalles"""
+        detalles = self.detalles.all()
+        
+        self.subtotal = sum(d.subtotal for d in detalles)
+        # El descuento puede ser aplicado a nivel de venta o detalles
+        self.total = self.subtotal - self.descuento + self.impuestos
+        self.save()
+    
+    def esta_pagada(self):
+        """Verifica si la venta está completamente pagada"""
+        return self.monto_pagado >= self.total
+    
+    def saldo_pendiente(self):
+        """Retorna el saldo pendiente de pago"""
+        return max(self.total - self.monto_pagado, Decimal('0'))
+
+
+# ============================================================================
+# DETALLE DE VENTA (Items individuales)
+# ============================================================================
+
+class DetalleVenta(models.Model):
+    """
+    Detalle de cada item vendido
+    Puede ser quintal (por peso) o producto normal (por unidad)
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Relaciones
+    venta = models.ForeignKey(
+        Venta,
+        on_delete=models.CASCADE,
+        related_name='detalles'
+    )
+    producto = models.ForeignKey(
+        'inventory_management.Producto',
+        on_delete=models.PROTECT
+    )
+    
+    # Para QUINTALES (venta por peso)
+    quintal = models.ForeignKey(
+        'inventory_management.Quintal',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        help_text="Quintal específico del que se vendió (FIFO)"
+    )
+    peso_vendido = models.DecimalField(
+        max_digits=10,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        help_text="Peso vendido si es quintal"
+    )
+    unidad_medida = models.ForeignKey(
+        'inventory_management.UnidadMedida',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True
+    )
+    precio_por_unidad_peso = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Precio por unidad de peso al momento de la venta"
+    )
+    
+    # Para PRODUCTOS NORMALES (venta por unidad)
+    cantidad_unidades = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Cantidad de unidades si es producto normal"
+    )
+    precio_unitario = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Precio por unidad al momento de la venta"
+    )
+    
+    # Común para ambos
+    descuento_porcentaje = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
+    descuento_monto = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0
+    )
+    subtotal = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Monto antes del descuento"
+    )
+    total = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Monto después del descuento"
+    )
+    
+    # Costo para cálculo de rentabilidad
+    costo_unitario = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        help_text="Costo al momento de la venta (para rentabilidad)"
+    )
+    costo_total = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Costo total del item vendido"
+    )
+    
+    # Orden en la venta
+    orden = models.IntegerField(default=0)
+    
+    class Meta:
+        verbose_name = 'Detalle de Venta'
+        verbose_name_plural = 'Detalles de Venta'
+        ordering = ['venta', 'orden']
+        db_table = 'sales_detalle_venta'
+        indexes = [
+            models.Index(fields=['venta', 'orden']),
+            models.Index(fields=['producto']),
+        ]
+    
+    def __str__(self):
+        if self.producto.es_quintal():
+            return f"{self.peso_vendido} {self.unidad_medida.abreviatura} de {self.producto.nombre}"
+        return f"{self.cantidad_unidades} x {self.producto.nombre}"
+    
+    def calcular_totales(self):
+        """Calcula subtotal, descuento y total"""
+        if self.producto.es_quintal():
+            # Cálculo para quintales
+            self.subtotal = self.peso_vendido * self.precio_por_unidad_peso
+        else:
+            # Cálculo para productos normales
+            self.subtotal = self.cantidad_unidades * self.precio_unitario
+        
+        # Aplicar descuento
+        if self.descuento_porcentaje > 0:
+            self.descuento_monto = self.subtotal * (self.descuento_porcentaje / 100)
+        
+        self.total = self.subtotal - self.descuento_monto
+        
+    def utilidad(self):
+        """Calcula la utilidad de este item"""
+        return self.total - self.costo_total
+    
+    def margen_porcentaje(self):
+        """Calcula el margen de ganancia en porcentaje"""
+        if self.total > 0:
+            return ((self.total - self.costo_total) / self.total) * 100
+        return 0
+
+
+# ============================================================================
+# PAGO (Múltiples formas de pago por venta)
+# ============================================================================
+
+class Pago(models.Model):
+    """
+    Registro de pagos - una venta puede tener múltiples pagos
+    """
+    FORMA_PAGO_CHOICES = [
+        ('EFECTIVO', 'Efectivo'),
+        ('TARJETA_DEBITO', 'Tarjeta de Débito'),
+        ('TARJETA_CREDITO', 'Tarjeta de Crédito'),
+        ('TRANSFERENCIA', 'Transferencia Bancaria'),
+        ('CHEQUE', 'Cheque'),
+        ('CREDITO', 'Crédito'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Relación
+    venta = models.ForeignKey(
+        Venta,
+        on_delete=models.CASCADE,
+        related_name='pagos'
+    )
+    
+    # Forma de pago
+    forma_pago = models.CharField(
+        max_length=20,
+        choices=FORMA_PAGO_CHOICES
+    )
+    
+    # Monto
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    # Información adicional según forma de pago
+    numero_referencia = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Número de autorización, voucher, cheque, etc"
+    )
+    banco = models.CharField(max_length=100, blank=True)
+    
+    # Auditoría
+    fecha_pago = models.DateTimeField(default=timezone.now)
+    usuario = models.ForeignKey(
+        'authentication.Usuario',
+        on_delete=models.PROTECT
+    )
+    
+    class Meta:
+        verbose_name = 'Pago'
+        verbose_name_plural = 'Pagos'
+        ordering = ['-fecha_pago']
+        db_table = 'sales_pago'
+    
+    def __str__(self):
+        return f"{self.get_forma_pago_display()} - ${self.monto}"
+
+
+# ============================================================================
+# DEVOLUCIÓN (Returns)
+# ============================================================================
+
+class Devolucion(models.Model):
+    """
+    Registro de devoluciones de productos
+    """
+    MOTIVO_CHOICES = [
+        ('DEFECTUOSO', 'Producto Defectuoso'),
+        ('EQUIVOCACION', 'Equivocación en venta'),
+        ('NO_SATISFECHO', 'Cliente no satisfecho'),
+        ('VENCIDO', 'Producto vencido'),
+        ('OTRO', 'Otro motivo'),
+    ]
+    
+    ESTADO_CHOICES = [
+        ('PENDIENTE', 'Pendiente de procesar'),
+        ('APROBADA', 'Aprobada'),
+        ('RECHAZADA', 'Rechazada'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Identificación
+    numero_devolucion = models.CharField(
+        max_length=20,
+        unique=True,
+        help_text="Número único de devolución (DEV-2025-00001)"
+    )
+    
+    # Relaciones
+    venta_original = models.ForeignKey(
+        Venta,
+        on_delete=models.PROTECT,
+        related_name='devoluciones'
+    )
+    detalle_venta = models.ForeignKey(
+        DetalleVenta,
+        on_delete=models.PROTECT,
+        help_text="Item específico que se devuelve"
+    )
+    
+    # Cantidad devuelta
+    cantidad_devuelta = models.DecimalField(
+        max_digits=10,
+        decimal_places=3,
+        help_text="Peso o unidades devueltas"
+    )
+    monto_devolucion = models.DecimalField(
+        max_digits=10,
+        decimal_places=2
+    )
+    
+    # Motivo y estado
+    motivo = models.CharField(max_length=20, choices=MOTIVO_CHOICES)
+    descripcion = models.TextField()
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default='PENDIENTE'
+    )
+    
+    # Auditoría
+    fecha_devolucion = models.DateTimeField(default=timezone.now)
+    usuario_solicita = models.ForeignKey(
+        'authentication.Usuario',
+        on_delete=models.PROTECT,
+        related_name='devoluciones_solicitadas'
+    )
+    usuario_aprueba = models.ForeignKey(
+        'authentication.Usuario',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='devoluciones_aprobadas'
+    )
+    fecha_procesado = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        verbose_name = 'Devolución'
+        verbose_name_plural = 'Devoluciones'
+        ordering = ['-fecha_devolucion']
+        db_table = 'sales_devolucion'
+    
+    def __str__(self):
+        return f"{self.numero_devolucion} - ${self.monto_devolucion}"
+
+
+# ============================================================================
+# SIGNALS
+# ============================================================================
+
+from django.db.models.signals import post_save, pre_save
+from django.dispatch import receiver
+
+@receiver(pre_save, sender=DetalleVenta)
+def detalle_venta_pre_save(sender, instance, **kwargs):
+    """Calcular totales antes de guardar"""
+    instance.calcular_totales()
+
+
+@receiver(post_save, sender=DetalleVenta)
+def detalle_venta_post_save(sender, instance, created, **kwargs):
+    """Recalcular totales de la venta después de guardar detalle"""
+    instance.venta.calcular_totales()
+
+
+@receiver(post_save, sender=Pago)
+def pago_post_save(sender, instance, created, **kwargs):
+    """Actualizar monto pagado en la venta"""
+    venta = instance.venta
+    venta.monto_pagado = venta.pagos.aggregate(
+        total=Sum('monto')
+    )['total'] or Decimal('0')
+    
+    # Actualizar estado si está completamente pagada
+    if venta.esta_pagada() and venta.estado == 'PENDIENTE':
+        venta.estado = 'COMPLETADA'
+    
+    venta.save()
