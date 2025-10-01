@@ -13,12 +13,401 @@
     {% load static %}
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #060912;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Fondo estático oscuro con sutil gradiente */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #060912 0%, #0a0e1a 50%, #060912 100%);
+            z-index: 0;
+        }
+
+        /* Navbar moderna con glassmorphism */
+        .navbar {
+            background: rgba(15, 23, 42, 0.8) !important;
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            padding: 1rem 0;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white !important;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-brand i {
+            font-size: 1.8rem;
+            color: #3b82f6;
+            animation: brandPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes brandPulse {
+            0%, 100% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.5));
+            }
+            50% {
+                transform: scale(1.1);
+                filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.8));
+            }
+        }
+
+        .navbar-brand:hover {
+            transform: translateX(5px);
+        }
+
+        .navbar-toggler {
+            border: 2px solid rgba(59, 130, 246, 0.5);
+            padding: 8px 12px;
+        }
+
+        .navbar-toggler:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+        }
+
+        .navbar-toggler-icon {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%2859, 130, 246, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        }
+
+        .nav-link {
+            color: #94a3b8 !important;
+            font-weight: 500;
+            padding: 8px 16px !important;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .nav-link:hover::before {
+            left: 100%;
+        }
+
+        .nav-link:hover {
+            color: #3b82f6 !important;
+            background: rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .nav-link i {
+            margin-right: 6px;
+        }
+
+        /* Dropdown del usuario */
+        .dropdown-toggle {
+            background: rgba(59, 130, 246, 0.1) !important;
+            border: 2px solid rgba(59, 130, 246, 0.3) !important;
+            color: white !important;
+            padding: 8px 16px !important;
+            border-radius: 10px !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .dropdown-toggle:hover {
+            background: rgba(59, 130, 246, 0.2) !important;
+            border-color: #3b82f6 !important;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .dropdown-menu {
+            background: rgba(15, 23, 42, 0.95) !important;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            margin-top: 8px !important;
+            padding: 8px;
+        }
+
+        .dropdown-item {
+            color: #e2e8f0 !important;
+            padding: 10px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(59, 130, 246, 0.2) !important;
+            color: #3b82f6 !important;
+            transform: translateX(5px);
+        }
+
+        .dropdown-divider {
+            border-color: rgba(59, 130, 246, 0.2);
+        }
+
+        /* Contenedor principal */
+        .main-wrapper {
+            position: relative;
+            z-index: 2;
+            flex: 1;
+            padding: 2rem 0;
+        }
+
+        /* Alertas mejoradas */
+        #alertContainer {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+        }
+
+        #alertContainer .alert {
+            background: rgba(15, 23, 42, 0.95) !important;
+            backdrop-filter: blur(20px);
+            border: none;
+            border-left: 4px solid;
+            border-radius: 12px;
+            color: white;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            animation: slideInRight 0.4s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .alert-success {
+            border-left-color: #10b981 !important;
+        }
+
+        .alert-danger {
+            border-left-color: #ef4444 !important;
+        }
+
+        .alert-warning {
+            border-left-color: #f59e0b !important;
+        }
+
+        .alert-info {
+            border-left-color: #3b82f6 !important;
+        }
+
+        .alert .btn-close {
+            filter: invert(1);
+            opacity: 0.6;
+        }
+
+        .alert .btn-close:hover {
+            opacity: 1;
+        }
+
+        /* Footer moderno */
+        footer {
+            background: rgba(15, 23, 42, 0.8) !important;
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(59, 130, 246, 0.2);
+            color: #94a3b8 !important;
+            padding: 2rem 0 !important;
+            margin-top: auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        footer p {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        footer .social-links {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        footer .social-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: rgba(59, 130, 246, 0.1);
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            border-radius: 10px;
+            color: #3b82f6;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        footer .social-link:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Container del contenido */
+        .container {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Cards mejoradas */
+        .card {
+            background: rgba(15, 23, 42, 0.7) !important;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(59, 130, 246, 0.2) !important;
+            border-radius: 16px !important;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            background: rgba(59, 130, 246, 0.1) !important;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.2) !important;
+            color: white;
+        }
+
+        /* Botones mejorados */
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+            border: none !important;
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Tablas mejoradas */
+        .table {
+            color: #e2e8f0;
+        }
+
+        .table thead th {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .table tbody tr {
+            background: rgba(15, 23, 42, 0.5);
+            border-color: rgba(59, 130, 246, 0.1);
+        }
+
+        .table tbody tr:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        /* Forms mejorados */
+        .form-control, .form-select {
+            background: rgba(30, 41, 59, 0.5) !important;
+            border: 2px solid rgba(59, 130, 246, 0.2) !important;
+            color: white !important;
+            border-radius: 10px;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background: rgba(30, 41, 59, 0.8) !important;
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            color: white !important;
+        }
+
+        .form-label {
+            color: #e2e8f0;
+            font-weight: 500;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            #alertContainer {
+                left: 10px;
+                right: 10px;
+                max-width: none;
+                top: 70px;
+            }
+
+            .navbar-brand {
+                font-size: 1.25rem;
+            }
+
+            .navbar-brand i {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Scrollbar personalizada */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.5);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(59, 130, 246, 0.7);
+        }
+    </style>
+    
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     {% block navbar %}
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="/">
                 <i class="bi bi-box-seam"></i> CommerceBox
@@ -43,22 +432,36 @@
 
     {% block alert_container %}
     <!-- Alertas -->
-    <div class="container mt-3">
-        <div id="alertContainer"></div>
-    </div>
+    <div id="alertContainer"></div>
     {% endblock %}
 
     <!-- Contenido principal -->
     {% block main_wrapper %}
-    <main class="container mt-4">
+    <main class="container mt-4 main-wrapper">
         {% block content %}{% endblock %}
     </main>
     {% endblock %}
 
     {% block footer %}
     <!-- Footer -->
-    <footer class="bg-dark text-white text-center py-3 mt-5">
-        <p class="mb-0">&copy; 2025 CommerceBox - Sistema de Gestión Comercial</p>
+    <footer class="text-center">
+        <div class="container">
+            <p>&copy; 2025 CommerceBox - Sistema de Gestión Comercial</p>
+            <div class="social-links">
+                <a href="#" class="social-link" title="Facebook">
+                    <i class="bi bi-facebook"></i>
+                </a>
+                <a href="#" class="social-link" title="Twitter">
+                    <i class="bi bi-twitter-x"></i>
+                </a>
+                <a href="#" class="social-link" title="LinkedIn">
+                    <i class="bi bi-linkedin"></i>
+                </a>
+                <a href="#" class="social-link" title="Instagram">
+                    <i class="bi bi-instagram"></i>
+                </a>
+            </div>
+        </div>
     </footer>
     {% endblock %}
 
@@ -227,21 +630,30 @@
             }
         };
         
-        // Mostrar alerta
+        // Mostrar alerta mejorada
         function showAlert(message, type = 'info') {
             const alertContainer = document.getElementById('alertContainer');
-            if (!alertContainer) return; // Si no existe el contenedor, no hacer nada
+            if (!alertContainer) return;
+            
+            const iconMap = {
+                success: 'bi-check-circle-fill',
+                danger: 'bi-x-circle-fill',
+                warning: 'bi-exclamation-triangle-fill',
+                info: 'bi-info-circle-fill'
+            };
             
             const alert = document.createElement('div');
             alert.className = `alert alert-${type} alert-dismissible fade show`;
             alert.innerHTML = `
+                <i class="bi ${iconMap[type]} me-2"></i>
                 ${message}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
             alertContainer.appendChild(alert);
             
             setTimeout(() => {
-                alert.remove();
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 300);
             }, 5000);
         }
         
@@ -278,14 +690,21 @@
                 
                 userSection.innerHTML = `
                     <div class="dropdown">
-                        <button class="btn btn-outline-light dropdown-toggle" type="button" 
+                        <button class="btn dropdown-toggle" type="button" 
                                 data-bs-toggle="dropdown">
                             <i class="bi bi-person-circle"></i> ${user.nombres || user.username}
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="/perfil/">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="/perfil/">
+                                <i class="bi bi-person me-2"></i>Mi Perfil
+                            </a></li>
+                            <li><a class="dropdown-item" href="/configuracion/">
+                                <i class="bi bi-gear me-2"></i>Configuración
+                            </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" onclick="auth.logout()">Cerrar Sesión</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="auth.logout()">
+                                <i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión
+                            </a></li>
                         </ul>
                     </div>
                 `;
