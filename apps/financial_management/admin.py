@@ -1,3 +1,272 @@
-from django.contrib import admin
+# apps/financial_management/admin.py
 
-# Register your models here.
+from django.contrib import admin
+from django.utils.html import format_html
+from .models import (
+    Caja, MovimientoCaja, ArqueoCaja,
+    CajaChica, MovimientoCajaChica
+)
+
+
+@admin.register(Caja)
+class CajaAdmin(admin.ModelAdmin):
+    list_display = [
+        'codigo', 'nombre', 'tipo', 'estado_badge', 
+        'monto_actual', 'fecha_apertura', 'usuario_apertura'
+    ]
+    list_filter = ['estado', 'tipo', 'activa']
+    search_fields = ['codigo', 'nombre']
+    readonly_fields = [
+        'fecha_apertura', 'fecha_cierre', 
+        'usuario_apertura', 'usuario_cierre',
+        'fecha_creacion', 'fecha_actualizacion'
+    ]
+    
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('nombre', 'codigo', 'tipo')
+        }),
+        ('Estado Actual', {
+            'fields': (
+                'estado', 'monto_apertura', 'monto_actual',
+                'fecha_apertura', 'fecha_cierre'
+            )
+        }),
+        ('Usuarios', {
+            'fields': ('usuario_apertura', 'usuario_cierre')
+        }),
+        ('Configuración', {
+            'fields': ('requiere_autorizacion_cierre', 'activa')
+        }),
+        ('Auditoría', {
+            'fields': ('fecha_creacion', 'fecha_actualizacion'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def estado_badge(self, obj):
+        if obj.estado == 'ABIERTA':
+            color = 'green'
+            icon = '🟢'
+        else:
+            color = 'red'
+            icon = '🔴'
+        return format_html(
+            '<span style="color: {};">{} {}</span>',
+            color, icon, obj.get_estado_display()
+        )
+    estado_badge.short_description = 'Estado'
+
+
+@admin.register(MovimientoCaja)
+class MovimientoCajaAdmin(admin.ModelAdmin):
+    list_display = [
+        'fecha_movimiento', 'caja', 'tipo_movimiento',
+        'monto_formatted', 'saldo_nuevo', 'usuario'
+    ]
+    list_filter = ['tipo_movimiento', 'caja', 'fecha_movimiento']
+    search_fields = ['caja__nombre', 'observaciones']
+    readonly_fields = [
+        'fecha_movimiento', 'saldo_anterior', 'saldo_nuevo'
+    ]
+    date_hierarchy = 'fecha_movimiento'
+    
+    fieldsets = (
+        ('Información del Movimiento', {
+            'fields': ('caja', 'tipo_movimiento', 'monto')
+        }),
+        ('Saldos', {
+            'fields': ('saldo_anterior', 'saldo_nuevo')
+        }),
+        ('Referencias', {
+            'fields': ('venta',)
+        }),
+        ('Auditoría', {
+            'fields': ('usuario', 'fecha_movimiento', 'observaciones')
+        }),
+    )
+    
+    def monto_formatted(self, obj):
+        return f"${obj.monto:,.2f}"
+    monto_formatted.short_description = 'Monto'
+
+
+@admin.register(ArqueoCaja)
+class ArqueoCajaAdmin(admin.ModelAdmin):
+    list_display = [
+        'numero_arqueo', 'caja', 'fecha_cierre',
+        'monto_esperado', 'monto_contado', 'diferencia_formatted',
+        'estado_badge'
+    ]
+    list_filter = ['estado', 'caja', 'fecha_cierre']
+    search_fields = ['numero_arqueo', 'caja__nombre']
+    readonly_fields = [
+        'numero_arqueo', 'diferencia', 'estado',
+        'fecha_creacion'
+    ]
+    date_hierarchy = 'fecha_cierre'
+    
+    fieldsets = (
+        ('Información General', {
+            'fields': ('numero_arqueo', 'caja', 'fecha_apertura', 'fecha_cierre')
+        }),
+        ('Montos Calculados (Sistema)', {
+            'fields': (
+                'monto_apertura', 'total_ventas',
+                'total_ingresos', 'total_retiros', 'monto_esperado'
+            )
+        }),
+        ('Conteo Físico', {
+            'fields': (
+                'billetes_100', 'billetes_50', 'billetes_20',
+                'billetes_10', 'billetes_5', 'billetes_1', 'monedas',
+                'monto_contado'
+            )
+        }),
+        ('Resultado', {
+            'fields': ('diferencia', 'estado')
+        }),
+        ('Observaciones', {
+            'fields': ('observaciones', 'observaciones_diferencia')
+        }),
+        ('Usuarios', {
+            'fields': ('usuario_apertura', 'usuario_cierre')
+        }),
+    )
+    
+    def diferencia_formatted(self, obj):
+        if obj.diferencia == 0:
+            color = 'green'
+            icon = '✅'
+        elif obj.diferencia > 0:
+            color = 'blue'
+            icon = '➕'
+        else:
+            color = 'red'
+            icon = '➖'
+        return format_html(
+            '<span style="color: {};">{} ${:,.2f}</span>',
+            color, icon, abs(obj.diferencia)
+        )
+    diferencia_formatted.short_description = 'Diferencia'
+    
+    def estado_badge(self, obj):
+        colors = {
+            'CUADRADO': 'green',
+            'SOBRANTE': 'blue',
+            'FALTANTE': 'red'
+        }
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            colors.get(obj.estado, 'black'),
+            obj.get_estado_display()
+        )
+    estado_badge.short_description = 'Estado'
+
+
+@admin.register(CajaChica)
+class CajaChicaAdmin(admin.ModelAdmin):
+    list_display = [
+        'codigo', 'nombre', 'monto_actual_formatted',
+        'monto_fondo', 'necesita_reposicion_badge',
+        'responsable', 'estado'
+    ]
+    list_filter = ['estado', 'responsable']
+    search_fields = ['codigo', 'nombre']
+    readonly_fields = [
+        'fecha_creacion', 'fecha_actualizacion',
+        'fecha_ultima_reposicion'
+    ]
+    
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('nombre', 'codigo', 'responsable')
+        }),
+        ('Fondos', {
+            'fields': (
+                'monto_fondo', 'monto_actual',
+                'umbral_reposicion', 'fecha_ultima_reposicion'
+            )
+        }),
+        ('Límites', {
+            'fields': ('limite_gasto_individual',)
+        }),
+        ('Estado', {
+            'fields': ('estado',)
+        }),
+        ('Auditoría', {
+            'fields': ('fecha_creacion', 'fecha_actualizacion'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def monto_actual_formatted(self, obj):
+        porcentaje = (obj.monto_actual / obj.monto_fondo * 100) if obj.monto_fondo > 0 else 0
+        if porcentaje < 30:
+            color = 'red'
+        elif porcentaje < 50:
+            color = 'orange'
+        else:
+            color = 'green'
+        return format_html(
+            '<span style="color: {};">${:,.2f} ({:.0f}%)</span>',
+            color, obj.monto_actual, porcentaje
+        )
+    monto_actual_formatted.short_description = 'Saldo Actual'
+    
+    def necesita_reposicion_badge(self, obj):
+        if obj.necesita_reposicion():
+            return format_html(
+                '<span style="color: red; font-weight: bold;">⚠️ Sí - ${:,.2f}</span>',
+                obj.monto_a_reponer()
+            )
+        return format_html('<span style="color: green;">✅ No</span>')
+    necesita_reposicion_badge.short_description = 'Necesita Reposición'
+
+
+@admin.register(MovimientoCajaChica)
+class MovimientoCajaChicaAdmin(admin.ModelAdmin):
+    list_display = [
+        'fecha_movimiento', 'caja_chica', 'tipo_movimiento',
+        'categoria_gasto', 'monto_formatted', 'saldo_nuevo', 'usuario'
+    ]
+    list_filter = [
+        'tipo_movimiento', 'categoria_gasto',
+        'caja_chica', 'fecha_movimiento'
+    ]
+    search_fields = ['caja_chica__nombre', 'descripcion', 'numero_comprobante']
+    readonly_fields = ['fecha_movimiento', 'saldo_anterior', 'saldo_nuevo']
+    date_hierarchy = 'fecha_movimiento'
+    
+    fieldsets = (
+        ('Información del Movimiento', {
+            'fields': (
+                'caja_chica', 'tipo_movimiento',
+                'categoria_gasto', 'monto'
+            )
+        }),
+        ('Saldos', {
+            'fields': ('saldo_anterior', 'saldo_nuevo')
+        }),
+        ('Detalles', {
+            'fields': (
+                'descripcion', 'numero_comprobante',
+                'comprobante_adjunto'
+            )
+        }),
+        ('Auditoría', {
+            'fields': ('usuario', 'fecha_movimiento')
+        }),
+    )
+    
+    def monto_formatted(self, obj):
+        if obj.tipo_movimiento == 'GASTO':
+            return format_html(
+                '<span style="color: red;">-${:,.2f}</span>',
+                obj.monto
+            )
+        return format_html(
+            '<span style="color: green;">+${:,.2f}</span>',
+            obj.monto
+        )
+    monto_formatted.short_description = 'Monto'
