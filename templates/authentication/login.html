@@ -2,97 +2,300 @@
 
 {% block title %}Login - CommerceBox{% endblock %}
 
-{% block extra_css %}
-<style>
-    body {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .login-card {
-        max-width: 400px;
-        width: 100%;
-        background: white;
-        border-radius: 15px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-    }
-    
-    .login-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 2rem;
-        border-radius: 15px 15px 0 0;
-        text-align: center;
-    }
-    
-    .login-body {
-        padding: 2rem;
-    }
-    
-    .btn-login {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        padding: 12px;
-        font-weight: 600;
-    }
-    
-    .btn-login:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-    }
-</style>
+{% block navbar %}{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block alert_container %}
+<div id="alertContainer"></div>
 {% endblock %}
 
-{% block content %}
-<div class="login-card">
-    <div class="login-header">
-        <i class="bi bi-box-seam" style="font-size: 3rem;"></i>
-        <h2 class="mt-2">CommerceBox</h2>
-        <p class="mb-0">Sistema de Gestión Comercial</p>
-    </div>
-    
-    <div class="login-body">
-        <form id="loginForm">
-            <div class="mb-3">
-                <label for="username" class="form-label">
-                    <i class="bi bi-person"></i> Usuario
-                </label>
-                <input type="text" class="form-control" id="username" required autofocus>
+{% block main_wrapper %}
+<div class="login-wrapper">
+    <div class="login-container">
+        <!-- Sección Izquierda - Formulario -->
+        <div class="login-section login-left">
+            <div class="logo-icon">
+                <i class="bi bi-box-seam"></i>
             </div>
+            <h2 class="login-title">CommerceBox</h2>
+            <p class="login-subtitle">Sistema de Gestión Comercial</p>
             
-            <div class="mb-3">
-                <label for="password" class="form-label">
-                    <i class="bi bi-lock"></i> Contraseña
-                </label>
-                <input type="password" class="form-control" id="password" required>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">Usuario</label>
+                    <div class="input-icon">
+                        <input type="text" class="form-control" id="username" placeholder="Ingresa tu usuario" required autofocus>
+                        <i class="bi bi-person"></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Contraseña</label>
+                    <div class="input-icon">
+                        <input type="password" class="form-control" id="password" placeholder="Ingresa tu contraseña" required>
+                        <i class="bi bi-eye-slash toggle-password" id="togglePassword"></i>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-login">
+                    Iniciar Sesión
+                </button>
+            </form>
+        </div>
+
+        <!-- Sección Derecha - Bienvenida -->
+        <div class="login-section login-right">
+            <div class="welcome-content">
+                <h1>¡BIENVENIDO<br>DE NUEVO!</h1>
+                <p>Inicia sesión para acceder a tu panel de gestión comercial</p>
             </div>
-            
-            <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="rememberMe">
-                <label class="form-check-label" for="rememberMe">
-                    Recordarme
-                </label>
-            </div>
-            
-            <button type="submit" class="btn btn-primary btn-login w-100">
-                <i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión
-            </button>
-        </form>
-        
-        <div class="text-center mt-3">
-            <a href="#" class="text-muted text-decoration-none">
-                <small>¿Olvidaste tu contraseña?</small>
-            </a>
         </div>
     </div>
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #0a0a0a;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        padding: 0;
+    }
+
+    .login-wrapper {
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+
+    .login-container {
+        display: flex;
+        width: 850px;
+        height: 500px;
+        background: #1a1a1a;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(138, 43, 226, 0.3);
+        border: 1px solid rgba(138, 43, 226, 0.2);
+        position: relative;
+    }
+
+    /* Efecto diagonal */
+    .login-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 45%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        transform: skewX(-10deg);
+        transform-origin: top left;
+        z-index: 1;
+    }
+
+    .login-section {
+        flex: 1;
+        padding: 40px 45px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        position: relative;
+        z-index: 2;
+    }
+
+    .login-left {
+        background: rgba(26, 26, 26, 0.95);
+    }
+
+    .login-right {
+        background: transparent;
+        align-items: center;
+        text-align: center;
+        color: white;
+    }
+
+    .logo-icon {
+        font-size: 2.5rem;
+        color: #764ba2;
+        margin-bottom: 10px;
+    }
+
+    .login-title {
+        color: white;
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+
+    .login-subtitle {
+        color: #764ba2;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 40px;
+    }
+
+    .form-group {
+        margin-bottom: 25px;
+    }
+
+    .form-label {
+        color: #999;
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+        display: block;
+        font-weight: 500;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 15px 20px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        color: white;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.08);
+        border-color: #764ba2;
+        box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.1);
+    }
+
+    .form-control::placeholder {
+        color: rgba(255, 255, 255, 0.3);
+    }
+
+    .input-icon {
+        position: relative;
+    }
+
+    .input-icon i {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: rgba(255, 255, 255, 0.3);
+        font-size: 1.1rem;
+    }
+
+    .toggle-password {
+        cursor: pointer;
+        transition: color 0.3s ease;
+    }
+
+    .toggle-password:hover {
+        color: #764ba2 !important;
+    }
+
+    .btn-login {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 10px;
+    }
+
+    .btn-login:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(118, 75, 162, 0.4);
+    }
+
+    .btn-login:active {
+        transform: translateY(0);
+    }
+
+    .welcome-content h1 {
+        font-size: 3rem;
+        font-weight: 800;
+        margin-bottom: 20px;
+        text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .welcome-content p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        line-height: 1.6;
+        max-width: 300px;
+        margin: 0 auto;
+    }
+
+    /* Alertas dentro del login */
+    #alertContainer {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        max-width: 400px;
+    }
+
+    #alertContainer .alert {
+        margin-bottom: 10px;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .login-container {
+            flex-direction: column;
+            height: auto;
+        }
+
+        .login-container::before {
+            display: none;
+        }
+
+        .login-right {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 30px;
+        }
+
+        .login-section {
+            padding: 40px 30px;
+        }
+
+        .welcome-content h1 {
+            font-size: 2rem;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block extra_js %}
 <script>
+// Toggle para mostrar/ocultar contraseña
+const togglePassword = document.getElementById('togglePassword');
+const passwordInput = document.getElementById('password');
+
+togglePassword.addEventListener('click', function() {
+    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+    passwordInput.setAttribute('type', type);
+    
+    // Cambiar el icono
+    this.classList.toggle('bi-eye-slash');
+    this.classList.toggle('bi-eye');
+});
+
+// Manejo del formulario - USA EL MISMO CÓDIGO QUE TENÍAS ORIGINALMENTE
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -115,12 +318,12 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         } else {
             showAlert(result.error, 'danger');
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión';
+            submitBtn.innerHTML = 'Iniciar Sesión';
         }
     } catch (error) {
         showAlert('Error de conexión. Intente nuevamente.', 'danger');
         submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión';
+        submitBtn.innerHTML = 'Iniciar Sesión';
     }
 });
 
