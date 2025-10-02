@@ -843,3 +843,142 @@ class InventarioEstadoAPIView(ReportesAccessMixin, View):
             'success': True,
             'data': metricas
         })
+# ============================================================================
+# DETALLE Y DESCARGA DE REPORTES GUARDADOS
+# ============================================================================
+
+class ReporteDetalleView(ReportesAccessMixin, DetailView):
+    """
+    Detalle de un reporte guardado
+    """
+    model = ReporteGuardado
+    template_name = 'reports/guardados/detalle.html'
+    context_object_name = 'reporte'
+    pk_url_kwarg = 'reporte_id'
+    
+    def get_queryset(self):
+        return ReporteGuardado.objects.filter(usuario=self.request.user)
+
+
+class DescargarReporteView(ReportesAccessMixin, View):
+    """
+    Descarga de un reporte guardado
+    """
+    def get(self, request, reporte_id):
+        reporte = get_object_or_404(
+            ReporteGuardado,
+            id=reporte_id,
+            usuario=request.user
+        )
+        
+        if not reporte.archivo:
+            messages.error(request, 'El reporte no tiene archivo adjunto')
+            return redirect('reports_analytics:reportes_guardados')
+        
+        response = HttpResponse(
+            reporte.archivo.read(),
+            content_type='application/octet-stream'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{reporte.nombre_archivo}"'
+        
+        return response
+
+
+# ============================================================================
+# EXPORTACIÓN DE REPORTES
+# ============================================================================
+
+class ExportarPDFView(ReportesAccessMixin, View):
+    """
+    Exportar reporte a PDF
+    """
+    def get(self, request, tipo_reporte):
+        # TODO: Implementar exportación a PDF usando ReportLab o WeasyPrint
+        messages.info(request, 'La exportación a PDF estará disponible próximamente')
+        return redirect('reports_analytics:dashboard')
+    
+    def post(self, request, tipo_reporte):
+        # TODO: Implementar lógica de exportación con parámetros del POST
+        messages.info(request, 'La exportación a PDF estará disponible próximamente')
+        return redirect('reports_analytics:dashboard')
+
+
+class ExportarExcelView(ReportesAccessMixin, View):
+    """
+    Exportar reporte a Excel
+    """
+    def get(self, request, tipo_reporte):
+        # TODO: Implementar exportación a Excel usando openpyxl o xlsxwriter
+        messages.info(request, 'La exportación a Excel estará disponible próximamente')
+        return redirect('reports_analytics:dashboard')
+    
+    def post(self, request, tipo_reporte):
+        # TODO: Implementar lógica de exportación con parámetros del POST
+        messages.info(request, 'La exportación a Excel estará disponible próximamente')
+        return redirect('reports_analytics:dashboard')
+
+
+class ExportarCSVView(ReportesAccessMixin, View):
+    """
+    Exportar reporte a CSV
+    """
+    def get(self, request, tipo_reporte):
+        import csv
+        from io import StringIO
+        
+        # Ejemplo básico - necesitarás adaptarlo según el tipo de reporte
+        output = StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Columna1', 'Columna2', 'Columna3'])
+        writer.writerow(['Dato1', 'Dato2', 'Dato3'])
+        
+        response = HttpResponse(output.getvalue(), content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="reporte_{tipo_reporte}.csv"'
+        
+        return response
+    
+    def post(self, request, tipo_reporte):
+        return self.get(request, tipo_reporte)
+
+
+# ============================================================================
+# CONFIGURACIÓN
+# ============================================================================
+
+class ConfiguracionReportesView(ReportesAccessMixin, TemplateView):
+    """
+    Configuración de reportes
+    """
+    template_name = 'reports/configuracion/index.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Obtener o crear configuración del usuario
+        config, created = ConfiguracionReporte.objects.get_or_create(
+            usuario=self.request.user
+        )
+        
+        context['configuracion'] = config
+        
+        return context
+
+
+class GuardarConfiguracionView(ReportesAccessMixin, View):
+    """
+    Guardar configuración de reportes
+    """
+    def post(self, request):
+        # Obtener o crear configuración
+        config, created = ConfiguracionReporte.objects.get_or_create(
+            usuario=request.user
+        )
+        
+        # TODO: Implementar guardado de configuración desde el POST
+        # Ejemplo:
+        # config.formato_fecha = request.POST.get('formato_fecha')
+        # config.moneda = request.POST.get('moneda')
+        # config.save()
+        
+        messages.success(request, 'Configuración guardada correctamente')
+        return redirect('reports_analytics:configuracion')
