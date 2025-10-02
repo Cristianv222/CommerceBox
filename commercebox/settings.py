@@ -338,10 +338,12 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# Login/Logout URLs
-LOGIN_URL = '/admin/login/'
-LOGIN_REDIRECT_URL = '/admin/dashboard/'
-LOGOUT_REDIRECT_URL = '/admin/login/'
+# ============================================================================
+# CONFIGURACIÓN DE LOGIN Y REDIRECCIÓN - CORREGIDO
+# ============================================================================
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/panel/dashboard/'
+LOGOUT_REDIRECT_URL = '/login/'
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

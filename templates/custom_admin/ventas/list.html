@@ -1,0 +1,409 @@
+{% extends 'custom_admin/base_admin.html' %}
+
+{% block title %}Historial de Ventas{% endblock %}
+
+{% block extra_css %}
+<style>
+    .venta-card {
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+        border-left: 4px solid;
+    }
+
+    .venta-card.completada { border-left-color: #10b981; }
+    .venta-card.pendiente { border-left-color: #f59e0b; }
+    .venta-card.anulada { border-left-color: #ef4444; opacity: 0.7; }
+
+    .venta-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .venta-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+    }
+
+    .venta-numero {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .venta-monto {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #10b981;
+    }
+
+    .venta-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .detail-item-venta {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+    }
+
+    .detail-icon-venta {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: rgba(59, 130, 246, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--primary-color);
+        flex-shrink: 0;
+    }
+
+    .detail-content-venta {
+        flex: 1;
+    }
+
+    .detail-label-venta {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-bottom: 0.2rem;
+    }
+
+    .detail-value-venta {
+        font-size: 0.95rem;
+        color: #e2e8f0;
+        font-weight: 500;
+    }
+
+    .estado-badge {
+        padding: 0.4rem 1rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .estado-badge.completada {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+    }
+
+    .estado-badge.pendiente {
+        background: rgba(245, 158, 11, 0.2);
+        color: #f59e0b;
+    }
+
+    .estado-badge.anulada {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+    }
+
+    .venta-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(59, 130, 246, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="toastContainer" style="position: fixed; top: 90px; right: 20px; z-index: 9999;"></div>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="card-title" style="font-size: 2rem;">Historial de Ventas</h1>
+            <p style="color: #94a3b8; margin: 0;">Registro completo de todas las transacciones</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/panel/ventas/pos/" class="btn-success-admin">
+                <i class="bi bi-cart-plus me-2"></i>Nueva Venta
+            </a>
+            <button class="btn-primary-admin" onclick="exportVentas()">
+                <i class="bi bi-download me-2"></i>Exportar
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <div class="stat-value" id="totalVentas">$0.00</div>
+                <div class="stat-label">Total Ventas</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(59, 130, 246, 0.2);">
+                    <i class="bi bi-receipt"></i>
+                </div>
+                <div class="stat-value" id="cantidadVentas">0</div>
+                <div class="stat-label">Número de Ventas</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6;">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div class="stat-value" id="promedioVenta">$0.00</div>
+                <div class="stat-label">Ticket Promedio</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div class="stat-value" id="ventasHoy">0</div>
+                <div class="stat-label">Ventas Hoy</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="admin-card mb-4">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <input type="text" class="form-control-admin" id="searchInput" placeholder="Buscar..." onkeyup="handleSearch()">
+            </div>
+            <div class="col-md-2">
+                <select class="form-control-admin" id="filterEstado" onchange="applyFilters()">
+                    <option value="">Todos los estados</option>
+                    <option value="COMPLETADA">Completada</option>
+                    <option value="PENDIENTE">Pendiente</option>
+                    <option value="ANULADA">Anulada</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-control-admin" id="filterTipo" onchange="applyFilters()">
+                    <option value="">Todos los tipos</option>
+                    <option value="CONTADO">Contado</option>
+                    <option value="CREDITO">Crédito</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="date" class="form-control-admin" id="filterFechaDesde" onchange="applyFilters()">
+            </div>
+            <div class="col-md-2">
+                <input type="date" class="form-control-admin" id="filterFechaHasta" onchange="applyFilters()">
+            </div>
+            <div class="col-md-1">
+                <button class="btn-primary-admin w-100" onclick="loadVentas()" title="Actualizar">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Ventas -->
+    <div id="ventasList">
+        <div class="text-center" style="padding: 3rem;">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p style="color: #94a3b8; margin-top: 1rem;">Cargando ventas...</p>
+        </div>
+    </div>
+
+    <!-- Paginación -->
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <div style="color: #94a3b8;">
+            Mostrando <span id="showingStart">0</span> - <span id="showingEnd">0</span> de <span id="totalRecords">0</span> ventas
+        </div>
+        <div id="paginationContainer"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentPage = 1;
+    let pageSize = 20;
+    let searchTimeout = null;
+    let currentFilters = {
+        search: '',
+        estado: '',
+        tipo_venta: '',
+        fecha_desde: '',
+        fecha_hasta: ''
+    };
+
+    function showNotification(type, message, title = null) {
+        const container = document.getElementById('toastContainer');
+        const icons = {
+            success: 'bi-check-circle-fill',
+            error: 'bi-x-circle-fill',
+            warning: 'bi-exclamation-triangle-fill',
+            info: 'bi-info-circle-fill'
+        };
+        const colors = {
+            success: { bg: '16, 185, 129', color: '#10b981' },
+            error: { bg: '239, 68, 68', color: '#ef4444' },
+            warning: { bg: '245, 158, 11', color: '#f59e0b' },
+            info: { bg: '59, 130, 246', color: '#3b82f6' }
+        };
+        const toast = document.createElement('div');
+        toast.style.cssText = `background: rgba(30, 41, 59, 0.98); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem 1.5rem; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); display: flex; align-items: center; gap: 1rem; margin-bottom: 10px;`;
+        toast.innerHTML = `
+            <div style="width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; background: rgba(${colors[type].bg}, 0.2); color: ${colors[type].color};"><i class="bi ${icons[type]}"></i></div>
+            <div style="flex: 1; color: #e2e8f0;"><div style="font-weight: 600;">${title || type.toUpperCase()}</div><div style="font-size: 0.85rem; color: #94a3b8;">${message}</div></div>
+            <button onclick="this.parentElement.remove()" style="background: rgba(59, 130, 246, 0.1); border: none; color: var(--primary-color); width: 28px; height: 28px; border-radius: 8px; cursor: pointer;"><i class="bi bi-x"></i></button>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadVentas();
+        loadStats();
+    });
+
+    async function loadVentas(page = 1) {
+        currentPage = page;
+        document.getElementById('ventasList').innerHTML = `<div class="text-center" style="padding: 3rem;"><div class="spinner-border text-primary"></div><p style="color: #94a3b8; margin-top: 1rem;">Cargando...</p></div>`;
+
+        try {
+            let url = `/api/ventas/api/ventas/?page=${page}&page_size=${pageSize}`;
+            if (currentFilters.search) url += `&search=${encodeURIComponent(currentFilters.search)}`;
+            if (currentFilters.estado) url += `&estado=${currentFilters.estado}`;
+            if (currentFilters.tipo_venta) url += `&tipo_venta=${currentFilters.tipo_venta}`;
+            if (currentFilters.fecha_desde) url += `&fecha_desde=${currentFilters.fecha_desde}`;
+            if (currentFilters.fecha_hasta) url += `&fecha_hasta=${currentFilters.fecha_hasta}`;
+
+            const response = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            });
+
+            if (!response.ok) throw new Error('Error al cargar ventas');
+            const data = await response.json();
+            displayVentas(data);
+            updatePagination(data);
+
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('ventasList').innerHTML = `<div class="text-center" style="padding: 3rem;"><i class="bi bi-exclamation-triangle" style="font-size: 3rem; color: #ef4444;"></i><p style="color: #ef4444; margin-top: 1rem;">Error al cargar ventas</p><button class="btn-primary-admin" onclick="loadVentas()"><i class="bi bi-arrow-clockwise me-2"></i>Reintentar</button></div>`;
+        }
+    }
+
+    function displayVentas(data) {
+        const container = document.getElementById('ventasList');
+        const ventas = data.results || [];
+        if (ventas.length === 0) {
+            container.innerHTML = `<div class="text-center" style="padding: 3rem;"><i class="bi bi-inbox" style="font-size: 3rem; color: #64748b;"></i><p style="color: #94a3b8; margin-top: 1rem;">No se encontraron ventas</p></div>`;
+            return;
+        }
+        container.innerHTML = ventas.map(v => `
+            <div class="venta-card ${v.estado.toLowerCase()}">
+                <div class="venta-header">
+                    <div><div class="venta-numero"><i class="bi bi-receipt"></i>${v.numero_venta}</div><div style="color: #94a3b8; font-size: 0.85rem; margin-top: 0.3rem;">${v.numero_factura || 'Sin factura'}</div></div>
+                    <div class="text-end"><div class="venta-monto">$${parseFloat(v.total).toFixed(2)}</div><span class="estado-badge ${v.estado.toLowerCase()}">${v.estado_display}</span></div>
+                </div>
+                <div class="venta-details">
+                    <div class="detail-item-venta"><div class="detail-icon-venta"><i class="bi bi-person-fill"></i></div><div class="detail-content-venta"><div class="detail-label-venta">Cliente</div><div class="detail-value-venta">${v.cliente_nombre || 'Cliente Ocasional'}</div></div></div>
+                    <div class="detail-item-venta"><div class="detail-icon-venta" style="background: rgba(16, 185, 129, 0.1); color: #10b981;"><i class="bi bi-person-badge-fill"></i></div><div class="detail-content-venta"><div class="detail-label-venta">Vendedor</div><div class="detail-value-venta">${v.vendedor_nombre}</div></div></div>
+                    <div class="detail-item-venta"><div class="detail-icon-venta" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;"><i class="bi bi-calendar-event"></i></div><div class="detail-content-venta"><div class="detail-label-venta">Fecha</div><div class="detail-value-venta">${formatDate(v.fecha_venta)}</div></div></div>
+                    <div class="detail-item-venta"><div class="detail-icon-venta" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;"><i class="bi bi-credit-card-fill"></i></div><div class="detail-content-venta"><div class="detail-label-venta">Tipo</div><div class="detail-value-venta">${v.tipo_venta_display}</div></div></div>
+                </div>
+                ${v.saldo_pendiente > 0 ? `<div class="alert-admin alert-warning-admin" style="margin-top: 1rem; margin-bottom: 0;"><i class="bi bi-exclamation-triangle-fill me-2"></i>Saldo pendiente: <strong>$${parseFloat(v.saldo_pendiente).toFixed(2)}</strong></div>` : ''}
+                <div class="venta-actions">
+                    <button class="btn btn-sm btn-primary-admin" onclick="viewVenta('${v.id}')"><i class="bi bi-eye me-1"></i>Ver</button>
+                    ${v.estado === 'PENDIENTE' ? `<button class="btn btn-sm" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: none;" onclick="anularVenta('${v.id}')"><i class="bi bi-x-circle me-1"></i>Anular</button>` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function loadStats() {
+        try {
+            const response = await fetch('/api/ventas/api/ventas/estadisticas/', {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('totalVentas').textContent = `$${parseFloat(data.ventas_total.total).toFixed(2)}`;
+                document.getElementById('cantidadVentas').textContent = data.ventas_total.count;
+                document.getElementById('promedioVenta').textContent = `$${parseFloat(data.ventas_total.promedio).toFixed(2)}`;
+                document.getElementById('ventasHoy').textContent = data.ventas_hoy.count;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+
+    function updatePagination(data) {
+        const total = data.count || 0;
+        const start = ((currentPage - 1) * pageSize) + 1;
+        const end = Math.min(currentPage * pageSize, total);
+        document.getElementById('showingStart').textContent = total > 0 ? start : 0;
+        document.getElementById('showingEnd').textContent = end;
+        document.getElementById('totalRecords').textContent = total;
+        const totalPages = Math.ceil(total / pageSize);
+        const container = document.getElementById('paginationContainer');
+        if (totalPages <= 1) { container.innerHTML = ''; return; }
+        let html = '<nav><ul class="pagination" style="margin: 0;">';
+        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="loadVentas(${currentPage - 1}); return false;" style="background: rgba(59, 130, 246, 0.1); border: 1px solid var(--border-color); color: var(--primary-color);"><i class="bi bi-chevron-left"></i></a></li>`;
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="loadVentas(${i}); return false;" style="background: ${i === currentPage ? 'var(--primary-color)' : 'rgba(59, 130, 246, 0.1)'}; border: 1px solid var(--border-color); color: ${i === currentPage ? 'white' : 'var(--primary-color)'};">${i}</a></li>`;
+            }
+        }
+        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="loadVentas(${currentPage + 1}); return false;" style="background: rgba(59, 130, 246, 0.1); border: 1px solid var(--border-color); color: var(--primary-color);"><i class="bi bi-chevron-right"></i></a></li></ul></nav>`;
+        container.innerHTML = html;
+    }
+
+    function handleSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentFilters.search = document.getElementById('searchInput').value;
+            loadVentas(1);
+        }, 500);
+    }
+
+    function applyFilters() {
+        currentFilters.estado = document.getElementById('filterEstado').value;
+        currentFilters.tipo_venta = document.getElementById('filterTipo').value;
+        currentFilters.fecha_desde = document.getElementById('filterFechaDesde').value;
+        currentFilters.fecha_hasta = document.getElementById('filterFechaHasta').value;
+        loadVentas(1);
+    }
+
+    function viewVenta(id) {
+        window.location.href = `/api/ventas/ventas/${id}/`;
+    }
+
+    function anularVenta(id) {
+        if (confirm('¿Está seguro de anular esta venta?')) {
+            showNotification('warning', 'Función en desarrollo');
+        }
+    }
+
+    function exportVentas() {
+        showNotification('info', 'Función en desarrollo');
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,953 @@
+{% extends 'custom_admin/base_admin.html' %}
+
+{% block title %}Gestión de Roles{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Sistema de Notificaciones Toast */
+    #toastContainer {
+        position: fixed;
+        top: 90px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 400px;
+    }
+
+    .toast-notification {
+        background: rgba(30, 41, 59, 0.98);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        animation: slideIn 0.3s ease-out;
+        backdrop-filter: blur(10px);
+    }
+
+    .toast-notification.removing {
+        animation: slideOut 0.3s ease-out forwards;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+
+    .toast-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        flex-shrink: 0;
+    }
+
+    .toast-success .toast-icon {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+    }
+
+    .toast-error .toast-icon {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+    }
+
+    .toast-warning .toast-icon {
+        background: rgba(245, 158, 11, 0.2);
+        color: #f59e0b;
+    }
+
+    .toast-info .toast-icon {
+        background: rgba(59, 130, 246, 0.2);
+        color: #3b82f6;
+    }
+
+    .toast-content {
+        flex: 1;
+        color: #e2e8f0;
+    }
+
+    .toast-title {
+        font-weight: 600;
+        margin-bottom: 0.2rem;
+        font-size: 0.95rem;
+    }
+
+    .toast-message {
+        font-size: 0.85rem;
+        color: #94a3b8;
+    }
+
+    .toast-close {
+        background: rgba(59, 130, 246, 0.1);
+        border: none;
+        color: var(--primary-color);
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .toast-close:hover {
+        background: rgba(59, 130, 246, 0.2);
+        transform: scale(1.1);
+    }
+
+    .toast-progress {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--primary-color), #8b5cf6);
+        border-radius: 0 0 12px 12px;
+        animation: progress 3s linear forwards;
+    }
+
+    @keyframes progress {
+        from {
+            width: 100%;
+        }
+        to {
+            width: 0%;
+        }
+    }
+
+    .role-icon {
+        width: 45px;
+        height: 45px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        background: rgba(59, 130, 246, 0.2);
+        color: var(--primary-color);
+    }
+
+    .permission-badge {
+        display: inline-block;
+        padding: 0.3rem 0.7rem;
+        background: rgba(139, 92, 246, 0.1);
+        color: #8b5cf6;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        margin: 0.2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Contenedor de Notificaciones Toast -->
+<div id="toastContainer"></div>
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="card-title" style="font-size: 2rem;">Gestión de Roles</h1>
+            <p style="color: #94a3b8; margin: 0;">Administra los roles y permisos del sistema</p>
+        </div>
+        <div>
+            <button class="btn-primary-admin" onclick="openCreateModal()">
+                <i class="bi bi-plus-circle me-2"></i>Nuevo Rol
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(59, 130, 246, 0.2);">
+                    <i class="bi bi-shield-fill-check"></i>
+                </div>
+                <div class="stat-value" id="totalRoles">0</div>
+                <div class="stat-label">Total Roles</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <div class="stat-value" id="rolesActivos">0</div>
+                <div class="stat-label">Activos</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(239, 68, 68, 0.2); color: #ef4444;">
+                    <i class="bi bi-x-circle-fill"></i>
+                </div>
+                <div class="stat-value" id="rolesInactivos">0</div>
+                <div class="stat-label">Inactivos</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="admin-card mb-4">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <input type="text" class="form-control-admin" id="searchInput" placeholder="Buscar por nombre o código..." onkeyup="handleSearch()">
+            </div>
+            <div class="col-md-2">
+                <select class="form-control-admin" id="filterEstado" onchange="applyFilters()">
+                    <option value="">Todos los estados</option>
+                    <option value="true">Activos</option>
+                    <option value="false">Inactivos</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn-success-admin w-100" onclick="exportRoles()">
+                    <i class="bi bi-download"></i> Exportar
+                </button>
+            </div>
+            <div class="col-md-2">
+                <button class="btn-primary-admin w-100" onclick="loadRoles()">
+                    <i class="bi bi-arrow-clockwise"></i> Actualizar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Roles -->
+    <div class="admin-card">
+        <div class="table-responsive">
+            <table class="table-admin">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;"></th>
+                        <th>Rol</th>
+                        <th>Código</th>
+                        <th>Permisos</th>
+                        <th>Estado</th>
+                        <th>Fecha Creación</th>
+                        <th style="width: 150px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="rolesTableBody">
+                    <tr>
+                        <td colspan="7" class="text-center" style="padding: 3rem;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p style="color: #94a3b8; margin-top: 1rem;">Cargando roles...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginación -->
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <div style="color: #94a3b8;">
+                Mostrando <span id="showingStart">0</span> - <span id="showingEnd">0</span> de <span id="totalRecords">0</span> roles
+            </div>
+            <div id="paginationContainer"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Crear/Editar Rol -->
+<div class="modal fade" id="roleModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background: rgba(30, 41, 59, 0.95); border: 1px solid var(--border-color); border-radius: 16px;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title" id="roleModalTitle" style="color: white; font-weight: 600;">Nuevo Rol</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="roleForm">
+                    <input type="hidden" id="roleId">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group-admin">
+                                <label class="form-label-admin">
+                                    <i class="bi bi-tag-fill me-2"></i>Nombre del Rol *
+                                </label>
+                                <input type="text" class="form-control-admin" id="nombre" required>
+                                <small style="color: #94a3b8; font-size: 0.8rem;">Ejemplo: Administrador, Supervisor</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group-admin">
+                                <label class="form-label-admin">
+                                    <i class="bi bi-hash me-2"></i>Código *
+                                </label>
+                                <input type="text" class="form-control-admin" id="codigo" required maxlength="20" style="text-transform: uppercase;">
+                                <small style="color: #94a3b8; font-size: 0.8rem;">Código único alfanumérico</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group-admin">
+                        <label class="form-label-admin">
+                            <i class="bi bi-text-left me-2"></i>Descripción
+                        </label>
+                        <textarea class="form-control-admin" id="descripcion" rows="3" placeholder="Descripción opcional del rol..."></textarea>
+                    </div>
+
+                    <div class="form-group-admin">
+                        <label class="form-label-admin">
+                            <i class="bi bi-shield-check me-2"></i>Permisos
+                        </label>
+                        <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border-color); border-radius: 10px; padding: 1rem;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="d-flex align-items-center mb-2" style="cursor: pointer;">
+                                        <input type="checkbox" class="permission-check" value="usuarios.view" style="margin-right: 10px;">
+                                        <span style="color: #e2e8f0;">Ver Usuarios</span>
+                                    </label>
+                                    <label class="d-flex align-items-center mb-2" style="cursor: pointer;">
+                                        <input type="checkbox" class="permission-check" value="usuarios.add" style="margin-right: 10px;">
+                                        <span style="color: #e2e8f0;">Crear Usuarios</span>
+                                    </label>
+                                    <label class="d-flex align-items-center mb-2" style="cursor: pointer;">
+                                        <input type="checkbox" class="permission-check" value="usuarios.change" style="margin-right: 10px;">
+                                        <span style="color: #e2e8f0;">Editar Usuarios</span>
+                                    </label>
+                                    <label class="d-flex align-items-center mb-2" style="cursor: pointer;">
+                                        <input type="checkbox" class="permission-check" value="usuarios.delete" style="margin-right: 10px;">
+                                        <span style="color: #e2e8f0;">Eliminar Usuarios</span>
+                                    </label>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="d-flex align-items-center mb-2" style="cursor: pointer;">
+                                        <input type="checkbox" class="permission-check" value="roles.view" style="margin-right: 10px;">
+                                        <span style="color: #e2e8f0;">Ver Roles</span>
+                                    </label>
+                                    <label class="d-flex align-items-center mb-2" style="cursor: pointer;">
+                                        <input type="checkbox" class="permission-check" value="roles.add" style="margin-right: 10px;">
+                                        <span style="color: #e2e8f0;">Crear Roles</span>
+                                    </label>
+                                    <label class="d-flex align-items-center mb-2" style="cursor: pointer;">
+                                        <input type="checkbox" class="permission-check" value="roles.change" style="margin-right: 10px;">
+                                        <span style="color: #e2e8f0;">Editar Roles</span>
+                                    </label>
+                                    <label class="d-flex align-items-center mb-2" style="cursor: pointer;">
+                                        <input type="checkbox" class="permission-check" value="roles.delete" style="margin-right: 10px;">
+                                        <span style="color: #e2e8f0;">Eliminar Roles</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group-admin">
+                        <label class="form-label-admin d-flex align-items-center" style="cursor: pointer;">
+                            <input type="checkbox" id="is_active" checked style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
+                            <span>Rol Activo</span>
+                        </label>
+                    </div>
+
+                    <div class="alert-admin alert-info-admin">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        Los campos marcados con (*) son obligatorios
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                <button type="button" class="btn-danger-admin" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-2"></i>Cancelar
+                </button>
+                <button type="button" class="btn-primary-admin" onclick="saveRole()" id="saveBtn">
+                    <i class="bi bi-save me-2"></i>Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ver Detalles -->
+<div class="modal fade" id="viewRoleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background: rgba(30, 41, 59, 0.95); border: 1px solid var(--border-color); border-radius: 16px;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title" style="color: white; font-weight: 600;">
+                    <i class="bi bi-shield-fill-check me-2"></i>Detalles del Rol
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-4">
+                        <div class="role-icon" style="width: 100px; height: 100px; font-size: 2.5rem; margin: 0 auto;">
+                            <i class="bi bi-shield-fill-check"></i>
+                        </div>
+                        <h4 style="color: white; margin-top: 1rem;" id="viewNombre"></h4>
+                        <span class="badge-admin badge-info" id="viewCodigo"></span>
+                        <div style="margin-top: 0.5rem;">
+                            <span class="badge-admin" id="viewStatusBadge"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="admin-card" style="padding: 1.5rem;">
+                            <h6 style="color: var(--primary-color); margin-bottom: 1rem; font-weight: 600;">
+                                <i class="bi bi-info-circle-fill me-2"></i>Información General
+                            </h6>
+                            <div style="color: #e2e8f0; margin-bottom: 1rem;">
+                                <strong style="color: #94a3b8;">Descripción:</strong>
+                                <p id="viewDescripcion" style="margin-top: 0.5rem;"></p>
+                            </div>
+                            <div style="color: #e2e8f0; margin-bottom: 1rem;">
+                                <strong style="color: #94a3b8;">Fecha de Creación:</strong>
+                                <p id="viewCreatedAt" style="margin-top: 0.5rem;"></p>
+                            </div>
+                            <div style="color: #e2e8f0;">
+                                <strong style="color: #94a3b8;">Permisos Asignados:</strong>
+                                <div id="viewPermisos" style="margin-top: 0.5rem;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                <button type="button" class="btn-primary-admin" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-2"></i>Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmar Eliminación -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background: rgba(30, 41, 59, 0.95); border: 1px solid var(--border-color); border-radius: 16px;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title" style="color: white; font-weight: 600;">
+                    <i class="bi bi-exclamation-triangle-fill me-2" style="color: #ef4444;"></i>Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p style="color: #e2e8f0;">¿Está seguro que desea eliminar este rol?</p>
+                <div class="alert-admin alert-danger-admin">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Esta acción no se puede deshacer.</strong>
+                </div>
+                <p style="color: #94a3b8; font-size: 0.9rem;" id="deleteRoleInfo"></p>
+                <input type="hidden" id="deleteRoleId">
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                <button type="button" class="btn-primary-admin" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-2"></i>Cancelar
+                </button>
+                <button type="button" class="btn-danger-admin" onclick="confirmDelete()">
+                    <i class="bi bi-trash me-2"></i>Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentPage = 1;
+    let pageSize = 20;
+    let searchTimeout = null;
+    let currentFilters = {
+        search: '',
+        estado: ''
+    };
+
+    // Sistema de Notificaciones Toast
+    function showNotification(type, message, title = null) {
+        const container = document.getElementById('toastContainer');
+        
+        const icons = {
+            success: 'bi-check-circle-fill',
+            error: 'bi-x-circle-fill',
+            warning: 'bi-exclamation-triangle-fill',
+            info: 'bi-info-circle-fill'
+        };
+
+        const titles = {
+            success: title || 'Éxito',
+            error: title || 'Error',
+            warning: title || 'Advertencia',
+            info: title || 'Información'
+        };
+
+        const toast = document.createElement('div');
+        toast.className = `toast-notification toast-${type}`;
+        toast.innerHTML = `
+            <div class="toast-icon">
+                <i class="bi ${icons[type]}"></i>
+            </div>
+            <div class="toast-content">
+                <div class="toast-title">${titles[type]}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+            <button class="toast-close" onclick="this.parentElement.remove()">
+                <i class="bi bi-x"></i>
+            </button>
+            <div class="toast-progress"></div>
+        `;
+
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.add('removing');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // Cargar roles al iniciar
+    document.addEventListener('DOMContentLoaded', function() {
+        loadRoles();
+        loadStats();
+    });
+
+    // Cargar estadísticas
+    async function loadStats() {
+        try {
+            const response = await fetch('/api/auth/roles/', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const roles = data.results || data;
+                
+                const total = roles.length;
+                const activos = roles.filter(r => r.is_active).length;
+                const inactivos = roles.filter(r => !r.is_active).length;
+
+                document.getElementById('totalRoles').textContent = total;
+                document.getElementById('rolesActivos').textContent = activos;
+                document.getElementById('rolesInactivos').textContent = inactivos;
+            }
+        } catch (error) {
+            console.error('Error cargando stats:', error);
+        }
+    }
+
+    // Cargar roles
+    async function loadRoles(page = 1) {
+        currentPage = page;
+        const tbody = document.getElementById('rolesTableBody');
+        
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center" style="padding: 3rem;">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p style="color: #94a3b8; margin-top: 1rem;">Cargando roles...</p>
+                </td>
+            </tr>
+        `;
+
+        try {
+            let url = `/api/auth/roles/?page=${page}&page_size=${pageSize}`;
+            
+            if (currentFilters.search) {
+                url += `&search=${encodeURIComponent(currentFilters.search)}`;
+            }
+            if (currentFilters.estado) {
+                url += `&is_active=${currentFilters.estado}`;
+            }
+
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al cargar roles');
+            }
+
+            const data = await response.json();
+            displayRoles(data);
+            updatePagination(data);
+            loadStats();
+
+        } catch (error) {
+            console.error('Error:', error);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center" style="padding: 3rem;">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 3rem; color: #ef4444;"></i>
+                        <p style="color: #ef4444; margin-top: 1rem;">Error al cargar roles</p>
+                        <button class="btn-primary-admin" onclick="loadRoles()">
+                            <i class="bi bi-arrow-clockwise me-2"></i>Reintentar
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    // Mostrar roles en la tabla
+    function displayRoles(data) {
+        const tbody = document.getElementById('rolesTableBody');
+        const roles = data.results || [];
+
+        if (roles.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center" style="padding: 3rem;">
+                        <i class="bi bi-inbox" style="font-size: 3rem; color: #64748b;"></i>
+                        <p style="color: #94a3b8; margin-top: 1rem;">No se encontraron roles</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = roles.map(role => `
+            <tr>
+                <td>
+                    <div class="role-icon">
+                        <i class="bi bi-shield-fill-check"></i>
+                    </div>
+                </td>
+                <td>
+                    <div style="font-weight: 500;">${role.nombre}</div>
+                    <div style="font-size: 0.85rem; color: #94a3b8;">${role.descripcion || 'Sin descripción'}</div>
+                </td>
+                <td><span class="badge-admin badge-info">${role.codigo}</span></td>
+                <td>
+                    <span class="badge-admin" style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6;">
+                        ${role.permissions?.length || 0} permisos
+                    </span>
+                </td>
+                <td>
+                    <span class="badge-admin badge-${role.is_active ? 'success' : 'danger'}">
+                        ${role.is_active ? 'Activo' : 'Inactivo'}
+                    </span>
+                </td>
+                <td>${formatDate(role.created_at)}</td>
+                <td>
+                    <div class="btn-group">
+                        <button class="btn btn-sm" style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; margin-right: 0.3rem;" onclick="viewRole('${role.id}')" title="Ver detalles">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; margin-right: 0.3rem;" onclick="editRole('${role.id}')" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: none; padding: 0.4rem 0.8rem; border-radius: 6px;" onclick="deleteRole('${role.id}', '${role.nombre}')" title="Eliminar">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // Actualizar paginación
+    function updatePagination(data) {
+        const total = data.count || 0;
+        const start = ((currentPage - 1) * pageSize) + 1;
+        const end = Math.min(currentPage * pageSize, total);
+
+        document.getElementById('showingStart').textContent = total > 0 ? start : 0;
+        document.getElementById('showingEnd').textContent = end;
+        document.getElementById('totalRecords').textContent = total;
+
+        const totalPages = Math.ceil(total / pageSize);
+        const container = document.getElementById('paginationContainer');
+        
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let html = '<nav><ul class="pagination" style="margin: 0;">';
+        
+        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="loadRoles(${currentPage - 1}); return false;" style="background: rgba(59, 130, 246, 0.1); border: 1px solid var(--border-color); color: var(--primary-color);">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+        </li>`;
+
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="loadRoles(${i}); return false;" style="background: ${i === currentPage ? 'var(--primary-color)' : 'rgba(59, 130, 246, 0.1)'}; border: 1px solid var(--border-color); color: ${i === currentPage ? 'white' : 'var(--primary-color)'};">
+                        ${i}
+                    </a>
+                </li>`;
+            } else if (i === currentPage - 3 || i === currentPage + 3) {
+                html += '<li class="page-item disabled"><span class="page-link" style="background: transparent; border: none; color: #94a3b8;">...</span></li>';
+            }
+        }
+
+        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="loadRoles(${currentPage + 1}); return false;" style="background: rgba(59, 130, 246, 0.1); border: 1px solid var(--border-color); color: var(--primary-color);">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>`;
+
+        html += '</ul></nav>';
+        container.innerHTML = html;
+    }
+
+    // Búsqueda con delay
+    function handleSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentFilters.search = document.getElementById('searchInput').value;
+            loadRoles(1);
+        }, 500);
+    }
+
+    // Aplicar filtros
+    function applyFilters() {
+        currentFilters.estado = document.getElementById('filterEstado').value;
+        loadRoles(1);
+    }
+
+    // Abrir modal crear
+    function openCreateModal() {
+        document.getElementById('roleModalTitle').textContent = 'Nuevo Rol';
+        document.getElementById('roleForm').reset();
+        document.getElementById('roleId').value = '';
+        
+        // Desmarcar todos los permisos
+        document.querySelectorAll('.permission-check').forEach(check => {
+            check.checked = false;
+        });
+        
+        const modal = new bootstrap.Modal(document.getElementById('roleModal'));
+        modal.show();
+    }
+
+    // Editar rol
+    async function editRole(roleId) {
+    try {
+        const response = await fetch(`/api/auth/roles/${roleId}/`, {  // Cambio aquí
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            }
+        });
+
+        if (!response.ok) throw new Error('Error al cargar rol');
+
+        const role = await response.json();
+        
+        document.getElementById('roleModalTitle').textContent = 'Editar Rol';
+        document.getElementById('roleId').value = role.id;
+        document.getElementById('nombre').value = role.nombre || '';
+        document.getElementById('codigo').value = role.codigo || '';
+        document.getElementById('descripcion').value = role.descripcion || '';
+        document.getElementById('is_active').checked = role.is_active !== false;
+        
+        document.querySelectorAll('.permission-check').forEach(check => {
+            check.checked = role.permissions?.includes(check.value) || false;
+        });
+        
+        const modal = new bootstrap.Modal(document.getElementById('roleModal'));
+        modal.show();
+
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('error', 'Error al cargar los datos del rol');
+    }
+}
+
+    // Guardar rol
+    async function saveRole() {
+    const roleId = document.getElementById('roleId').value;
+    const nombre = document.getElementById('nombre').value.trim();
+    const codigo = document.getElementById('codigo').value.trim().toUpperCase();
+
+    if (!nombre || !codigo) {
+        showNotification('error', 'Complete todos los campos obligatorios');
+        return;
+    }
+
+    const permissions = [];
+    document.querySelectorAll('.permission-check:checked').forEach(check => {
+        permissions.push(check.value);
+    });
+
+    const data = {
+        nombre: nombre,
+        codigo: codigo,
+        descripcion: document.getElementById('descripcion').value.trim(),
+        permissions: permissions,
+        is_active: document.getElementById('is_active').checked
+    };
+
+    const saveBtn = document.getElementById('saveBtn');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+
+    try {
+        // RUTAS CORREGIDAS
+        const url = roleId 
+            ? `/api/auth/roles/${roleId}/actualizar/` 
+            : '/api/auth/roles/crear/';
+        const method = roleId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            let errorMsg = '';
+            if (result.details) {
+                if (typeof result.details === 'object') {
+                    for (const [field, errors] of Object.entries(result.details)) {
+                        errorMsg += `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}\n`;
+                    }
+                } else {
+                    errorMsg = result.details;
+                }
+            } else {
+                errorMsg = result.error || result.message || 'Error desconocido';
+            }
+            throw new Error(errorMsg);
+        }
+
+        bootstrap.Modal.getInstance(document.getElementById('roleModal')).hide();
+        await loadRoles(currentPage);
+        showNotification('success', roleId ? 'Rol actualizado exitosamente' : 'Rol creado exitosamente');
+
+    } catch (error) {
+        console.error('Error completo:', error);
+        showNotification('error', error.message);
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalText;
+    }
+}
+
+    // Ver detalles
+    async function viewRole(roleId) {
+        try {
+            const response = await fetch(`/api/auth/roles/${roleId}/`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            });
+
+            if (!response.ok) throw new Error('Error al cargar rol');
+
+            const role = await response.json();
+            
+            document.getElementById('viewNombre').textContent = role.nombre;
+            document.getElementById('viewCodigo').textContent = role.codigo;
+            document.getElementById('viewStatusBadge').textContent = role.is_active ? 'Activo' : 'Inactivo';
+            document.getElementById('viewStatusBadge').className = `badge-admin badge-${role.is_active ? 'success' : 'danger'}`;
+            document.getElementById('viewDescripcion').textContent = role.descripcion || 'Sin descripción';
+            document.getElementById('viewCreatedAt').textContent = formatDate(role.created_at);
+            
+            // Mostrar permisos
+            const permisosDiv = document.getElementById('viewPermisos');
+            if (role.permissions && role.permissions.length > 0) {
+                permisosDiv.innerHTML = role.permissions.map(perm => 
+                    `<span class="permission-badge">${perm}</span>`
+                ).join('');
+            } else {
+                permisosDiv.innerHTML = '<span style="color: #94a3b8;">Sin permisos asignados</span>';
+            }
+            
+            const modal = new bootstrap.Modal(document.getElementById('viewRoleModal'));
+            modal.show();
+
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification('error', 'Error al cargar los detalles del rol');
+        }
+    }
+
+    // Eliminar rol
+    function deleteRole(roleId, nombre) {
+        document.getElementById('deleteRoleId').value = roleId;
+        document.getElementById('deleteRoleInfo').textContent = `Rol: ${nombre}`;
+        
+        const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        modal.show();
+    }
+
+    // Confirmar eliminación
+    async function confirmDelete() {
+    const roleId = document.getElementById('deleteRoleId').value;
+
+    try {
+        const response = await fetch(`/api/auth/roles/${roleId}/eliminar/`, {  // Cambio aquí
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            }
+        });
+
+        if (!response.ok) {
+            const result = await response.json();
+            throw new Error(result.error || 'Error al eliminar rol');
+        }
+
+        bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+        await loadRoles(currentPage);
+        showNotification('success', 'Rol eliminado exitosamente');
+
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('error', error.message);
+    }
+}
+
+    // Exportar roles
+    function exportRoles() {
+        showNotification('info', 'Función de exportación en desarrollo');
+    }
+
+    // Utilidades
+    function formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleString('es-ES', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+</script>
+{% endblock %}

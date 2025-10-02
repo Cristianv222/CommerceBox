@@ -1,6 +1,6 @@
 """
 CommerceBox - URLs del módulo de autenticación
-Incluye endpoints JWT, gestión de usuarios, permisos y auditoría
+Incluye endpoints JWT, gestión de usuarios, roles, permisos y auditoría
 """
 
 from django.urls import path
@@ -73,11 +73,30 @@ urlpatterns = [
     path('usuarios/<uuid:user_id>/bloquear/', views.bloquear_usuario_view, name='bloquear_usuario'),
     
     # ========================================
-    # ROLES Y PERMISOS
+    # GESTIÓN DE ROLES (NUEVO)
     # ========================================
     
-    # Roles disponibles
-    path('roles/', views.roles_disponibles_view, name='roles_disponibles'),
+    # Listar todos los roles
+    path('roles/', views.roles_list_api_view, name='roles_list_api'),
+    
+    # Crear nuevo rol
+    path('roles/crear/', views.rol_create_api_view, name='rol_create_api'),
+    
+    # Roles disponibles (hardcoded del modelo Usuario)
+    path('roles/disponibles/', views.roles_disponibles_view, name='roles_disponibles'),
+    
+    # Detalle de rol específico
+    path('roles/<uuid:rol_id>/', views.rol_detail_api_view, name='rol_detail_api'),
+    
+    # Actualizar rol
+    path('roles/<uuid:rol_id>/actualizar/', views.rol_update_api_view, name='rol_update_api'),
+    
+    # Eliminar rol
+    path('roles/<uuid:rol_id>/eliminar/', views.rol_delete_api_view, name='rol_delete_api'),
+    
+    # ========================================
+    # PERMISOS PERSONALIZADOS
+    # ========================================
     
     # Listar permisos personalizados
     path('permisos/', views.permisos_list_view, name='permisos_list'),

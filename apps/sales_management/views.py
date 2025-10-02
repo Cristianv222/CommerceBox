@@ -32,15 +32,22 @@ from apps.inventory_management.mixins import (
 # MIXINS PARA SALES
 # ============================================================================
 
+# Busca esta clase (alrededor de la línea 30-40)
 class VentasAccessMixin(InventarioAccessMixin):
     """Mixin para verificar acceso al módulo de ventas"""
     
     def dispatch(self, request, *args, **kwargs):
+        # PRIMERO verificar si está autenticado
+        if not request.user.is_authenticated:
+            from django.contrib.auth.views import redirect_to_login
+            return redirect_to_login(request.get_full_path())
+        
+        # LUEGO verificar permisos del módulo
         if not request.user.puede_acceder_modulo('sales'):
             messages.error(request, "No tienes permisos para acceder a ventas.")
-            return redirect('dashboard:home')
-        return super().dispatch(request, *args, **kwargs)
-
+            return redirect('custom_admin:dashboard')
+        
+        return super(InventarioAccessMixin, self).dispatch(request, *args, **kwargs)
 
 # ============================================================================
 # DASHBOARD DE VENTAS
@@ -456,7 +463,7 @@ class ProcesarVentaPOSView(VentasAccessMixin, View):
                 cliente = get_object_or_404(Cliente, pk=cliente_id)
             
             # Importar servicio POS (lo crearemos después)
-            from .pos.pos_service import POSService
+            from .services.pos_service import POSService
             
             # Crear venta
             venta = POSService.crear_venta(
@@ -610,7 +617,7 @@ class AnularVentaView(VentasAccessMixin, View):
             return redirect('sales_management:venta_detail', pk=pk)
         
         # Importar servicio
-        from .pos.pos_service import POSService
+        from .services.pos_service import POSService
         
         try:
             POSService.anular_venta(venta, request.user)
@@ -662,7 +669,7 @@ class DevolucionCreateView(VentasAccessMixin, FormMessagesMixin, CreateView):
         devolucion = form.save(commit=False)
         
         # Generar número de devolución
-        from .pos.pos_service import POSService
+        from .services.pos_service import POSService
         devolucion.numero_devolucion = POSService.generar_numero_devolucion()
         
         # Calcular monto
@@ -709,7 +716,7 @@ class AprobarDevolucionView(VentasAccessMixin, View):
             
             # Si se aprueba, procesar la devolución
             if decision == 'APROBADA':
-                from .pos.pos_service import POSService
+                from .services.pos_service import POSService
                 try:
                     POSService.procesar_devolucion(devolucion, request.user)
                     messages.success(request, 'Devolución aprobada y procesada exitosamente.')
