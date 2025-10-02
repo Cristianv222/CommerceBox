@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.contrib.auth.password_validation import validate_password
 from .models import Usuario, PermisoPersonalizado, SesionUsuario, LogAcceso
 import uuid
-
+from .models import Usuario, PermisoPersonalizado, SesionUsuario, LogAcceso, Rol
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Serializer personalizado para obtener tokens JWT"""
@@ -335,3 +335,28 @@ class PerfilUsuarioSerializer(serializers.ModelSerializer):
             'is_vendedor': obj.is_vendedor(),
             'is_cajero': obj.is_cajero(),
         }
+
+class RolSerializer(serializers.ModelSerializer):
+    """Serializer para el modelo Rol"""
+    
+    class Meta:
+        model = Rol
+        fields = [
+            'id', 'nombre', 'codigo', 'descripcion', 'permissions',
+            'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def validate_codigo(self, value):
+        """Validar formato del código"""
+        if not value.isupper():
+            raise serializers.ValidationError("El código debe estar en mayúsculas")
+        if not value.replace('_', '').replace('-', '').isalnum():
+            raise serializers.ValidationError("El código solo puede contener letras, números, guiones y guiones bajos")
+        return value
+    
+    def validate_permissions(self, value):
+        """Validar que permissions sea una lista"""
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Los permisos deben ser una lista")
+        return value

@@ -1,0 +1,308 @@
+{% extends 'custom_admin/base_admin.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="card-title" style="font-size: 2rem;">Dashboard</h1>
+            <p style="color: #94a3b8; margin: 0;">Bienvenido al panel de control</p>
+        </div>
+        <div>
+            <button class="btn-primary-admin">
+                <i class="bi bi-download me-2"></i>Exportar Reporte
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-cash-stack"></i>
+            </div>
+            <div class="stat-value" id="ventasHoy">$0.00</div>
+            <div class="stat-label">Ventas Hoy</div>
+            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #10b981;">
+                <i class="bi bi-arrow-up"></i> +12% vs ayer
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-cart-check"></i>
+            </div>
+            <div class="stat-value" id="numVentas">0</div>
+            <div class="stat-label">Transacciones</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-box-seam"></i>
+            </div>
+            <div class="stat-value" id="productosTotal">0</div>
+            <div class="stat-label">Productos en Stock</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-exclamation-triangle"></i>
+            </div>
+            <div class="stat-value" id="alertasCriticas">0</div>
+            <div class="stat-label">Alertas Críticas</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="admin-card">
+                <div class="card-header-admin">
+                    <h3 class="card-title">Ventas de los Últimos 7 Días</h3>
+                    <select class="form-control-admin" style="width: auto;">
+                        <option>Últimos 7 días</option>
+                        <option>Últimos 30 días</option>
+                        <option>Este mes</option>
+                    </select>
+                </div>
+                <canvas id="ventasChart" height="80"></canvas>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-4">
+            <div class="admin-card">
+                <div class="card-header-admin">
+                    <h3 class="card-title">Top Productos</h3>
+                </div>
+                <canvas id="productosChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tablas -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="admin-card">
+                <div class="card-header-admin">
+                    <h3 class="card-title">Últimas Ventas</h3>
+                    <a href="/admin/ventas/" style="color: var(--primary-color); text-decoration: none;">
+                        Ver todas <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+                <table class="table-admin">
+                    <thead>
+                        <tr>
+                            <th>Nº Venta</th>
+                            <th>Cliente</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ultimasVentas">
+                        <tr>
+                            <td colspan="4" class="text-center" style="padding: 2rem;">
+                                <i class="bi bi-hourglass-split" style="font-size: 2rem; color: #64748b;"></i>
+                                <p style="color: #94a3b8; margin-top: 1rem;">Cargando ventas...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="admin-card">
+                <div class="card-header-admin">
+                    <h3 class="card-title">Alertas de Stock</h3>
+                    <a href="/admin/alertas/" style="color: var(--primary-color); text-decoration: none;">
+                        Ver todas <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+                <div id="alertasStock">
+                    <div class="text-center" style="padding: 2rem;">
+                        <i class="bi bi-hourglass-split" style="font-size: 2rem; color: #64748b;"></i>
+                        <p style="color: #94a3b8; margin-top: 1rem;">Cargando alertas...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Cargar estadísticas del dashboard
+    async function loadDashboardStats() {
+        try {
+            const response = await fetch('/api/reportes/dashboard/', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                // Actualizar stats
+                document.getElementById('ventasHoy').textContent = `$${data.ventas_hoy?.toFixed(2) || '0.00'}`;
+                document.getElementById('numVentas').textContent = data.num_ventas || '0';
+                document.getElementById('productosTotal').textContent = data.productos_total || '0';
+                document.getElementById('alertasCriticas').textContent = data.alertas_criticas || '0';
+                
+                // Cargar gráficos
+                loadVentasChart(data.ventas_semana || []);
+                loadProductosChart(data.top_productos || []);
+                loadUltimasVentas(data.ultimas_ventas || []);
+                loadAlertas(data.alertas || []);
+            }
+        } catch (error) {
+            console.error('Error cargando dashboard:', error);
+        }
+    }
+
+    // Gráfico de ventas
+    function loadVentasChart(data) {
+        const ctx = document.getElementById('ventasChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(d => d.fecha),
+                datasets: [{
+                    label: 'Ventas ($)',
+                    data: data.map(d => d.total),
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(59, 130, 246, 0.1)'
+                        },
+                        ticks: {
+                            color: '#94a3b8'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(59, 130, 246, 0.1)'
+                        },
+                        ticks: {
+                            color: '#94a3b8'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Gráfico de productos
+    function loadProductosChart(data) {
+        const ctx = document.getElementById('productosChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.map(d => d.nombre),
+                datasets: [{
+                    data: data.map(d => d.cantidad),
+                    backgroundColor: [
+                        '#3b82f6',
+                        '#8b5cf6',
+                        '#06b6d4',
+                        '#10b981',
+                        '#f59e0b'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#94a3b8'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Últimas ventas
+    function loadUltimasVentas(ventas) {
+        const tbody = document.getElementById('ultimasVentas');
+        if (ventas.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center" style="padding: 2rem; color: #94a3b8;">
+                        No hay ventas recientes
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = ventas.map(v => `
+            <tr>
+                <td>${v.numero_venta}</td>
+                <td>${v.cliente || 'Público General'}</td>
+                <td>$${v.total.toFixed(2)}</td>
+                <td>
+                    <span class="badge-admin badge-${v.estado === 'COMPLETADA' ? 'success' : 'warning'}">
+                        ${v.estado}
+                    </span>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // Alertas
+    function loadAlertas(alertas) {
+        const container = document.getElementById('alertasStock');
+        if (alertas.length === 0) {
+            container.innerHTML = `
+                <div class="text-center" style="padding: 2rem; color: #94a3b8;">
+                    <i class="bi bi-check-circle" style="font-size: 2rem; color: #10b981;"></i>
+                    <p style="margin-top: 1rem;">No hay alertas críticas</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = alertas.map(a => `
+            <div class="alert-admin alert-${a.prioridad === 'CRITICA' ? 'danger' : 'warning'}-admin">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle me-3" style="font-size: 1.5rem;"></i>
+                    <div style="flex: 1;">
+                        <strong>${a.titulo}</strong>
+                        <p style="margin: 0.3rem 0 0; font-size: 0.9rem; opacity: 0.8;">${a.mensaje}</p>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Inicializar
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDashboardStats();
+        
+        // Actualizar cada 30 segundos
+        setInterval(loadDashboardStats, 30000);
+    });
+</script>
+{% endblock %}

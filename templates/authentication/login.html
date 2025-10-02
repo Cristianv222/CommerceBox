@@ -748,7 +748,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         if (result.success) {
             showAlert('¡Login exitoso! Redirigiendo...', 'success');
             setTimeout(() => {
-                window.location.href = '/dashboard/';
+                window.location.href = '/panel/';
             }, 1000);
         } else {
             showAlert(result.error, 'danger');
@@ -764,7 +764,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 
 // Si ya está autenticado, redirigir
 if (auth.isAuthenticated()) {
-    window.location.href = '/dashboard/';
+    window.location.href = '/panel/';
 }
 </script>
 {% endblock %}

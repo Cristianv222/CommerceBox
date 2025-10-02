@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils import timezone
-from .models import Usuario, PermisoPersonalizado, SesionUsuario, LogAcceso
+from .models import Usuario, Rol, PermisoPersonalizado, SesionUsuario, LogAcceso
 from .forms import UsuarioCreationForm, UsuarioChangeForm
 
 
@@ -90,6 +90,50 @@ class UsuarioAdmin(UserAdmin):
         queryset.filter(estado='BLOQUEADO').update(estado='ACTIVO')
         self.message_user(request, f"Intentos fallidos reiniciados para {queryset.count()} usuarios.")
     reset_intentos_fallidos.short_description = "Reiniciar intentos fallidos"
+
+
+@admin.register(Rol)
+class RolAdmin(admin.ModelAdmin):
+    """Administración de Roles personalizados"""
+    
+    list_display = ['nombre', 'codigo', 'is_active', 'created_at', 'get_permissions_count']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['nombre', 'codigo', 'descripcion']
+    ordering = ['nombre']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+    
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('nombre', 'codigo', 'descripcion', 'is_active')
+        }),
+        ('Permisos', {
+            'fields': ('permissions',),
+            'description': 'Lista de permisos en formato JSON. Ejemplo: ["usuarios.view", "ventas.add"]'
+        }),
+        ('Metadatos', {
+            'fields': ('id', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_permissions_count(self, obj):
+        """Mostrar cantidad de permisos"""
+        if obj.permissions:
+            return len(obj.permissions)
+        return 0
+    get_permissions_count.short_description = 'Cantidad de Permisos'
+    
+    actions = ['activar_roles', 'desactivar_roles']
+    
+    def activar_roles(self, request, queryset):
+        queryset.update(is_active=True)
+        self.message_user(request, f"{queryset.count()} roles activados.")
+    activar_roles.short_description = "Activar roles seleccionados"
+    
+    def desactivar_roles(self, request, queryset):
+        queryset.update(is_active=False)
+        self.message_user(request, f"{queryset.count()} roles desactivados.")
+    desactivar_roles.short_description = "Desactivar roles seleccionados"
 
 
 @admin.register(PermisoPersonalizado)

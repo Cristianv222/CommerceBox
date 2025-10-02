@@ -16,6 +16,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q, Count
 from datetime import timedelta, datetime
+from .models import Rol
 import uuid
 import json
 
@@ -24,7 +25,7 @@ from .serializers import (
     CustomTokenObtainPairSerializer, UsuarioSerializer, UsuarioListSerializer,
     CambiarPasswordSerializer, RecuperarPasswordSerializer, RestablecerPasswordSerializer,
     PermisoPersonalizadoSerializer, SesionUsuarioSerializer, LogAccesoSerializer,
-    PerfilUsuarioSerializer
+    PerfilUsuarioSerializer, RolSerializer
 )
 from .decorators import (
     jwt_required, admin_required, supervisor_required, role_required,
@@ -1001,4 +1002,134 @@ def health_check_view(request):
         'status': 'healthy',
         'timestamp': timezone.now(),
         'auth_system': 'operational'
+    })
+from .models import Rol
+
+# ========================================
+# GESTIÓN DE ROLES
+# ========================================
+
+@api_view(['GET'])
+@supervisor_required
+def roles_list_api_view(request):
+    """Listar todos los roles"""
+    search = request.GET.get('search', '')
+    is_active = request.GET.get('is_active', '')
+    
+    queryset = Rol.objects.all()
+    
+    if search:
+        queryset = queryset.filter(
+            Q(nombre__icontains=search) |
+            Q(codigo__icontains=search) |
+            Q(descripcion__icontains=search)
+        )
+    
+    if is_active:
+        queryset = queryset.filter(is_active=(is_active.lower() == 'true'))
+    
+    queryset = queryset.order_by('-created_at')
+    
+    paginator = StandardResultsSetPagination()
+    page = paginator.paginate_queryset(queryset, request)
+    
+    if page is not None:
+        serializer = RolSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+    
+    serializer = RolSerializer(queryset, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@admin_required
+def rol_create_api_view(request):
+    """Crear nuevo rol"""
+    serializer = RolSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        rol = serializer.save()
+        
+        LogAcceso.objects.create(
+            usuario=request.user,
+            tipo_evento='ROL_CREATED',
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            detalles=f'Rol creado: {rol.nombre} ({rol.codigo})',
+            exitoso=True
+        )
+        
+        return Response({
+            'message': 'Rol creado exitosamente',
+            'data': serializer.data
+        }, status=status.HTTP_201_CREATED)
+    
+    return Response({
+        'error': 'Error al crear rol',
+        'details': serializer.errors
+    }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@supervisor_required
+def rol_detail_api_view(request, rol_id):
+    """Obtener detalles de un rol"""
+    rol = get_object_or_404(Rol, id=rol_id)
+    serializer = RolSerializer(rol)
+    return Response(serializer.data)
+
+
+@api_view(['PUT'])
+@admin_required
+def rol_update_api_view(request, rol_id):
+    """Actualizar rol"""
+    rol = get_object_or_404(Rol, id=rol_id)
+    serializer = RolSerializer(rol, data=request.data, partial=True)
+    
+    if serializer.is_valid():
+        rol_updated = serializer.save()
+        
+        LogAcceso.objects.create(
+            usuario=request.user,
+            tipo_evento='ROL_UPDATED',
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            detalles=f'Rol actualizado: {rol_updated.nombre}',
+            exitoso=True
+        )
+        
+        return Response({
+            'message': 'Rol actualizado exitosamente',
+            'data': serializer.data
+        })
+    
+    return Response({
+        'error': 'Error al actualizar rol',
+        'details': serializer.errors
+    }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['DELETE'])
+@admin_required
+def rol_delete_api_view(request, rol_id):
+    """Eliminar rol"""
+    rol = get_object_or_404(Rol, id=rol_id)
+    
+    # Verificar que no haya usuarios con este rol
+    # (Esto depende de si decides relacionar Usuario con Rol o mantener el CharField)
+    
+    rol_info = f"{rol.nombre} ({rol.codigo})"
+    rol.delete()
+    
+    LogAcceso.objects.create(
+        usuario=request.user,
+        tipo_evento='ROL_DELETED',
+        ip_address=get_client_ip(request),
+        user_agent=request.META.get('HTTP_USER_AGENT', ''),
+        detalles=f'Rol eliminado: {rol_info}',
+        exitoso=True
+    )
+    
+    return Response({
+        'message': 'Rol eliminado exitosamente'
     })

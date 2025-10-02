@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Panel Administrativo{% endblock %} - CommerceBox</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --sidebar-width: 280px;
+            --topbar-height: 65px;
+            --primary-color: #3b82f6;
+            --dark-bg: #0f172a;
+            --dark-card: #1e293b;
+            --border-color: rgba(59, 130, 246, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: #0a0e1a;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        /* TOPBAR */
+        .topbar {
+            position: fixed;
+            top: 0;
+            left: var(--sidebar-width);
+            right: 0;
+            height: var(--topbar-height);
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            transition: left 0.3s ease;
+        }
+
+        .topbar.sidebar-collapsed {
+            left: 70px;
+        }
+
+        .topbar-search {
+            flex: 1;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .topbar-search input {
+            width: 100%;
+            padding: 0.7rem 1rem 0.7rem 2.8rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .topbar-search input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: rgba(30, 41, 59, 1);
+        }
+
+        .topbar-search i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+        }
+
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .topbar-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            background: rgba(59, 130, 246, 0.1);
+            border: 2px solid var(--border-color);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .topbar-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .topbar-btn .badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ef4444;
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        .user-dropdown {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.6rem 1.2rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .user-dropdown:hover {
+            background: rgba(59, 130, 246, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .user-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border-color);
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 70px;
+        }
+
+        .sidebar-brand {
+            height: var(--topbar-height);
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            gap: 0.8rem;
+        }
+
+        .sidebar-brand-icon {
+            font-size: 1.9rem;
+            color: var(--primary-color);
+            min-width: 35px;
+        }
+
+        .sidebar-brand-text {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: white;
+            white-space: nowrap;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar.collapsed .sidebar-brand-text {
+            opacity: 0;
+            display: none;
+        }
+
+        .sidebar-toggle {
+            position: absolute;
+            right: -15px;
+            top: calc(var(--topbar-height) / 2);
+            width: 30px;
+            height: 30px;
+            background: var(--dark-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--primary-color);
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-toggle:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .sidebar-menu {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0.5rem 0;
+        }
+
+        /* MENU DESPLEGABLE */
+        .menu-group {
+            margin: 0.3rem 0;
+        }
+
+        .menu-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.85rem 1.2rem;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0 0.4rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .menu-group-header:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .menu-group-header.active {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--primary-color);
+        }
+
+        .menu-group-icon {
+            min-width: 24px;
+            font-size: 1.1rem;
+            margin-right: 0.8rem;
+        }
+
+        .sidebar.collapsed .menu-group-icon {
+            margin-right: 0;
+        }
+
+        .menu-group-title {
+            flex: 1;
+            white-space: nowrap;
+        }
+
+        .sidebar.collapsed .menu-group-title {
+            display: none;
+        }
+
+        .menu-group-arrow {
+            font-size: 0.9rem;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.collapsed .menu-group-arrow {
+            display: none;
+        }
+
+        .menu-group.expanded .menu-group-arrow {
+            transform: rotate(90deg);
+        }
+
+        .menu-group-items {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            padding-left: 1rem;
+        }
+
+        .menu-group.expanded .menu-group-items {
+            max-height: 800px;
+        }
+
+        .sidebar.collapsed .menu-group-items {
+            display: none;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 0.7rem 1.2rem;
+            color: #94a3b8;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            margin: 0.15rem 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .menu-item:hover {
+            background: rgba(59, 130, 246, 0.1);
+            color: white;
+            transform: translateX(3px);
+        }
+
+        .menu-item.active {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--primary-color);
+            border-left: 3px solid var(--primary-color);
+            font-weight: 600;
+        }
+
+        .menu-item-icon {
+            min-width: 20px;
+            font-size: 0.95rem;
+            margin-right: 0.7rem;
+        }
+
+        .menu-item-text {
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        .menu-item-badge {
+            margin-left: auto;
+            background: #ef4444;
+            color: white;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .menu-item-single {
+            display: flex;
+            align-items: center;
+            padding: 0.85rem 1.2rem;
+            color: #94a3b8;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            margin: 0.3rem 0.4rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .menu-item-single:hover {
+            background: rgba(59, 130, 246, 0.1);
+            color: white;
+            transform: translateX(3px);
+        }
+
+        .menu-item-single.active {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--primary-color);
+            border-left: 3px solid var(--primary-color);
+            font-weight: 600;
+        }
+
+        .menu-item-single .menu-item-icon {
+            min-width: 24px;
+            font-size: 1.1rem;
+            margin-right: 0.8rem;
+        }
+
+        .sidebar.collapsed .menu-item-single .menu-item-icon {
+            margin-right: 0;
+        }
+
+        .sidebar.collapsed .menu-item-single .menu-item-text {
+            display: none;
+        }
+
+        .menu-divider {
+            height: 1px;
+            background: rgba(59, 130, 246, 0.1);
+            margin: 0.8rem 1rem;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            margin-top: var(--topbar-height);
+            padding: 2rem;
+            min-height: calc(100vh - var(--topbar-height));
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.sidebar-collapsed {
+            margin-left: 70px;
+        }
+
+        /* CARDS */
+        .admin-card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.8rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .admin-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header-admin {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: white;
+            margin: 0;
+        }
+
+        /* STATS CARDS */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(59, 130, 246, 0.2);
+        }
+
+        .stat-icon {
+            width: 55px;
+            height: 55px;
+            border-radius: 14px;
+            background: rgba(59, 130, 246, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .stat-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0.3rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        /* TABLES */
+        .table-admin {
+            width: 100%;
+            background: transparent;
+            color: #e2e8f0;
+        }
+
+        .table-admin thead th {
+            background: rgba(59, 130, 246, 0.1);
+            border-bottom: 2px solid var(--border-color);
+            color: var(--primary-color);
+            font-weight: 600;
+            padding: 1rem;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+        }
+
+        .table-admin tbody tr {
+            border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .table-admin tbody tr:hover {
+            background: rgba(59, 130, 246, 0.08);
+        }
+
+        .table-admin tbody td {
+            padding: 1rem;
+            vertical-align: middle;
+        }
+
+        /* BUTTONS */
+        .btn-primary-admin {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .btn-primary-admin:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-success-admin {
+            background: linear-gradient(135deg, #10b981, #059669);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-success-admin:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-danger-admin {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-danger-admin:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+        }
+
+        /* FORMS */
+        .form-group-admin {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label-admin {
+            display: block;
+            margin-bottom: 0.6rem;
+            color: #e2e8f0;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .form-control-admin {
+            width: 100%;
+            padding: 0.85rem 1.1rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .form-control-admin:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: rgba(30, 41, 59, 1);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        /* BADGES */
+        .badge-admin {
+            display: inline-block;
+            padding: 0.4rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-success { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .badge-danger { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .badge-warning { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .badge-info { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+
+        /* ALERTS */
+        .alert-admin {
+            padding: 1.2rem 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            border-left: 4px solid;
+        }
+
+        .alert-success-admin {
+            background: rgba(16, 185, 129, 0.1);
+            border-left-color: #10b981;
+            color: #10b981;
+        }
+
+        .alert-danger-admin {
+            background: rgba(239, 68, 68, 0.1);
+            border-left-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .alert-warning-admin {
+            background: rgba(245, 158, 11, 0.1);
+            border-left-color: #f59e0b;
+            color: #f59e0b;
+        }
+
+        .alert-info-admin {
+            background: rgba(59, 130, 246, 0.1);
+            border-left-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.5);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(59, 130, 246, 0.7);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            .topbar {
+                left: 0;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <i class="bi bi-box-seam sidebar-brand-icon"></i>
+            <span class="sidebar-brand-text">CommerceBox</span>
+        </div>
+
+        <div class="sidebar-toggle" onclick="toggleSidebar()">
+            <i class="bi bi-chevron-left"></i>
+        </div>
+
+        <div class="sidebar-menu">
+            <a href="/panel/" class="menu-item-single {% if request.path == '/panel/' %}active{% endif %}">
+                <i class="bi bi-speedometer2 menu-item-icon"></i>
+                <span class="menu-item-text">Dashboard</span>
+            </a>
+
+            <div class="menu-divider"></div>
+
+            <div class="menu-group" id="group-usuarios">
+                <div class="menu-group-header" onclick="toggleMenuGroup('group-usuarios')">
+                    <i class="bi bi-people-fill menu-group-icon"></i>
+                    <span class="menu-group-title">Usuarios</span>
+                    <i class="bi bi-chevron-right menu-group-arrow"></i>
+                </div>
+                <div class="menu-group-items">
+                    <a href="/panel/usuarios/" class="menu-item {% if '/usuarios/' in request.path %}active{% endif %}">
+                        <i class="bi bi-person-lines-fill menu-item-icon"></i>
+                        <span class="menu-item-text">Gestión de Usuarios</span>
+                    </a>
+                    <a href="/panel/roles/" class="menu-item {% if '/roles/' in request.path %}active{% endif %}">
+                        <i class="bi bi-shield-check menu-item-icon"></i>
+                        <span class="menu-item-text">Roles y Permisos</span>
+                    </a>
+                    <a href="/panel/sesiones/" class="menu-item {% if '/sesiones/' in request.path %}active{% endif %}">
+                        <i class="bi bi-person-circle menu-item-icon"></i>
+                        <span class="menu-item-text">Sesiones Activas</span>
+                    </a>
+                    <a href="/panel/logs/accesos/" class="menu-item {% if '/logs/accesos/' in request.path %}active{% endif %}">
+                        <i class="bi bi-clock-history menu-item-icon"></i>
+                        <span class="menu-item-text">Log de Accesos</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="menu-group" id="group-ventas">
+                <div class="menu-group-header" onclick="toggleMenuGroup('group-ventas')">
+                    <i class="bi bi-cart-check-fill menu-group-icon"></i>
+                    <span class="menu-group-title">Ventas</span>
+                    <i class="bi bi-chevron-right menu-group-arrow"></i>
+                </div>
+                <div class="menu-group-items">
+                    <a href="/panel/ventas/historial/" class="menu-item {% if '/ventas/historial/' in request.path %}active{% endif %}">
+                        <i class="bi bi-receipt menu-item-icon"></i>
+                        <span class="menu-item-text">Historial de Ventas</span>
+                    </a>
+                    <a href="/panel/ventas/clientes/" class="menu-item {% if '/ventas/clientes/' in request.path %}active{% endif %}">
+                        <i class="bi bi-person-badge menu-item-icon"></i>
+                        <span class="menu-item-text">Clientes</span>
+                    </a>
+                    <a href="/panel/ventas/devoluciones/" class="menu-item {% if '/ventas/devoluciones/' in request.path %}active{% endif %}">
+                        <i class="bi bi-arrow-return-left menu-item-icon"></i>
+                        <span class="menu-item-text">Devoluciones</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="menu-group" id="group-finanzas">
+                <div class="menu-group-header" onclick="toggleMenuGroup('group-finanzas')">
+                    <i class="bi bi-cash-coin menu-group-icon"></i>
+                    <span class="menu-group-title">Finanzas</span>
+                    <i class="bi bi-chevron-right menu-group-arrow"></i>
+                </div>
+                <div class="menu-group-items">
+                    <a href="/panel/finanzas/cajas/" class="menu-item {% if '/finanzas/cajas/' in request.path %}active{% endif %}">
+                        <i class="bi bi-box menu-item-icon"></i>
+                        <span class="menu-item-text">Cajas</span>
+                    </a>
+                    <a href="/panel/finanzas/arqueos/" class="menu-item {% if '/finanzas/arqueos/' in request.path %}active{% endif %}">
+                        <i class="bi bi-calculator menu-item-icon"></i>
+                        <span class="menu-item-text">Arqueos de Caja</span>
+                    </a>
+                    <a href="/panel/finanzas/caja-chica/" class="menu-item {% if '/finanzas/caja-chica/' in request.path %}active{% endif %}">
+                        <i class="bi bi-wallet2 menu-item-icon"></i>
+                        <span class="menu-item-text">Caja Chica</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="menu-group" id="group-inventario">
+                <div class="menu-group-header" onclick="toggleMenuGroup('group-inventario')">
+                    <i class="bi bi-box-seam menu-group-icon"></i>
+                    <span class="menu-group-title">Inventario</span>
+                    <i class="bi bi-chevron-right menu-group-arrow"></i>
+                </div>
+                <div class="menu-group-items">
+                    <a href="/panel/inventario/productos/" class="menu-item {% if '/inventario/productos/' in request.path %}active{% endif %}">
+                        <i class="bi bi-box menu-item-icon"></i>
+                        <span class="menu-item-text">Productos</span>
+                    </a>
+                    <a href="/panel/inventario/quintales/" class="menu-item {% if '/inventario/quintales/' in request.path %}active{% endif %}">
+                        <i class="bi bi-boxes menu-item-icon"></i>
+                        <span class="menu-item-text">Quintales</span>
+                    </a>
+                    <a href="/panel/inventario/categorias/" class="menu-item {% if '/inventario/categorias/' in request.path %}active{% endif %}">
+                        <i class="bi bi-tags-fill menu-item-icon"></i>
+                        <span class="menu-item-text">Categorías</span>
+                    </a>
+                    <a href="/panel/inventario/proveedores/" class="menu-item {% if '/inventario/proveedores/' in request.path %}active{% endif %}">
+                        <i class="bi bi-building menu-item-icon"></i>
+                        <span class="menu-item-text">Proveedores</span>
+                    </a>
+                    <a href="/panel/inventario/" class="menu-item {% if request.path == '/panel/inventario/' %}active{% endif %}">
+                        <i class="bi bi-arrow-left-right menu-item-icon"></i>
+                        <span class="menu-item-text">Movimientos</span>
+                        <span class="menu-item-badge" id="badge-inventario" style="display:none;">0</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="menu-group" id="group-reportes">
+                <div class="menu-group-header" onclick="toggleMenuGroup('group-reportes')">
+                    <i class="bi bi-graph-up-arrow menu-group-icon"></i>
+                    <span class="menu-group-title">Reportes</span>
+                    <i class="bi bi-chevron-right menu-group-arrow"></i>
+                </div>
+                <div class="menu-group-items">
+                    <a href="/panel/reportes/" class="menu-item {% if request.path == '/panel/reportes/' %}active{% endif %}">
+                        <i class="bi bi-file-bar-graph menu-item-icon"></i>
+                        <span class="menu-item-text">Generar Reportes</span>
+                    </a>
+                </div>
+            </div>
+
+            <a href="/panel/alertas/" class="menu-item-single {% if '/alertas/' in request.path %}active{% endif %}">
+                <i class="bi bi-bell-fill menu-item-icon"></i>
+                <span class="menu-item-text">Alertas de Stock</span>
+                <span class="menu-item-badge" id="badge-alertas" style="display:none;">0</span>
+            </a>
+
+            <div class="menu-divider"></div>
+
+            <div class="menu-group" id="group-sistema">
+                <div class="menu-group-header" onclick="toggleMenuGroup('group-sistema')">
+                    <i class="bi bi-gear-fill menu-group-icon"></i>
+                    <span class="menu-group-title">Sistema</span>
+                    <i class="bi bi-chevron-right menu-group-arrow"></i>
+                </div>
+                <div class="menu-group-items">
+                    <a href="/panel/logs/" class="menu-item {% if '/logs/' in request.path and '/logs/accesos/' not in request.path %}active{% endif %}">
+                        <i class="bi bi-file-text-fill menu-item-icon"></i>
+                        <span class="menu-item-text">Auditoría</span>
+                    </a>
+                    <a href="/panel/configuracion/" class="menu-item {% if '/configuracion/' in request.path %}active{% endif %}">
+                        <i class="bi bi-sliders menu-item-icon"></i>
+                        <span class="menu-item-text">Configuración</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="menu-divider"></div>
+
+            <a href="javascript:void(0)" onclick="confirmLogout()" class="menu-item-single">
+                <i class="bi bi-box-arrow-right menu-item-icon"></i>
+                <span class="menu-item-text">Cerrar Sesión</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- TOPBAR -->
+    <div class="topbar" id="topbar">
+        <div class="topbar-search position-relative">
+            <i class="bi bi-search"></i>
+            <input type="text" placeholder="Buscar..." id="globalSearch" autocomplete="off">
+        </div>
+
+        <div class="topbar-actions">
+            <div class="topbar-btn" onclick="window.location.href='/panel/notificaciones/'">
+                <i class="bi bi-bell-fill"></i>
+                <span class="badge" id="notif-count" style="display:none;">0</span>
+            </div>
+
+            <div class="topbar-btn" onclick="window.location.href='/panel/alertas/'">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span class="badge" id="alert-count" style="display:none;">0</span>
+            </div>
+
+            <div class="user-dropdown" onclick="toggleUserMenu()">
+                <div class="user-avatar" id="userAvatar">A</div>
+                <div class="d-none d-md-block">
+                    <div style="font-weight: 600; font-size: 0.95rem;" id="userName">Admin</div>
+                    <div style="font-size: 0.75rem; color: #94a3b8;" id="userRole">Administrador</div>
+                </div>
+                <i class="bi bi-chevron-down"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content" id="mainContent">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('access_token');
+            
+            if (!window.location.pathname.includes('/login')) {
+                if (!token) {
+                    window.location.href = '/login/';
+                    return;
+                }
+            }
+            
+            loadUserData();
+            loadAlertCounts();
+            initExpandedGroups();
+        });
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const topbar = document.getElementById('topbar');
+            const mainContent = document.getElementById('mainContent');
+            
+            sidebar.classList.toggle('collapsed');
+            topbar.classList.toggle('sidebar-collapsed');
+            mainContent.classList.toggle('sidebar-collapsed');
+
+            const icon = document.querySelector('.sidebar-toggle i');
+            icon.className = sidebar.classList.contains('collapsed') ? 'bi bi-chevron-right' : 'bi bi-chevron-left';
+        }
+
+        function toggleMenuGroup(groupId) {
+            const group = document.getElementById(groupId);
+            const wasExpanded = group.classList.contains('expanded');
+            
+            if (wasExpanded) {
+                group.classList.remove('expanded');
+                localStorage.removeItem(groupId);
+            } else {
+                group.classList.add('expanded');
+                localStorage.setItem(groupId, 'expanded');
+            }
+        }
+
+        function initExpandedGroups() {
+            document.querySelectorAll('.menu-group').forEach(group => {
+                if (localStorage.getItem(group.id) === 'expanded') {
+                    group.classList.add('expanded');
+                }
+            });
+
+            const activeItem = document.querySelector('.menu-item.active');
+            if (activeItem) {
+                const parentGroup = activeItem.closest('.menu-group');
+                if (parentGroup) {
+                    parentGroup.classList.add('expanded');
+                }
+            }
+        }
+
+        async function loadUserData() {
+            const userData = localStorage.getItem('user_data');
+            if (userData) {
+                const user = JSON.parse(userData);
+                const userName = user.nombres || user.username || 'Admin';
+                document.getElementById('userName').textContent = userName;
+                document.getElementById('userRole').textContent = user.rol || 'Administrador';
+                document.getElementById('userAvatar').textContent = userName.charAt(0).toUpperCase();
+            }
+        }
+
+        async function loadAlertCounts() {
+            try {
+                const token = localStorage.getItem('access_token');
+                if (!token) return;
+
+                const response = await fetch('/panel/api/alertas/count/', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const count = data.count || 0;
+                    updateBadge('badge-inventario', count);
+                    updateBadge('badge-alertas', count);
+                    updateBadge('alert-count', count);
+                }
+            } catch (error) {
+                console.error('Error cargando alertas:', error);
+            }
+        }
+
+        function updateBadge(id, count) {
+            const badge = document.getElementById(id);
+            if (badge) {
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'inline-block' : 'none';
+            }
+        }
+
+        function toggleUserMenu() {
+            if (confirm('¿Desea cerrar sesión?')) {
+                confirmLogout();
+            }
+        }
+
+        function confirmLogout() {
+            if (confirm('¿Está seguro que desea cerrar sesión?')) {
+                localStorage.clear();
+                window.location.href = '/login/';
+            }
+        }
+
+        setInterval(loadAlertCounts, 30000);
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -239,3 +239,24 @@ class LogAcceso(models.Model):
     def __str__(self):
         usuario_str = self.usuario.get_full_name() if self.usuario else self.email_intento
         return f"{usuario_str} - {self.get_tipo_evento_display()} - {self.fecha_evento}"
+
+class Rol(models.Model):
+    """Modelo para gestión dinámica de roles"""
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    nombre = models.CharField(max_length=100, unique=True, verbose_name='Nombre del rol')
+    codigo = models.CharField(max_length=20, unique=True, verbose_name='Código del rol')
+    descripcion = models.TextField(blank=True, verbose_name='Descripción')
+    permissions = models.JSONField(default=list, verbose_name='Permisos asignados')
+    is_active = models.BooleanField(default=True, verbose_name='Activo')
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='Fecha de creación')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Última actualización')
+    
+    class Meta:
+        verbose_name = 'Rol'
+        verbose_name_plural = 'Roles'
+        db_table = 'auth_rol'
+        ordering = ['nombre']
+    
+    def __str__(self):
+        return f"{self.nombre} ({self.codigo})"
