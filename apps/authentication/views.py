@@ -55,19 +55,47 @@ class CustomTokenRefreshView(TokenRefreshView):
     """Vista personalizada para refrescar tokens JWT"""
     
     def post(self, request, *args, **kwargs):
+        # Buscar refresh token en cookies si no viene en el body
+        refresh_token = request.data.get('refresh')
+        if not refresh_token:
+            refresh_token = request.COOKIES.get('refresh_token')
+        
+        if not refresh_token:
+            return Response({
+                'error': 'Refresh token requerido'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Agregar el token al request.data si vino de cookies
+        if 'refresh' not in request.data:
+            # Crear una copia mutable del QueryDict
+            mutable_data = request.data.copy()
+            mutable_data['refresh'] = refresh_token
+            request._full_data = mutable_data
+        
         response = super().post(request, *args, **kwargs)
         
         if response.status_code == 200:
+            # Actualizar cookie con nuevo access token
+            new_access_token = response.data.get('access')
+            if new_access_token:
+                response.set_cookie(
+                    key='access_token',
+                    value=new_access_token,
+                    httponly=True,
+                    secure=not settings.DEBUG,  # True en producción, False en desarrollo
+                    samesite='Lax',
+                    max_age=3600,  # 1 hora
+                    path='/'
+                )
+            
             # Actualizar último acceso del usuario
             try:
-                refresh_token = request.data.get('refresh')
-                if refresh_token:
-                    token = RefreshToken(refresh_token)
-                    user_id = token.payload.get('user_id')
-                    if user_id:
-                        Usuario.objects.filter(id=user_id).update(
-                            fecha_ultimo_acceso=timezone.now()
-                        )
+                token = RefreshToken(refresh_token)
+                user_id = token.payload.get('user_id')
+                if user_id:
+                    Usuario.objects.filter(id=user_id).update(
+                        fecha_ultimo_acceso=timezone.now()
+                    )
             except Exception:
                 pass  # No interrumpir el proceso si hay error
         
@@ -82,17 +110,46 @@ def login_view(request):
     serializer = CustomTokenObtainPairSerializer(data=request.data, context={'request': request})
     
     if serializer.is_valid():
-        return Response({
+        tokens = serializer.validated_data
+        user_data = {
+            'id': str(request.user.id),
+            'email': request.user.email,
+            'full_name': request.user.get_full_name(),
+            'rol': request.user.rol,
+            'codigo_empleado': request.user.codigo_empleado,
+        }
+        
+        # Crear respuesta con cookies HttpOnly
+        response = Response({
             'message': 'Login exitoso',
-            'tokens': serializer.validated_data,
-            'user': {
-                'id': str(request.user.id),
-                'email': request.user.email,
-                'full_name': request.user.get_full_name(),
-                'rol': request.user.rol,
-                'codigo_empleado': request.user.codigo_empleado,
-            }
+            'tokens': tokens,  # Opcional: puedes omitir esto si solo usas cookies
+            'user': user_data
         }, status=status.HTTP_200_OK)
+        
+        # Establecer cookies HttpOnly para los tokens
+        # Access Token
+        response.set_cookie(
+            key='access_token',
+            value=tokens['access'],
+            httponly=True,        # JavaScript NO puede acceder
+            secure=not settings.DEBUG,  # True en producción (HTTPS), False en desarrollo
+            samesite='Lax',       # Protección CSRF
+            max_age=3600,         # 1 hora (ajustar según tu configuración de JWT)
+            path='/'              # Disponible en toda la app
+        )
+        
+        # Refresh Token
+        response.set_cookie(
+            key='refresh_token',
+            value=tokens['refresh'],
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite='Lax',
+            max_age=86400 * 7,    # 7 días (ajustar según tu configuración de JWT)
+            path='/'
+        )
+        
+        return response
     
     return Response({
         'error': 'Credenciales inválidas',
@@ -123,9 +180,16 @@ def logout_view(request):
             exitoso=True
         )
         
-        return Response({
+        # Crear respuesta y eliminar cookies
+        response = Response({
             'message': 'Logout exitoso'
         }, status=status.HTTP_200_OK)
+        
+        # Eliminar cookies de tokens
+        response.delete_cookie('access_token', path='/')
+        response.delete_cookie('refresh_token', path='/')
+        
+        return response
         
     except Exception as e:
         return Response({

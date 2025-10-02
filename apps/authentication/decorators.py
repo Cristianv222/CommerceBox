@@ -16,18 +16,33 @@ class CustomJWTAuthentication(JWTAuthentication):
     """Autenticación JWT personalizada con validaciones adicionales"""
     
     def authenticate(self, request):
-        header = self.get_header(request)
-        if header is None:
-            return None
+        # PASO 1: Buscar token en COOKIES primero (navegación HTML normal)
+        raw_token = request.COOKIES.get('access_token')
         
-        raw_token = self.get_raw_token(header)
+        # PASO 2: Si no está en cookies, buscar en HEADER (peticiones API con Authorization)
+        if not raw_token:
+            header = self.get_header(request)
+            if header is None:
+                return None
+            
+            raw_token = self.get_raw_token(header)
+            if raw_token is None:
+                return None
+        
+        # Si después de buscar en ambos lugares no hay token, retornar None
         if raw_token is None:
             return None
         
-        validated_token = self.get_validated_token(raw_token)
+        # Validar el token JWT
+        try:
+            validated_token = self.get_validated_token(raw_token)
+        except (InvalidToken, TokenError):
+            return None
+        
+        # Obtener el usuario del token
         user = self.get_user(validated_token)
         
-        # Validaciones adicionales
+        # Validaciones adicionales de negocio
         if not user.is_active or user.estado != 'ACTIVO':
             raise AuthenticationFailed('Usuario inactivo')
         
@@ -250,18 +265,27 @@ def rate_limit(max_requests=60, window_minutes=1):
     """Decorador para limitar la cantidad de requests por usuario"""
     def decorator(view_func):
         @wraps(view_func)
-        @jwt_required
         def wrapped_view(request, *args, **kwargs):
-            user = request.user
+            # Para endpoints sin autenticación (como login), usar IP
+            user = getattr(request, 'user', None)
+            ip_address = get_client_ip(request)
             now = timezone.now()
             window_start = now - timezone.timedelta(minutes=window_minutes)
             
             # Contar requests en la ventana de tiempo
-            recent_requests = LogAcceso.objects.filter(
-                usuario=user,
-                fecha_evento__gte=window_start,
-                tipo_evento='API_REQUEST'
-            ).count()
+            if user and hasattr(user, 'id'):
+                recent_requests = LogAcceso.objects.filter(
+                    usuario=user,
+                    fecha_evento__gte=window_start,
+                    tipo_evento='API_REQUEST'
+                ).count()
+            else:
+                # Si no hay usuario autenticado, contar por IP
+                recent_requests = LogAcceso.objects.filter(
+                    ip_address=ip_address,
+                    fecha_evento__gte=window_start,
+                    tipo_evento='API_REQUEST'
+                ).count()
             
             if recent_requests >= max_requests:
                 return JsonResponse({
@@ -273,9 +297,9 @@ def rate_limit(max_requests=60, window_minutes=1):
             
             # Registrar la request
             LogAcceso.objects.create(
-                usuario=user,
+                usuario=user if user and hasattr(user, 'id') else None,
                 tipo_evento='API_REQUEST',
-                ip_address=get_client_ip(request),
+                ip_address=ip_address,
                 user_agent=request.META.get('HTTP_USER_AGENT', ''),
                 detalles=f'{request.method} {request.path}',
                 exitoso=True
