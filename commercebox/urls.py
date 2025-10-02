@@ -30,10 +30,10 @@ urlpatterns = [
     path('api/ventas/', include('apps.sales_management.urls', namespace='sales')),
     
     # Gestión financiera
-    # path('api/finanzas/', include('apps.financial_management.urls', namespace='financial')),
+    path('api/finanzas/', include('apps.financial_management.urls', namespace='financial')),
     
     # Reportes y analytics
-    # path('api/reportes/', include('apps.reports_analytics.urls', namespace='reports')),
+    path('api/reportes/', include('apps.reports_analytics.urls', namespace='reports')),
     
     # Integración de hardware
     # path('api/hardware/', include('apps.hardware_integration.urls', namespace='hardware')),
