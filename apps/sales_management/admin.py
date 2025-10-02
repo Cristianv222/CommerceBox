@@ -109,16 +109,28 @@ class ClienteAdmin(admin.ModelAdmin):
                 color = 'red'
             return format_html(
                 '<span style="color: {};">${:,.2f} / ${:,.2f}</span>',
-                color, obj.credito_disponible, obj.limite_credito
+                color, float(obj.credito_disponible), float(obj.limite_credito)
             )
         return '-'
     credito_display.short_description = 'Crédito Disponible'
     
     def total_compras_display(self, obj):
-        return format_html(
-            '<strong>${:,.2f}</strong>',
-            obj.total_compras
-        )
+        total = obj.total_compras
+        # Asegurar que el valor es un número
+        if isinstance(total, (Decimal, float, int)):
+            return format_html(
+                '<strong>${:,.2f}</strong>',
+                float(total)
+            )
+        # Si es string o SafeString, intentar convertir
+        try:
+            total_num = float(str(total).replace('$', '').replace(',', ''))
+            return format_html(
+                '<strong>${:,.2f}</strong>',
+                total_num
+            )
+        except (ValueError, AttributeError):
+            return total
     total_compras_display.short_description = 'Total Compras'
 
 
@@ -195,7 +207,7 @@ class VentaAdmin(admin.ModelAdmin):
     def total_display(self, obj):
         return format_html(
             '<strong style="font-size: 14px;">${:,.2f}</strong>',
-            obj.total
+            float(obj.total)
         )
     total_display.short_description = 'Total'
     
@@ -216,9 +228,10 @@ class VentaAdmin(admin.ModelAdmin):
         if obj.esta_pagada():
             return format_html('<span style="color: green;">PAGADO</span>')
         elif obj.monto_pagado > 0:
+            saldo = obj.saldo_pendiente()
             return format_html(
                 '<span style="color: orange;">PARCIAL<br>${:,.2f}</span>',
-                obj.saldo_pendiente()
+                float(saldo)
             )
         return format_html('<span style="color: red;">PENDIENTE</span>')
     estado_pago_display.short_description = 'Pago'
@@ -271,11 +284,11 @@ class DetalleVentaAdmin(admin.ModelAdmin):
     precio_display.short_description = 'Precio'
     
     def subtotal_display(self, obj):
-        return format_html('${:,.2f}', obj.subtotal)
+        return format_html('${:,.2f}', float(obj.subtotal))
     subtotal_display.short_description = 'Subtotal'
     
     def total_display(self, obj):
-        return format_html('<strong>${:,.2f}</strong>', obj.total)
+        return format_html('<strong>${:,.2f}</strong>', float(obj.total))
     total_display.short_description = 'Total'
     
     def has_add_permission(self, request):
@@ -308,7 +321,7 @@ class PagoAdmin(admin.ModelAdmin):
     ]
     
     def monto_display(self, obj):
-        return format_html('<strong>${:,.2f}</strong>', obj.monto)
+        return format_html('<strong>${:,.2f}</strong>', float(obj.monto))
     monto_display.short_description = 'Monto'
     
     def has_add_permission(self, request):
@@ -362,7 +375,7 @@ class DevolucionAdmin(admin.ModelAdmin):
     ]
     
     def monto_display(self, obj):
-        return format_html('<strong>${:,.2f}</strong>', obj.monto_devolucion)
+        return format_html('<strong>${:,.2f}</strong>', float(obj.monto_devolucion))
     monto_display.short_description = 'Monto'
     
     def estado_display(self, obj):

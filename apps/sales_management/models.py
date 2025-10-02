@@ -144,6 +144,8 @@ class Venta(models.Model):
     numero_venta = models.CharField(
         max_length=20,
         unique=True,
+        blank=True,
+        editable=False,
         db_index=True,
         help_text="Número único de venta (VNT-2025-00001)"
     )
@@ -245,6 +247,32 @@ class Venta(models.Model):
     
     def __str__(self):
         return f"{self.numero_venta} - ${self.total} - {self.get_estado_display()}"
+    
+    def save(self, *args, **kwargs):
+        """Genera numero_venta automáticamente si no existe"""
+        if not self.numero_venta:
+            # Obtener el año actual
+            año_actual = timezone.now().year
+            
+            # Buscar el último número de venta del año
+            ultima_venta = Venta.objects.filter(
+                numero_venta__startswith=f'VNT-{año_actual}-'
+            ).order_by('-numero_venta').first()
+            
+            if ultima_venta:
+                # Extraer el número secuencial del último registro
+                try:
+                    ultimo_numero = int(ultima_venta.numero_venta.split('-')[-1])
+                    nuevo_numero = ultimo_numero + 1
+                except (ValueError, IndexError):
+                    nuevo_numero = 1
+            else:
+                nuevo_numero = 1
+            
+            # Generar el nuevo número de venta
+            self.numero_venta = f'VNT-{año_actual}-{nuevo_numero:05d}'
+        
+        super().save(*args, **kwargs)
     
     def calcular_totales(self):
         """Recalcula los totales de la venta basándose en los detalles"""

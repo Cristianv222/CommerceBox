@@ -515,10 +515,22 @@ class ProductoNormalAdmin(admin.ModelAdmin):
     
     def valor_inventario_display(self, obj):
         valor = obj.valor_inventario()
-        return format_html(
-            '<span style="font-weight: bold;">${:,.2f}</span>',
-            valor
-        )
+        # Asegurar que valor es un número (Decimal, float o int)
+        if isinstance(valor, (Decimal, float, int)):
+            return format_html(
+                '<span style="font-weight: bold;">${:,.2f}</span>',
+                float(valor)
+            )
+        # Si valor es string o SafeString, intentar convertir
+        try:
+            valor_num = float(str(valor).replace('$', '').replace(',', ''))
+            return format_html(
+                '<span style="font-weight: bold;">${:,.2f}</span>',
+                valor_num
+            )
+        except (ValueError, AttributeError):
+            # Si no se puede convertir, retornar tal cual
+            return valor
     valor_inventario_display.short_description = 'Valor'
 
 
