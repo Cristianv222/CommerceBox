@@ -349,9 +349,13 @@ class QuintalAdmin(admin.ModelAdmin):
     estado_display.short_description = 'Estado'
     
     def peso_actual_display(self, obj):
+        # Formatear ANTES de pasar a format_html
+        peso_actual_fmt = f"{obj.peso_actual:.2f}"
+        peso_inicial_fmt = f"{obj.peso_inicial:.2f}"
+        
         return format_html(
-            '<strong>{:.2f}</strong> / {:.2f} {}',
-            obj.peso_actual, obj.peso_inicial,
+            '<strong>{}</strong> / {} {}',
+            peso_actual_fmt, peso_inicial_fmt,
             obj.unidad_medida.abreviatura
         )
     peso_actual_display.short_description = 'Peso Actual/Inicial'
@@ -364,12 +368,17 @@ class QuintalAdmin(admin.ModelAdmin):
             color = 'orange'
         else:
             color = 'red'
+        
+        # Formatear ANTES de pasar a format_html
+        porcentaje_width = f"{porcentaje:.0f}"
+        porcentaje_text = f"{porcentaje:.1f}"
+        
         return format_html(
             '<div style="width: 100px; background: #f0f0f0; border-radius: 5px;">'
-            '<div style="width: {:.0f}%; background: {}; color: white; '
-            'text-align: center; border-radius: 5px; padding: 2px;">{:.1f}%</div>'
+            '<div style="width: {}%; background: {}; color: white; '
+            'text-align: center; border-radius: 5px; padding: 2px;">{}%</div>'
             '</div>',
-            porcentaje, color, porcentaje
+            porcentaje_width, color, porcentaje_text
         )
     porcentaje_display.short_description = '% Restante'
     
@@ -515,22 +524,25 @@ class ProductoNormalAdmin(admin.ModelAdmin):
     
     def valor_inventario_display(self, obj):
         valor = obj.valor_inventario()
-        # Asegurar que valor es un número (Decimal, float o int)
+        
+        # Convertir a número si es necesario
         if isinstance(valor, (Decimal, float, int)):
-            return format_html(
-                '<span style="font-weight: bold;">${:,.2f}</span>',
-                float(valor)
-            )
-        # Si valor es string o SafeString, intentar convertir
-        try:
-            valor_num = float(str(valor).replace('$', '').replace(',', ''))
-            return format_html(
-                '<span style="font-weight: bold;">${:,.2f}</span>',
-                valor_num
-            )
-        except (ValueError, AttributeError):
-            # Si no se puede convertir, retornar tal cual
-            return valor
+            valor_num = float(valor)
+        else:
+            # Si valor es string o SafeString, intentar convertir
+            try:
+                valor_num = float(str(valor).replace('$', '').replace(',', ''))
+            except (ValueError, AttributeError):
+                # Si no se puede convertir, retornar tal cual
+                return valor
+        
+        # Formatear ANTES de pasar a format_html
+        valor_formateado = f"${valor_num:,.2f}"
+        
+        return format_html(
+            '<span style="font-weight: bold;">{}</span>',
+            valor_formateado
+        )
     valor_inventario_display.short_description = 'Valor'
 
 
@@ -636,9 +648,12 @@ class CompraAdmin(admin.ModelAdmin):
     estado_display.short_description = 'Estado'
     
     def total_display(self, obj):
+        # Formatear ANTES de pasar a format_html
+        total_formateado = f"${float(obj.total):,.2f}"
+        
         return format_html(
-            '<span style="font-weight: bold; font-size: 14px;">${:,.2f}</span>',
-            obj.total
+            '<span style="font-weight: bold; font-size: 14px;">{}</span>',
+            total_formateado
         )
     total_display.short_description = 'Total'
     
