@@ -4,19 +4,127 @@
 
 {% block extra_css %}
 <style>
+    /* ============================================
+       FONDO CON EFECTO MÁRMOL (igual que login)
+       ============================================ */
+    body {
+        position: relative;
+        background: #f8fafc;
+        min-height: 100vh;
+        overflow-x: hidden;
+    }
+
+    /* Efecto mármol con vetas finas */
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            /* Manchas sutiles de color */
+            radial-gradient(ellipse 800px 600px at 10% 20%, rgba(219, 234, 254, 0.4) 0%, transparent 50%),
+            radial-gradient(ellipse 900px 700px at 90% 80%, rgba(191, 219, 254, 0.35) 0%, transparent 50%),
+            radial-gradient(ellipse 600px 800px at 50% 50%, rgba(147, 197, 253, 0.15) 0%, transparent 50%),
+            
+            /* Vetas finas diagonales */
+            linear-gradient(135deg, transparent 0%, transparent 48%, rgba(96, 165, 250, 0.05) 49%, rgba(96, 165, 250, 0.08) 50%, rgba(96, 165, 250, 0.05) 51%, transparent 52%, transparent 100%),
+            linear-gradient(125deg, transparent 0%, transparent 68%, rgba(147, 197, 253, 0.06) 69%, rgba(147, 197, 253, 0.09) 70%, rgba(147, 197, 253, 0.06) 71%, transparent 72%, transparent 100%),
+            linear-gradient(115deg, transparent 0%, transparent 78%, rgba(191, 219, 254, 0.07) 79%, rgba(191, 219, 254, 0.1) 80%, rgba(191, 219, 254, 0.07) 81%, transparent 82%, transparent 100%),
+            linear-gradient(145deg, transparent 0%, transparent 38%, rgba(59, 130, 246, 0.04) 39%, rgba(59, 130, 246, 0.06) 40%, rgba(59, 130, 246, 0.04) 41%, transparent 42%, transparent 100%),
+            
+            /* Vetas muy finas adicionales */
+            linear-gradient(170deg, transparent 0%, transparent 88%, rgba(96, 165, 250, 0.03) 89%, rgba(96, 165, 250, 0.05) 90%, rgba(96, 165, 250, 0.03) 91%, transparent 92%, transparent 100%),
+            linear-gradient(105deg, transparent 0%, transparent 58%, rgba(147, 197, 253, 0.04) 59%, rgba(147, 197, 253, 0.06) 60%, rgba(147, 197, 253, 0.04) 61%, transparent 62%, transparent 100%),
+            
+            /* Base blanca pura con toque azul */
+            linear-gradient(180deg, #ffffff 0%, #f8fafc 40%, #f0f9ff 70%, #e0f2fe 100%);
+        background-size: 100% 100%;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    /* Textura de grano fino */
+    body::after {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: 
+            repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(59, 130, 246, 0.01) 1px, rgba(59, 130, 246, 0.01) 2px),
+            repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(96, 165, 250, 0.01) 1px, rgba(96, 165, 250, 0.01) 2px);
+        opacity: 0.6;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    /* Asegurar que el contenido esté por encima */
+    .container-fluid {
+        position: relative;
+        z-index: 2;
+    }
+
+    /* ============================================
+       TARJETAS CON GLASSMORPHISM
+       ============================================ */
     .session-card {
-        background: rgba(30, 41, 59, 0.8);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
         padding: 1.5rem;
         margin-bottom: 1rem;
         transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    /* Efecto mármol sutil dentro del card */
+    .session-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 400px 300px at 30% 20%, rgba(219, 234, 254, 0.12) 0%, transparent 60%),
+            radial-gradient(ellipse 300px 400px at 80% 80%, rgba(191, 219, 254, 0.08) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    /* Borde superior elegante */
+    .session-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg, 
+            rgba(59, 130, 246, 0.3) 0%, 
+            rgba(96, 165, 250, 0.5) 25%,
+            rgba(147, 197, 253, 0.4) 50%,
+            rgba(96, 165, 250, 0.5) 75%,
+            rgba(59, 130, 246, 0.3) 100%);
+        border-radius: 16px 16px 0 0;
     }
 
     .session-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        border-color: var(--primary-color);
+        transform: translateY(-4px);
+        box-shadow: 
+            0 12px 40px rgba(59, 130, 246, 0.15),
+            0 4px 12px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        border-color: rgba(96, 165, 250, 0.6);
     }
 
     .session-header {
@@ -25,7 +133,9 @@
         align-items: center;
         margin-bottom: 1rem;
         padding-bottom: 1rem;
-        border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+        border-bottom: 1px solid rgba(59, 130, 246, 0.15);
+        position: relative;
+        z-index: 2;
     }
 
     .session-user {
@@ -38,13 +148,16 @@
         width: 50px;
         height: 50px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.9) 0%, rgba(59, 130, 246, 0.95) 100%);
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
         font-size: 1.2rem;
         color: white;
+        box-shadow: 
+            0 4px 12px rgba(96, 165, 250, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.3);
     }
 
     .user-info {
@@ -53,14 +166,15 @@
 
     .user-name {
         font-size: 1.1rem;
-        font-weight: 600;
-        color: white;
+        font-weight: 700;
+        color: #0f172a;
         margin-bottom: 0.2rem;
     }
 
     .user-email {
         font-size: 0.85rem;
-        color: #94a3b8;
+        color: #64748b;
+        font-weight: 500;
     }
 
     .session-details {
@@ -68,6 +182,8 @@
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 1rem;
         margin-top: 1rem;
+        position: relative;
+        z-index: 2;
     }
 
     .detail-item {
@@ -80,12 +196,13 @@
         width: 40px;
         height: 40px;
         border-radius: 10px;
-        background: rgba(59, 130, 246, 0.1);
+        background: rgba(59, 130, 246, 0.15);
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--primary-color);
+        color: rgba(59, 130, 246, 0.9);
         flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
     }
 
     .detail-content {
@@ -94,16 +211,20 @@
 
     .detail-label {
         font-size: 0.75rem;
-        color: #94a3b8;
+        color: #64748b;
         margin-bottom: 0.2rem;
+        font-weight: 600;
     }
 
     .detail-value {
         font-size: 0.9rem;
-        color: #e2e8f0;
-        font-weight: 500;
+        color: #1e293b;
+        font-weight: 600;
     }
 
+    /* ============================================
+       STATUS Y ANIMACIONES
+       ============================================ */
     .status-online {
         width: 10px;
         height: 10px;
@@ -128,25 +249,380 @@
         align-items: center;
         gap: 0.5rem;
         padding: 0.5rem 1rem;
-        background: rgba(16, 185, 129, 0.1);
-        border-radius: 8px;
+        background: rgba(16, 185, 129, 0.15);
+        border-radius: 10px;
         font-size: 0.85rem;
-        color: #10b981;
-        font-weight: 600;
+        color: #059669;
+        font-weight: 700;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
     }
+
+    /* ============================================
+       STAT CARDS
+       ============================================ */
+    .stat-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 300px 200px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 
+            0 12px 40px rgba(59, 130, 246, 0.15),
+            0 4px 12px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        border-color: rgba(96, 165, 250, 0.6);
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 2;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .stat-label {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* ============================================
+       ADMIN CARD (Filtros)
+       ============================================ */
+    .admin-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .admin-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 400px 300px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    /* ============================================
+       FORM CONTROLS
+       ============================================ */
+    .form-control-admin {
+        width: 100%;
+        padding: 14px 18px;
+        background: rgba(248, 250, 252, 0.6);
+        border: 1.5px solid rgba(203, 213, 225, 0.5);
+        border-radius: 12px;
+        color: #1e293b;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+    }
+
+    .form-control-admin:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(96, 165, 250, 0.6);
+        box-shadow: 
+            0 0 0 4px rgba(96, 165, 250, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.15);
+    }
+
+    .form-control-admin::placeholder {
+        color: #9ca3af;
+    }
+
+    /* ============================================
+       BOTONES
+       ============================================ */
+    .btn-success-admin,
+    .btn-primary-admin {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 
+            0 8px 20px rgba(59, 130, 246, 0.25),
+            0 2px 8px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-success-admin:hover,
+    .btn-primary-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 12px 28px rgba(59, 130, 246, 0.3),
+            0 4px 12px rgba(96, 165, 250, 0.25),
+            inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.95) 0%, rgba(59, 130, 246, 0.95) 100%);
+    }
+
+    .btn-danger-admin {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(220, 38, 38, 0.95) 100%);
+        border: none;
+        padding: 12px 24px;
+        border-radius: 12px;
+        color: white;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 
+            0 8px 20px rgba(239, 68, 68, 0.25),
+            0 2px 8px rgba(239, 68, 68, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-danger-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 12px 28px rgba(239, 68, 68, 0.3),
+            0 4px 12px rgba(239, 68, 68, 0.25);
+    }
+
+    /* Botón de cerrar sesión en la card */
+    .btn-close-session {
+        background: rgba(239, 68, 68, 0.15);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.1);
+    }
+
+    .btn-close-session:hover {
+        background: rgba(239, 68, 68, 0.25);
+        border-color: rgba(239, 68, 68, 0.5);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+    }
+
+    /* ============================================
+       HEADER
+       ============================================ */
+    .card-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+    }
+
+    /* ============================================
+       MODAL
+       ============================================ */
+    .modal-content {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 20px;
+        box-shadow: 
+            0 20px 60px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .modal-header {
+        border-bottom: 1px solid rgba(59, 130, 246, 0.15);
+    }
+
+    .modal-title {
+        color: #0f172a;
+        font-weight: 700;
+    }
+
+    .modal-body {
+        color: #1e293b;
+    }
+
+    .modal-footer {
+        border-top: 1px solid rgba(59, 130, 246, 0.15);
+    }
+
+    /* ============================================
+       ALERTS
+       ============================================ */
+    .alert-admin {
+        padding: 1rem 1.25rem;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .alert-warning-admin {
+        background: rgba(245, 158, 11, 0.15);
+        color: #d97706;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    /* ============================================
+       TOAST NOTIFICATIONS
+       ============================================ */
+    #toastContainer {
+        position: fixed;
+        top: 90px;
+        right: 20px;
+        z-index: 9999;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(100px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .toast-notification {
+        animation: slideIn 0.3s ease-out;
+    }
+
+    /* ============================================
+       LOADING & EMPTY STATES
+       ============================================ */
+    .spinner-border {
+        border-color: rgba(59, 130, 246, 0.3);
+        border-top-color: #3b82f6;
+    }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 768px) {
+        .session-card {
+            padding: 1.25rem;
+        }
+
+        .session-details {
+            grid-template-columns: 1fr;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+        }
+
+        .session-header {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+    }
+
+    @media (max-width: 480px) {
+        body::before,
+        body::after {
+            /* Simplificar en móviles para mejor performance */
+            background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%);
+        }
+    }
+
+    /* ============================================
+       FADE IN ANIMATION
+       ============================================ */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .session-card {
+        animation: fadeInUp 0.5s ease-out backwards;
+    }
+
+    .session-card:nth-child(1) { animation-delay: 0.05s; }
+    .session-card:nth-child(2) { animation-delay: 0.1s; }
+    .session-card:nth-child(3) { animation-delay: 0.15s; }
+    .session-card:nth-child(4) { animation-delay: 0.2s; }
+    .session-card:nth-child(5) { animation-delay: 0.25s; }
 </style>
 {% endblock %}
 
 {% block content %}
 <!-- Contenedor de Notificaciones Toast -->
-<div id="toastContainer" style="position: fixed; top: 90px; right: 20px; z-index: 9999;"></div>
+<div id="toastContainer"></div>
 
 <div class="container-fluid">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="card-title" style="font-size: 2rem;">Sesiones Activas</h1>
-            <p style="color: #94a3b8; margin: 0;">Monitoreo en tiempo real de usuarios conectados</p>
+            <h1 class="card-title">Sesiones Activas</h1>
+            <p style="color: #64748b; margin: 0; font-weight: 500;">Monitoreo en tiempo real de usuarios conectados</p>
         </div>
         <div>
             <button class="btn-success-admin" onclick="exportSessions()">
@@ -221,8 +697,8 @@
     <!-- Lista de Sesiones -->
     <div id="sessionsList">
         <div class="text-center" style="padding: 3rem;">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p style="color: #94a3b8; margin-top: 1rem;">Cargando sesiones activas...</p>
+            <div class="spinner-border" role="status"></div>
+            <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">Cargando sesiones activas...</p>
         </div>
     </div>
 </div>
@@ -230,23 +706,23 @@
 <!-- Modal Confirmar Cerrar Sesión -->
 <div class="modal fade" id="closeSessionModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content" style="background: rgba(30, 41, 59, 0.95); border: 1px solid var(--border-color); border-radius: 16px;">
-            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
-                <h5 class="modal-title" style="color: white; font-weight: 600;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
                     <i class="bi bi-exclamation-triangle-fill me-2" style="color: #ef4444;"></i>Cerrar Sesión
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p style="color: #e2e8f0;">¿Está seguro que desea cerrar esta sesión?</p>
+                <p>¿Está seguro que desea cerrar esta sesión?</p>
                 <div class="alert-admin alert-warning-admin">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <i class="bi bi-exclamation-triangle-fill"></i>
                     El usuario será desconectado inmediatamente.
                 </div>
-                <p style="color: #94a3b8; font-size: 0.9rem;" id="closeSessionInfo"></p>
+                <p style="color: #64748b; font-size: 0.9rem;" id="closeSessionInfo"></p>
                 <input type="hidden" id="closeSessionId">
             </div>
-            <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+            <div class="modal-footer">
                 <button type="button" class="btn-primary-admin" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-2"></i>Cancelar
                 </button>
@@ -280,6 +756,13 @@
             info: 'bi-info-circle-fill'
         };
 
+        const colors = {
+            success: { bg: 'rgba(16, 185, 129, 0.2)', color: '#10b981' },
+            error: { bg: 'rgba(239, 68, 68, 0.2)', color: '#ef4444' },
+            warning: { bg: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b' },
+            info: { bg: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6' }
+        };
+
         const titles = {
             success: title || 'Éxito',
             error: title || 'Error',
@@ -288,29 +771,29 @@
         };
 
         const toast = document.createElement('div');
-        toast.className = `toast-notification toast-${type}`;
+        toast.className = `toast-notification`;
         toast.style.cssText = `
-            background: rgba(30, 41, 59, 0.98);
-            border: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(30px) saturate(180%);
+            border: 1px solid rgba(219, 234, 254, 0.5);
             border-radius: 12px;
             padding: 1rem 1.5rem;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.15);
             display: flex;
             align-items: center;
             gap: 1rem;
             margin-bottom: 10px;
-            animation: slideIn 0.3s ease-out;
         `;
         
         toast.innerHTML = `
-            <div style="width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; background: rgba(${type === 'success' ? '16, 185, 129' : type === 'error' ? '239, 68, 68' : '245, 158, 11'}, 0.2); color: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#f59e0b'};">
+            <div style="width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; background: ${colors[type].bg}; color: ${colors[type].color}; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                 <i class="bi ${icons[type]}"></i>
             </div>
-            <div style="flex: 1; color: #e2e8f0;">
-                <div style="font-weight: 600; margin-bottom: 0.2rem; font-size: 0.95rem;">${titles[type]}</div>
-                <div style="font-size: 0.85rem; color: #94a3b8;">${message}</div>
+            <div style="flex: 1; color: #1e293b;">
+                <div style="font-weight: 700; margin-bottom: 0.2rem; font-size: 0.95rem;">${titles[type]}</div>
+                <div style="font-size: 0.85rem; color: #64748b; font-weight: 500;">${message}</div>
             </div>
-            <button onclick="this.parentElement.remove()" style="background: rgba(59, 130, 246, 0.1); border: none; color: var(--primary-color); width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+            <button onclick="this.parentElement.remove()" style="background: rgba(59, 130, 246, 0.1); border: none; color: #3b82f6; width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: 700;">
                 <i class="bi bi-x"></i>
             </button>
         `;
@@ -343,9 +826,9 @@
         } catch (error) {
             console.error('Error:', error);
             document.getElementById('sessionsList').innerHTML = `
-                <div class="text-center" style="padding: 3rem;">
+                <div class="session-card text-center">
                     <i class="bi bi-exclamation-triangle" style="font-size: 3rem; color: #ef4444;"></i>
-                    <p style="color: #ef4444; margin-top: 1rem;">Error al cargar sesiones</p>
+                    <p style="color: #ef4444; margin-top: 1rem; font-weight: 600;">Error al cargar sesiones</p>
                     <button class="btn-primary-admin" onclick="loadSessions()">
                         <i class="bi bi-arrow-clockwise me-2"></i>Reintentar
                     </button>
@@ -359,9 +842,9 @@
 
         if (sessions.length === 0) {
             container.innerHTML = `
-                <div class="text-center" style="padding: 3rem;">
+                <div class="session-card text-center" style="padding: 3rem;">
                     <i class="bi bi-inbox" style="font-size: 3rem; color: #64748b;"></i>
-                    <p style="color: #94a3b8; margin-top: 1rem;">No hay sesiones activas en este momento</p>
+                    <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">No hay sesiones activas en este momento</p>
                 </div>
             `;
             return;
@@ -384,7 +867,7 @@
                             <span class="status-online"></span>
                             En línea
                         </div>
-                        <button class="btn btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: none; padding: 0.5rem 1rem; border-radius: 8px;" onclick="closeSession('${session.id}', '${session.usuario_nombre}')">
+                        <button class="btn btn-sm btn-close-session" onclick="closeSession('${session.id}', '${session.usuario_nombre}')">
                             <i class="bi bi-x-circle me-1"></i>Cerrar Sesión
                         </button>
                     </div>
@@ -402,7 +885,7 @@
                     </div>
 
                     <div class="detail-item">
-                        <div class="detail-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                        <div class="detail-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
                             <i class="bi bi-clock-history"></i>
                         </div>
                         <div class="detail-content">
@@ -412,7 +895,7 @@
                     </div>
 
                     <div class="detail-item">
-                        <div class="detail-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                        <div class="detail-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
                             <i class="bi bi-activity"></i>
                         </div>
                         <div class="detail-content">
@@ -422,7 +905,7 @@
                     </div>
 
                     <div class="detail-item">
-                        <div class="detail-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
+                        <div class="detail-icon" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;">
                             <i class="bi bi-clock"></i>
                         </div>
                         <div class="detail-content">
@@ -432,9 +915,9 @@
                     </div>
                 </div>
 
-                <div class="mt-3" style="padding-top: 1rem; border-top: 1px solid rgba(59, 130, 246, 0.1);">
+                <div class="mt-3" style="padding-top: 1rem; border-top: 1px solid rgba(59, 130, 246, 0.15); position: relative; z-index: 2;">
                     <div class="detail-label mb-2">Navegador / Dispositivo</div>
-                    <div class="detail-value" style="font-size: 0.85rem; word-break: break-all;">${session.user_agent}</div>
+                    <div class="detail-value" style="font-size: 0.85rem; word-break: break-all; color: #475569;">${session.user_agent}</div>
                 </div>
             </div>
         `).join('');

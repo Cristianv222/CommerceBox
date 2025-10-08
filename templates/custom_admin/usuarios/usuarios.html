@@ -4,7 +4,433 @@
 
 {% block extra_css %}
 <style>
-    /* Sistema de Notificaciones Toast */
+    /* ============================================
+       FIX CRÍTICO: Permitir que los modales estén por encima de todo
+       ============================================ */
+    body.modal-open {
+        position: static !important;
+    }
+
+    /* ============================================
+       HEADER
+       ============================================ */
+    .card-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+    }
+    /* ============================================
+       STAT CARDS CON GLASSMORPHISM
+       ============================================ */
+    .stat-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 300px 200px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 
+            0 12px 40px rgba(59, 130, 246, 0.15),
+            0 4px 12px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        border-color: rgba(96, 165, 250, 0.6);
+    }
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 2;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+    .stat-label {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+        position: relative;
+        z-index: 2;
+    }
+    /* ============================================
+       ADMIN CARD (Filtros y Tabla)
+       ============================================ */
+    .admin-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    .admin-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 400px 300px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    .admin-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg, 
+            rgba(59, 130, 246, 0.3) 0%, 
+            rgba(96, 165, 250, 0.5) 25%,
+            rgba(147, 197, 253, 0.4) 50%,
+            rgba(96, 165, 250, 0.5) 75%,
+            rgba(59, 130, 246, 0.3) 100%);
+        border-radius: 16px 16px 0 0;
+    }
+    /* ============================================
+       FORM CONTROLS
+       ============================================ */
+    .form-control-admin {
+        width: 100%;
+        padding: 14px 18px;
+        background: rgba(248, 250, 252, 0.6);
+        border: 1.5px solid rgba(203, 213, 225, 0.5);
+        border-radius: 12px;
+        color: #1e293b;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+    }
+    .form-control-admin:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(96, 165, 250, 0.6);
+        box-shadow: 
+            0 0 0 4px rgba(96, 165, 250, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.15);
+    }
+    .form-control-admin::placeholder {
+        color: #9ca3af;
+    }
+    /* ============================================
+       TABLA
+       ============================================ */
+    .table-responsive {
+        position: relative;
+        z-index: 2;
+    }
+    .table-admin {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .table-admin thead {
+        background: rgba(59, 130, 246, 0.08);
+        border-radius: 12px 12px 0 0;
+    }
+    .table-admin thead th {
+        padding: 1rem 1rem;
+        color: #1e293b;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
+        white-space: nowrap;
+    }
+    .table-admin thead th:first-child {
+        border-radius: 12px 0 0 0;
+    }
+    .table-admin thead th:last-child {
+        border-radius: 0 12px 0 0;
+    }
+    .table-admin tbody tr {
+        transition: all 0.2s ease;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+    }
+    .table-admin tbody tr:hover {
+        background: rgba(59, 130, 246, 0.05);
+    }
+    .table-admin tbody td {
+        padding: 1rem 1rem;
+        color: #1e293b;
+        font-size: 0.9rem;
+        vertical-align: middle;
+    }
+    /* ============================================
+       USER AVATAR
+       ============================================ */
+    .user-avatar {
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.9) 0%, rgba(59, 130, 246, 0.95) 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        box-shadow: 
+            0 4px 12px rgba(96, 165, 250, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+    /* ============================================
+       BADGES
+       ============================================ */
+    .badge-admin {
+        padding: 0.4rem 0.9rem;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        display: inline-block;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    .badge-success {
+        background: rgba(16, 185, 129, 0.15);
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .badge-danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .badge-warning {
+        background: rgba(245, 158, 11, 0.15);
+        color: #d97706;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .badge-info {
+        background: rgba(59, 130, 246, 0.15);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    /* ============================================
+       BOTONES
+       ============================================ */
+    .btn-primary-admin,
+    .btn-success-admin {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 
+            0 8px 20px rgba(59, 130, 246, 0.25),
+            0 2px 8px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .btn-primary-admin:hover,
+    .btn-success-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 12px 28px rgba(59, 130, 246, 0.3),
+            0 4px 12px rgba(96, 165, 250, 0.25),
+            inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.95) 0%, rgba(59, 130, 246, 0.95) 100%);
+    }
+    .btn-danger-admin {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(220, 38, 38, 0.95) 100%);
+        border: none;
+        padding: 12px 24px;
+        border-radius: 12px;
+        color: white;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 
+            0 8px 20px rgba(239, 68, 68, 0.25),
+            0 2px 8px rgba(239, 68, 68, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .btn-danger-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 12px 28px rgba(239, 68, 68, 0.3),
+            0 4px 12px rgba(239, 68, 68, 0.25);
+    }
+    .btn-primary-admin:disabled,
+    .btn-success-admin:disabled,
+    .btn-danger-admin:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+    /* Botones de acción en tabla */
+    .btn-group .btn {
+        transition: all 0.2s ease;
+    }
+    .btn-group .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    /* ============================================
+       PAGINACIÓN
+       ============================================ */
+    .pagination {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .page-item .page-link {
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+        font-weight: 600;
+        border: 1px solid rgba(219, 234, 254, 0.5);
+    }
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    .page-item:not(.active):not(.disabled) .page-link:hover {
+        background: rgba(59, 130, 246, 0.15);
+        transform: translateY(-1px);
+    }
+    /* ============================================
+       MODALES
+       ============================================ */
+    .modal-content {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 20px;
+        box-shadow: 
+            0 20px 60px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        position: relative;
+        overflow: hidden;
+    }
+    .modal-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 600px 400px at 50% 50%, rgba(219, 234, 254, 0.15) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    .modal-header {
+        border-bottom: 1px solid rgba(59, 130, 246, 0.15);
+        position: relative;
+        z-index: 2;
+    }
+    .modal-title {
+        color: #0f172a;
+        font-weight: 700;
+    }
+    .modal-body {
+        color: #1e293b;
+        position: relative;
+        z-index: 2;
+    }
+    .modal-footer {
+        border-top: 1px solid rgba(59, 130, 246, 0.15);
+        position: relative;
+        z-index: 2;
+    }
+    /* ============================================
+       FORM GROUPS EN MODAL
+       ============================================ */
+    .form-group-admin {
+        margin-bottom: 1.25rem;
+    }
+    .form-label-admin {
+        display: flex;
+        align-items: center;
+        color: #1e293b;
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    /* ============================================
+       ALERTS
+       ============================================ */
+    .alert-admin {
+        padding: 1rem 1.25rem;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        position: relative;
+        z-index: 2;
+    }
+    .alert-info-admin {
+        background: rgba(59, 130, 246, 0.15);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .alert-danger-admin {
+        background: rgba(239, 68, 68, 0.15);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .alert-warning-admin {
+        background: rgba(245, 158, 11, 0.15);
+        color: #d97706;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    /* ============================================
+       TOAST NOTIFICATIONS
+       ============================================ */
     #toastContainer {
         position: fixed;
         top: 90px;
@@ -15,24 +441,23 @@
         gap: 10px;
         max-width: 400px;
     }
-
     .toast-notification {
-        background: rgba(30, 41, 59, 0.98);
-        border: 1px solid var(--border-color);
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
         border-radius: 12px;
         padding: 1rem 1.5rem;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
         display: flex;
         align-items: center;
         gap: 1rem;
         animation: slideIn 0.3s ease-out;
-        backdrop-filter: blur(10px);
     }
-
     .toast-notification.removing {
         animation: slideOut 0.3s ease-out forwards;
     }
-
     @keyframes slideIn {
         from {
             transform: translateX(400px);
@@ -43,7 +468,6 @@
             opacity: 1;
         }
     }
-
     @keyframes slideOut {
         from {
             transform: translateX(0);
@@ -54,7 +478,6 @@
             opacity: 0;
         }
     }
-
     .toast-icon {
         width: 40px;
         height: 40px;
@@ -64,48 +487,42 @@
         justify-content: center;
         font-size: 1.3rem;
         flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
-
     .toast-success .toast-icon {
         background: rgba(16, 185, 129, 0.2);
         color: #10b981;
     }
-
     .toast-error .toast-icon {
         background: rgba(239, 68, 68, 0.2);
         color: #ef4444;
     }
-
     .toast-warning .toast-icon {
         background: rgba(245, 158, 11, 0.2);
         color: #f59e0b;
     }
-
     .toast-info .toast-icon {
         background: rgba(59, 130, 246, 0.2);
         color: #3b82f6;
     }
-
     .toast-content {
         flex: 1;
-        color: #e2e8f0;
+        color: #1e293b;
     }
-
     .toast-title {
-        font-weight: 600;
+        font-weight: 700;
         margin-bottom: 0.2rem;
         font-size: 0.95rem;
     }
-
     .toast-message {
         font-size: 0.85rem;
-        color: #94a3b8;
+        color: #64748b;
+        font-weight: 500;
     }
-
     .toast-close {
         background: rgba(59, 130, 246, 0.1);
         border: none;
-        color: var(--primary-color);
+        color: #3b82f6;
         width: 28px;
         height: 28px;
         border-radius: 8px;
@@ -115,31 +532,88 @@
         cursor: pointer;
         transition: all 0.2s;
         flex-shrink: 0;
+        font-weight: 700;
     }
-
     .toast-close:hover {
         background: rgba(59, 130, 246, 0.2);
         transform: scale(1.1);
     }
-
     .toast-progress {
         position: absolute;
         bottom: 0;
         left: 0;
         height: 3px;
-        background: linear-gradient(90deg, var(--primary-color), #8b5cf6);
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6);
         border-radius: 0 0 12px 12px;
         animation: progress 3s linear forwards;
     }
-
     @keyframes progress {
-        from {
-            width: 100%;
+        from { width: 100%; }
+        to { width: 0%; }
+    }
+    /* ============================================
+       LOADING SPINNER
+       ============================================ */
+    .spinner-border {
+        border-color: rgba(59, 130, 246, 0.3);
+        border-top-color: #3b82f6;
+    }
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 768px) {
+        .card-title {
+            font-size: 1.5rem;
         }
-        to {
-            width: 0%;
+        .stat-card {
+            margin-bottom: 1rem;
+        }
+        .table-admin {
+            font-size: 0.85rem;
+        }
+        .btn-group {
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+        .modal-dialog {
+            margin: 0.5rem;
+        }
+        #toastContainer {
+            left: 10px;
+            right: 10px;
+            max-width: none;
         }
     }
+    @media (max-width: 480px) {
+        .admin-card {
+            padding: 1rem;
+        }
+        .table-admin thead th,
+        .table-admin tbody td {
+            padding: 0.75rem 0.5rem;
+        }
+    }
+    /* ============================================
+       ANIMACIONES DE ENTRADA
+       ============================================ */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    .stat-card,
+    .admin-card {
+        animation: fadeInUp 0.5s ease-out backwards;
+    }
+    .stat-card:nth-child(1) { animation-delay: 0.05s; }
+    .stat-card:nth-child(2) { animation-delay: 0.1s; }
+    .stat-card:nth-child(3) { animation-delay: 0.15s; }
+    .stat-card:nth-child(4) { animation-delay: 0.2s; }
 </style>
 {% endblock %}
 
@@ -151,8 +625,8 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="card-title" style="font-size: 2rem;">Gestión de Usuarios</h1>
-            <p style="color: #94a3b8; margin: 0;">Administra los usuarios del sistema</p>
+            <h1 class="card-title">Gestión de Usuarios</h1>
+            <p style="color: #64748b; margin: 0; font-weight: 500;">Administra los usuarios del sistema</p>
         </div>
         <div>
             <button class="btn-primary-admin" onclick="openCreateModal()">
@@ -202,7 +676,7 @@
     </div>
 
     <!-- Filtros -->
-    <div class="admin-card mb-4">
+    <div class="admin-card mb-4" style="animation-delay: 0.25s;">
         <div class="row g-3">
             <div class="col-md-4">
                 <input type="text" class="form-control-admin" id="searchInput" placeholder="Buscar por nombre, email o código..." onkeyup="handleSearch()">
@@ -239,7 +713,7 @@
     </div>
 
     <!-- Tabla de Usuarios -->
-    <div class="admin-card">
+    <div class="admin-card" style="animation-delay: 0.3s;">
         <div class="table-responsive">
             <table class="table-admin">
                 <thead>
@@ -256,10 +730,10 @@
                 <tbody id="usuariosTableBody">
                     <tr>
                         <td colspan="7" class="text-center" style="padding: 3rem;">
-                            <div class="spinner-border text-primary" role="status">
+                            <div class="spinner-border" role="status">
                                 <span class="visually-hidden">Cargando...</span>
                             </div>
-                            <p style="color: #94a3b8; margin-top: 1rem;">Cargando usuarios...</p>
+                            <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">Cargando usuarios...</p>
                         </td>
                     </tr>
                 </tbody>
@@ -268,7 +742,7 @@
 
         <!-- Paginación -->
         <div class="d-flex justify-content-between align-items-center mt-4">
-            <div style="color: #94a3b8;">
+            <div style="color: #64748b; font-weight: 600;">
                 Mostrando <span id="showingStart">0</span> - <span id="showingEnd">0</span> de <span id="totalRecords">0</span> usuarios
             </div>
             <div id="paginationContainer"></div>
@@ -279,10 +753,10 @@
 <!-- Modal Crear/Editar Usuario -->
 <div class="modal fade" id="userModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content" style="background: rgba(30, 41, 59, 0.95); border: 1px solid var(--border-color); border-radius: 16px;">
-            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
-                <h5 class="modal-title" id="userModalTitle" style="color: white; font-weight: 600;">Nuevo Usuario</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userModalTitle">Nuevo Usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="userForm">
@@ -295,7 +769,7 @@
                                     <i class="bi bi-hash me-2"></i>Código Empleado *
                                 </label>
                                 <input type="text" class="form-control-admin" id="codigo_empleado" required maxlength="10" style="text-transform: uppercase;">
-                                <small style="color: #94a3b8; font-size: 0.8rem;">4-10 caracteres alfanuméricos</small>
+                                <small style="color: #64748b; font-size: 0.8rem;">4-10 caracteres alfanuméricos</small>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -378,7 +852,7 @@
                                     <i class="bi bi-key-fill me-2"></i>Contraseña <span id="passwordRequired">*</span>
                                 </label>
                                 <input type="password" class="form-control-admin" id="password" placeholder="Mínimo 8 caracteres">
-                                <small style="color: #94a3b8; font-size: 0.8rem;">Mínimo 8 caracteres</small>
+                                <small style="color: #64748b; font-size: 0.8rem;">Mínimo 8 caracteres</small>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -407,7 +881,7 @@
                         <div class="col-md-6">
                             <div class="form-group-admin">
                                 <label class="form-label-admin d-flex align-items-center" style="cursor: pointer; margin-top: 2rem;">
-                                    <input type="checkbox" id="is_active" checked style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
+                                    <input type="checkbox" id="is_active" checked style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer; accent-color: #3b82f6;">
                                     <span>Usuario Activo</span>
                                 </label>
                             </div>
@@ -420,7 +894,7 @@
                     </div>
                 </form>
             </div>
-            <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+            <div class="modal-footer">
                 <button type="button" class="btn-danger-admin" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-2"></i>Cancelar
                 </button>
@@ -435,63 +909,63 @@
 <!-- Modal Ver Detalles -->
 <div class="modal fade" id="viewUserModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content" style="background: rgba(30, 41, 59, 0.95); border: 1px solid var(--border-color); border-radius: 16px;">
-            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
-                <h5 class="modal-title" style="color: white; font-weight: 600;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
                     <i class="bi bi-person-circle me-2"></i>Detalles del Usuario
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="row">
                     <div class="col-md-4 text-center mb-4">
                         <div class="user-avatar" style="width: 120px; height: 120px; font-size: 3rem; margin: 0 auto;" id="viewAvatar"></div>
-                        <h4 style="color: white; margin-top: 1rem;" id="viewFullName"></h4>
+                        <h4 style="color: #0f172a; margin-top: 1rem; font-weight: 700;" id="viewFullName"></h4>
                         <span class="badge-admin" id="viewRolBadge"></span>
                         <div style="margin-top: 0.5rem;">
                             <span class="badge-admin" id="viewStatusBadge"></span>
                         </div>
                     </div>
                     <div class="col-md-8">
-                        <div class="admin-card" style="padding: 1.5rem;">
-                            <h6 style="color: var(--primary-color); margin-bottom: 1rem; font-weight: 600;">
+                        <div style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 12px; padding: 1.5rem;">
+                            <h6 style="color: #3b82f6; margin-bottom: 1rem; font-weight: 700;">
                                 <i class="bi bi-info-circle-fill me-2"></i>Información General
                             </h6>
-                            <table class="table table-borderless" style="color: #e2e8f0;">
+                            <table class="table table-borderless" style="color: #1e293b;">
                                 <tr>
-                                    <td style="width: 40%; color: #94a3b8;"><i class="bi bi-hash me-2"></i>Código:</td>
-                                    <td id="viewCodigo" style="font-weight: 500;"></td>
+                                    <td style="width: 40%; color: #64748b; font-weight: 600;"><i class="bi bi-hash me-2"></i>Código:</td>
+                                    <td id="viewCodigo" style="font-weight: 700;"></td>
                                 </tr>
                                 <tr>
-                                    <td style="color: #94a3b8;"><i class="bi bi-person-fill me-2"></i>Usuario:</td>
-                                    <td id="viewUsername" style="font-weight: 500;"></td>
+                                    <td style="color: #64748b; font-weight: 600;"><i class="bi bi-person-fill me-2"></i>Usuario:</td>
+                                    <td id="viewUsername" style="font-weight: 700;"></td>
                                 </tr>
                                 <tr>
-                                    <td style="color: #94a3b8;"><i class="bi bi-envelope-fill me-2"></i>Email:</td>
-                                    <td id="viewEmail" style="font-weight: 500;"></td>
+                                    <td style="color: #64748b; font-weight: 600;"><i class="bi bi-envelope-fill me-2"></i>Email:</td>
+                                    <td id="viewEmail" style="font-weight: 700;"></td>
                                 </tr>
                                 <tr>
-                                    <td style="color: #94a3b8;"><i class="bi bi-card-text me-2"></i>Documento:</td>
-                                    <td id="viewDocumento" style="font-weight: 500;"></td>
+                                    <td style="color: #64748b; font-weight: 600;"><i class="bi bi-card-text me-2"></i>Documento:</td>
+                                    <td id="viewDocumento" style="font-weight: 700;"></td>
                                 </tr>
                                 <tr>
-                                    <td style="color: #94a3b8;"><i class="bi bi-telephone-fill me-2"></i>Teléfono:</td>
-                                    <td id="viewTelefono" style="font-weight: 500;"></td>
+                                    <td style="color: #64748b; font-weight: 600;"><i class="bi bi-telephone-fill me-2"></i>Teléfono:</td>
+                                    <td id="viewTelefono" style="font-weight: 700;"></td>
                                 </tr>
                                 <tr>
-                                    <td style="color: #94a3b8;"><i class="bi bi-calendar-check me-2"></i>Registro:</td>
-                                    <td id="viewCreatedAt" style="font-weight: 500;"></td>
+                                    <td style="color: #64748b; font-weight: 600;"><i class="bi bi-calendar-check me-2"></i>Registro:</td>
+                                    <td id="viewCreatedAt" style="font-weight: 700;"></td>
                                 </tr>
                                 <tr>
-                                    <td style="color: #94a3b8;"><i class="bi bi-clock-history me-2"></i>Último Acceso:</td>
-                                    <td id="viewLastLogin" style="font-weight: 500;"></td>
+                                    <td style="color: #64748b; font-weight: 600;"><i class="bi bi-clock-history me-2"></i>Último Acceso:</td>
+                                    <td id="viewLastLogin" style="font-weight: 700;"></td>
                                 </tr>
                             </table>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+            <div class="modal-footer">
                 <button type="button" class="btn-primary-admin" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-2"></i>Cerrar
                 </button>
@@ -503,23 +977,23 @@
 <!-- Modal Confirmar Eliminación -->
 <div class="modal fade" id="deleteModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content" style="background: rgba(30, 41, 59, 0.95); border: 1px solid var(--border-color); border-radius: 16px;">
-            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
-                <h5 class="modal-title" style="color: white; font-weight: 600;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
                     <i class="bi bi-exclamation-triangle-fill me-2" style="color: #ef4444;"></i>Confirmar Eliminación
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p style="color: #e2e8f0;">¿Está seguro que desea eliminar este usuario?</p>
+                <p>¿Está seguro que desea eliminar este usuario?</p>
                 <div class="alert-admin alert-danger-admin">
                     <i class="bi bi-exclamation-triangle-fill me-2"></i>
                     <strong>Esta acción no se puede deshacer.</strong>
                 </div>
-                <p style="color: #94a3b8; font-size: 0.9rem;" id="deleteUserInfo"></p>
+                <p style="color: #64748b; font-size: 0.9rem;" id="deleteUserInfo"></p>
                 <input type="hidden" id="deleteUserId">
             </div>
-            <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+            <div class="modal-footer">
                 <button type="button" class="btn-primary-admin" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-2"></i>Cancelar
                 </button>
@@ -534,25 +1008,25 @@
 <!-- Modal Confirmar Bloqueo/Desbloqueo -->
 <div class="modal fade" id="blockModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content" style="background: rgba(30, 41, 59, 0.95); border: 1px solid var(--border-color); border-radius: 16px;">
-            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
-                <h5 class="modal-title" style="color: white; font-weight: 600;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
                     <i class="bi bi-shield-exclamation me-2" style="color: #f59e0b;"></i>
                     <span id="blockModalTitle">Confirmar Acción</span>
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p style="color: #e2e8f0;" id="blockModalQuestion">¿Está seguro?</p>
+                <p id="blockModalQuestion">¿Está seguro?</p>
                 <div class="alert-admin alert-warning-admin">
                     <i class="bi bi-exclamation-triangle-fill me-2"></i>
                     <strong id="blockModalWarning">Esta acción afectará al usuario.</strong>
                 </div>
-                <p style="color: #94a3b8; font-size: 0.9rem;" id="blockUserInfo"></p>
+                <p style="color: #64748b; font-size: 0.9rem;" id="blockUserInfo"></p>
                 <input type="hidden" id="blockUserId">
                 <input type="hidden" id="blockUserEstado">
             </div>
-            <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+            <div class="modal-footer">
                 <button type="button" class="btn-primary-admin" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-2"></i>Cancelar
                 </button>
@@ -663,8 +1137,8 @@
         tbody.innerHTML = `
             <tr>
                 <td colspan="7" class="text-center" style="padding: 3rem;">
-                    <div class="spinner-border text-primary" role="status"></div>
-                    <p style="color: #94a3b8; margin-top: 1rem;">Cargando usuarios...</p>
+                    <div class="spinner-border" role="status"></div>
+                    <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">Cargando usuarios...</p>
                 </td>
             </tr>
         `;
@@ -703,7 +1177,7 @@
                 <tr>
                     <td colspan="7" class="text-center" style="padding: 3rem;">
                         <i class="bi bi-exclamation-triangle" style="font-size: 3rem; color: #ef4444;"></i>
-                        <p style="color: #ef4444; margin-top: 1rem;">Error al cargar usuarios</p>
+                        <p style="color: #ef4444; margin-top: 1rem; font-weight: 600;">Error al cargar usuarios</p>
                         <button class="btn-primary-admin" onclick="loadUsers()">
                             <i class="bi bi-arrow-clockwise me-2"></i>Reintentar
                         </button>
@@ -723,7 +1197,7 @@
                 <tr>
                     <td colspan="7" class="text-center" style="padding: 3rem;">
                         <i class="bi bi-inbox" style="font-size: 3rem; color: #64748b;"></i>
-                        <p style="color: #94a3b8; margin-top: 1rem;">No se encontraron usuarios</p>
+                        <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">No se encontraron usuarios</p>
                     </td>
                 </tr>
             `;
@@ -734,19 +1208,19 @@
             const isBloqueado = user.estado === 'BLOQUEADO';
             return `
             <tr>
-                <td><strong style="color: var(--primary-color);">${user.codigo_empleado}</strong></td>
+                <td><strong style="color: #3b82f6; font-weight: 700;">${user.codigo_empleado}</strong></td>
                 <td>
                     <div class="d-flex align-items-center">
                         <div class="user-avatar" style="width: 35px; height: 35px; font-size: 0.9rem; margin-right: 10px;">
                             ${user.full_name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                            <div style="font-weight: 500;">${user.full_name}</div>
-                            <div style="font-size: 0.85rem; color: #94a3b8;">@${user.username}</div>
+                            <div style="font-weight: 600; color: #1e293b;">${user.full_name}</div>
+                            <div style="font-size: 0.85rem; color: #64748b; font-weight: 500;">@${user.username}</div>
                         </div>
                     </div>
                 </td>
-                <td>${user.email}</td>
+                <td style="font-weight: 500;">${user.email}</td>
                 <td>
                     <span class="badge-admin badge-info">${user.rol_display || user.rol}</span>
                 </td>
@@ -755,19 +1229,19 @@
                         ${user.estado_display || user.estado}
                     </span>
                 </td>
-                <td>${formatDate(user.fecha_ultimo_acceso)}</td>
+                <td style="font-weight: 500;">${formatDate(user.fecha_ultimo_acceso)}</td>
                 <td>
                     <div class="btn-group">
-                        <button class="btn btn-sm" style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; margin-right: 0.3rem;" onclick="viewUser('${user.id}')" title="Ver detalles">
+                        <button class="btn btn-sm" style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; margin-right: 0.3rem; font-weight: 600;" onclick="viewUser('${user.id}')" title="Ver detalles">
                             <i class="bi bi-eye"></i>
                         </button>
-                        <button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; margin-right: 0.3rem;" onclick="editUser('${user.id}')" title="Editar">
+                        <button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; margin-right: 0.3rem; font-weight: 600;" onclick="editUser('${user.id}')" title="Editar">
                             <i class="bi bi-pencil"></i>
                         </button>
-                        <button class="btn btn-sm" style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; margin-right: 0.3rem;" onclick="toggleBloquear('${user.id}', '${user.estado}')" title="${isBloqueado ? 'Desbloquear' : 'Bloquear'}">
+                        <button class="btn btn-sm" style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; margin-right: 0.3rem; font-weight: 600;" onclick="toggleBloquear('${user.id}', '${user.estado}')" title="${isBloqueado ? 'Desbloquear' : 'Bloquear'}">
                             <i class="bi bi-shield-${isBloqueado ? 'check' : 'lock'}"></i>
                         </button>
-                        <button class="btn btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: none; padding: 0.4rem 0.8rem; border-radius: 6px;" onclick="deleteUser('${user.id}', '${user.full_name}')" title="Eliminar">
+                        <button class="btn btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600;" onclick="deleteUser('${user.id}', '${user.full_name}')" title="Eliminar">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
@@ -798,7 +1272,7 @@
         let html = '<nav><ul class="pagination" style="margin: 0;">';
         
         html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-            <a class="page-link" href="#" onclick="loadUsers(${currentPage - 1}); return false;" style="background: rgba(59, 130, 246, 0.1); border: 1px solid var(--border-color); color: var(--primary-color);">
+            <a class="page-link" href="#" onclick="loadUsers(${currentPage - 1}); return false;">
                 <i class="bi bi-chevron-left"></i>
             </a>
         </li>`;
@@ -806,17 +1280,17 @@
         for (let i = 1; i <= totalPages; i++) {
             if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
                 html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
-                    <a class="page-link" href="#" onclick="loadUsers(${i}); return false;" style="background: ${i === currentPage ? 'var(--primary-color)' : 'rgba(59, 130, 246, 0.1)'}; border: 1px solid var(--border-color); color: ${i === currentPage ? 'white' : 'var(--primary-color)'};">
+                    <a class="page-link" href="#" onclick="loadUsers(${i}); return false;">
                         ${i}
                     </a>
                 </li>`;
             } else if (i === currentPage - 3 || i === currentPage + 3) {
-                html += '<li class="page-item disabled"><span class="page-link" style="background: transparent; border: none; color: #94a3b8;">...</span></li>';
+                html += '<li class="page-item disabled"><span class="page-link" style="background: transparent; border: none; color: #64748b; font-weight: 700;">...</span></li>';
             }
         }
 
         html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-            <a class="page-link" href="#" onclick="loadUsers(${currentPage + 1}); return false;" style="background: rgba(59, 130, 246, 0.1); border: 1px solid var(--border-color); color: var(--primary-color);">
+            <a class="page-link" href="#" onclick="loadUsers(${currentPage + 1}); return false;">
                 <i class="bi bi-chevron-right"></i>
             </a>
         </li>`;
