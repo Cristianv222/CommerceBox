@@ -8,8 +8,14 @@ from django.urls import reverse_lazy
 
 class InventarioAccessMixin(LoginRequiredMixin):
     """Mixin para verificar acceso al módulo de inventario"""
+    login_url = '/login/'  # Redirigir al login si no está autenticado
     
     def dispatch(self, request, *args, **kwargs):
+        # Primero verifica si está autenticado (LoginRequiredMixin se encarga)
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+            
+        # Luego verifica permisos del módulo
         if not request.user.puede_acceder_modulo('inventory'):
             messages.error(request, "No tienes permisos para acceder al inventario.")
             return redirect('dashboard:home')
@@ -20,6 +26,11 @@ class InventarioEditMixin(InventarioAccessMixin):
     """Mixin para vistas que requieren permisos de edición"""
     
     def dispatch(self, request, *args, **kwargs):
+        # Primero verifica si está autenticado
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+            
+        # Luego verifica permisos de edición
         if not request.user.tiene_permiso('inventory.change_producto'):
             messages.error(request, "No tienes permisos para editar el inventario.")
             return redirect('inventory_management:dashboard')
@@ -30,6 +41,11 @@ class InventarioDeleteMixin(InventarioAccessMixin):
     """Mixin para vistas que requieren permisos de eliminación"""
     
     def dispatch(self, request, *args, **kwargs):
+        # Primero verifica si está autenticado
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+            
+        # Luego verifica permisos de eliminación
         if not request.user.tiene_permiso('inventory.delete_producto'):
             messages.error(request, "No tienes permisos para eliminar del inventario.")
             return redirect('inventory_management:dashboard')

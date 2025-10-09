@@ -4,7 +4,7 @@
 
 INFORMACIÓN GENERAL
 -------------------
-Fecha de generación: 2025-10-02 09:59:33
+Fecha de generación: 2025-10-08 18:55:17
 Ubicación: C:\Users\godoy\Desktop\CommerceBox
 Python Version: Python 3.13.7
 Pip Version: pip no disponible
@@ -18,23 +18,24 @@ Usuario: Desconocido
 
 ├── apps/ (10 elementos)
 │   ├── authentication/ (15 elementos)
-│   │   ├── migrations/ (2 elementos)
+│   │   ├── migrations/ (3 elementos)
 │   │   │   ├── 0001_initial.py (12.0KB)
+│   │   │   ├── 0002_rol.py (2.1KB)
 │   │   │   └── __init__.py (0B)
 │   │   ├── __init__.py (0B)
-│   │   ├── admin.py (7.9KB)
+│   │   ├── admin.py (9.6KB)
 │   │   ├── apps.py (1.2KB)
 │   │   ├── decorators.py (13.1KB)
 │   │   ├── forms.py (15.0KB)
 │   │   ├── middleware.py (7.9KB)
-│   │   ├── models.py (9.5KB)
+│   │   ├── models.py (10.4KB)
 │   │   ├── permissions.py (9.8KB)
-│   │   ├── serializers.py (13.5KB)
+│   │   ├── serializers.py (14.5KB)
 │   │   ├── signals.py (9.3KB)
 │   │   ├── tests.py (63.0B)
-│   │   ├── urls.py (4.8KB)
+│   │   ├── urls.py (5.5KB)
 │   │   ├── utils.py (12.2KB)
-│   │   └── views.py (33.5KB)
+│   │   └── views.py (37.3KB)
 │   ├── custom_admin/ (8 elementos)
 │   │   ├── migrations/ (1 elementos)
 │   │   │   └── __init__.py (0B)
@@ -43,8 +44,8 @@ Usuario: Desconocido
 │   │   ├── apps.py (166.0B)
 │   │   ├── models.py (60.0B)
 │   │   ├── tests.py (63.0B)
-│   │   ├── urls.py (9.4KB)
-│   │   └── views.py (18.5KB)
+│   │   ├── urls.py (2.9KB)
+│   │   └── views.py (10.1KB)
 │   ├── financial_management/ (13 elementos)
 │   │   ├── accounting/ (4 elementos)
 │   │   │   ├── __init__.py (404.0B)
@@ -102,7 +103,7 @@ Usuario: Desconocido
 │   │   │   ├── unit_converter.py (1.4KB)
 │   │   │   └── validators.py (1.2KB)
 │   │   ├── __init__.py (0B)
-│   │   ├── admin.py (22.0KB)
+│   │   ├── admin.py (23.0KB)
 │   │   ├── apps.py (182.0B)
 │   │   ├── decorators.py (2.3KB)
 │   │   ├── forms.py (20.0KB)
@@ -146,24 +147,25 @@ Usuario: Desconocido
 │   │   │   ├── __init__.py (0B)
 │   │   │   ├── invoice_service.py (4.8KB)
 │   │   │   └── ticket_generator.py (4.0KB)
-│   │   ├── migrations/ (3 elementos)
+│   │   ├── migrations/ (4 elementos)
 │   │   │   ├── 0001_initial.py (1.1KB)
 │   │   │   ├── 0002_cliente_detalleventa_devolucion_pago_and_more.py (17.2KB)
+│   │   │   ├── 0003_alter_venta_numero_venta.py (671.0B)
 │   │   │   └── __init__.py (0B)
 │   │   ├── pos/ (3 elementos)
 │   │   │   ├── __init__.py (0B)
 │   │   │   ├── pos_service.py (19.1KB)
 │   │   │   └── pricing_calculator.py (8.4KB)
 │   │   ├── __init__.py (110.0B)
-│   │   ├── admin.py (12.7KB)
+│   │   ├── admin.py (14.1KB)
 │   │   ├── apps.py (401.0B)
 │   │   ├── forms.py (15.7KB)
-│   │   ├── models.py (18.2KB)
+│   │   ├── models.py (19.3KB)
 │   │   ├── signals.py (1.3KB)
 │   │   ├── tasks.py (2.1KB)
 │   │   ├── tests.py (63.0B)
 │   │   ├── urls.py (2.6KB)
-│   │   └── views.py (36.5KB)
+│   │   └── views.py (36.9KB)
 │   ├── stock_alert_system/ (7 elementos)
 │   │   ├── migrations/ (2 elementos)
 │   │   │   ├── 0001_initial.py (10.4KB)
@@ -194,18 +196,19 @@ Usuario: Desconocido
 │   ├── __pycache__/ (excluido)
 │   ├── __init__.py (0B)
 │   ├── asgi.py (415.0B)
-│   ├── settings.py (12.7KB)
-│   ├── urls.py (1.3KB)
+│   ├── settings.py (12.9KB)
+│   ├── urls.py (1.4KB)
 │   └── wsgi.py (415.0B)
 ├── logs/ (2 elementos)
-│   ├── commercebox.log (1.2MB)
+│   ├── commercebox.log (3.1MB)
 │   └── commercebox_audit.log (0B)
 ├── media/ (4 elementos)
 │   ├── barcodes/ (2 elementos)
 │   │   ├── productos/ (0 elementos)
 │   │   └── quintales/ (0 elementos)
 │   ├── invoices/ (0 elementos)
-│   ├── productos/ (0 elementos)
+│   ├── productos/ (1 elementos)
+│   │   └── lunar.webp (5.1KB)
 │   └── reports/ (0 elementos)
 ├── scripts/ (1 elementos)
 │   └── init_db.sql/ (0 elementos)
@@ -213,13 +216,25 @@ Usuario: Desconocido
 │   └── js/ (0 elementos)
 ├── templates/ (4 elementos)
 │   ├── authentication/ (1 elementos)
-│   │   └── login.html (19.0KB)
-│   ├── custom_admin/ (2 elementos)
-│   │   ├── base_admin.html (23.8KB)
-│   │   └── dashboard.html (11.1KB)
+│   │   └── login.html (23.0KB)
+│   ├── custom_admin/ (8 elementos)
+│   │   ├── inventario/ (1 elementos)
+│   │   │   └── productos_list.html (50.1KB)
+│   │   ├── logs/ (1 elementos)
+│   │   │   └── accesos.html (33.8KB)
+│   │   ├── roles/ (1 elementos)
+│   │   │   └── list.html (54.0KB)
+│   │   ├── sesiones/ (1 elementos)
+│   │   │   └── activas.html (35.9KB)
+│   │   ├── usuarios/ (1 elementos)
+│   │   │   └── usuarios.html (65.0KB)
+│   │   ├── ventas/ (1 elementos)
+│   │   │   └── list.html (18.6KB)
+│   │   ├── base_admin.html (36.7KB)
+│   │   └── dashboard.html (28.9KB)
 │   ├── errors/ (0 elementos)
 │   └── base.html (23.9KB)
-├── .env (544.0B)
+├── .env (2.1KB)
 ├── .gitignore (2.0KB)
 ├── create_structure.ps1 (2.8KB)
 ├── docker-compose.yml (3.6KB)
@@ -240,7 +255,7 @@ ARCHIVOS IMPORTANTES
 --------------------
 manage.py                 ✅ Existe (689.0B)
 requirements.txt          ✅ Existe (2.6KB)
-.env                      ✅ Existe (544.0B)
+.env                      ✅ Existe (2.1KB)
 .env.example              ❌ Faltante
 .gitignore                ✅ Existe (2.0KB)
 README.md                 ✅ Existe (9.9KB)
@@ -251,21 +266,21 @@ setup.cfg                 ❌ Faltante
 
 ESTADÍSTICAS POR EXTENSIÓN
 --------------------------
-.py                   148 archivos ( 89.7%)
-.html                   4 archivos (  2.4%)
-(sin extensión)         3 archivos (  1.8%)
-.log                    2 archivos (  1.2%)
-.md                     2 archivos (  1.2%)
+.py                   150 archivos ( 86.2%)
+.html                  10 archivos (  5.7%)
+(sin extensión)         3 archivos (  1.7%)
+.log                    2 archivos (  1.1%)
+.md                     2 archivos (  1.1%)
 .disabled               1 archivos (  0.6%)
+.webp                   1 archivos (  0.6%)
 .ps1                    1 archivos (  0.6%)
 .yml                    1 archivos (  0.6%)
 .sh                     1 archivos (  0.6%)
-.example                1 archivos (  0.6%)
 
 TOTALES
 -------
-Total de archivos: 165
-Total de directorios: 49
+Total de archivos: 174
+Total de directorios: 55
 
 ================================================================================
                            APLICACIONES DJANGO
@@ -275,14 +290,14 @@ ESTADO DE LAS APPS
 --------------------------------------------------------------------------------
 App                  Estado     Básicos    Total      Archivos Existentes      
 --------------------------------------------------------------------------------
-authentication       Completa   5/5      14         models.py, views.py, urls.py...
+authentication       Completa   5/5      15         models.py, views.py, urls.py...
 custom_admin         Completa   5/5      6          models.py, views.py, urls.py...
 financial_management Completa   5/5      16         models.py, views.py, urls.py...
 hardware_integration Parcial    4/5      5          models.py, views.py, admin.py...
 inventory_management Completa   5/5      22         models.py, views.py, urls.py...
 notifications        Parcial    4/5      5          models.py, views.py, admin.py...
 reports_analytics    Completa   5/5      14         models.py, views.py, urls.py...
-sales_management     Completa   5/5      15         models.py, views.py, urls.py...
+sales_management     Completa   5/5      16         models.py, views.py, urls.py...
 stock_alert_system   Parcial    4/5      6          models.py, views.py, admin.py...
 system_configuration Parcial    3/5      7          models.py, views.py, apps.py...
 
@@ -409,7 +424,7 @@ storage/invoices/pdf/               ❌ Facturas PDF generadas
 storage/invoices/sent/              ❌ Facturas enviadas al SRI 
 storage/logs/                       ❌ Logs del sistema 
 storage/backups/                    ❌ Respaldos de BD 
-media/                              ✅ Archivos de media (6 archivos)
+media/                              ✅ Archivos de media (7 archivos)
 static/                             ✅ Archivos estáticos (1 archivos)
 uploads/                            ❌ Archivos subidos 
 
@@ -462,13 +477,13 @@ Documentación:           ⚠️  Iniciada (60%)
 
 ESTADÍSTICAS GENERALES
 ---------------------
-Total directorios:       49
-Total archivos:          165
+Total directorios:       55
+Total archivos:          174
 Apps Django:             10
-Archivos Python:         148
+Archivos Python:         150
 Paquetes instalados:     0
 
 ================================================================================
-Reporte generado automáticamente el 2025-10-02 09:59:33
+Reporte generado automáticamente el 2025-10-08 18:55:17
 Para actualizar, ejecuta: python documenter.py
 ================================================================================

@@ -340,8 +340,12 @@
         transform: translateY(-1px);
     }
     /* ============================================
-       MODALES
+       MODALES - POSICIÓN MÁS ABAJO
        ============================================ */
+    .modal-dialog {
+        margin-top: 5rem !important;
+    }
+    
     .modal-content {
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(30px) saturate(180%);
@@ -369,42 +373,58 @@
         border-bottom: 1px solid rgba(59, 130, 246, 0.15);
         position: relative;
         z-index: 2;
+        padding: 1rem 1.5rem;
     }
     .modal-title {
         color: #0f172a;
         font-weight: 700;
+        font-size: 1.25rem;
     }
     .modal-body {
         color: #1e293b;
         position: relative;
         z-index: 2;
+        padding: 1.25rem 1.5rem;
+        max-height: calc(100vh - 250px);
+        overflow-y: auto;
     }
     .modal-footer {
         border-top: 1px solid rgba(59, 130, 246, 0.15);
         position: relative;
         z-index: 2;
+        padding: 1rem 1.5rem;
     }
     /* ============================================
-       FORM GROUPS EN MODAL
+       FORM GROUPS EN MODAL (COMPACTO)
        ============================================ */
     .form-group-admin {
-        margin-bottom: 1.25rem;
+        margin-bottom: 0.85rem;
     }
     .form-label-admin {
         display: flex;
         align-items: center;
         color: #1e293b;
-        font-size: 0.95rem;
+        font-size: 0.875rem;
         font-weight: 700;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.35rem;
+    }
+    .form-label-admin i {
+        font-size: 0.9rem;
+    }
+    .form-control-admin {
+        padding: 10px 14px;
+        font-size: 0.9rem;
+    }
+    .form-control-admin:focus {
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.08);
     }
     /* ============================================
        ALERTS
        ============================================ */
     .alert-admin {
-        padding: 1rem 1.25rem;
+        padding: 0.75rem 1rem;
         border-radius: 12px;
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
         display: flex;
         align-items: center;
         gap: 0.75rem;
@@ -412,6 +432,7 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         position: relative;
         z-index: 2;
+        font-size: 0.85rem;
     }
     .alert-info-admin {
         background: rgba(59, 130, 246, 0.15);
@@ -576,7 +597,8 @@
             gap: 0.3rem;
         }
         .modal-dialog {
-            margin: 0.5rem;
+            margin: 1rem !important;
+            margin-top: 2rem !important;
         }
         #toastContainer {
             left: 10px;
@@ -750,9 +772,9 @@
     </div>
 </div>
 
-<!-- Modal Crear/Editar Usuario -->
+<!-- Modal Crear/Editar Usuario (COMPACTO Y MÁS ABAJO) -->
 <div class="modal fade" id="userModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="userModalTitle">Nuevo Usuario</h5>
@@ -766,16 +788,15 @@
                         <div class="col-md-6">
                             <div class="form-group-admin">
                                 <label class="form-label-admin">
-                                    <i class="bi bi-hash me-2"></i>Código Empleado *
+                                    <i class="bi bi-hash me-1"></i>Código *
                                 </label>
                                 <input type="text" class="form-control-admin" id="codigo_empleado" required maxlength="10" style="text-transform: uppercase;">
-                                <small style="color: #64748b; font-size: 0.8rem;">4-10 caracteres alfanuméricos</small>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group-admin">
                                 <label class="form-label-admin">
-                                    <i class="bi bi-person-fill me-2"></i>Nombre de Usuario *
+                                    <i class="bi bi-person-fill me-1"></i>Usuario *
                                 </label>
                                 <input type="text" class="form-control-admin" id="username" required>
                             </div>
@@ -786,7 +807,7 @@
                         <div class="col-md-6">
                             <div class="form-group-admin">
                                 <label class="form-label-admin">
-                                    <i class="bi bi-person-badge-fill me-2"></i>Nombres *
+                                    <i class="bi bi-person-badge-fill me-1"></i>Nombres *
                                 </label>
                                 <input type="text" class="form-control-admin" id="nombres" required>
                             </div>
@@ -794,7 +815,7 @@
                         <div class="col-md-6">
                             <div class="form-group-admin">
                                 <label class="form-label-admin">
-                                    <i class="bi bi-person-badge me-2"></i>Apellidos *
+                                    <i class="bi bi-person-badge me-1"></i>Apellidos *
                                 </label>
                                 <input type="text" class="form-control-admin" id="apellidos" required>
                             </div>
@@ -805,7 +826,7 @@
                         <div class="col-md-6">
                             <div class="form-group-admin">
                                 <label class="form-label-admin">
-                                    <i class="bi bi-envelope-fill me-2"></i>Email *
+                                    <i class="bi bi-envelope-fill me-1"></i>Email *
                                 </label>
                                 <input type="email" class="form-control-admin" id="email" required>
                             </div>
@@ -813,7 +834,7 @@
                         <div class="col-md-6">
                             <div class="form-group-admin">
                                 <label class="form-label-admin">
-                                    <i class="bi bi-card-text me-2"></i>Documento Identidad *
+                                    <i class="bi bi-card-text me-1"></i>Documento *
                                 </label>
                                 <input type="text" class="form-control-admin" id="documento_identidad" required>
                             </div>
@@ -824,7 +845,7 @@
                         <div class="col-md-6">
                             <div class="form-group-admin">
                                 <label class="form-label-admin">
-                                    <i class="bi bi-shield-check me-2"></i>Rol *
+                                    <i class="bi bi-shield-check me-1"></i>Rol *
                                 </label>
                                 <select class="form-control-admin" id="rol" required>
                                     <option value="">Seleccionar rol</option>
@@ -838,7 +859,7 @@
                         <div class="col-md-6">
                             <div class="form-group-admin">
                                 <label class="form-label-admin">
-                                    <i class="bi bi-telephone-fill me-2"></i>Teléfono
+                                    <i class="bi bi-telephone-fill me-1"></i>Teléfono
                                 </label>
                                 <input type="text" class="form-control-admin" id="telefono">
                             </div>
@@ -849,16 +870,15 @@
                         <div class="col-md-6">
                             <div class="form-group-admin">
                                 <label class="form-label-admin">
-                                    <i class="bi bi-key-fill me-2"></i>Contraseña <span id="passwordRequired">*</span>
+                                    <i class="bi bi-key-fill me-1"></i>Contraseña <span id="passwordRequired">*</span>
                                 </label>
                                 <input type="password" class="form-control-admin" id="password" placeholder="Mínimo 8 caracteres">
-                                <small style="color: #64748b; font-size: 0.8rem;">Mínimo 8 caracteres</small>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group-admin">
                                 <label class="form-label-admin">
-                                    <i class="bi bi-key-fill me-2"></i>Confirmar Contraseña <span id="confirmPasswordRequired">*</span>
+                                    <i class="bi bi-key-fill me-1"></i>Confirmar <span id="confirmPasswordRequired">*</span>
                                 </label>
                                 <input type="password" class="form-control-admin" id="confirm_password">
                             </div>
@@ -869,7 +889,7 @@
                         <div class="col-md-6">
                             <div class="form-group-admin">
                                 <label class="form-label-admin">
-                                    <i class="bi bi-toggles me-2"></i>Estado
+                                    <i class="bi bi-toggles me-1"></i>Estado
                                 </label>
                                 <select class="form-control-admin" id="estado">
                                     <option value="ACTIVO">Activo</option>
@@ -880,16 +900,16 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-group-admin">
-                                <label class="form-label-admin d-flex align-items-center" style="cursor: pointer; margin-top: 2rem;">
-                                    <input type="checkbox" id="is_active" checked style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer; accent-color: #3b82f6;">
+                                <label class="form-label-admin d-flex align-items-center" style="cursor: pointer; margin-top: 1.75rem;">
+                                    <input type="checkbox" id="is_active" checked style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer; accent-color: #3b82f6;">
                                     <span>Usuario Activo</span>
                                 </label>
                             </div>
                         </div>
                     </div>
 
-                    <div class="alert-admin alert-info-admin" style="margin-top: 1rem;">
-                        <i class="bi bi-info-circle-fill me-2"></i>
+                    <div class="alert-admin alert-info-admin">
+                        <i class="bi bi-info-circle-fill"></i>
                         Los campos marcados con (*) son obligatorios
                     </div>
                 </form>

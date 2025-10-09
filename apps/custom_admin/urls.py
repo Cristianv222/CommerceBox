@@ -16,7 +16,15 @@ urlpatterns = [
     path('inventario/productos/', views.productos_view, name='productos'),
     path('inventario/quintales/', views.quintales_view, name='quintales'),
     path('inventario/categorias/', views.categorias_view, name='categorias'),
+    path('inventario/categorias/crear/', views.categoria_crear_view, name='categoria_crear'),
+    path('inventario/categorias/<uuid:pk>/editar/', views.categoria_editar_view, name='categoria_editar'),
+    path('inventario/categorias/<uuid:pk>/eliminar/', views.categoria_eliminar_view, name='categoria_eliminar'),
     path('inventario/proveedores/', views.proveedores_view, name='proveedores'),
+    
+    # CRUD Productos
+    path('inventario/productos/crear/', views.producto_crear, name='producto_crear'),
+    path('inventario/productos/<uuid:producto_id>/editar/', views.producto_editar, name='producto_editar'),
+    path('inventario/productos/<uuid:producto_id>/eliminar/', views.producto_eliminar, name='producto_eliminar'),
     
     # Ventas
     path('ventas/', views.ventas_dashboard_view, name='ventas'),

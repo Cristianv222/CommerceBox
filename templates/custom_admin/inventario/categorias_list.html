@@ -1,0 +1,1303 @@
+{% extends 'custom_admin/base_admin.html' %}
+
+{% block title %}Categorías - CommerceBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ============================================
+       FIX CRÍTICO: Permitir que los modales estén por encima de todo
+       ============================================ */
+    body.modal-open {
+        position: static !important;
+    }
+
+    /* ============================================
+       HEADER
+       ============================================ */
+    .card-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+    }
+    /* ============================================
+       STAT CARDS CON GLASSMORPHISM
+       ============================================ */
+    .stat-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 300px 200px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 
+            0 12px 40px rgba(59, 130, 246, 0.15),
+            0 4px 12px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        border-color: rgba(96, 165, 250, 0.6);
+    }
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 2;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+    .stat-label {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+        position: relative;
+        z-index: 2;
+    }
+    /* ============================================
+       ADMIN CARD (Filtros y Tabla)
+       ============================================ */
+    .admin-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    .admin-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 400px 300px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    .admin-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg, 
+            rgba(59, 130, 246, 0.3) 0%, 
+            rgba(96, 165, 250, 0.5) 25%,
+            rgba(147, 197, 253, 0.4) 50%,
+            rgba(96, 165, 250, 0.5) 75%,
+            rgba(59, 130, 246, 0.3) 100%);
+        border-radius: 16px 16px 0 0;
+    }
+    /* ============================================
+       FORM CONTROLS
+       ============================================ */
+    .form-control-admin {
+        width: 100%;
+        padding: 14px 18px;
+        background: rgba(248, 250, 252, 0.6);
+        border: 1.5px solid rgba(203, 213, 225, 0.5);
+        border-radius: 12px;
+        color: #1e293b;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+    }
+    .form-control-admin:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(96, 165, 250, 0.6);
+        box-shadow: 
+            0 0 0 4px rgba(96, 165, 250, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.15);
+    }
+    .form-control-admin::placeholder {
+        color: #9ca3af;
+    }
+    /* ============================================
+       TABLA
+       ============================================ */
+    .table-responsive {
+        position: relative;
+        z-index: 2;
+    }
+    .table-admin {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .table-admin thead {
+        background: rgba(59, 130, 246, 0.08);
+        border-radius: 12px 12px 0 0;
+    }
+    .table-admin thead th {
+        padding: 1rem 1rem;
+        color: #1e293b;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
+        white-space: nowrap;
+    }
+    .table-admin thead th:first-child {
+        border-radius: 12px 0 0 0;
+    }
+    .table-admin thead th:last-child {
+        border-radius: 0 12px 0 0;
+    }
+    .table-admin tbody tr {
+        transition: all 0.2s ease;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+    }
+    .table-admin tbody tr:hover {
+        background: rgba(59, 130, 246, 0.05);
+    }
+    .table-admin tbody td {
+        padding: 1rem 1rem;
+        color: #1e293b;
+        font-size: 0.9rem;
+        vertical-align: middle;
+    }
+    /* ============================================
+       CATEGORIA ICON
+       ============================================ */
+    .categoria-icon {
+        width: 45px;
+        height: 45px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        margin-right: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    /* ============================================
+       BADGES
+       ============================================ */
+    .badge-admin {
+        padding: 0.4rem 0.9rem;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        display: inline-block;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    .badge-success {
+        background: rgba(16, 185, 129, 0.15);
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .badge-danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .badge-warning {
+        background: rgba(245, 158, 11, 0.15);
+        color: #d97706;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .badge-info {
+        background: rgba(59, 130, 246, 0.15);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .badge-purple {
+        background: rgba(139, 92, 246, 0.15);
+        color: #7c3aed;
+        border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+    /* ============================================
+       BOTONES
+       ============================================ */
+    .btn-primary-admin,
+    .btn-success-admin {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 
+            0 8px 20px rgba(59, 130, 246, 0.25),
+            0 2px 8px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .btn-primary-admin:hover,
+    .btn-success-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 12px 28px rgba(59, 130, 246, 0.3),
+            0 4px 12px rgba(96, 165, 250, 0.25),
+            inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.95) 0%, rgba(59, 130, 246, 0.95) 100%);
+    }
+    .btn-danger-admin {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(220, 38, 38, 0.95) 100%);
+        border: none;
+        padding: 12px 24px;
+        border-radius: 12px;
+        color: white;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 
+            0 8px 20px rgba(239, 68, 68, 0.25),
+            0 2px 8px rgba(239, 68, 68, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .btn-danger-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 12px 28px rgba(239, 68, 68, 0.3),
+            0 4px 12px rgba(239, 68, 68, 0.25);
+    }
+    .btn-primary-admin:disabled,
+    .btn-success-admin:disabled,
+    .btn-danger-admin:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+    .btn-group .btn {
+        transition: all 0.2s ease;
+    }
+    .btn-group .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    /* ============================================
+       PAGINACIÓN
+       ============================================ */
+    .pagination {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .page-item .page-link {
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+        font-weight: 600;
+        border: 1px solid rgba(219, 234, 254, 0.5);
+    }
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    .page-item:not(.active):not(.disabled) .page-link:hover {
+        background: rgba(59, 130, 246, 0.15);
+        transform: translateY(-1px);
+    }
+    /* ============================================
+       MODALES - POSICIÓN MÁS ABAJO
+       ============================================ */
+    .modal-dialog {
+        margin-top: 5rem !important;
+    }
+    
+    .modal-content {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 20px;
+        box-shadow: 
+            0 20px 60px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        position: relative;
+        overflow: hidden;
+    }
+    .modal-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 600px 400px at 50% 50%, rgba(219, 234, 254, 0.15) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    .modal-header {
+        border-bottom: 1px solid rgba(59, 130, 246, 0.15);
+        position: relative;
+        z-index: 2;
+        padding: 1rem 1.5rem;
+    }
+    .modal-title {
+        color: #0f172a;
+        font-weight: 700;
+        font-size: 1.25rem;
+    }
+    .modal-body {
+        color: #1e293b;
+        position: relative;
+        z-index: 2;
+        padding: 1.25rem 1.5rem;
+        max-height: calc(100vh - 250px);
+        overflow-y: auto;
+    }
+    .modal-footer {
+        border-top: 1px solid rgba(59, 130, 246, 0.15);
+        position: relative;
+        z-index: 2;
+        padding: 1rem 1.5rem;
+    }
+    /* ============================================
+       FORM GROUPS EN MODAL (COMPACTO)
+       ============================================ */
+    .form-group-admin {
+        margin-bottom: 0.85rem;
+    }
+    .form-label-admin {
+        display: flex;
+        align-items: center;
+        color: #1e293b;
+        font-size: 0.875rem;
+        font-weight: 700;
+        margin-bottom: 0.35rem;
+    }
+    .form-label-admin i {
+        font-size: 0.9rem;
+    }
+    .form-control-admin {
+        padding: 10px 14px;
+        font-size: 0.9rem;
+    }
+    .form-control-admin:focus {
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.08);
+    }
+    textarea.form-control-admin {
+        min-height: 80px;
+        resize: vertical;
+    }
+    /* ============================================
+       ALERTS
+       ============================================ */
+    .alert-admin {
+        padding: 0.75rem 1rem;
+        border-radius: 12px;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        position: relative;
+        z-index: 2;
+        font-size: 0.85rem;
+    }
+    .alert-info-admin {
+        background: rgba(59, 130, 246, 0.15);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .alert-danger-admin {
+        background: rgba(239, 68, 68, 0.15);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .alert-warning-admin {
+        background: rgba(245, 158, 11, 0.15);
+        color: #d97706;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    /* ============================================
+       TOAST NOTIFICATIONS
+       ============================================ */
+    #toastContainer {
+        position: fixed;
+        top: 90px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 400px;
+    }
+    .toast-notification {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        animation: slideIn 0.3s ease-out;
+    }
+    .toast-notification.removing {
+        animation: slideOut 0.3s ease-out forwards;
+    }
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+    .toast-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .toast-success .toast-icon {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+    }
+    .toast-error .toast-icon {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+    }
+    .toast-warning .toast-icon {
+        background: rgba(245, 158, 11, 0.2);
+        color: #f59e0b;
+    }
+    .toast-info .toast-icon {
+        background: rgba(59, 130, 246, 0.2);
+        color: #3b82f6;
+    }
+    .toast-content {
+        flex: 1;
+        color: #1e293b;
+    }
+    .toast-title {
+        font-weight: 700;
+        margin-bottom: 0.2rem;
+        font-size: 0.95rem;
+    }
+    .toast-message {
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+    .toast-close {
+        background: rgba(59, 130, 246, 0.1);
+        border: none;
+        color: #3b82f6;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex-shrink: 0;
+        font-weight: 700;
+    }
+    .toast-close:hover {
+        background: rgba(59, 130, 246, 0.2);
+        transform: scale(1.1);
+    }
+    .toast-progress {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+        border-radius: 0 0 12px 12px;
+        animation: progress 3s linear forwards;
+    }
+    @keyframes progress {
+        from { width: 100%; }
+        to { width: 0%; }
+    }
+    /* ============================================
+       LOADING SPINNER
+       ============================================ */
+    .spinner-border {
+        border-color: rgba(59, 130, 246, 0.3);
+        border-top-color: #3b82f6;
+    }
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 768px) {
+        .card-title {
+            font-size: 1.5rem;
+        }
+        .stat-card {
+            margin-bottom: 1rem;
+        }
+        .table-admin {
+            font-size: 0.85rem;
+        }
+        .btn-group {
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+        .modal-dialog {
+            margin: 1rem !important;
+            margin-top: 2rem !important;
+        }
+        #toastContainer {
+            left: 10px;
+            right: 10px;
+            max-width: none;
+        }
+    }
+    @media (max-width: 480px) {
+        .admin-card {
+            padding: 1rem;
+        }
+        .table-admin thead th,
+        .table-admin tbody td {
+            padding: 0.75rem 0.5rem;
+        }
+    }
+    /* ============================================
+       ANIMACIONES DE ENTRADA
+       ============================================ */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    .stat-card,
+    .admin-card {
+        animation: fadeInUp 0.5s ease-out backwards;
+    }
+    .stat-card:nth-child(1) { animation-delay: 0.05s; }
+    .stat-card:nth-child(2) { animation-delay: 0.1s; }
+    .stat-card:nth-child(3) { animation-delay: 0.15s; }
+    .stat-card:nth-child(4) { animation-delay: 0.2s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Contenedor de Notificaciones Toast -->
+<div id="toastContainer"></div>
+
+<!-- Mostrar mensajes de Django si existen -->
+{% if messages %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% for message in messages %}
+            {% if message.tags == 'success' %}
+                showNotification('success', '{{ message|escapejs }}');
+            {% elif message.tags == 'error' %}
+                showNotification('error', '{{ message|escapejs }}');
+            {% elif message.tags == 'warning' %}
+                showNotification('warning', '{{ message|escapejs }}');
+            {% else %}
+                showNotification('info', '{{ message|escapejs }}');
+            {% endif %}
+        {% endfor %}
+    });
+</script>
+{% endif %}
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="card-title">
+                <i class="bi bi-folder-open me-2" style="color: #3b82f6;"></i>Categorías de Productos
+            </h1>
+            <p style="color: #64748b; margin: 0; font-weight: 500;">Gestiona las categorías para organizar tu inventario</p>
+        </div>
+        <div>
+            <button class="btn-primary-admin" onclick="openCreateModal()">
+                <i class="bi bi-plus-circle me-2"></i>Nueva Categoría
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(59, 130, 246, 0.2); color: #3b82f6;">
+                    <i class="bi bi-folder-open"></i>
+                </div>
+                <div class="stat-value" id="totalCategorias">{{ page_obj.paginator.count|default:0 }}</div>
+                <div class="stat-label">Total Categorías</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <div class="stat-value" id="categoriasActivas">0</div>
+                <div class="stat-label">Activas</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6;">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+                <div class="stat-value" id="totalProductos">0</div>
+                <div class="stat-label">Total Productos</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">
+                    <i class="bi bi-percent"></i>
+                </div>
+                <div class="stat-value" id="margenPromedio">0%</div>
+                <div class="stat-label">Margen Promedio</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="admin-card mb-4" style="animation-delay: 0.25s;">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <input type="text" class="form-control-admin" id="searchInput" placeholder="Buscar por nombre o descripción..." value="{{ search }}" onkeyup="handleSearch()">
+            </div>
+            <div class="col-md-2">
+                <select class="form-control-admin" id="filterEstado" onchange="applyFilters()">
+                    <option value="">Todos los estados</option>
+                    <option value="activa">Activas</option>
+                    <option value="inactiva">Inactivas</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn-success-admin w-100" onclick="exportCategorias()">
+                    <i class="bi bi-download"></i> Exportar
+                </button>
+            </div>
+            <div class="col-md-2">
+                <button class="btn-primary-admin w-100" onclick="location.reload()">
+                    <i class="bi bi-arrow-clockwise"></i> Actualizar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Categorías -->
+    <div class="admin-card" style="animation-delay: 0.3s;">
+        <div class="table-responsive">
+            <table class="table-admin">
+                <thead>
+                    <tr>
+                        <th>Orden</th>
+                        <th>Categoría</th>
+                        <th>Productos</th>
+                        <th>Margen Sugerido</th>
+                        <th>Desc. Máximo</th>
+                        <th>Estado</th>
+                        <th style="width: 200px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="categoriasTableBody">
+                    {% if categorias %}
+                        {% for categoria in categorias %}
+                        <tr>
+                            <td>
+                                <div class="categoria-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; width: 35px; height: 35px; font-size: 0.9rem; font-weight: 700;">
+                                    {{ categoria.orden }}
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <div style="font-weight: 700; color: #1e293b; font-size: 0.95rem;">
+                                        <i class="bi bi-folder-fill me-2" style="color: #3b82f6;"></i>{{ categoria.nombre }}
+                                    </div>
+                                    {% if categoria.descripcion %}
+                                    <div style="font-size: 0.85rem; color: #64748b; font-weight: 500; margin-top: 0.2rem;">
+                                        {{ categoria.descripcion|truncatewords:10 }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge-admin badge-purple">
+                                    <i class="bi bi-box-seam me-1"></i>{{ categoria.productos.count }} productos
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge-admin badge-info">
+                                    <i class="bi bi-percent me-1"></i>{{ categoria.margen_ganancia_sugerido }}%
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge-admin badge-warning">
+                                    <i class="bi bi-percent me-1"></i>{{ categoria.descuento_maximo_permitido }}%
+                                </span>
+                            </td>
+                            <td>
+                                {% if categoria.activa %}
+                                <span class="badge-admin badge-success">
+                                    <i class="bi bi-check-circle-fill me-1"></i>Activa
+                                </span>
+                                {% else %}
+                                <span class="badge-admin badge-danger">
+                                    <i class="bi bi-x-circle-fill me-1"></i>Inactiva
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm" style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; margin-right: 0.3rem; font-weight: 600;" onclick="viewCategoria('{{ categoria.id }}')" title="Ver detalles">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; margin-right: 0.3rem; font-weight: 600;" onclick="editCategoria('{{ categoria.id }}')" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {% if categoria.productos.count == 0 %}
+                                    <button class="btn btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600;" onclick="deleteCategoria('{{ categoria.id }}', '{{ categoria.nombre }}')" title="Eliminar">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% else %}
+                                    <button class="btn btn-sm" style="background: rgba(156, 163, 175, 0.2); color: #9ca3af; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; cursor: not-allowed;" disabled title="No se puede eliminar (tiene productos)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center" style="padding: 3rem;">
+                            <i class="bi bi-inbox" style="font-size: 3rem; color: #64748b;"></i>
+                            <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">No se encontraron categorías</p>
+                            <button class="btn-primary-admin mt-3" onclick="openCreateModal()">
+                                <i class="bi bi-plus-circle me-2"></i>Crear Primera Categoría
+                            </button>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginación -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <div style="color: #64748b; font-weight: 600;">
+                Mostrando {{ page_obj.start_index }} - {{ page_obj.end_index }} de {{ page_obj.paginator.count }} categorías
+            </div>
+            <div>
+                <nav>
+                    <ul class="pagination" style="margin: 0;">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="bi bi-chevron-left"></i></span>
+                        </li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}">{{ num }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="bi bi-chevron-right"></i></span>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Crear/Editar Categoría -->
+<div class="modal fade" id="categoriaModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <form id="categoriaForm" method="POST" action="">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="categoriaModalTitle">
+                        <i class="bi bi-folder-plus me-2"></i>Nueva Categoría
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <input type="hidden" id="categoriaId" name="categoria_id">
+                    
+                    <div class="form-group-admin">
+                        <label class="form-label-admin">
+                            <i class="bi bi-tag-fill me-1"></i>Nombre *
+                        </label>
+                        <input type="text" class="form-control-admin" id="nombre" name="nombre" required maxlength="100" placeholder="Ejemplo: Granos Básicos">
+                    </div>
+
+                    <div class="form-group-admin">
+                        <label class="form-label-admin">
+                            <i class="bi bi-text-paragraph me-1"></i>Descripción
+                        </label>
+                        <textarea class="form-control-admin" id="descripcion" name="descripcion" rows="3" placeholder="Descripción opcional de la categoría..."></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group-admin">
+                                <label class="form-label-admin">
+                                    <i class="bi bi-percent me-1"></i>Margen Ganancia (%) *
+                                </label>
+                                <input type="number" class="form-control-admin" id="margen_ganancia_sugerido" name="margen_ganancia_sugerido" required min="0" max="100" step="0.01" value="30.00">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group-admin">
+                                <label class="form-label-admin">
+                                    <i class="bi bi-percent me-1"></i>Descuento Máximo (%) *
+                                </label>
+                                <input type="number" class="form-control-admin" id="descuento_maximo_permitido" name="descuento_maximo_permitido" required min="0" max="100" step="0.01" value="10.00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group-admin">
+                                <label class="form-label-admin">
+                                    <i class="bi bi-sort-numeric-up me-1"></i>Orden de Visualización *
+                                </label>
+                                <input type="number" class="form-control-admin" id="orden" name="orden" required min="0" value="0">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group-admin">
+                                <label class="form-label-admin d-flex align-items-center" style="cursor: pointer; margin-top: 1.75rem;">
+                                    <input type="checkbox" id="activa" name="activa" checked style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer; accent-color: #3b82f6;">
+                                    <span>Categoría Activa</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert-admin alert-info-admin">
+                        <i class="bi bi-info-circle-fill"></i>
+                        Los campos marcados con (*) son obligatorios
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-danger-admin" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn-primary-admin" id="saveBtn">
+                        <i class="bi bi-save me-2"></i>Guardar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Ver Detalles -->
+<div class="modal fade" id="viewCategoriaModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-folder-open me-2"></i>Detalles de la Categoría
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-4">
+                        <div class="categoria-icon" style="width: 120px; height: 120px; font-size: 3.5rem; margin: 0 auto; background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2));">
+                            <i class="bi bi-folder-fill" style="color: #3b82f6;"></i>
+                        </div>
+                        <h4 style="color: #0f172a; margin-top: 1rem; font-weight: 700;" id="viewNombre"></h4>
+                        <span class="badge-admin" id="viewStatusBadge"></span>
+                    </div>
+                    <div class="col-md-8">
+                        <div style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 12px; padding: 1.5rem;">
+                            <h6 style="color: #3b82f6; margin-bottom: 1rem; font-weight: 700;">
+                                <i class="bi bi-info-circle-fill me-2"></i>Información General
+                            </h6>
+                            <table class="table table-borderless" style="color: #1e293b;">
+                                <tr>
+                                    <td style="width: 50%; color: #64748b; font-weight: 600;"><i class="bi bi-text-paragraph me-2"></i>Descripción:</td>
+                                    <td id="viewDescripcion" style="font-weight: 500;"></td>
+                                </tr>
+                                <tr>
+                                    <td style="color: #64748b; font-weight: 600;"><i class="bi bi-percent me-2"></i>Margen Sugerido:</td>
+                                    <td id="viewMargen" style="font-weight: 700;"></td>
+                                </tr>
+                                <tr>
+                                    <td style="color: #64748b; font-weight: 600;"><i class="bi bi-percent me-2"></i>Descuento Máximo:</td>
+                                    <td id="viewDescuento" style="font-weight: 700;"></td>
+                                </tr>
+                                <tr>
+                                    <td style="color: #64748b; font-weight: 600;"><i class="bi bi-box-seam me-2"></i>Total Productos:</td>
+                                    <td id="viewTotalProductos" style="font-weight: 700;"></td>
+                                </tr>
+                                <tr>
+                                    <td style="color: #64748b; font-weight: 600;"><i class="bi bi-sort-numeric-up me-2"></i>Orden:</td>
+                                    <td id="viewOrden" style="font-weight: 700;"></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-primary-admin" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-2"></i>Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmar Eliminación -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle-fill me-2" style="color: #ef4444;"></i>Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea eliminar esta categoría?</p>
+                <div class="alert-admin alert-danger-admin">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Esta acción no se puede deshacer.</strong>
+                </div>
+                <p style="color: #64748b; font-size: 0.9rem;" id="deleteCategoriaInfo"></p>
+                <form id="deleteForm" method="POST" action="">
+                    {% csrf_token %}
+                    <input type="hidden" id="deleteCategoriaId">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-primary-admin" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-2"></i>Cancelar
+                </button>
+                <button type="button" class="btn-danger-admin" onclick="confirmDelete()">
+                    <i class="bi bi-trash me-2"></i>Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let searchTimeout = null;
+
+    // Sistema de Notificaciones Toast
+    function showNotification(type, message, title = null) {
+        const container = document.getElementById('toastContainer');
+        
+        const icons = {
+            success: 'bi-check-circle-fill',
+            error: 'bi-x-circle-fill',
+            warning: 'bi-exclamation-triangle-fill',
+            info: 'bi-info-circle-fill'
+        };
+
+        const titles = {
+            success: title || 'Éxito',
+            error: title || 'Error',
+            warning: title || 'Advertencia',
+            info: title || 'Información'
+        };
+
+        const toast = document.createElement('div');
+        toast.className = `toast-notification toast-${type}`;
+        toast.innerHTML = `
+            <div class="toast-icon">
+                <i class="bi ${icons[type]}"></i>
+            </div>
+            <div class="toast-content">
+                <div class="toast-title">${titles[type]}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+            <button class="toast-close" onclick="this.parentElement.remove()">
+                <i class="bi bi-x"></i>
+            </button>
+            <div class="toast-progress"></div>
+        `;
+
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.add('removing');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // Cargar estadísticas al iniciar
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStats();
+    });
+
+    // Cargar estadísticas
+    function loadStats() {
+        const rows = document.querySelectorAll('#categoriasTableBody tr:not(:has(td[colspan]))');
+        const total = rows.length;
+        let activas = 0;
+        let totalProductos = 0;
+        let totalMargen = 0;
+
+        rows.forEach(row => {
+            const badgeSuccess = row.querySelector('.badge-success');
+            if (badgeSuccess) activas++;
+
+            const productosText = row.querySelector('.badge-purple')?.textContent || '0';
+            const numProductos = parseInt(productosText.match(/\d+/)?.[0] || '0');
+            totalProductos += numProductos;
+
+            const margenText = row.querySelector('.badge-info')?.textContent || '0';
+            const margen = parseFloat(margenText.match(/[\d.]+/)?.[0] || '0');
+            totalMargen += margen;
+        });
+
+        document.getElementById('totalCategorias').textContent = total;
+        document.getElementById('categoriasActivas').textContent = activas;
+        document.getElementById('totalProductos').textContent = totalProductos;
+        const margenPromedio = total > 0 ? (totalMargen / total).toFixed(1) : 0;
+        document.getElementById('margenPromedio').textContent = margenPromedio + '%';
+    }
+
+    // Búsqueda con delay
+    function handleSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            applyFilters();
+        }, 500);
+    }
+
+    // Aplicar filtros
+    function applyFilters() {
+        const search = document.getElementById('searchInput').value;
+        const estado = document.getElementById('filterEstado').value;
+        
+        let url = window.location.pathname + '?';
+        if (search) url += `search=${encodeURIComponent(search)}&`;
+        if (estado) url += `estado=${estado}&`;
+        
+        window.location.href = url;
+    }
+
+    // Abrir modal crear
+    function openCreateModal() {
+        const form = document.getElementById('categoriaForm');
+        
+        document.getElementById('categoriaModalTitle').innerHTML = '<i class="bi bi-folder-plus me-2"></i>Nueva Categoría';
+        form.reset();
+        document.getElementById('categoriaId').value = '';
+        document.getElementById('orden').value = '0';
+        document.getElementById('margen_ganancia_sugerido').value = '30.00';
+        document.getElementById('descuento_maximo_permitido').value = '10.00';
+        document.getElementById('activa').checked = true;
+        
+        // CRÍTICO: Establecer la URL correcta
+        form.action = "{% url 'custom_admin:categoria_crear' %}";
+        
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Guardar';
+        
+        const modal = new bootstrap.Modal(document.getElementById('categoriaModal'));
+        modal.show();
+    }
+
+    // Editar categoría
+    function editCategoria(categoriaId) {
+        const row = document.querySelector(`button[onclick="editCategoria('${categoriaId}')"]`).closest('tr');
+        const form = document.getElementById('categoriaForm');
+        
+        document.getElementById('categoriaModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Categoría';
+        document.getElementById('categoriaId').value = categoriaId;
+        
+        // Extraer el nombre sin el icono
+        const nombreElement = row.querySelector('td:nth-child(2) > div > div:first-child');
+        const nombreTexto = nombreElement.textContent.trim();
+        const nombreLimpio = nombreTexto.replace(/📁/g, '').replace(/🌾/g, '').replace(/^\s+/g, '').trim();
+        document.getElementById('nombre').value = nombreLimpio;
+        
+        const descripcionCell = row.querySelector('td:nth-child(2) > div > div:last-child');
+        document.getElementById('descripcion').value = descripcionCell ? descripcionCell.textContent.trim() : '';
+        
+        const margen = row.querySelector('td:nth-child(4) .badge-info').textContent.match(/[\d.]+/)?.[0] || '30.00';
+        document.getElementById('margen_ganancia_sugerido').value = margen;
+        
+        const descuento = row.querySelector('td:nth-child(5) .badge-warning').textContent.match(/[\d.]+/)?.[0] || '10.00';
+        document.getElementById('descuento_maximo_permitido').value = descuento;
+        
+        const orden = row.querySelector('td:first-child .categoria-icon').textContent.trim();
+        document.getElementById('orden').value = orden;
+        
+        const activa = row.querySelector('.badge-success') !== null;
+        document.getElementById('activa').checked = activa;
+        
+        // CRÍTICO: Establecer la URL correcta
+        form.action = `/panel/inventario/categorias/${categoriaId}/editar/`;
+        
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Guardar';
+        
+        const modal = new bootstrap.Modal(document.getElementById('categoriaModal'));
+        modal.show();
+    }
+
+    // Ver detalles
+    function viewCategoria(categoriaId) {
+        const row = document.querySelector(`button[onclick="viewCategoria('${categoriaId}')"]`).closest('tr');
+        
+        const nombreElement = row.querySelector('td:nth-child(2) > div > div:first-child');
+        const nombre = nombreElement.textContent.trim().replace(/📁/g, '').replace(/🌾/g, '').replace(/^\s+/g, '').trim();
+        const descripcionCell = row.querySelector('td:nth-child(2) > div > div:last-child');
+        const descripcion = descripcionCell ? descripcionCell.textContent.trim() : 'Sin descripción';
+        const totalProductos = row.querySelector('.badge-purple').textContent.trim();
+        const margen = row.querySelector('td:nth-child(4) .badge-info').textContent.trim();
+        const descuento = row.querySelector('td:nth-child(5) .badge-warning').textContent.trim();
+        const orden = row.querySelector('td:first-child .categoria-icon').textContent.trim();
+        const activa = row.querySelector('.badge-success') !== null;
+        
+        document.getElementById('viewNombre').textContent = nombre;
+        document.getElementById('viewDescripcion').textContent = descripcion;
+        document.getElementById('viewMargen').textContent = margen;
+        document.getElementById('viewDescuento').textContent = descuento;
+        document.getElementById('viewTotalProductos').textContent = totalProductos;
+        document.getElementById('viewOrden').textContent = orden;
+        
+        const statusBadge = document.getElementById('viewStatusBadge');
+        if (activa) {
+            statusBadge.className = 'badge-admin badge-success';
+            statusBadge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Activa';
+        } else {
+            statusBadge.className = 'badge-admin badge-danger';
+            statusBadge.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i>Inactiva';
+        }
+        
+        const modal = new bootstrap.Modal(document.getElementById('viewCategoriaModal'));
+        modal.show();
+    }
+
+    // Eliminar categoría
+    function deleteCategoria(categoriaId, nombre) {
+        document.getElementById('deleteCategoriaId').value = categoriaId;
+        document.getElementById('deleteCategoriaInfo').textContent = `Categoría: ${nombre}`;
+        
+        // CRÍTICO: Establecer la URL correcta
+        document.getElementById('deleteForm').action = `/panel/inventario/categorias/${categoriaId}/eliminar/`;
+        
+        const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        modal.show();
+    }
+
+    // Confirmar eliminación
+    function confirmDelete() {
+        const form = document.getElementById('deleteForm');
+        form.submit();
+    }
+
+    // Exportar categorías
+    function exportCategorias() {
+        showNotification('info', 'Función de exportación en desarrollo');
+    }
+</script>
+{% endblock %}
