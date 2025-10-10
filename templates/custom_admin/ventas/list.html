@@ -1,409 +1,929 @@
 {% extends 'custom_admin/base_admin.html' %}
+{% load static %}
 
-{% block title %}Historial de Ventas{% endblock %}
+{% block title %}Historial de Ventas - CommerceBox{% endblock %}
 
 {% block extra_css %}
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
 <style>
-    .venta-card {
-        background: rgba(30, 41, 59, 0.8);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        transition: all 0.3s ease;
-        border-left: 4px solid;
+    /* ============================================
+       FIX CRÍTICO: Permitir que los modales estén por encima de todo
+       ============================================ */
+    body.modal-open {
+        position: static !important;
     }
 
-    .venta-card.completada { border-left-color: #10b981; }
-    .venta-card.pendiente { border-left-color: #f59e0b; }
-    .venta-card.anulada { border-left-color: #ef4444; opacity: 0.7; }
-
-    .venta-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    }
-
-    .venta-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid rgba(59, 130, 246, 0.1);
-    }
-
-    .venta-numero {
-        font-size: 1.3rem;
-        font-weight: 700;
-        color: var(--primary-color);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .venta-monto {
-        font-size: 1.8rem;
+    /* ============================================
+       HEADER
+       ============================================ */
+    .card-title {
+        font-size: 2rem;
         font-weight: 800;
-        color: #10b981;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
     }
-
-    .venta-details {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
+    
+    /* ============================================
+       STAT CARDS CON GLASSMORPHISM
+       ============================================ */
+    .stat-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
     }
-
-    .detail-item-venta {
-        display: flex;
-        align-items: center;
-        gap: 0.8rem;
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 300px 200px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
     }
-
-    .detail-icon-venta {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        background: rgba(59, 130, 246, 0.1);
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 
+            0 12px 40px rgba(59, 130, 246, 0.15),
+            0 4px 12px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        border-color: rgba(96, 165, 250, 0.6);
+    }
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--primary-color);
-        flex-shrink: 0;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 2;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
-
-    .detail-content-venta {
-        flex: 1;
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 2;
     }
-
-    .detail-label-venta {
-        font-size: 0.75rem;
+    .stat-label {
         color: #64748b;
-        margin-bottom: 0.2rem;
-    }
-
-    .detail-value-venta {
-        font-size: 0.95rem;
-        color: #e2e8f0;
-        font-weight: 500;
-    }
-
-    .estado-badge {
-        padding: 0.4rem 1rem;
-        border-radius: 8px;
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         font-weight: 600;
-        display: inline-flex;
+        position: relative;
+        z-index: 2;
+    }
+    
+    /* ============================================
+       ADMIN CARD (Filtros y Tabla)
+       ============================================ */
+    .admin-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        margin-bottom: 1.5rem;
+    }
+    .admin-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 400px 300px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    .admin-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg, 
+            rgba(59, 130, 246, 0.3) 0%, 
+            rgba(96, 165, 250, 0.5) 25%,
+            rgba(147, 197, 253, 0.4) 50%,
+            rgba(96, 165, 250, 0.5) 75%,
+            rgba(59, 130, 246, 0.3) 100%);
+        border-radius: 16px 16px 0 0;
+    }
+    
+    /* ============================================
+       FORM CONTROLS
+       ============================================ */
+    .form-control-admin {
+        width: 100%;
+        padding: 14px 18px;
+        background: rgba(248, 250, 252, 0.6);
+        border: 1.5px solid rgba(203, 213, 225, 0.5);
+        border-radius: 12px;
+        color: #1e293b;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+    }
+    .form-control-admin:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(96, 165, 250, 0.6);
+        box-shadow: 
+            0 0 0 4px rgba(96, 165, 250, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.15);
+    }
+    .form-control-admin::placeholder {
+        color: #9ca3af;
+    }
+    
+    .form-label-admin {
+        display: flex;
+        align-items: center;
+        color: #1e293b;
+        font-size: 0.875rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .form-group-admin {
+        margin-bottom: 1rem;
+    }
+    
+    /* ============================================
+       TABLA
+       ============================================ */
+    .table-responsive {
+        position: relative;
+        z-index: 2;
+        overflow-x: auto;
+    }
+    .table-admin {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .table-admin thead {
+        background: rgba(59, 130, 246, 0.08);
+        border-radius: 12px 12px 0 0;
+    }
+    .table-admin thead th {
+        padding: 1rem 1rem;
+        color: #1e293b;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
+        white-space: nowrap;
+    }
+    .table-admin thead th:first-child {
+        border-radius: 12px 0 0 0;
+    }
+    .table-admin thead th:last-child {
+        border-radius: 0 12px 0 0;
+    }
+    .table-admin tbody tr {
+        transition: all 0.2s ease;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+    }
+    .table-admin tbody tr:hover {
+        background: rgba(59, 130, 246, 0.05);
+    }
+    .table-admin tbody td {
+        padding: 1rem 1rem;
+        color: #1e293b;
+        font-size: 0.9rem;
+        vertical-align: middle;
+    }
+    
+    /* ============================================
+       BADGES
+       ============================================ */
+    .badge-admin {
+        padding: 0.4rem 0.9rem;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        display: inline-block;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    .badge-success {
+        background: rgba(16, 185, 129, 0.15);
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .badge-danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .badge-warning {
+        background: rgba(245, 158, 11, 0.15);
+        color: #d97706;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .badge-info {
+        background: rgba(59, 130, 246, 0.15);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    
+    /* Estado de pago */
+    .pago-status {
+        display: flex;
         align-items: center;
         gap: 0.5rem;
     }
-
-    .estado-badge.completada {
-        background: rgba(16, 185, 129, 0.2);
-        color: #10b981;
+    .pago-icon {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
     }
-
-    .estado-badge.pendiente {
-        background: rgba(245, 158, 11, 0.2);
-        color: #f59e0b;
+    .pago-icon.pagado {
+        background: #10b981;
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
     }
-
-    .estado-badge.anulada {
-        background: rgba(239, 68, 68, 0.2);
-        color: #ef4444;
+    .pago-icon.parcial {
+        background: #f59e0b;
+        box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
     }
-
-    .venta-actions {
+    .pago-icon.pendiente {
+        background: #ef4444;
+        box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    }
+    
+    /* ============================================
+       BOTONES
+       ============================================ */
+    .btn-primary-admin,
+    .btn-success-admin {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        box-shadow: 
+            0 8px 20px rgba(59, 130, 246, 0.25),
+            0 2px 8px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .btn-primary-admin:hover,
+    .btn-success-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 12px 28px rgba(59, 130, 246, 0.3),
+            0 4px 12px rgba(96, 165, 250, 0.25),
+            inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.95) 0%, rgba(59, 130, 246, 0.95) 100%);
+    }
+    
+    .btn-secondary-admin {
+        padding: 12px 24px;
+        background: rgba(148, 163, 184, 0.15);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        border-radius: 12px;
+        color: #475569;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    .btn-secondary-admin:hover {
+        background: rgba(148, 163, 184, 0.25);
+        transform: translateY(-2px);
+    }
+    
+    .btn-sm-admin {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+    }
+    
+    /* Botones de acción */
+    .btn-action {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 1rem;
+    }
+    .btn-action:hover {
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .btn-view {
+        background: rgba(59, 130, 246, 0.15);
+        color: #2563eb;
+    }
+    .btn-view:hover {
+        background: rgba(59, 130, 246, 0.25);
+    }
+    .btn-print {
+        background: rgba(16, 185, 129, 0.15);
+        color: #059669;
+    }
+    .btn-print:hover {
+        background: rgba(16, 185, 129, 0.25);
+    }
+    .btn-invoice {
+        background: rgba(245, 158, 11, 0.15);
+        color: #d97706;
+    }
+    .btn-invoice:hover {
+        background: rgba(245, 158, 11, 0.25);
+    }
+    .btn-delete {
+        background: rgba(239, 68, 68, 0.15);
+        color: #dc2626;
+    }
+    .btn-delete:hover {
+        background: rgba(239, 68, 68, 0.25);
+    }
+    
+    /* ============================================
+       PAGINACIÓN
+       ============================================ */
+    .pagination {
         display: flex;
         gap: 0.5rem;
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid rgba(59, 130, 246, 0.1);
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 1.5rem;
+    }
+    .page-item .page-link {
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+        font-weight: 600;
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        background: rgba(255, 255, 255, 0.6);
+        color: #1e293b;
+        text-decoration: none;
+    }
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        color: white;
+        border-color: transparent;
+    }
+    .page-item:not(.active):not(.disabled) .page-link:hover {
+        background: rgba(59, 130, 246, 0.15);
+        transform: translateY(-1px);
+    }
+    .page-item.disabled .page-link {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    /* ============================================
+       EMPTY STATE
+       ============================================ */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #94a3b8;
+    }
+    .empty-state svg {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 1.5rem;
+        opacity: 0.5;
+    }
+    .empty-state h3 {
+        color: #475569;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    .empty-state p {
+        color: #94a3b8;
+        font-size: 1rem;
+    }
+    
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 768px) {
+        .card-title {
+            font-size: 1.5rem;
+        }
+        .stat-card {
+            margin-bottom: 1rem;
+        }
+        .table-admin {
+            font-size: 0.85rem;
+        }
+        .btn-group {
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+    }
+    
+    /* ============================================
+       ANIMACIONES
+       ============================================ */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    .stat-card,
+    .admin-card {
+        animation: fadeInUp 0.5s ease-out backwards;
+    }
+    .stat-card:nth-child(1) { animation-delay: 0.05s; }
+    .stat-card:nth-child(2) { animation-delay: 0.1s; }
+    .stat-card:nth-child(3) { animation-delay: 0.15s; }
+    .stat-card:nth-child(4) { animation-delay: 0.2s; }
+    
+    /* Grid para stats */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    /* Header del card */
+    .card-header-admin {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        position: relative;
+        z-index: 2;
+    }
+    
+    /* Filtros collapsible */
+    .filtros-content {
+        position: relative;
+        z-index: 2;
+    }
+    .filtros-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
     }
 </style>
 {% endblock %}
-
 {% block content %}
-<div id="toastContainer" style="position: fixed; top: 90px; right: 20px; z-index: 9999;"></div>
-
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="card-title" style="font-size: 2rem;">Historial de Ventas</h1>
-            <p style="color: #94a3b8; margin: 0;">Registro completo de todas las transacciones</p>
+    <!-- HEADER -->
+    <div class="mb-4">
+        <h1 class="card-title"><i class="fas fa-chart-line"></i> Historial de Ventas</h1>
+        <p style="color: #64748b; font-weight: 500;">Gestiona y consulta todas las ventas realizadas</p>
+    </div>
+
+    <!-- ESTADÍSTICAS -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                <i class="fas fa-receipt"></i>
+            </div>
+            <div class="stat-value">{{ count_ventas|default:0 }}</div>
+            <div class="stat-label">Total Ventas</div>
         </div>
-        <div class="d-flex gap-2">
-            <a href="/panel/ventas/pos/" class="btn-success-admin">
-                <i class="bi bi-cart-plus me-2"></i>Nueva Venta
-            </a>
-            <button class="btn-primary-admin" onclick="exportVentas()">
-                <i class="bi bi-download me-2"></i>Exportar
+        
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <div class="stat-value">${{ total_ventas|floatformat:2|default:"0.00" }}</div>
+            <div class="stat-label">Monto Total</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <i class="fas fa-calendar-day"></i>
+            </div>
+            <div class="stat-value">{{ ventas_hoy|default:0 }}</div>
+            <div class="stat-label">Ventas Hoy</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                <i class="fas fa-calendar-alt"></i>
+            </div>
+            <div class="stat-value">{{ ventas_mes|default:0 }}</div>
+            <div class="stat-label">Este Mes</div>
+        </div>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="admin-card">
+        <div class="card-header-admin">
+            <h3 style="margin: 0; font-size: 1.2rem; font-weight: 700; color: #0f172a;">
+                <i class="fas fa-filter"></i> Filtros de Búsqueda
+            </h3>
+            <button type="button" class="btn-secondary-admin btn-sm-admin" onclick="toggleFiltros()">
+                <i class="fas fa-chevron-down" id="filtros-icon"></i> Mostrar/Ocultar
             </button>
         </div>
+
+        <div id="filtros-content" class="filtros-content" style="display: block;">
+            <form method="get" id="filtros-form">
+                <div class="filtros-grid">
+                    <!-- Fecha Inicio -->
+                    <div class="form-group-admin">
+                        <label for="fecha_inicio" class="form-label-admin">
+                            <i class="fas fa-calendar-alt"></i> Fecha Inicio
+                        </label>
+                        <input type="date" 
+                               name="fecha_inicio" 
+                               id="fecha_inicio" 
+                               class="form-control-admin"
+                               value="{{ fecha_inicio }}">
+                    </div>
+
+                    <!-- Fecha Fin -->
+                    <div class="form-group-admin">
+                        <label for="fecha_fin" class="form-label-admin">
+                            <i class="fas fa-calendar-alt"></i> Fecha Fin
+                        </label>
+                        <input type="date" 
+                               name="fecha_fin" 
+                               id="fecha_fin" 
+                               class="form-control-admin"
+                               value="{{ fecha_fin }}">
+                    </div>
+
+                    <!-- Estado -->
+                    <div class="form-group-admin">
+                        <label for="estado" class="form-label-admin">
+                            <i class="fas fa-flag"></i> Estado
+                        </label>
+                        <select name="estado" id="estado" class="form-control-admin">
+                            {% for value, label in estados %}
+                            <option value="{{ value }}" {% if estado_selected == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Tipo de Venta -->
+                    <div class="form-group-admin">
+                        <label for="tipo_venta" class="form-label-admin">
+                            <i class="fas fa-credit-card"></i> Tipo de Venta
+                        </label>
+                        <select name="tipo_venta" id="tipo_venta" class="form-control-admin">
+                            {% for value, label in tipos_venta %}
+                            <option value="{{ value }}" {% if tipo_venta_selected == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Vendedor -->
+                    <div class="form-group-admin">
+                        <label for="vendedor" class="form-label-admin">
+                            <i class="fas fa-user-tie"></i> Vendedor
+                        </label>
+                        <select name="vendedor" id="vendedor" class="form-control-admin">
+                            <option value="">Todos</option>
+                            {% for vendedor in vendedores %}
+                            <option value="{{ vendedor.id }}" {% if vendedor_selected == vendedor.id|stringformat:"s" %}selected{% endif %}>
+                                {{ vendedor.get_full_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Cliente -->
+                    <div class="form-group-admin">
+                        <label for="cliente" class="form-label-admin">
+                            <i class="fas fa-users"></i> Cliente
+                        </label>
+                        <select name="cliente" id="cliente" class="form-control-admin">
+                            <option value="">Todos</option>
+                            {% for cliente in clientes %}
+                            <option value="{{ cliente.id }}" {% if cliente_selected == cliente.id|stringformat:"s" %}selected{% endif %}>
+                                {{ cliente.nombres }} {{ cliente.apellidos }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <div style="display: flex; gap: 0.75rem; margin-top: 1rem; position: relative; z-index: 2;">
+                    <button type="submit" class="btn-primary-admin">
+                        <i class="fas fa-search"></i> Aplicar Filtros
+                    </button>
+                    <button type="button" class="btn-secondary-admin" onclick="limpiarFiltros()">
+                        <i class="fas fa-eraser"></i> Limpiar
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="stat-card">
-                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">
-                    <i class="bi bi-check-circle-fill"></i>
-                </div>
-                <div class="stat-value" id="totalVentas">$0.00</div>
-                <div class="stat-label">Total Ventas</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card">
-                <div class="stat-icon" style="background: rgba(59, 130, 246, 0.2);">
-                    <i class="bi bi-receipt"></i>
-                </div>
-                <div class="stat-value" id="cantidadVentas">0</div>
-                <div class="stat-label">Número de Ventas</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card">
-                <div class="stat-icon" style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6;">
-                    <i class="bi bi-graph-up-arrow"></i>
-                </div>
-                <div class="stat-value" id="promedioVenta">$0.00</div>
-                <div class="stat-label">Ticket Promedio</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card">
-                <div class="stat-icon" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">
-                    <i class="bi bi-clock-history"></i>
-                </div>
-                <div class="stat-value" id="ventasHoy">0</div>
-                <div class="stat-label">Ventas Hoy</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filtros -->
-    <div class="admin-card mb-4">
-        <div class="row g-3">
-            <div class="col-md-3">
-                <input type="text" class="form-control-admin" id="searchInput" placeholder="Buscar..." onkeyup="handleSearch()">
-            </div>
-            <div class="col-md-2">
-                <select class="form-control-admin" id="filterEstado" onchange="applyFilters()">
-                    <option value="">Todos los estados</option>
-                    <option value="COMPLETADA">Completada</option>
-                    <option value="PENDIENTE">Pendiente</option>
-                    <option value="ANULADA">Anulada</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <select class="form-control-admin" id="filterTipo" onchange="applyFilters()">
-                    <option value="">Todos los tipos</option>
-                    <option value="CONTADO">Contado</option>
-                    <option value="CREDITO">Crédito</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <input type="date" class="form-control-admin" id="filterFechaDesde" onchange="applyFilters()">
-            </div>
-            <div class="col-md-2">
-                <input type="date" class="form-control-admin" id="filterFechaHasta" onchange="applyFilters()">
-            </div>
-            <div class="col-md-1">
-                <button class="btn-primary-admin w-100" onclick="loadVentas()" title="Actualizar">
-                    <i class="bi bi-arrow-clockwise"></i>
+    <!-- TABLA DE VENTAS -->
+    <div class="admin-card">
+        <div class="card-header-admin">
+            <h3 style="margin: 0; font-size: 1.2rem; font-weight: 700; color: #0f172a;">
+                <i class="fas fa-list"></i> Listado de Ventas ({{ count_ventas }} registros)
+            </h3>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn-success-admin btn-sm-admin" onclick="exportarExcel()">
+                    <i class="fas fa-file-excel"></i> Excel
+                </button>
+                <button class="btn-success-admin btn-sm-admin" onclick="exportarPDF()">
+                    <i class="fas fa-file-pdf"></i> PDF
                 </button>
             </div>
         </div>
-    </div>
 
-    <!-- Lista de Ventas -->
-    <div id="ventasList">
-        <div class="text-center" style="padding: 3rem;">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p style="color: #94a3b8; margin-top: 1rem;">Cargando ventas...</p>
-        </div>
-    </div>
+        {% if ventas %}
+        <div class="table-responsive">
+            <table class="table-admin">
+                <thead>
+                    <tr>
+                        <th>N° Venta</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Vendedor</th>
+                        <th>Tipo</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th>Pago</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for venta in ventas %}
+                    <tr>
+                        <td>
+                            <strong style="color: #0f172a;">{{ venta.numero_venta }}</strong>
+                            {% if venta.numero_factura %}
+                            <br><small style="color: #94a3b8;">F: {{ venta.numero_factura }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div style="font-weight: 600; color: #1e293b;">
+                                {{ venta.fecha_venta|date:"d/m/Y" }}
+                            </div>
+                            <small style="color: #94a3b8;">{{ venta.fecha_venta|date:"H:i" }}</small>
+                        </td>
+                        <td>
+                            {% if venta.cliente %}
+                                <strong style="color: #1e293b;">
+                                    {{ venta.cliente.nombres }} {{ venta.cliente.apellidos }}
+                                </strong>
+                                <br><small style="color: #94a3b8;">{{ venta.cliente.numero_documento }}</small>
+                            {% else %}
+                                <em style="color: #94a3b8;">Público General</em>
+                            {% endif %}
+                        </td>
+                        <td style="color: #1e293b; font-weight: 500;">
+                            {{ venta.vendedor.get_full_name }}
+                        </td>
+                        <td>
+                            {% if venta.tipo_venta == 'CONTADO' %}
+                                <span class="badge-admin badge-info"><i class="fas fa-money-bill-wave"></i> Contado</span>
+                            {% else %}
+                                <span class="badge-admin badge-warning"><i class="fas fa-file-invoice-dollar"></i> Crédito</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong style="color: #0f172a; font-size: 1.1rem; font-weight: 700;">
+                                ${{ venta.total|floatformat:2 }}
+                            </strong>
+                        </td>
+                        <td>
+                            {% if venta.estado == 'COMPLETADA' %}
+                                <span class="badge-admin badge-success"><i class="fas fa-check-circle"></i> Completada</span>
+                            {% elif venta.estado == 'PENDIENTE' %}
+                                <span class="badge-admin badge-warning"><i class="fas fa-clock"></i> Pendiente</span>
+                            {% else %}
+                                <span class="badge-admin badge-danger"><i class="fas fa-times-circle"></i> Anulada</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="pago-status">
+                                {% if venta.monto_pagado >= venta.total %}
+                                    <span class="pago-icon pagado"></span>
+                                    <span style="font-weight: 600; color: #059669;">Pagado</span>
+                                {% elif venta.monto_pagado > 0 %}
+                                    <span class="pago-icon parcial"></span>
+                                    <div>
+                                        <span style="font-weight: 600; color: #d97706;">Parcial</span>
+                                        <br><small style="color: #94a3b8;">
+                                            Saldo: ${{ venta.total|floatformat:2 }}
+                                        </small>
+                                    </div>
+                                {% else %}
+                                    <span class="pago-icon pendiente"></span>
+                                    <span style="font-weight: 600; color: #dc2626;">Pendiente</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td style="text-align: center;">
+                            <div style="display: inline-flex; gap: 0.5rem;">
+                                <!-- Ver Detalle -->
+                                <a href="{% url 'custom_admin:venta_detail' venta.pk %}" 
+                                   class="btn-action btn-view"
+                                   title="Ver Detalle">
+                                    <i class="fas fa-eye"></i>
+                                </a>
 
-    <!-- Paginación -->
-    <div class="d-flex justify-content-between align-items-center mt-4">
-        <div style="color: #94a3b8;">
-            Mostrando <span id="showingStart">0</span> - <span id="showingEnd">0</span> de <span id="totalRecords">0</span> ventas
+                                <!-- Imprimir Ticket -->
+                                <a href="{% url 'custom_admin:venta_ticket' venta.pk %}" 
+                                   target="_blank"
+                                   class="btn-action btn-print"
+                                   title="Imprimir Ticket">
+                                    <i class="fas fa-print"></i>
+                                </a>
+
+                                <!-- Factura -->
+                                {% if venta.cliente %}
+                                <a href="{% url 'custom_admin:venta_factura' venta.pk %}" 
+                                   target="_blank"
+                                   class="btn-action btn-invoice"
+                                   title="Ver Factura">
+                                    <i class="fas fa-file-invoice"></i>
+                                </a>
+                                {% endif %}
+
+                                <!-- Anular -->
+                                {% if venta.estado != 'ANULADA' and venta.monto_pagado == 0 %}
+                                <button type="button"
+                                        class="btn-action btn-delete"
+                                        title="Anular Venta"
+                                        onclick="anularVenta('{{ venta.pk }}', '{{ venta.numero_venta }}')">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-        <div id="paginationContainer"></div>
+
+        <!-- PAGINACIÓN -->
+        {% if page_obj.has_other_pages %}
+        <div style="position: relative; z-index: 2;">
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            <i class="fas fa-angle-double-left"></i> Primera
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            <i class="fas fa-angle-left"></i> Anterior
+                        </a>
+                    </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link">
+                        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            Siguiente <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            Última <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <!-- EMPTY STATE -->
+        <div class="empty-state">
+            <i class="fas fa-inbox" style="font-size: 100px; opacity: 0.3; margin-bottom: 1rem;"></i>
+            <h3>No se encontraron ventas</h3>
+            <p>Intenta ajustar los filtros de búsqueda o realiza una nueva venta.</p>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    let currentPage = 1;
-    let pageSize = 20;
-    let searchTimeout = null;
-    let currentFilters = {
-        search: '',
-        estado: '',
-        tipo_venta: '',
-        fecha_desde: '',
-        fecha_hasta: ''
-    };
-
-    function showNotification(type, message, title = null) {
-        const container = document.getElementById('toastContainer');
-        const icons = {
-            success: 'bi-check-circle-fill',
-            error: 'bi-x-circle-fill',
-            warning: 'bi-exclamation-triangle-fill',
-            info: 'bi-info-circle-fill'
-        };
-        const colors = {
-            success: { bg: '16, 185, 129', color: '#10b981' },
-            error: { bg: '239, 68, 68', color: '#ef4444' },
-            warning: { bg: '245, 158, 11', color: '#f59e0b' },
-            info: { bg: '59, 130, 246', color: '#3b82f6' }
-        };
-        const toast = document.createElement('div');
-        toast.style.cssText = `background: rgba(30, 41, 59, 0.98); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem 1.5rem; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); display: flex; align-items: center; gap: 1rem; margin-bottom: 10px;`;
-        toast.innerHTML = `
-            <div style="width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; background: rgba(${colors[type].bg}, 0.2); color: ${colors[type].color};"><i class="bi ${icons[type]}"></i></div>
-            <div style="flex: 1; color: #e2e8f0;"><div style="font-weight: 600;">${title || type.toUpperCase()}</div><div style="font-size: 0.85rem; color: #94a3b8;">${message}</div></div>
-            <button onclick="this.parentElement.remove()" style="background: rgba(59, 130, 246, 0.1); border: none; color: var(--primary-color); width: 28px; height: 28px; border-radius: 8px; cursor: pointer;"><i class="bi bi-x"></i></button>
-        `;
-        container.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
+// Toggle de filtros
+function toggleFiltros() {
+    const content = document.getElementById('filtros-content');
+    const icon = document.getElementById('filtros-icon');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.className = 'fas fa-chevron-down';
+    } else {
+        content.style.display = 'none';
+        icon.className = 'fas fa-chevron-right';
     }
+}
 
-    document.addEventListener('DOMContentLoaded', function() {
-        loadVentas();
-        loadStats();
-    });
+// Limpiar filtros
+function limpiarFiltros() {
+    window.location.href = '{% url "custom_admin:ventas_list" %}';
+}
 
-    async function loadVentas(page = 1) {
-        currentPage = page;
-        document.getElementById('ventasList').innerHTML = `<div class="text-center" style="padding: 3rem;"><div class="spinner-border text-primary"></div><p style="color: #94a3b8; margin-top: 1rem;">Cargando...</p></div>`;
+// Exportar a Excel
+function exportarExcel() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = '{% url "custom_admin:ventas_export_excel" %}?' + params.toString();
+}
 
-        try {
-            let url = `/api/ventas/api/ventas/?page=${page}&page_size=${pageSize}`;
-            if (currentFilters.search) url += `&search=${encodeURIComponent(currentFilters.search)}`;
-            if (currentFilters.estado) url += `&estado=${currentFilters.estado}`;
-            if (currentFilters.tipo_venta) url += `&tipo_venta=${currentFilters.tipo_venta}`;
-            if (currentFilters.fecha_desde) url += `&fecha_desde=${currentFilters.fecha_desde}`;
-            if (currentFilters.fecha_hasta) url += `&fecha_hasta=${currentFilters.fecha_hasta}`;
+// Exportar a PDF
+function exportarPDF() {
+    const params = new URLSearchParams(window.location.search);
+    window.open('{% url "custom_admin:ventas_export_pdf" %}?' + params.toString(), '_blank');
+}
 
-            const response = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
-            });
-
-            if (!response.ok) throw new Error('Error al cargar ventas');
-            const data = await response.json();
-            displayVentas(data);
-            updatePagination(data);
-
-        } catch (error) {
-            console.error('Error:', error);
-            document.getElementById('ventasList').innerHTML = `<div class="text-center" style="padding: 3rem;"><i class="bi bi-exclamation-triangle" style="font-size: 3rem; color: #ef4444;"></i><p style="color: #ef4444; margin-top: 1rem;">Error al cargar ventas</p><button class="btn-primary-admin" onclick="loadVentas()"><i class="bi bi-arrow-clockwise me-2"></i>Reintentar</button></div>`;
-        }
+// Anular venta
+function anularVenta(ventaId, numeroVenta) {
+    if (confirm(`¿Está seguro de que desea anular la venta ${numeroVenta}?\n\n⚠️ Esta acción no se puede deshacer.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/ventas/${ventaId}/anular/`;
+        
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = '{{ csrf_token }}';
+        
+        form.appendChild(csrfInput);
+        document.body.appendChild(form);
+        form.submit();
     }
+}
 
-    function displayVentas(data) {
-        const container = document.getElementById('ventasList');
-        const ventas = data.results || [];
-        if (ventas.length === 0) {
-            container.innerHTML = `<div class="text-center" style="padding: 3rem;"><i class="bi bi-inbox" style="font-size: 3rem; color: #64748b;"></i><p style="color: #94a3b8; margin-top: 1rem;">No se encontraron ventas</p></div>`;
-            return;
-        }
-        container.innerHTML = ventas.map(v => `
-            <div class="venta-card ${v.estado.toLowerCase()}">
-                <div class="venta-header">
-                    <div><div class="venta-numero"><i class="bi bi-receipt"></i>${v.numero_venta}</div><div style="color: #94a3b8; font-size: 0.85rem; margin-top: 0.3rem;">${v.numero_factura || 'Sin factura'}</div></div>
-                    <div class="text-end"><div class="venta-monto">$${parseFloat(v.total).toFixed(2)}</div><span class="estado-badge ${v.estado.toLowerCase()}">${v.estado_display}</span></div>
-                </div>
-                <div class="venta-details">
-                    <div class="detail-item-venta"><div class="detail-icon-venta"><i class="bi bi-person-fill"></i></div><div class="detail-content-venta"><div class="detail-label-venta">Cliente</div><div class="detail-value-venta">${v.cliente_nombre || 'Cliente Ocasional'}</div></div></div>
-                    <div class="detail-item-venta"><div class="detail-icon-venta" style="background: rgba(16, 185, 129, 0.1); color: #10b981;"><i class="bi bi-person-badge-fill"></i></div><div class="detail-content-venta"><div class="detail-label-venta">Vendedor</div><div class="detail-value-venta">${v.vendedor_nombre}</div></div></div>
-                    <div class="detail-item-venta"><div class="detail-icon-venta" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;"><i class="bi bi-calendar-event"></i></div><div class="detail-content-venta"><div class="detail-label-venta">Fecha</div><div class="detail-value-venta">${formatDate(v.fecha_venta)}</div></div></div>
-                    <div class="detail-item-venta"><div class="detail-icon-venta" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;"><i class="bi bi-credit-card-fill"></i></div><div class="detail-content-venta"><div class="detail-label-venta">Tipo</div><div class="detail-value-venta">${v.tipo_venta_display}</div></div></div>
-                </div>
-                ${v.saldo_pendiente > 0 ? `<div class="alert-admin alert-warning-admin" style="margin-top: 1rem; margin-bottom: 0;"><i class="bi bi-exclamation-triangle-fill me-2"></i>Saldo pendiente: <strong>$${parseFloat(v.saldo_pendiente).toFixed(2)}</strong></div>` : ''}
-                <div class="venta-actions">
-                    <button class="btn btn-sm btn-primary-admin" onclick="viewVenta('${v.id}')"><i class="bi bi-eye me-1"></i>Ver</button>
-                    ${v.estado === 'PENDIENTE' ? `<button class="btn btn-sm" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: none;" onclick="anularVenta('${v.id}')"><i class="bi bi-x-circle me-1"></i>Anular</button>` : ''}
-                </div>
-            </div>
-        `).join('');
+// Inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.toString() && urlParams.get('page') === null) {
+        document.getElementById('filtros-content').style.display = 'block';
     }
-
-    async function loadStats() {
-        try {
-            const response = await fetch('/api/ventas/api/ventas/estadisticas/', {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                document.getElementById('totalVentas').textContent = `$${parseFloat(data.ventas_total.total).toFixed(2)}`;
-                document.getElementById('cantidadVentas').textContent = data.ventas_total.count;
-                document.getElementById('promedioVenta').textContent = `$${parseFloat(data.ventas_total.promedio).toFixed(2)}`;
-                document.getElementById('ventasHoy').textContent = data.ventas_hoy.count;
-            }
-        } catch (error) {
-            console.error('Error:', error);
-        }
-    }
-
-    function updatePagination(data) {
-        const total = data.count || 0;
-        const start = ((currentPage - 1) * pageSize) + 1;
-        const end = Math.min(currentPage * pageSize, total);
-        document.getElementById('showingStart').textContent = total > 0 ? start : 0;
-        document.getElementById('showingEnd').textContent = end;
-        document.getElementById('totalRecords').textContent = total;
-        const totalPages = Math.ceil(total / pageSize);
-        const container = document.getElementById('paginationContainer');
-        if (totalPages <= 1) { container.innerHTML = ''; return; }
-        let html = '<nav><ul class="pagination" style="margin: 0;">';
-        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="loadVentas(${currentPage - 1}); return false;" style="background: rgba(59, 130, 246, 0.1); border: 1px solid var(--border-color); color: var(--primary-color);"><i class="bi bi-chevron-left"></i></a></li>`;
-        for (let i = 1; i <= totalPages; i++) {
-            if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
-                html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="loadVentas(${i}); return false;" style="background: ${i === currentPage ? 'var(--primary-color)' : 'rgba(59, 130, 246, 0.1)'}; border: 1px solid var(--border-color); color: ${i === currentPage ? 'white' : 'var(--primary-color)'};">${i}</a></li>`;
-            }
-        }
-        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="loadVentas(${currentPage + 1}); return false;" style="background: rgba(59, 130, 246, 0.1); border: 1px solid var(--border-color); color: var(--primary-color);"><i class="bi bi-chevron-right"></i></a></li></ul></nav>`;
-        container.innerHTML = html;
-    }
-
-    function handleSearch() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            currentFilters.search = document.getElementById('searchInput').value;
-            loadVentas(1);
-        }, 500);
-    }
-
-    function applyFilters() {
-        currentFilters.estado = document.getElementById('filterEstado').value;
-        currentFilters.tipo_venta = document.getElementById('filterTipo').value;
-        currentFilters.fecha_desde = document.getElementById('filterFechaDesde').value;
-        currentFilters.fecha_hasta = document.getElementById('filterFechaHasta').value;
-        loadVentas(1);
-    }
-
-    function viewVenta(id) {
-        window.location.href = `/api/ventas/ventas/${id}/`;
-    }
-
-    function anularVenta(id) {
-        if (confirm('¿Está seguro de anular esta venta?')) {
-            showNotification('warning', 'Función en desarrollo');
-        }
-    }
-
-    function exportVentas() {
-        showNotification('info', 'Función en desarrollo');
-    }
-
-    function formatDate(dateString) {
-        if (!dateString) return 'N/A';
-        const date = new Date(dateString);
-        return date.toLocaleString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-    }
+});
 </script>
 {% endblock %}

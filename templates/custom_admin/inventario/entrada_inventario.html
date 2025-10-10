@@ -1,0 +1,1221 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Entrada de Inventario Unificada{% endblock %}
+
+{% block extra_css %}
+<style>
+    .main-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    /* TARJETA DE FORMULARIO */
+    .form-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 2px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .form-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid rgba(59, 130, 246, 0.1);
+    }
+
+    .form-header-icon {
+        font-size: 2.5rem;
+    }
+
+    .form-header-title h2 {
+        margin: 0;
+        color: #1e40af;
+        font-weight: 700;
+    }
+
+    .form-header-title p {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+
+    /* CAMPOS DEL FORMULARIO */
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-label-custom {
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-label-custom .required {
+        color: #ef4444;
+        font-weight: 700;
+    }
+
+    .form-input {
+        padding: 0.75rem 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-input.error {
+        border-color: #ef4444;
+    }
+
+    .form-input:disabled {
+        background: #f8fafc;
+        color: #94a3b8;
+        cursor: not-allowed;
+    }
+
+    /* ALERTA DE CÓDIGO AUTOMÁTICO */
+    .auto-code-alert {
+        background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+        border: 2px solid #3b82f6;
+        border-radius: 8px;
+        padding: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+    }
+
+    .auto-code-alert-icon {
+        font-size: 1.5rem;
+    }
+
+    .auto-code-alert-text {
+        color: #1e40af;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    /* BOTONES DE ACCIÓN */
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        padding-top: 1.5rem;
+        border-top: 2px solid rgba(59, 130, 246, 0.1);
+    }
+
+    .btn-custom {
+        padding: 0.875rem 2rem;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-primary-custom {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-primary-custom:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-secondary-custom {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .btn-secondary-custom:hover {
+        background: #e2e8f0;
+    }
+
+    .btn-success-custom {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-success-custom:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+    }
+
+    /* TABLA DE PRODUCTOS */
+    .products-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .products-header {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        padding: 1.5rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .products-header h3 {
+        margin: 0;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .products-empty {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #94a3b8;
+    }
+
+    .products-empty-icon {
+        font-size: 5rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    .table-custom {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table-custom thead {
+        background: #f8fafc;
+    }
+
+    .table-custom th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #475569;
+        border-bottom: 2px solid #e2e8f0;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.05em;
+    }
+
+    .table-custom td {
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        color: #334155;
+    }
+
+    .table-custom tbody tr {
+        transition: background 0.2s ease;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .table-custom tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .product-name {
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .product-details {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-top: 0.25rem;
+    }
+
+    .badge-custom {
+        padding: 0.35rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .badge-info {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .badge-success {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .badge-warning {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    /* BOTÓN ELIMINAR */
+    .btn-delete {
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+    }
+
+    .btn-delete:hover {
+        background: #ef4444;
+        color: white;
+        transform: scale(1.05);
+    }
+
+    /* FOOTER DE TABLA */
+    .table-footer {
+        background: #f8fafc;
+        padding: 1.5rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 2px solid #e2e8f0;
+    }
+
+    .total-display {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .total-label {
+        font-size: 0.9rem;
+        color: #64748b;
+        margin-right: 1rem;
+    }
+
+    /* ESTADÍSTICAS */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
+        text-align: center;
+        transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #3b82f6;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        color: #64748b;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    /* NOTIFICACIONES */
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        background: white;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        z-index: 9999;
+        animation: slideInRight 0.3s ease;
+        max-width: 400px;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(100px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .notification.success {
+        border-left: 4px solid #10b981;
+    }
+
+    .notification.error {
+        border-left: 4px solid #ef4444;
+    }
+
+    .notification-icon {
+        font-size: 1.5rem;
+    }
+
+    .notification-content strong {
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    /* MODAL PERSONALIZADO */
+    .modal-custom {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .modal-custom.show {
+        display: flex;
+    }
+
+    .modal-content-custom {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        max-width: 800px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        animation: scaleIn 0.3s ease;
+    }
+
+    @keyframes scaleIn {
+        from {
+            transform: scale(0.9);
+            opacity: 0;
+        }
+        to {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .modal-header-custom {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .modal-header-custom h3 {
+        margin: 0;
+        color: #1e293b;
+        font-size: 1.5rem;
+    }
+
+    .btn-close-modal {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #64748b;
+        transition: color 0.3s ease;
+    }
+
+    .btn-close-modal:hover {
+        color: #1e293b;
+    }
+
+    /* CÓDIGOS DE BARRAS */
+    .barcode-item {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .barcode-info h5 {
+        margin: 0 0 0.5rem 0;
+        color: #1e293b;
+    }
+
+    .barcode-info p {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+
+    .barcode-highlight {
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        border: 2px solid #f59e0b;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 700;
+        color: #92400e;
+        display: inline-block;
+        margin-top: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <!-- HEADER -->
+    <div style="margin-bottom: 2rem;">
+        <h1 style="font-size: 2.5rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem;">
+            📦 Entrada de Inventario Unificada
+        </h1>
+        <p style="color: #64748b; font-size: 1.1rem;">
+            Registra productos nuevos y genera códigos de barras automáticamente para cada unidad
+        </p>
+    </div>
+
+    <!-- ESTADÍSTICAS -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value" id="stat-productos">0</div>
+            <div class="stat-label">Productos Agregados</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="stat-unidades">0</div>
+            <div class="stat-label">Total Unidades</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="stat-codigos">0</div>
+            <div class="stat-label">Códigos a Generar</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="stat-valor">$0.00</div>
+            <div class="stat-label">Valor Total</div>
+        </div>
+    </div>
+
+    <!-- FORMULARIO DE AGREGAR PRODUCTO -->
+    <div class="form-card">
+        <div class="form-header">
+            <div class="form-header-icon">➕</div>
+            <div class="form-header-title">
+                <h2>Agregar Producto al Inventario</h2>
+                <p>Los códigos de barras se generarán automáticamente según la cantidad ingresada</p>
+            </div>
+        </div>
+
+        <form id="form-producto" onsubmit="event.preventDefault(); agregarProducto();">
+            <div class="form-grid">
+                <!-- NOMBRE DEL PRODUCTO -->
+                <div class="form-group">
+                    <label class="form-label-custom">
+                        <span>Nombre del Producto</span>
+                        <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="input_nombre" 
+                        class="form-input" 
+                        placeholder="Ej: Arroz Premium"
+                        required
+                    >
+                </div>
+
+                <!-- CATEGORÍA -->
+                <div class="form-group">
+                    <label class="form-label-custom">
+                        <span>Categoría</span>
+                        <span class="required">*</span>
+                    </label>
+                    <select id="input_categoria" class="form-input" required>
+                        <option value="">Seleccione una categoría</option>
+                        {% for categoria in categorias %}
+                        <option value="{{ categoria.id }}">{{ categoria.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- PROVEEDOR -->
+                <div class="form-group">
+                    <label class="form-label-custom">
+                        <span>Proveedor</span>
+                        <span class="required">*</span>
+                    </label>
+                    <select id="input_proveedor" class="form-input" required>
+                        <option value="">Seleccione un proveedor</option>
+                        {% for proveedor in proveedores %}
+                        <option value="{{ proveedor.id }}">{{ proveedor.nombre_comercial }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- UNIDAD DE MEDIDA -->
+                <div class="form-group">
+                    <label class="form-label-custom">
+                        <span>Unidad de Medida</span>
+                        <span class="required">*</span>
+                    </label>
+                    <select id="input_unidad" class="form-input" required>
+                        <option value="">Seleccione unidad</option>
+                        <option value="UNIDAD">Unidad</option>
+                        <option value="KG">Kilogramo (KG)</option>
+                        <option value="GRAMO">Gramo (G)</option>
+                        <option value="LIBRA">Libra (LB)</option>
+                        <option value="QUINTAL">Quintal (QQ)</option>
+                        <option value="LITRO">Litro (L)</option>
+                        <option value="MILILITRO">Mililitro (ML)</option>
+                        <option value="CAJA">Caja</option>
+                        <option value="PAQUETE">Paquete</option>
+                        <option value="BOLSA">Bolsa</option>
+                    </select>
+                </div>
+
+                <!-- CANTIDAD DE UNIDADES -->
+                <div class="form-group">
+                    <label class="form-label-custom">
+                        <span>Cantidad de Unidades</span>
+                        <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="number" 
+                        id="input_cantidad" 
+                        class="form-input" 
+                        min="1" 
+                        placeholder="Ej: 50"
+                        required
+                        onchange="actualizarPreviewCodigos()"
+                    >
+                    <div class="auto-code-alert">
+                        <span class="auto-code-alert-icon">🏷️</span>
+                        <span class="auto-code-alert-text" id="preview-codigos">
+                            Se generarán códigos según la cantidad
+                        </span>
+                    </div>
+                </div>
+
+                <!-- COSTO UNITARIO -->
+                <div class="form-group">
+                    <label class="form-label-custom">
+                        <span>Costo Unitario</span>
+                        <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="number" 
+                        id="input_costo" 
+                        class="form-input" 
+                        step="0.01" 
+                        min="0"
+                        placeholder="Ej: 5.50"
+                        required
+                    >
+                </div>
+
+                <!-- PRECIO DE VENTA -->
+                <div class="form-group">
+                    <label class="form-label-custom">
+                        <span>Precio de Venta</span>
+                        <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="number" 
+                        id="input_precio" 
+                        class="form-input" 
+                        step="0.01" 
+                        min="0"
+                        placeholder="Ej: 7.50"
+                        required
+                    >
+                </div>
+
+                <!-- LOTE -->
+                <div class="form-group">
+                    <label class="form-label-custom">
+                        <span>Lote del Proveedor</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="input_lote" 
+                        class="form-input" 
+                        placeholder="Ej: L-2025-001"
+                    >
+                </div>
+
+                <!-- FECHA DE VENCIMIENTO -->
+                <div class="form-group">
+                    <label class="form-label-custom">
+                        <span>Fecha de Vencimiento</span>
+                    </label>
+                    <input 
+                        type="date" 
+                        id="input_fecha_vencimiento" 
+                        class="form-input"
+                    >
+                </div>
+
+                <!-- DESCRIPCIÓN -->
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label-custom">
+                        <span>Descripción</span>
+                    </label>
+                    <textarea 
+                        id="input_descripcion" 
+                        class="form-input" 
+                        rows="3"
+                        placeholder="Descripción adicional del producto..."
+                    ></textarea>
+                </div>
+            </div>
+
+            <!-- ALERTA DE GENERACIÓN AUTOMÁTICA -->
+            <div style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); border: 2px solid #0ea5e9; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: start; gap: 1rem;">
+                    <div style="font-size: 2rem;">🤖</div>
+                    <div>
+                        <h4 style="margin: 0 0 0.5rem 0; color: #0c4a6e; font-size: 1.1rem;">Generación Automática de Códigos de Barras</h4>
+                        <p style="margin: 0; color: #075985; line-height: 1.6;">
+                            <strong>El sistema generará automáticamente:</strong><br>
+                            ✅ Un código de barras único para cada unidad de producto<br>
+                            ✅ Etiquetas imprimibles en PDF para pegar en cada producto<br>
+                            ✅ Códigos listos para escanear en el punto de venta
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTONES DE ACCIÓN -->
+            <div class="action-buttons">
+                <button type="button" class="btn-custom btn-secondary-custom" onclick="limpiarFormulario()">
+                    <i class="bi bi-x-circle"></i>
+                    Limpiar
+                </button>
+                <button type="submit" class="btn-custom btn-primary-custom">
+                    <i class="bi bi-plus-circle"></i>
+                    Agregar Producto
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- LISTA DE PRODUCTOS -->
+    <div class="products-card">
+        <div class="products-header">
+            <h3>
+                <i class="bi bi-box-seam"></i>
+                Productos Agregados
+            </h3>
+            <button class="btn-custom btn-secondary-custom" onclick="limpiarLista()" style="color: white; background: rgba(255,255,255,0.2);">
+                <i class="bi bi-trash"></i>
+                Limpiar Lista
+            </button>
+        </div>
+
+        <!-- ESTADO VACÍO -->
+        <div id="productos-vacio" class="products-empty">
+            <div class="products-empty-icon">📦</div>
+            <h3 style="color: #64748b; margin-bottom: 0.5rem;">No hay productos agregados</h3>
+            <p style="color: #94a3b8;">Agrega productos usando el formulario de arriba</p>
+        </div>
+
+        <!-- TABLA DE PRODUCTOS -->
+        <div id="productos-tabla" style="display: none;">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">#</th>
+                        <th style="width: 25%;">Producto</th>
+                        <th style="width: 12%;">Categoría</th>
+                        <th style="width: 10%;">Unidad</th>
+                        <th style="width: 12%;">Cantidad</th>
+                        <th style="width: 10%;">Costo Unit.</th>
+                        <th style="width: 12%;">Subtotal</th>
+                        <th style="width: 14%;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="productos-lista">
+                    <!-- Productos dinámicos -->
+                </tbody>
+            </table>
+
+            <div class="table-footer">
+                <div>
+                    <span class="total-label">TOTAL INVERSIÓN:</span>
+                    <span class="total-display" id="total-general">$0.00</span>
+                </div>
+                <button class="btn-custom btn-success-custom" onclick="procesarInventario()">
+                    <i class="bi bi-check-circle"></i>
+                    Procesar y Generar Códigos
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE CÓDIGOS GENERADOS -->
+<div id="modal-codigos" class="modal-custom">
+    <div class="modal-content-custom">
+        <div class="modal-header-custom">
+            <h3>🖨️ Códigos de Barras Generados</h3>
+            <button class="btn-close-modal" onclick="cerrarModalCodigos()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div style="background: #dcfce7; border: 2px solid #22c55e; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <strong style="color: #166534; font-size: 1.1rem;">✅ Inventario Procesado Exitosamente</strong>
+            <p style="color: #166534; margin: 0.5rem 0 0 0; line-height: 1.6;">
+                Los productos han sido agregados al inventario y los códigos de barras están listos para imprimir.<br>
+                <strong>Cada PDF contiene las etiquetas necesarias para pegar en cada producto.</strong>
+            </p>
+        </div>
+
+        <div id="lista-codigos-generados">
+            <!-- Se llena dinámicamente -->
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid #e2e8f0;">
+            <button class="btn-custom btn-secondary-custom" onclick="cerrarModalCodigos()">
+                Cerrar
+            </button>
+            <button class="btn-custom btn-primary-custom" onclick="descargarTodosPDFs()">
+                <i class="bi bi-download"></i>
+                Descargar Todos los PDFs
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ========================================
+// ESTADO GLOBAL
+// ========================================
+let productos = [];
+let contadorProductos = 0;
+
+// ========================================
+// ACTUALIZAR PREVIEW DE CÓDIGOS
+// ========================================
+function actualizarPreviewCodigos() {
+    const cantidad = parseInt(document.getElementById('input_cantidad').value) || 0;
+    const preview = document.getElementById('preview-codigos');
+    
+    if (cantidad > 0) {
+        preview.innerHTML = `Se generarán <strong>${cantidad} códigos de barras</strong> para imprimir y pegar`;
+    } else {
+        preview.textContent = 'Se generarán códigos según la cantidad';
+    }
+}
+
+// ========================================
+// AGREGAR PRODUCTO
+// ========================================
+function agregarProducto() {
+    // Validar formulario
+    const form = document.getElementById('form-producto');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    // Obtener valores
+    const nombre = document.getElementById('input_nombre').value.trim();
+    const categoria_id = document.getElementById('input_categoria').value;
+    const categoria_nombre = document.getElementById('input_categoria').selectedOptions[0].text;
+    const proveedor_id = document.getElementById('input_proveedor').value;
+    const proveedor_nombre = document.getElementById('input_proveedor').selectedOptions[0].text;
+    const unidad_medida = document.getElementById('input_unidad').value;
+    const unidad_medida_texto = document.getElementById('input_unidad').selectedOptions[0].text;
+    const cantidad = parseInt(document.getElementById('input_cantidad').value);
+    const costo = parseFloat(document.getElementById('input_costo').value);
+    const precio = parseFloat(document.getElementById('input_precio').value);
+    const lote = document.getElementById('input_lote').value.trim();
+    const fecha_vencimiento = document.getElementById('input_fecha_vencimiento').value;
+    const descripcion = document.getElementById('input_descripcion').value.trim();
+
+    // Validaciones adicionales
+    if (precio <= costo) {
+        mostrarNotificacion('El precio de venta debe ser mayor al costo unitario', 'error');
+        document.getElementById('input_precio').focus();
+        return;
+    }
+
+    if (cantidad < 1) {
+        mostrarNotificacion('La cantidad debe ser al menos 1 unidad', 'error');
+        document.getElementById('input_cantidad').focus();
+        return;
+    }
+
+    // Crear objeto producto
+    const producto = {
+        id: ++contadorProductos,
+        nombre: nombre,
+        categoria_id: categoria_id,
+        categoria_nombre: categoria_nombre,
+        proveedor_id: proveedor_id,
+        proveedor_nombre: proveedor_nombre,
+        unidad_medida: unidad_medida,
+        unidad_medida_texto: unidad_medida_texto,
+        cantidad: cantidad,
+        costo_unitario: costo,
+        precio_venta: precio,
+        lote: lote,
+        fecha_vencimiento: fecha_vencimiento,
+        descripcion: descripcion,
+        subtotal: cantidad * costo
+    };
+
+    // Agregar a la lista
+    productos.push(producto);
+    
+    // Actualizar interfaz
+    renderizarProductos();
+    actualizarEstadisticas();
+    limpiarFormulario();
+    
+    mostrarNotificacion(`✅ Producto "${nombre}" agregado - Se generarán ${cantidad} códigos de barras`, 'success');
+}
+
+// ========================================
+// RENDERIZAR PRODUCTOS
+// ========================================
+function renderizarProductos() {
+    const lista = document.getElementById('productos-lista');
+    lista.innerHTML = '';
+
+    if (productos.length === 0) {
+        document.getElementById('productos-vacio').style.display = 'block';
+        document.getElementById('productos-tabla').style.display = 'none';
+        return;
+    }
+
+    document.getElementById('productos-vacio').style.display = 'none';
+    document.getElementById('productos-tabla').style.display = 'block';
+
+    let totalGeneral = 0;
+
+    productos.forEach((producto, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${index + 1}</strong></td>
+            <td>
+                <div class="product-name">${producto.nombre}</div>
+                <div class="product-details">
+                    ${producto.lote ? `Lote: ${producto.lote}` : 'Sin lote'}
+                    ${producto.fecha_vencimiento ? ` | Vence: ${producto.fecha_vencimiento}` : ''}
+                </div>
+            </td>
+            <td>
+                <span class="badge-custom badge-info">${producto.categoria_nombre}</span>
+            </td>
+            <td>
+                <span class="badge-custom badge-warning">${producto.unidad_medida_texto}</span>
+            </td>
+            <td>
+                <strong style="font-size: 1.2rem; color: #3b82f6;">${producto.cantidad}</strong>
+                <div class="product-details" style="margin-top: 0.25rem;">
+                    🏷️ ${producto.cantidad} códigos
+                </div>
+            </td>
+            <td>$${producto.costo_unitario.toFixed(2)}</td>
+            <td><strong style="color: #10b981; font-size: 1.1rem;">$${producto.subtotal.toFixed(2)}</strong></td>
+            <td>
+                <button class="btn-delete" onclick="eliminarProducto(${producto.id})">
+                    <i class="bi bi-trash"></i> Eliminar
+                </button>
+            </td>
+        `;
+        lista.appendChild(tr);
+        totalGeneral += producto.subtotal;
+    });
+
+    document.getElementById('total-general').textContent = `$${totalGeneral.toFixed(2)}`;
+}
+
+// ========================================
+// ACTUALIZAR ESTADÍSTICAS
+// ========================================
+function actualizarEstadisticas() {
+    const totalProductos = productos.length;
+    const totalUnidades = productos.reduce((sum, p) => sum + p.cantidad, 0);
+    const totalCodigos = totalUnidades; // Un código por unidad
+    const valorTotal = productos.reduce((sum, p) => sum + p.subtotal, 0);
+
+    document.getElementById('stat-productos').textContent = totalProductos;
+    document.getElementById('stat-unidades').textContent = totalUnidades;
+    document.getElementById('stat-codigos').textContent = totalCodigos;
+    document.getElementById('stat-valor').textContent = `$${valorTotal.toFixed(2)}`;
+}
+
+// ========================================
+// ELIMINAR PRODUCTO
+// ========================================
+function eliminarProducto(id) {
+    const producto = productos.find(p => p.id === id);
+    if (confirm(`¿Eliminar "${producto.nombre}"?\nSe eliminarán ${producto.cantidad} códigos de barras programados.`)) {
+        productos = productos.filter(p => p.id !== id);
+        renderizarProductos();
+        actualizarEstadisticas();
+        mostrarNotificacion('Producto eliminado correctamente', 'success');
+    }
+}
+
+// ========================================
+// LIMPIAR LISTA
+// ========================================
+function limpiarLista() {
+    if (productos.length === 0) {
+        mostrarNotificacion('No hay productos para limpiar', 'error');
+        return;
+    }
+    
+    const totalCodigos = productos.reduce((sum, p) => sum + p.cantidad, 0);
+    if (confirm(`¿Limpiar toda la lista?\nSe eliminarán ${productos.length} productos y ${totalCodigos} códigos programados.`)) {
+        productos = [];
+        contadorProductos = 0;
+        renderizarProductos();
+        actualizarEstadisticas();
+        mostrarNotificacion('Lista limpiada correctamente', 'success');
+    }
+}
+
+// ========================================
+// LIMPIAR FORMULARIO
+// ========================================
+function limpiarFormulario() {
+    document.getElementById('form-producto').reset();
+    document.getElementById('preview-codigos').textContent = 'Se generarán códigos según la cantidad';
+    document.getElementById('input_nombre').focus();
+}
+
+// ========================================
+// PROCESAR INVENTARIO
+// ========================================
+async function procesarInventario() {
+    if (productos.length === 0) {
+        mostrarNotificacion('No hay productos para procesar', 'error');
+        return;
+    }
+
+    const totalUnidades = productos.reduce((sum, p) => sum + p.cantidad, 0);
+    const totalProductos = productos.length;
+
+    if (!confirm(`¿Procesar entrada de inventario?\n\n📦 Productos: ${totalProductos}\n🏷️ Códigos a generar: ${totalUnidades}\n\nSe crearán los productos y sus códigos de barras automáticamente.`)) {
+        return;
+    }
+
+    // Mostrar indicador de carga
+    const btnProcesar = event.target;
+    const textoOriginal = btnProcesar.innerHTML;
+    btnProcesar.disabled = true;
+    btnProcesar.innerHTML = '<i class="bi bi-hourglass-split"></i> Procesando...';
+
+    const data = {
+        productos: productos
+    };
+
+    try {
+        const response = await fetch('/panel/api/inventario/procesar-entrada-unificada/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            mostrarModalCodigosGenerados(result.codigos_generados);
+            
+            // Limpiar después de procesar
+            productos = [];
+            contadorProductos = 0;
+            renderizarProductos();
+            actualizarEstadisticas();
+            
+            mostrarNotificacion(`✅ ${result.productos_creados} productos procesados y ${result.codigos_generados.length} códigos generados`, 'success');
+        } else {
+            mostrarNotificacion(result.error || 'Error al procesar inventario', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarNotificacion('Error de conexión al procesar inventario', 'error');
+    } finally {
+        btnProcesar.disabled = false;
+        btnProcesar.innerHTML = textoOriginal;
+    }
+}
+
+// ========================================
+// MODAL DE CÓDIGOS GENERADOS
+// ========================================
+function mostrarModalCodigosGenerados(codigos) {
+    const lista = document.getElementById('lista-codigos-generados');
+    lista.innerHTML = '';
+
+    codigos.forEach((codigo, index) => {
+        const item = document.createElement('div');
+        item.className = 'barcode-item';
+        item.innerHTML = `
+            <div class="barcode-info">
+                <h5>${index + 1}. ${codigo.producto_nombre}</h5>
+                <p>
+                    <strong>Unidad de Medida:</strong> ${codigo.unidad_medida || 'UNIDAD'} | 
+                    <strong>Cantidad de Etiquetas:</strong> ${codigo.cantidad_codigos}
+                </p>
+                <div class="barcode-highlight">
+                    🏷️ Código Base: ${codigo.codigo_base}
+                </div>
+            </div>
+            <div>
+                <a href="${codigo.pdf_url}" target="_blank" class="btn-custom btn-primary-custom" style="margin: 0;">
+                    <i class="bi bi-download"></i> Descargar PDF (${codigo.cantidad_codigos} etiquetas)
+                </a>
+            </div>
+        `;
+        lista.appendChild(item);
+    });
+
+    document.getElementById('modal-codigos').classList.add('show');
+}
+
+function cerrarModalCodigos() {
+    document.getElementById('modal-codigos').classList.remove('show');
+}
+
+function descargarTodosPDFs() {
+    const links = document.querySelectorAll('#lista-codigos-generados a');
+    if (links.length === 0) {
+        mostrarNotificacion('No hay PDFs para descargar', 'error');
+        return;
+    }
+
+    mostrarNotificacion(`Descargando ${links.length} archivos PDF...`, 'success');
+    
+    links.forEach((link, index) => {
+        setTimeout(() => {
+            link.click();
+        }, index * 500);
+    });
+}
+
+// ========================================
+// NOTIFICACIONES
+// ========================================
+function mostrarNotificacion(mensaje, tipo = 'success') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${tipo}`;
+    notification.innerHTML = `
+        <div class="notification-icon">
+            ${tipo === 'success' ? '✅' : '⚠️'}
+        </div>
+        <div class="notification-content">
+            <strong>${tipo === 'success' ? 'Éxito' : 'Error'}</strong>
+            <p style="margin: 0; color: #64748b;">${mensaje}</p>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 4000);
+}
+
+// ========================================
+// UTILIDADES
+// ========================================
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// ========================================
+// INICIALIZACIÓN
+// ========================================
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('input_nombre').focus();
+    
+    // Actualizar preview cuando se cambia la cantidad
+    document.getElementById('input_cantidad').addEventListener('input', actualizarPreviewCodigos);
+});
+</script>
+
+<style>
+@keyframes fadeOut {
+    to {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+}
+</style>
+{% endblock %}

@@ -2,6 +2,7 @@
 
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
+from django.db.models import Sum  # ✅ Agregar esta importación
 from decimal import Decimal
 
 from .models import Venta, DetalleVenta, Pago
@@ -36,7 +37,7 @@ def pago_post_save(sender, instance, created, **kwargs):
     
     # Calcular total pagado
     venta.monto_pagado = venta.pagos.aggregate(
-        total=sum('monto')
+        total=Sum('monto')  # ✅ Cambiar sum() por Sum()
     )['total'] or Decimal('0')
     
     # Calcular cambio si aplica

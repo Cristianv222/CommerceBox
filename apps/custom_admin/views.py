@@ -57,6 +57,7 @@ def roles_view(request):
     """Lista de roles disponibles"""
     return render(request, 'custom_admin/roles/list.html')
 
+
 # ========================================
 # INVENTARIO
 # ========================================
@@ -66,6 +67,7 @@ def roles_view(request):
 def inventario_dashboard_view(request):
     """Dashboard de inventario"""
     return render(request, 'custom_admin/inventario/dashboard.html')
+
 
 @ensure_csrf_cookie
 @auth_required
@@ -114,11 +116,13 @@ def productos_view(request):
     
     return render(request, 'custom_admin/inventario/productos_list.html', context)
 
+
 @ensure_csrf_cookie
 @auth_required
 def producto_detail_view(request, pk):
     """Detalle de producto"""
     return render(request, 'custom_admin/inventario/producto_detail.html', {'producto_id': pk})
+
 
 @ensure_csrf_cookie
 @auth_required
@@ -130,51 +134,43 @@ def producto_crear(request):
     
     if request.method == 'POST':
         try:
-            # ✅ OBTENER EL PRIMER USUARIO ADMIN DISPONIBLE
             usuario = Usuario.objects.filter(rol='ADMIN').first()
             
             if not usuario:
-                # Si no hay admin, usa cualquier usuario
                 usuario = Usuario.objects.first()
             
             if not usuario:
                 messages.error(request, 'No hay usuarios en el sistema.')
                 return redirect('custom_admin:productos')
             
-            # Obtener datos del formulario
             nombre = request.POST.get('nombre', '').strip()
             descripcion = request.POST.get('descripcion', '').strip()
             categoria_id = request.POST.get('categoria', '').strip()
             tipo_inventario = request.POST.get('tipo_inventario', 'NORMAL')
             activo = request.POST.get('activo') == 'on'
             
-            # Validar nombre
             if not nombre:
                 messages.error(request, 'El nombre del producto es obligatorio')
                 return redirect('custom_admin:productos')
             
-            # ✅ CREAR PRODUCTO CON TODOS LOS CAMPOS OBLIGATORIOS
             producto_data = {
                 'nombre': nombre,
                 'descripcion': descripcion,
                 'tipo_inventario': tipo_inventario,
                 'activo': activo,
-                'usuario_registro': usuario,  # ✅ CAMPO OBLIGATORIO
+                'usuario_registro': usuario,
             }
             
-            # Agregar categoría si existe
             if categoria_id:
                 producto_data['categoria_id'] = categoria_id
             
-            # Agregar precios según el tipo
             if tipo_inventario == 'QUINTAL':
                 precio_peso = request.POST.get('precio_por_unidad_peso', '0').strip()
                 producto_data['precio_por_unidad_peso'] = float(precio_peso) if precio_peso else 0.0
-            else:  # NORMAL
+            else:
                 precio_unit = request.POST.get('precio_unitario', '0').strip()
                 producto_data['precio_unitario'] = float(precio_unit) if precio_unit else 0.0
             
-            # Crear el producto
             producto = Producto.objects.create(**producto_data)
             
             messages.success(request, f'✅ Producto "{producto.nombre}" creado exitosamente')
@@ -185,6 +181,7 @@ def producto_crear(request):
             messages.error(request, f'Error al crear producto: {str(e)}')
     
     return redirect('custom_admin:productos')
+
 
 @ensure_csrf_cookie
 @auth_required
@@ -198,7 +195,6 @@ def producto_editar(request, producto_id):
         producto = Producto.objects.get(id=producto_id)
         
         if request.method == 'POST':
-            # ✅ OBTENER EL PRIMER USUARIO ADMIN DISPONIBLE
             usuario = Usuario.objects.filter(rol='ADMIN').first()
             
             if not usuario:
@@ -208,7 +204,6 @@ def producto_editar(request, producto_id):
                 messages.error(request, 'No hay usuarios en el sistema.')
                 return redirect('custom_admin:productos')
             
-            # Actualizar campos
             nombre = request.POST.get('nombre', '').strip()
             if not nombre:
                 messages.error(request, 'El nombre del producto es obligatorio')
@@ -223,20 +218,19 @@ def producto_editar(request, producto_id):
             tipo_inventario = request.POST.get('tipo_inventario', 'NORMAL')
             producto.tipo_inventario = tipo_inventario
             
-            # Actualizar precios según el tipo
             if tipo_inventario == 'QUINTAL':
                 precio_peso = request.POST.get('precio_por_unidad_peso', '0').strip()
                 producto.precio_por_unidad_peso = float(precio_peso) if precio_peso else 0.0
                 producto.precio_unitario = None
-            else:  # NORMAL
+            else:
                 precio_unit = request.POST.get('precio_unitario', '0').strip()
                 producto.precio_unitario = float(precio_unit) if precio_unit else 0.0
                 producto.precio_por_unidad_peso = None
             
             producto.activo = request.POST.get('activo') == 'on'
             
-            # ✅ ESTABLECER USUARIO DE MODIFICACIÓN
-            producto.usuario_modificacion = usuario
+            if hasattr(producto, 'usuario_modificacion'):
+                producto.usuario_modificacion = usuario
             
             producto.save()
             
@@ -253,6 +247,7 @@ def producto_editar(request, producto_id):
         messages.error(request, f'Error al editar producto: {str(e)}')
     
     return redirect('custom_admin:productos')
+
 
 @ensure_csrf_cookie
 @auth_required
@@ -274,17 +269,20 @@ def producto_eliminar(request, producto_id):
     
     return redirect('custom_admin:productos')
 
+
 @ensure_csrf_cookie
 @auth_required
 def quintales_view(request):
     """Lista de quintales"""
     return render(request, 'custom_admin/inventario/quintales_list.html')
 
+
 @ensure_csrf_cookie
 @auth_required
 def quintal_detail_view(request, pk):
     """Detalle de quintal"""
     return render(request, 'custom_admin/inventario/quintal_detail.html', {'quintal_id': pk})
+
 
 @ensure_csrf_cookie
 @auth_required
@@ -296,7 +294,6 @@ def categorias_view(request):
     
     categorias = Categoria.objects.all().order_by('orden', 'nombre')
     
-    # Filtros
     search = request.GET.get('search', '')
     if search:
         categorias = categorias.filter(
@@ -304,7 +301,6 @@ def categorias_view(request):
             Q(descripcion__icontains=search)
         )
     
-    # Paginación
     paginator = Paginator(categorias, 20)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
@@ -316,6 +312,7 @@ def categorias_view(request):
     }
     
     return render(request, 'custom_admin/inventario/categorias_list.html', context)
+
 
 @ensure_csrf_cookie
 @auth_required
@@ -339,6 +336,7 @@ def categoria_crear_view(request):
             messages.error(request, f'Error al crear la categoría: {str(e)}')
     
     return redirect('custom_admin:categorias')
+
 
 @ensure_csrf_cookie
 @auth_required
@@ -365,6 +363,7 @@ def categoria_editar_view(request, pk):
     
     return redirect('custom_admin:categorias')
 
+
 @ensure_csrf_cookie
 @auth_required
 def categoria_eliminar_view(request, pk):
@@ -378,7 +377,6 @@ def categoria_eliminar_view(request, pk):
     if request.method == 'POST':
         nombre = categoria.nombre
         try:
-            # Verificar si tiene productos asociados
             if categoria.productos.exists():
                 messages.error(request, f'No se puede eliminar la categoría "{nombre}" porque tiene productos asociados.')
             else:
@@ -389,11 +387,13 @@ def categoria_eliminar_view(request, pk):
     
     return redirect('custom_admin:categorias')
 
+
 @ensure_csrf_cookie
 @auth_required
 def proveedores_view(request):
     """Lista de proveedores"""
     return render(request, 'custom_admin/inventario/proveedores_list.html')
+
 
 # ========================================
 # VENTAS
@@ -405,23 +405,624 @@ def ventas_dashboard_view(request):
     """Dashboard de ventas"""
     return render(request, 'custom_admin/ventas/dashboard.html')
 
+
 @ensure_csrf_cookie
 @auth_required
 def ventas_view(request):
-    """Historial de ventas"""
-    return render(request, 'custom_admin/ventas/list.html')
+    """Historial de ventas con datos reales"""
+    from apps.sales_management.models import Venta, Cliente
+    from apps.authentication.models import Usuario
+    from django.db.models import Q, Sum, Count
+    from django.core.paginator import Paginator
+    from decimal import Decimal
+    
+    ventas = Venta.objects.select_related('cliente', 'vendedor').all().order_by('-fecha_venta')
+    
+    # Filtros
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
+    estado = request.GET.get('estado', '')
+    tipo_venta = request.GET.get('tipo_venta', '')
+    vendedor_id = request.GET.get('vendedor', '')
+    cliente_id = request.GET.get('cliente', '')
+    
+    if fecha_inicio:
+        ventas = ventas.filter(fecha_venta__date__gte=fecha_inicio)
+    
+    if fecha_fin:
+        ventas = ventas.filter(fecha_venta__date__lte=fecha_fin)
+    
+    if estado:
+        ventas = ventas.filter(estado=estado)
+    
+    if tipo_venta:
+        ventas = ventas.filter(tipo_venta=tipo_venta)
+    
+    if vendedor_id:
+        ventas = ventas.filter(vendedor_id=vendedor_id)
+    
+    if cliente_id:
+        ventas = ventas.filter(cliente_id=cliente_id)
+    
+    # Estadísticas
+    stats = ventas.filter(estado='COMPLETADA').aggregate(
+        total=Sum('total'),
+        cantidad=Count('id')
+    )
+    
+    total_ventas = stats['total'] or Decimal('0')
+    count_ventas = stats['cantidad'] or 0
+    
+    # Ventas de HOY
+    hoy = timezone.now().date()
+    ventas_hoy = Venta.objects.filter(
+        fecha_venta__date=hoy,
+        estado='COMPLETADA'
+    ).count()
+    
+    # Ventas del MES actual
+    inicio_mes = timezone.now().replace(day=1).date()
+    ventas_mes = Venta.objects.filter(
+        fecha_venta__date__gte=inicio_mes,
+        estado='COMPLETADA'
+    ).count()
+    
+    # Paginación
+    paginator = Paginator(ventas, 20)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    # Datos para formulario
+    vendedores = Usuario.objects.filter(
+        rol__in=['VENDEDOR', 'ADMIN', 'SUPERVISOR']
+    ).order_by('nombres')
+    
+    clientes = Cliente.objects.filter(activo=True).order_by('apellidos', 'nombres')[:100]
+    
+    context = {
+        'ventas': page_obj,
+        'page_obj': page_obj,
+        'total_ventas': total_ventas,
+        'count_ventas': count_ventas,
+        'ventas_hoy': ventas_hoy,
+        'ventas_mes': ventas_mes,
+        'vendedores': vendedores,
+        'clientes': clientes,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'estado_selected': estado,
+        'tipo_venta_selected': tipo_venta,
+        'vendedor_selected': vendedor_id,
+        'cliente_selected': cliente_id,
+        'estados': [
+            ('', 'Todos'),
+            ('PENDIENTE', 'Pendiente'),
+            ('COMPLETADA', 'Completada'),
+            ('ANULADA', 'Anulada'),
+        ],
+        'tipos_venta': [
+            ('', 'Todos'),
+            ('CONTADO', 'Contado'),
+            ('CREDITO', 'Crédito'),
+        ],
+    }
+    
+    return render(request, 'custom_admin/ventas/list.html', context)
+
 
 @ensure_csrf_cookie
 @auth_required
 def venta_detail_view(request, pk):
-    """Detalle de venta"""
-    return render(request, 'custom_admin/ventas/detail.html', {'venta_id': pk})
+    """Detalle de venta con datos reales"""
+    from apps.sales_management.models import Venta
+    from django.shortcuts import get_object_or_404
+    
+    venta = get_object_or_404(Venta.objects.select_related('cliente', 'vendedor', 'caja'), pk=pk)
+    detalles = venta.detalles.select_related('producto', 'quintal', 'unidad_medida').all()
+    pagos = venta.pagos.select_related('usuario').all()
+    devoluciones = venta.devoluciones.select_related('usuario_solicita', 'usuario_aprueba').all()
+    
+    context = {
+        'venta': venta,
+        'detalles': detalles,
+        'pagos': pagos,
+        'devoluciones': devoluciones,
+    }
+    
+    return render(request, 'custom_admin/ventas/detail.html', context)
+
+
+@ensure_csrf_cookie
+@auth_required
+def venta_anular_view(request, pk):
+    """Anular una venta"""
+    from apps.sales_management.models import Venta
+    from django.shortcuts import get_object_or_404
+    from django.contrib import messages
+    from apps.authentication.models import Usuario
+    
+    if request.method == 'POST':
+        try:
+            venta = get_object_or_404(Venta, pk=pk)
+            
+            if venta.estado == 'ANULADA':
+                messages.error(request, '❌ La venta ya está anulada.')
+                return redirect('custom_admin:venta_detail', pk=pk)
+            
+            if venta.monto_pagado > 0:
+                messages.error(request, '❌ No se puede anular una venta con pagos registrados.')
+                return redirect('custom_admin:venta_detail', pk=pk)
+            
+            from apps.sales_management.services.pos_service import POSService
+            usuario = Usuario.objects.filter(rol='ADMIN').first()
+            
+            if not usuario:
+                usuario = Usuario.objects.first()
+            
+            POSService.anular_venta(venta, usuario)
+            
+            messages.success(request, f'✅ Venta {venta.numero_venta} anulada exitosamente.')
+            
+        except Exception as e:
+            messages.error(request, f'❌ Error al anular venta: {str(e)}')
+    
+    return redirect('custom_admin:ventas_list')
+
+
+@ensure_csrf_cookie
+@auth_required
+def venta_ticket_view(request, pk):
+    """Imprimir ticket de venta"""
+    from apps.sales_management.models import Venta
+    from django.shortcuts import get_object_or_404
+    from django.http import HttpResponse
+    
+    venta = get_object_or_404(Venta.objects.select_related('cliente', 'vendedor'), pk=pk)
+    detalles = venta.detalles.select_related('producto', 'unidad_medida').all()
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Ticket - {venta.numero_venta}</title>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{
+                font-family: 'Courier New', monospace;
+                width: 80mm;
+                margin: 0 auto;
+                padding: 10px;
+                font-size: 12px;
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 15px;
+                border-bottom: 2px dashed #000;
+                padding-bottom: 10px;
+            }}
+            .header h1 {{ font-size: 18px; margin-bottom: 5px; }}
+            .header p {{ font-size: 10px; margin: 2px 0; }}
+            .info {{
+                margin-bottom: 15px;
+                border-bottom: 1px dashed #000;
+                padding-bottom: 10px;
+            }}
+            .info-row {{
+                display: flex;
+                justify-content: space-between;
+                margin: 3px 0;
+            }}
+            .items {{ margin-bottom: 15px; }}
+            .item {{
+                margin: 5px 0;
+                padding: 5px 0;
+                border-bottom: 1px dotted #ccc;
+            }}
+            .item-name {{
+                font-weight: bold;
+                margin-bottom: 3px;
+            }}
+            .item-details {{
+                display: flex;
+                justify-content: space-between;
+                font-size: 11px;
+            }}
+            .totals {{
+                border-top: 2px solid #000;
+                padding-top: 10px;
+                margin-top: 10px;
+            }}
+            .total-row {{
+                display: flex;
+                justify-content: space-between;
+                margin: 3px 0;
+            }}
+            .total-row.final {{
+                font-size: 16px;
+                font-weight: bold;
+                margin-top: 10px;
+                padding-top: 10px;
+                border-top: 2px dashed #000;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 20px;
+                padding-top: 10px;
+                border-top: 2px dashed #000;
+                font-size: 10px;
+            }}
+            @media print {{ body {{ width: 80mm; }} }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🛒 CommerceBox</h1>
+            <p>Sistema de Gestión</p>
+            <p>──────────────────</p>
+        </div>
+        
+        <div class="info">
+            <div class="info-row">
+                <span><strong>N° Venta:</strong></span>
+                <span>{venta.numero_venta}</span>
+            </div>
+            <div class="info-row">
+                <span><strong>Fecha:</strong></span>
+                <span>{venta.fecha_venta.strftime('%d/%m/%Y %H:%M')}</span>
+            </div>
+            <div class="info-row">
+                <span><strong>Vendedor:</strong></span>
+                <span>{venta.vendedor.get_full_name()}</span>
+            </div>
+            {"" if not venta.cliente else f'''
+            <div class="info-row">
+                <span><strong>Cliente:</strong></span>
+                <span>{venta.cliente.nombres} {venta.cliente.apellidos}</span>
+            </div>
+            <div class="info-row">
+                <span><strong>Documento:</strong></span>
+                <span>{venta.cliente.numero_documento}</span>
+            </div>
+            '''}
+            <div class="info-row">
+                <span><strong>Tipo:</strong></span>
+                <span>{venta.get_tipo_venta_display()}</span>
+            </div>
+        </div>
+        
+        <div class="items">
+            <h3 style="margin-bottom: 10px;">PRODUCTOS</h3>
+    """
+    
+    for detalle in detalles:
+        if detalle.cantidad_unidades:
+            cantidad = f"{detalle.cantidad_unidades} und"
+            precio = f"${float(detalle.precio_unitario):,.2f}"
+        else:
+            cantidad = f"{float(detalle.peso_vendido):,.3f} {detalle.unidad_medida.abreviatura}"
+            precio = f"${float(detalle.precio_por_unidad_peso):,.2f}/{detalle.unidad_medida.abreviatura}"
+        
+        html += f"""
+            <div class="item">
+                <div class="item-name">{detalle.producto.nombre}</div>
+                <div class="item-details">
+                    <span>{cantidad} × {precio}</span>
+                    <span>${float(detalle.total):,.2f}</span>
+                </div>
+            </div>
+        """
+    
+    html += f"""
+        </div>
+        
+        <div class="totals">
+            <div class="total-row">
+                <span>Subtotal:</span>
+                <span>${float(venta.subtotal):,.2f}</span>
+            </div>
+            {"" if venta.descuento == 0 else f'''
+            <div class="total-row">
+                <span>Descuento:</span>
+                <span>-${float(venta.descuento):,.2f}</span>
+            </div>
+            '''}
+            {"" if venta.impuestos == 0 else f'''
+            <div class="total-row">
+                <span>Impuestos:</span>
+                <span>${float(venta.impuestos):,.2f}</span>
+            </div>
+            '''}
+            <div class="total-row final">
+                <span>TOTAL:</span>
+                <span>${float(venta.total):,.2f}</span>
+            </div>
+            {"" if venta.tipo_venta != 'CONTADO' else f'''
+            <div class="total-row">
+                <span>Pagado:</span>
+                <span>${float(venta.monto_pagado):,.2f}</span>
+            </div>
+            <div class="total-row">
+                <span>Cambio:</span>
+                <span>${float(venta.cambio):,.2f}</span>
+            </div>
+            '''}
+        </div>
+        
+        <div class="footer">
+            <p>¡Gracias por su compra!</p>
+            <p>──────────────────</p>
+            <p>Este documento no tiene validez fiscal</p>
+        </div>
+        
+        <script>
+            window.onload = function() {{
+                window.print();
+            }};
+        </script>
+    </body>
+    </html>
+    """
+    
+    return HttpResponse(html, content_type='text/html')
+
+
+@ensure_csrf_cookie
+@auth_required
+def venta_factura_view(request, pk):
+    """Generar factura de venta"""
+    from apps.sales_management.models import Venta
+    from django.shortcuts import get_object_or_404
+    from django.http import HttpResponse
+    
+    venta = get_object_or_404(Venta.objects.select_related('cliente', 'vendedor'), pk=pk)
+    
+    if not venta.cliente:
+        from django.contrib import messages
+        messages.error(request, 'No se puede generar factura para ventas sin cliente.')
+        return redirect('custom_admin:venta_detail', pk=pk)
+    
+    detalles = venta.detalles.select_related('producto', 'unidad_medida').all()
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Factura - {venta.numero_factura or venta.numero_venta}</title>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{
+                font-family: 'Arial', sans-serif;
+                padding: 40px;
+                color: #333;
+            }}
+            .factura {{
+                max-width: 800px;
+                margin: 0 auto;
+                border: 2px solid #3b82f6;
+                padding: 30px;
+            }}
+            .header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: start;
+                border-bottom: 3px solid #3b82f6;
+                padding-bottom: 20px;
+                margin-bottom: 30px;
+            }}
+            .logo {{
+                font-size: 32px;
+                font-weight: bold;
+                color: #3b82f6;
+            }}
+            .factura-info {{
+                text-align: right;
+            }}
+            .factura-numero {{
+                font-size: 24px;
+                font-weight: bold;
+                color: #3b82f6;
+                margin-bottom: 5px;
+            }}
+            .info-grid {{
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 30px;
+                margin-bottom: 30px;
+            }}
+            .info-section {{
+                background: #f8fafc;
+                padding: 15px;
+                border-radius: 8px;
+            }}
+            .info-section h3 {{
+                color: #3b82f6;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+            }}
+            .info-section p {{
+                margin: 5px 0;
+                font-size: 13px;
+            }}
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+            }}
+            thead {{
+                background: #3b82f6;
+                color: white;
+            }}
+            th {{
+                padding: 12px;
+                text-align: left;
+                font-size: 13px;
+                text-transform: uppercase;
+            }}
+            td {{
+                padding: 10px 12px;
+                border-bottom: 1px solid #e2e8f0;
+                font-size: 13px;
+            }}
+            tbody tr:hover {{
+                background: #f8fafc;
+            }}
+            .text-right {{
+                text-align: right;
+            }}
+            .totals {{
+                margin-top: 20px;
+                display: flex;
+                justify-content: flex-end;
+            }}
+            .totals-table {{
+                width: 300px;
+            }}
+            .totals-table tr td {{
+                padding: 8px 12px;
+                border: none;
+            }}
+            .totals-table tr.total {{
+                background: #3b82f6;
+                color: white;
+                font-size: 18px;
+                font-weight: bold;
+            }}
+            .footer {{
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 2px solid #e2e8f0;
+                text-align: center;
+                color: #64748b;
+                font-size: 12px;
+            }}
+            @media print {{
+                body {{ padding: 0; }}
+                .factura {{ border: none; }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="factura">
+            <div class="header">
+                <div>
+                    <div class="logo">🛒 CommerceBox</div>
+                    <p style="color: #64748b; margin-top: 5px;">Sistema de Gestión Comercial</p>
+                </div>
+                <div class="factura-info">
+                    <div class="factura-numero">FACTURA</div>
+                    <p><strong>N°:</strong> {venta.numero_factura or venta.numero_venta}</p>
+                    <p><strong>Fecha:</strong> {venta.fecha_venta.strftime('%d/%m/%Y')}</p>
+                </div>
+            </div>
+            
+            <div class="info-grid">
+                <div class="info-section">
+                    <h3>📦 Información del Cliente</h3>
+                    <p><strong>Cliente:</strong> {venta.cliente.nombres} {venta.cliente.apellidos}</p>
+                    <p><strong>Documento:</strong> {venta.cliente.get_tipo_documento_display()} - {venta.cliente.numero_documento}</p>
+                    {"" if not venta.cliente.telefono else f"<p><strong>Teléfono:</strong> {venta.cliente.telefono}</p>"}
+                    {"" if not venta.cliente.email else f"<p><strong>Email:</strong> {venta.cliente.email}</p>"}
+                    {"" if not venta.cliente.direccion else f"<p><strong>Dirección:</strong> {venta.cliente.direccion}</p>"}
+                </div>
+                
+                <div class="info-section">
+                    <h3>💼 Información de la Venta</h3>
+                    <p><strong>Vendedor:</strong> {venta.vendedor.get_full_name()}</p>
+                    <p><strong>Tipo de Venta:</strong> {venta.get_tipo_venta_display()}</p>
+                    <p><strong>Estado:</strong> {venta.get_estado_display()}</p>
+                    {"" if venta.tipo_venta != 'CREDITO' else f'''
+                    <p><strong>Fecha Vencimiento:</strong> {venta.fecha_vencimiento.strftime('%d/%m/%Y') if venta.fecha_vencimiento else 'N/A'}</p>
+                    '''}
+                </div>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 50%;">Producto</th>
+                        <th class="text-right">Cantidad</th>
+                        <th class="text-right">Precio Unit.</th>
+                        <th class="text-right">Descuento</th>
+                        <th class="text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+    """
+    
+    for detalle in detalles:
+        if detalle.cantidad_unidades:
+            cantidad = f"{detalle.cantidad_unidades} und"
+            precio = f"${float(detalle.precio_unitario):,.2f}"
+        else:
+            cantidad = f"{float(detalle.peso_vendido):,.3f} {detalle.unidad_medida.abreviatura}"
+            precio = f"${float(detalle.precio_por_unidad_peso):,.2f}"
+        
+        html += f"""
+                    <tr>
+                        <td><strong>{detalle.producto.nombre}</strong></td>
+                        <td class="text-right">{cantidad}</td>
+                        <td class="text-right">{precio}</td>
+                        <td class="text-right">${float(detalle.descuento_monto):,.2f}</td>
+                        <td class="text-right"><strong>${float(detalle.total):,.2f}</strong></td>
+                    </tr>
+        """
+    
+    html += f"""
+                </tbody>
+            </table>
+            
+            <div class="totals">
+                <table class="totals-table">
+                    <tr>
+                        <td>Subtotal:</td>
+                        <td class="text-right"><strong>${float(venta.subtotal):,.2f}</strong></td>
+                    </tr>
+                    {"" if venta.descuento == 0 else f'''
+                    <tr>
+                        <td>Descuento:</td>
+                        <td class="text-right" style="color: #dc2626;"><strong>-${float(venta.descuento):,.2f}</strong></td>
+                    </tr>
+                    '''}
+                    {"" if venta.impuestos == 0 else f'''
+                    <tr>
+                        <td>Impuestos:</td>
+                        <td class="text-right"><strong>${float(venta.impuestos):,.2f}</strong></td>
+                    </tr>
+                    '''}
+                    <tr class="total">
+                        <td>TOTAL:</td>
+                        <td class="text-right">${float(venta.total):,.2f}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="footer">
+                <p>Gracias por su preferencia</p>
+                <p style="margin-top: 10px;">Este documento es una representación impresa de una factura electrónica</p>
+            </div>
+        </div>
+        
+        <script>
+            window.onload = function() {{
+                window.print();
+            }};
+        </script>
+    </body>
+    </html>
+    """
+    
+    return HttpResponse(html, content_type='text/html')
+
 
 @ensure_csrf_cookie
 @auth_required
 def clientes_view(request):
     """Lista de clientes"""
     return render(request, 'custom_admin/ventas/clientes_list.html')
+
 
 @ensure_csrf_cookie
 @auth_required
@@ -430,6 +1031,1130 @@ def devoluciones_view(request):
     return render(request, 'custom_admin/ventas/devoluciones_list.html')
 
 
+@ensure_csrf_cookie
+@auth_required
+def ventas_export_excel(request):
+    """Exportar ventas a Excel"""
+    from apps.sales_management.models import Venta
+    from django.http import HttpResponse
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill
+    from datetime import datetime
+    
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
+    estado = request.GET.get('estado', '')
+    tipo_venta = request.GET.get('tipo_venta', '')
+    
+    ventas = Venta.objects.select_related('cliente', 'vendedor').all().order_by('-fecha_venta')
+    
+    if fecha_inicio:
+        ventas = ventas.filter(fecha_venta__date__gte=fecha_inicio)
+    if fecha_fin:
+        ventas = ventas.filter(fecha_venta__date__lte=fecha_fin)
+    if estado:
+        ventas = ventas.filter(estado=estado)
+    if tipo_venta:
+        ventas = ventas.filter(tipo_venta=tipo_venta)
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Ventas"
+    
+    header_fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=12)
+    header_alignment = Alignment(horizontal="center", vertical="center")
+    
+    headers = [
+        'N° Venta', 'Fecha', 'Cliente', 'Vendedor', 
+        'Tipo', 'Subtotal', 'Descuento', 'Impuestos', 
+        'Total', 'Monto Pagado', 'Estado'
+    ]
+    
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_alignment
+    
+    for row_idx, venta in enumerate(ventas, start=2):
+        ws.cell(row=row_idx, column=1, value=venta.numero_venta)
+        ws.cell(row=row_idx, column=2, value=venta.fecha_venta.strftime('%d/%m/%Y %H:%M'))
+        ws.cell(row=row_idx, column=3, value=f"{venta.cliente.nombres} {venta.cliente.apellidos}" if venta.cliente else "Público General")
+        ws.cell(row=row_idx, column=4, value=venta.vendedor.get_full_name())
+        ws.cell(row=row_idx, column=5, value=venta.get_tipo_venta_display())
+        ws.cell(row=row_idx, column=6, value=float(venta.subtotal))
+        ws.cell(row=row_idx, column=7, value=float(venta.descuento))
+        ws.cell(row=row_idx, column=8, value=float(venta.impuestos))
+        ws.cell(row=row_idx, column=9, value=float(venta.total))
+        ws.cell(row=row_idx, column=10, value=float(venta.monto_pagado))
+        ws.cell(row=row_idx, column=11, value=venta.get_estado_display())
+    
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        ws.column_dimensions[column].width = adjusted_width
+    
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f'ventas_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    wb.save(response)
+    return response
+
+
+@ensure_csrf_cookie
+@auth_required
+def ventas_export_pdf(request):
+    """Exportar ventas a PDF"""
+    from apps.sales_management.models import Venta
+    from django.http import HttpResponse
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+    from io import BytesIO
+    from datetime import datetime
+    
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
+    estado = request.GET.get('estado', '')
+    tipo_venta = request.GET.get('tipo_venta', '')
+    
+    ventas = Venta.objects.select_related('cliente', 'vendedor').all().order_by('-fecha_venta')
+    
+    if fecha_inicio:
+        ventas = ventas.filter(fecha_venta__date__gte=fecha_inicio)
+    if fecha_fin:
+        ventas = ventas.filter(fecha_venta__date__lte=fecha_fin)
+    if estado:
+        ventas = ventas.filter(estado=estado)
+    if tipo_venta:
+        ventas = ventas.filter(tipo_venta=tipo_venta)
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), topMargin=0.5*inch)
+    elements = []
+    
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#1e293b'),
+        spaceAfter=30,
+        alignment=TA_CENTER
+    )
+    
+    title = Paragraph("📊 Reporte de Ventas", title_style)
+    elements.append(title)
+    elements.append(Spacer(1, 0.3*inch))
+    
+    subtitle_style = ParagraphStyle(
+        'Subtitle',
+        parent=styles['Normal'],
+        fontSize=12,
+        textColor=colors.HexColor('#64748b'),
+        alignment=TA_CENTER
+    )
+    subtitle = Paragraph(f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}", subtitle_style)
+    elements.append(subtitle)
+    elements.append(Spacer(1, 0.3*inch))
+    
+    data = [['N° Venta', 'Fecha', 'Cliente', 'Vendedor', 'Tipo', 'Total', 'Estado']]
+    
+    for venta in ventas:
+        cliente_nombre = f"{venta.cliente.nombres} {venta.cliente.apellidos}" if venta.cliente else "Público General"
+        data.append([
+            venta.numero_venta,
+            venta.fecha_venta.strftime('%d/%m/%Y'),
+            cliente_nombre[:30],
+            venta.vendedor.get_full_name()[:25],
+            venta.get_tipo_venta_display(),
+            f"${float(venta.total):,.2f}",
+            venta.get_estado_display()
+        ])
+    
+    table = Table(data, colWidths=[1.2*inch, 1*inch, 1.8*inch, 1.5*inch, 0.8*inch, 1*inch, 1*inch])
+    
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3b82f6')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#1e293b')),
+        ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e2e8f0')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
+    ]))
+    
+    elements.append(table)
+    doc.build(elements)
+    
+    pdf = buffer.getvalue()
+    buffer.close()
+    
+    response = HttpResponse(content_type='application/pdf')
+    filename = f'ventas_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response.write(pdf)
+    
+    return response
+
+
+# ========================================
+# PUNTO DE VENTA (POS)
+# ========================================
+
+@ensure_csrf_cookie
+@auth_required
+def pos_view(request):
+    """Punto de Venta principal"""
+    from apps.sales_management.models import Cliente
+    from apps.inventory_management.models import Categoria
+    
+    clientes = Cliente.objects.filter(activo=True).order_by('apellidos', 'nombres')
+    categorias = Categoria.objects.filter(activa=True).order_by('nombre')
+    
+    context = {
+        'clientes': clientes,
+        'categorias': categorias,
+    }
+    
+    return render(request, 'custom_admin/pos/punto_venta.html', context)
+
+
+@ensure_csrf_cookie
+def api_buscar_productos(request):
+    """API para buscar productos"""
+    from apps.inventory_management.models import Producto
+    from django.db.models import Q
+    from django.http import JsonResponse
+    
+    query = request.GET.get('q', '').strip()
+    categoria_id = request.GET.get('categoria', '')
+    cargar_todos = request.GET.get('all', '') == 'true'
+    
+    if not query and not categoria_id and not cargar_todos:
+        return JsonResponse({'productos': []})
+    
+    productos = Producto.objects.select_related('categoria', 'unidad_medida_base').filter(activo=True)
+    
+    if query:
+        productos = productos.filter(
+            Q(nombre__icontains=query) | 
+            Q(codigo_barras__icontains=query) |
+            Q(descripcion__icontains=query)
+        )
+    
+    if categoria_id:
+        productos = productos.filter(categoria_id=categoria_id)
+    
+    if not cargar_todos:
+        productos = productos[:20]
+    else:
+        productos = productos[:100]
+    
+    data = []
+    for p in productos:
+        data.append({
+            'id': str(p.id),
+            'nombre': p.nombre,
+            'codigo_barras': p.codigo_barras or '',
+            'categoria': p.categoria.nombre if p.categoria else '',
+            'tipo_inventario': p.tipo_inventario,
+            'precio_unitario': float(p.precio_unitario) if p.precio_unitario else 0,
+            'precio_por_unidad_peso': float(p.precio_por_unidad_peso) if p.precio_por_unidad_peso else 0,
+            'stock_actual': float(p.stock_actual) if hasattr(p, 'stock_actual') else 0,
+            'unidad_medida': p.unidad_medida_base.abreviatura if p.unidad_medida_base else 'und',
+        })
+    
+    return JsonResponse({'productos': data})
+
+
+@ensure_csrf_cookie
+def api_obtener_producto(request, producto_id):
+    """API para obtener info completa de un producto"""
+    from apps.inventory_management.models import Producto
+    from django.shortcuts import get_object_or_404
+    from django.http import JsonResponse
+    
+    producto = get_object_or_404(Producto.objects.select_related('categoria', 'unidad_medida_base'), pk=producto_id)
+    
+    data = {
+        'id': str(producto.id),
+        'nombre': producto.nombre,
+        'descripcion': producto.descripcion or '',
+        'codigo_barras': producto.codigo_barras or '',
+        'categoria': producto.categoria.nombre if producto.categoria else '',
+        'tipo_inventario': producto.tipo_inventario,
+        'precio_unitario': float(producto.precio_unitario) if producto.precio_unitario else 0,
+        'precio_por_unidad_peso': float(producto.precio_por_unidad_peso) if producto.precio_por_unidad_peso else 0,
+        'stock_actual': float(producto.stock_actual) if hasattr(producto, 'stock_actual') else 0,
+        'unidad_medida': producto.unidad_medida_base.abreviatura if producto.unidad_medida_base else 'und',
+        'permite_descuento': True,
+        'descuento_maximo': float(producto.categoria.descuento_maximo_permitido) if producto.categoria else 10.0,
+    }
+    
+    return JsonResponse(data)
+
+
+@ensure_csrf_cookie
+def api_procesar_venta(request):
+    """API para procesar y guardar la venta"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
+    
+    import json
+    from django.http import JsonResponse
+    from apps.sales_management.models import Venta, DetalleVenta, Cliente, Pago
+    from apps.inventory_management.models import Producto
+    from apps.authentication.models import Usuario
+    from decimal import Decimal
+    from django.utils import timezone
+    from django.db import transaction
+    
+    try:
+        data = json.loads(request.body)
+        
+        items = data.get('items', [])
+        if not items:
+            return JsonResponse({'success': False, 'error': 'No hay productos en el carrito'})
+        
+        cliente_id = data.get('cliente_id')
+        tipo_venta = data.get('tipo_venta', 'CONTADO')
+        metodo_pago = data.get('metodo_pago', 'EFECTIVO')
+        
+        try:
+            monto_recibido = Decimal(str(data.get('monto_recibido', '0')))
+        except:
+            monto_recibido = Decimal('0')
+        
+        usuario = Usuario.objects.filter(rol__in=['VENDEDOR', 'ADMIN', 'CAJERO']).first()
+        if not usuario:
+            usuario = Usuario.objects.first()
+        
+        if not usuario:
+            return JsonResponse({'success': False, 'error': 'No hay usuarios en el sistema'})
+        
+        cliente = None
+        if cliente_id:
+            try:
+                cliente = Cliente.objects.get(id=cliente_id)
+            except Cliente.DoesNotExist:
+                pass
+        
+        subtotal = Decimal('0')
+        descuento_total = Decimal('0')
+        
+        for item in items:
+            try:
+                item_subtotal = Decimal(str(item.get('subtotal', '0')))
+                item_descuento = Decimal(str(item.get('descuento', '0')))
+                subtotal += item_subtotal
+                descuento_total += item_descuento
+            except:
+                continue
+        
+        total = subtotal - descuento_total
+        
+        with transaction.atomic():
+            # ✅ GENERAR NÚMERO DE VENTA AQUÍ - MÉTODO ULTRA ROBUSTO
+            año = timezone.now().year
+            
+            # Método 1: Contar ventas del año
+            ventas_año = Venta.objects.filter(
+                numero_venta__startswith=f'VNT-{año}-'
+            ).count()
+            
+            # Siguiente número
+            siguiente = ventas_año + 1
+            
+            # Generar con formato
+            numero_venta_generado = 'VNT-{}-{:05d}'.format(año, siguiente)
+            
+            # ✅ CREAR VENTA CON NÚMERO EXPLÍCITO
+            venta = Venta.objects.create(
+                numero_venta=numero_venta_generado,  # ✅ Pasamos el número YA generado
+                cliente=cliente,
+                vendedor=usuario,
+                tipo_venta=tipo_venta,
+                subtotal=subtotal,
+                descuento=descuento_total,
+                impuestos=Decimal('0'),
+                total=total,
+                estado='PENDIENTE',
+                monto_pagado=Decimal('0'),
+                cambio=Decimal('0'),
+            )
+            
+            # Crear detalles
+            orden = 1
+            for item in items:
+                try:
+                    producto = Producto.objects.get(id=item['producto_id'])
+                    
+                    cantidad = Decimal(str(item.get('cantidad', '0')))
+                    precio = Decimal(str(item.get('precio', '0')))
+                    descuento = Decimal(str(item.get('descuento', '0')))
+                    descuento_porcentaje = Decimal(str(item.get('descuento_porcentaje', '0')))
+                    
+                    costo_unitario = precio * Decimal('0.7')
+                    costo_total = costo_unitario * cantidad
+                    
+                    item_subtotal = cantidad * precio
+                    item_total = item_subtotal - descuento
+                    
+                    detalle_data = {
+                        'venta': venta,
+                        'producto': producto,
+                        'orden': orden,
+                        'costo_unitario': costo_unitario,
+                        'costo_total': costo_total,
+                        'descuento_porcentaje': descuento_porcentaje,
+                        'descuento_monto': descuento,
+                        'subtotal': item_subtotal,
+                        'total': item_total,
+                    }
+                    
+                    if producto.tipo_inventario == 'QUINTAL':
+                        detalle_data['peso_vendido'] = cantidad
+                        detalle_data['precio_por_unidad_peso'] = precio
+                        if producto.unidad_medida_base:
+                            detalle_data['unidad_medida'] = producto.unidad_medida_base
+                    else:
+                        detalle_data['cantidad_unidades'] = int(cantidad)
+                        detalle_data['precio_unitario'] = precio
+                    
+                    DetalleVenta.objects.create(**detalle_data)
+                    
+                    orden += 1
+                    
+                except Producto.DoesNotExist:
+                    continue
+                except Exception as e:
+                    print(f"Error en detalle: {e}")
+                    continue
+            
+            # Crear pago si es contado
+            if tipo_venta == 'CONTADO':
+                Pago.objects.create(
+                    venta=venta,
+                    monto=total,
+                    forma_pago=metodo_pago,
+                    usuario=usuario,
+                )
+                
+                venta.monto_pagado = total
+                venta.cambio = monto_recibido - total if monto_recibido > total else Decimal('0')
+                venta.estado = 'COMPLETADA'
+                venta.save()
+        
+        return JsonResponse({
+            'success': True,
+            'venta_id': str(venta.id),
+            'numero_venta': venta.numero_venta,
+            'total': float(total),
+            'cambio': float(venta.cambio),
+        })
+        
+    except Exception as e:
+        import traceback
+        error_completo = traceback.format_exc()
+        print("=" * 80)
+        print("ERROR COMPLETO:")
+        print(error_completo)
+        print("=" * 80)
+        return JsonResponse({
+            'success': False,
+            'error': f'Error: {str(e)}'
+        }, status=500)
+
+
+@ensure_csrf_cookie
+def api_venta_detalle(request, venta_id):
+    """API para obtener detalle de una venta"""
+    from apps.sales_management.models import Venta
+    from django.shortcuts import get_object_or_404
+    from django.http import JsonResponse
+    
+    venta = get_object_or_404(
+        Venta.objects.select_related('cliente', 'vendedor'), 
+        pk=venta_id
+    )
+    
+    detalles = venta.detalles.select_related('producto', 'unidad_medida').all()
+    pagos = venta.pagos.select_related('usuario').all()
+    
+    venta_data = {
+        'numero_venta': venta.numero_venta,
+        'fecha_venta': venta.fecha_venta.strftime('%d/%m/%Y %H:%M'),
+        'estado': venta.estado,
+        'tipo_venta': venta.get_tipo_venta_display(),
+        'subtotal': float(venta.subtotal),
+        'descuento': float(venta.descuento),
+        'impuestos': float(venta.impuestos),
+        'total': float(venta.total),
+        'monto_pagado': float(venta.monto_pagado),
+        'cliente_nombre': f"{venta.cliente.nombres} {venta.cliente.apellidos}" if venta.cliente else None,
+        'cliente_documento': venta.cliente.numero_documento if venta.cliente else None,
+        'cliente_telefono': venta.cliente.telefono if venta.cliente else None,
+        'vendedor_nombre': venta.vendedor.get_full_name(),
+    }
+    
+    detalles_data = []
+    for detalle in detalles:
+        detalles_data.append({
+            'producto_nombre': detalle.producto.nombre,
+            'cantidad_unidades': detalle.cantidad_unidades,
+            'peso_vendido': float(detalle.peso_vendido) if detalle.peso_vendido else None,
+            'unidad_medida': detalle.unidad_medida.abreviatura if detalle.unidad_medida else 'und',
+            'precio_unitario': float(detalle.precio_unitario) if detalle.precio_unitario else None,
+            'precio_por_unidad_peso': float(detalle.precio_por_unidad_peso) if detalle.precio_por_unidad_peso else None,
+            'descuento_monto': float(detalle.descuento_monto),
+            'total': float(detalle.total),
+        })
+    
+    pagos_data = []
+    for pago in pagos:
+        pagos_data.append({
+            'forma_pago': pago.get_forma_pago_display(),
+            'monto': float(pago.monto),
+            'fecha_pago': pago.fecha_pago.strftime('%d/%m/%Y %H:%M'),
+            'usuario': pago.usuario.get_full_name(),
+        })
+    
+    return JsonResponse({
+        'venta': venta_data,
+        'detalles': detalles_data,
+        'pagos': pagos_data,
+    })
+
+# ========================================
+# ENTRADA DE INVENTARIO UNIFICADA
+# ========================================
+
+@ensure_csrf_cookie
+@auth_required
+def entrada_inventario_view(request):
+    """Pantalla unificada de entrada de inventario"""
+    from apps.inventory_management.models import Proveedor, UnidadMedida, Categoria
+    
+    # ✅ CARGAR TODOS LOS DATOS NECESARIOS
+    categorias = Categoria.objects.filter(activa=True).order_by('orden', 'nombre')
+    proveedores = Proveedor.objects.filter(activo=True).order_by('nombre_comercial')
+    unidades_medida = UnidadMedida.objects.filter(activa=True).order_by('orden_display')
+    
+    context = {
+        'categorias': categorias,      # ✅ AGREGADO
+        'proveedores': proveedores,
+        'unidades_medida': unidades_medida,
+    }
+    
+    return render(request, 'custom_admin/inventario/entrada_inventario.html', context)
+
+@ensure_csrf_cookie
+def api_buscar_producto_codigo(request):
+    """API para buscar producto por código de barras"""
+    from apps.inventory_management.models import Producto
+    from django.http import JsonResponse
+    
+    codigo = request.GET.get('codigo', '').strip()
+    
+    if not codigo:
+        return JsonResponse({
+            'success': False,
+            'mensaje': 'Código vacío'
+        })
+    
+    try:
+        producto = Producto.objects.get(codigo_barras=codigo, activo=True)
+        
+        data = {
+            'success': True,
+            'producto': {
+                'id': str(producto.id),
+                'nombre': producto.nombre,
+                'codigo_barras': producto.codigo_barras,
+                'tipo_inventario': producto.tipo_inventario,
+                'unidad_medida_id': str(producto.unidad_medida_base.id) if producto.unidad_medida_base else None,
+            }
+        }
+        
+        return JsonResponse(data)
+        
+    except Producto.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'mensaje': f'Producto no encontrado: {codigo}'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'mensaje': f'Error: {str(e)}'
+        }, status=500)
+
+
+@ensure_csrf_cookie
+def api_procesar_entrada_masiva(request):
+    """API para procesar entrada masiva de productos"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
+    
+    import json
+    from django.http import JsonResponse
+    from django.db import transaction
+    from apps.inventory_management.models import (
+        Producto, Quintal, ProductoNormal, MovimientoInventario,
+        Proveedor, UnidadMedida
+    )
+    from apps.authentication.models import Usuario
+    from decimal import Decimal
+    from django.utils import timezone
+    
+    try:
+        data = json.loads(request.body)
+        entradas = data.get('entradas', [])
+        numero_factura = data.get('numero_factura', '')
+        observaciones = data.get('observaciones', '')
+        
+        if not entradas:
+            return JsonResponse({'success': False, 'error': 'No hay productos para procesar'})
+        
+        usuario = Usuario.objects.filter(rol__in=['ADMIN', 'SUPERVISOR']).first()
+        if not usuario:
+            usuario = Usuario.objects.first()
+        
+        codigos_generados = []
+        quintales_creados = 0
+        productos_actualizados = 0
+        
+        with transaction.atomic():
+            for entrada in entradas:
+                try:
+                    producto = Producto.objects.get(id=entrada['producto_id'])
+                    proveedor = Proveedor.objects.get(id=entrada['proveedor_id'])
+                    
+                    if producto.tipo_inventario == 'QUINTAL':
+                        # Crear Quintal
+                        from apps.inventory_management.utils.barcode_generator import BarcodeGenerator
+                        
+                        unidad_medida = UnidadMedida.objects.get(id=entrada['unidad_medida_id'])
+                        peso_inicial = Decimal(str(entrada['peso_inicial']))
+                        costo_total = Decimal(str(entrada['costo_total']))
+                        
+                        quintal = Quintal.objects.create(
+                            codigo_unico=BarcodeGenerator.generar_codigo_quintal(producto),
+                            producto=producto,
+                            proveedor=proveedor,
+                            peso_inicial=peso_inicial,
+                            peso_actual=peso_inicial,
+                            unidad_medida=unidad_medida,
+                            costo_total=costo_total,
+                            costo_por_unidad=costo_total / peso_inicial,
+                            fecha_recepcion=timezone.now(),
+                            fecha_vencimiento=entrada.get('fecha_vencimiento') or None,
+                            lote_proveedor=entrada.get('lote_proveedor', ''),
+                            numero_factura_compra=numero_factura,
+                            usuario_registro=usuario,
+                            estado='DISPONIBLE'
+                        )
+                        
+                        quintales_creados += 1
+                        
+                        # Generar códigos de barras
+                        cantidad_etiquetas = int(peso_inicial)  # 1 etiqueta por unidad de peso
+                        
+                        codigos_generados.append({
+                            'tipo': 'QUINTAL',
+                            'codigo': quintal.codigo_unico,
+                            'producto_nombre': producto.nombre,
+                            'cantidad_etiquetas': cantidad_etiquetas,
+                            'peso_unitario': 1,  # 1 lb/kg por etiqueta
+                            'unidad': unidad_medida.abreviatura,
+                            'pdf_url': f'/panel/api/inventario/generar-pdf-codigos/?quintal_id={quintal.id}'
+                        })
+                        
+                    else:
+                        # Producto Normal
+                        cantidad = int(entrada['cantidad_unidades'])
+                        costo_unitario = Decimal(str(entrada['costo_unitario']))
+                        
+                        producto_normal, created = ProductoNormal.objects.get_or_create(
+                            producto=producto,
+                            defaults={
+                                'stock_actual': 0,
+                                'stock_minimo': 10,
+                                'costo_unitario': costo_unitario
+                            }
+                        )
+                        
+                        stock_antes = producto_normal.stock_actual
+                        producto_normal.stock_actual += cantidad
+                        
+                        # Actualizar costo promedio ponderado
+                        if stock_antes > 0:
+                            costo_total_anterior = stock_antes * producto_normal.costo_unitario
+                            costo_total_nuevo = cantidad * costo_unitario
+                            stock_total = stock_antes + cantidad
+                            producto_normal.costo_unitario = (costo_total_anterior + costo_total_nuevo) / stock_total
+                        else:
+                            producto_normal.costo_unitario = costo_unitario
+                        
+                        producto_normal.fecha_ultima_entrada = timezone.now()
+                        producto_normal.lote = entrada.get('lote', '')
+                        producto_normal.fecha_vencimiento = entrada.get('fecha_vencimiento') or None
+                        producto_normal.save()
+                        
+                        # Registrar movimiento
+                        MovimientoInventario.objects.create(
+                            producto_normal=producto_normal,
+                            tipo_movimiento='ENTRADA_COMPRA',
+                            cantidad=cantidad,
+                            stock_antes=stock_antes,
+                            stock_despues=producto_normal.stock_actual,
+                            costo_unitario=costo_unitario,
+                            costo_total=cantidad * costo_unitario,
+                            usuario=usuario,
+                            observaciones=observaciones or f"Entrada masiva - Factura: {numero_factura}"
+                        )
+                        
+                        productos_actualizados += 1
+                        
+                        # Generar códigos de barras
+                        codigos_generados.append({
+                            'tipo': 'NORMAL',
+                            'codigo': producto.codigo_barras,
+                            'producto_nombre': producto.nombre,
+                            'cantidad_etiquetas': cantidad,
+                            'pdf_url': f'/panel/api/inventario/generar-pdf-codigos/?producto_id={producto.id}&cantidad={cantidad}'
+                        })
+                        
+                except Exception as e:
+                    print(f"Error procesando entrada: {e}")
+                    continue
+        
+        return JsonResponse({
+            'success': True,
+            'quintales_creados': quintales_creados,
+            'productos_actualizados': productos_actualizados,
+            'codigos_generados': codigos_generados,
+            'mensaje': f'Entrada procesada: {quintales_creados} quintales, {productos_actualizados} productos actualizados'
+        })
+        
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        return JsonResponse({
+            'success': False,
+            'error': f'Error: {str(e)}'
+        }, status=500)
+@ensure_csrf_cookie
+def api_generar_pdf_codigos(request):
+    """Genera y devuelve PDF con códigos de barras - VERSIÓN INTEGRADA"""
+    from django.http import HttpResponse, JsonResponse
+    from apps.inventory_management.models import Quintal, Producto
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
+    from reportlab.graphics.barcode import code128
+    from io import BytesIO
+    from datetime import datetime
+    
+    quintal_id = request.GET.get('quintal_id')
+    producto_id = request.GET.get('producto_id')
+    cantidad = int(request.GET.get('cantidad', 50))
+    
+    try:
+        # Configuración de etiquetas
+        ETIQUETAS_POR_FILA = 3
+        ETIQUETAS_POR_COLUMNA = 7
+        ANCHO_ETIQUETA = 70 * mm
+        ALTO_ETIQUETA = 37 * mm
+        MARGEN_IZQUIERDO = 10 * mm
+        MARGEN_SUPERIOR = 10 * mm
+        ESPACIO_HORIZONTAL = 5 * mm
+        ESPACIO_VERTICAL = 5 * mm
+        
+        # Crear PDF
+        buffer = BytesIO()
+        pdf = canvas.Canvas(buffer, pagesize=letter)
+        
+        if quintal_id:
+            # ========================================
+            # GENERAR ETIQUETAS PARA QUINTAL
+            # ========================================
+            quintal = Quintal.objects.get(id=quintal_id)
+            codigo = quintal.codigo_unico
+            nombre_producto = quintal.producto.nombre
+            peso_unitario = 1.0
+            unidad = quintal.unidad_medida.abreviatura
+            precio = float(quintal.producto.precio_por_unidad_peso or 0)
+            fecha = quintal.fecha_recepcion.strftime('%d/%m/%Y')
+            filename = f'etiquetas_{quintal.codigo_unico}.pdf'
+            
+            etiqueta_num = 0
+            
+            while etiqueta_num < cantidad:
+                for fila in range(ETIQUETAS_POR_COLUMNA):
+                    for columna in range(ETIQUETAS_POR_FILA):
+                        if etiqueta_num >= cantidad:
+                            break
+                        
+                        # Calcular posición
+                        x = MARGEN_IZQUIERDO + columna * (ANCHO_ETIQUETA + ESPACIO_HORIZONTAL)
+                        y = letter[1] - MARGEN_SUPERIOR - (fila + 1) * (ALTO_ETIQUETA + ESPACIO_VERTICAL)
+                        
+                        # Dibujar código de barras
+                        barcode_width = 50 * mm
+                        barcode_height = 12 * mm
+                        barcode_x = x + (ANCHO_ETIQUETA - barcode_width) / 2
+                        barcode_y = y + 20 * mm
+                        
+                        try:
+                            barcode_obj = code128.Code128(codigo, barWidth=0.8*mm, barHeight=barcode_height)
+                            barcode_obj.drawOn(pdf, barcode_x, barcode_y)
+                        except:
+                            pass
+                        
+                        # Texto: Código
+                        pdf.setFont("Helvetica-Bold", 8)
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, barcode_y - 3*mm, codigo)
+                        
+                        # Texto: Nombre
+                        pdf.setFont("Helvetica-Bold", 10)
+                        nombre_truncado = nombre_producto[:25] + '...' if len(nombre_producto) > 25 else nombre_producto
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 15*mm, nombre_truncado)
+                        
+                        # Texto: Peso
+                        pdf.setFont("Helvetica", 9)
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 11*mm, f"{peso_unitario} {unidad}")
+                        
+                        # Texto: Precio
+                        pdf.setFont("Helvetica-Bold", 11)
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 6*mm, f"${precio:.2f}")
+                        
+                        # Texto: Fecha
+                        pdf.setFont("Helvetica", 7)
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 2*mm, f"Fecha: {fecha}")
+                        
+                        etiqueta_num += 1
+                
+                if etiqueta_num < cantidad:
+                    pdf.showPage()
+            
+        elif producto_id:
+            # ========================================
+            # GENERAR ETIQUETAS PARA PRODUCTO NORMAL
+            # ========================================
+            producto = Producto.objects.get(id=producto_id)
+            codigo = producto.codigo_barras
+            nombre_producto = producto.nombre
+            precio = float(producto.precio_unitario or 0)
+            fecha = datetime.now().strftime('%d/%m/%Y')
+            filename = f'etiquetas_{producto.codigo_barras}.pdf'
+            
+            etiqueta_num = 0
+            
+            while etiqueta_num < cantidad:
+                for fila in range(ETIQUETAS_POR_COLUMNA):
+                    for columna in range(ETIQUETAS_POR_FILA):
+                        if etiqueta_num >= cantidad:
+                            break
+                        
+                        # Calcular posición
+                        x = MARGEN_IZQUIERDO + columna * (ANCHO_ETIQUETA + ESPACIO_HORIZONTAL)
+                        y = letter[1] - MARGEN_SUPERIOR - (fila + 1) * (ALTO_ETIQUETA + ESPACIO_VERTICAL)
+                        
+                        # Dibujar código de barras
+                        barcode_width = 50 * mm
+                        barcode_height = 12 * mm
+                        barcode_x = x + (ANCHO_ETIQUETA - barcode_width) / 2
+                        barcode_y = y + 20 * mm
+                        
+                        try:
+                            barcode_obj = code128.Code128(codigo, barWidth=0.8*mm, barHeight=barcode_height)
+                            barcode_obj.drawOn(pdf, barcode_x, barcode_y)
+                        except:
+                            pass
+                        
+                        # Texto: Código
+                        pdf.setFont("Helvetica-Bold", 8)
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, barcode_y - 3*mm, codigo)
+                        
+                        # Texto: Nombre
+                        pdf.setFont("Helvetica-Bold", 10)
+                        nombre_truncado = nombre_producto[:25] + '...' if len(nombre_producto) > 25 else nombre_producto
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 15*mm, nombre_truncado)
+                        
+                        # Texto: Precio
+                        pdf.setFont("Helvetica-Bold", 12)
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 8*mm, f"${precio:.2f}")
+                        
+                        # Texto: Fecha
+                        pdf.setFont("Helvetica", 7)
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 2*mm, f"Fecha: {fecha}")
+                        
+                        etiqueta_num += 1
+                
+                if etiqueta_num < cantidad:
+                    pdf.showPage()
+            
+        else:
+            return JsonResponse({'error': 'Parámetros inválidos'}, status=400)
+        
+        # Finalizar PDF
+        pdf.save()
+        buffer.seek(0)
+        
+        # Retornar PDF
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+        
+    except Quintal.DoesNotExist:
+        return JsonResponse({'error': 'Quintal no encontrado'}, status=404)
+    except Producto.DoesNotExist:
+        return JsonResponse({'error': 'Producto no encontrado'}, status=404)
+    except Exception as e:
+        import traceback
+        print("=" * 80)
+        print("ERROR GENERANDO PDF:")
+        print(traceback.format_exc())
+        print("=" * 80)
+        return JsonResponse({
+            'error': f'Error generando PDF: {str(e)}',
+            'detalle': traceback.format_exc()
+        }, status=500)
+@ensure_csrf_cookie
+def api_procesar_entrada_unificada(request):
+    """API para procesar entrada unificada de inventario - CON DEBUGGING"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
+    
+    import json
+    from django.db import transaction
+    from apps.inventory_management.models import (
+        Producto, Categoria, Proveedor, ProductoNormal, MovimientoInventario
+    )
+    from apps.authentication.models import Usuario
+    from decimal import Decimal
+    from django.utils import timezone
+    import random
+    import string
+    
+    try:
+        # Leer datos
+        raw_body = request.body.decode('utf-8')
+        print("=" * 80)
+        print("📥 RAW BODY RECIBIDO:")
+        print(raw_body)
+        print("=" * 80)
+        
+        data = json.loads(raw_body)
+        productos_data = data.get('productos', [])
+        
+        print(f"📦 PRODUCTOS RECIBIDOS: {len(productos_data)}")
+        print(f"📦 DATOS: {productos_data}")
+        
+        if not productos_data:
+            return JsonResponse({
+                'success': False,
+                'error': 'No hay productos para procesar'
+            })
+        
+        # Obtener usuario del sistema
+        usuario = Usuario.objects.filter(rol__in=['ADMIN', 'SUPERVISOR']).first()
+        if not usuario:
+            usuario = Usuario.objects.first()
+        
+        print(f"👤 Usuario encontrado: {usuario}")
+        
+        if not usuario:
+            return JsonResponse({
+                'success': False,
+                'error': 'No hay usuarios en el sistema'
+            })
+        
+        productos_creados = 0
+        codigos_generados = []
+        errores = []
+        
+        with transaction.atomic():
+            for idx, prod_data in enumerate(productos_data):
+                print(f"\n{'='*60}")
+                print(f"🔄 PROCESANDO PRODUCTO {idx + 1}/{len(productos_data)}")
+                print(f"📝 Datos: {prod_data}")
+                
+                try:
+                    # Validar datos requeridos
+                    if not prod_data.get('nombre'):
+                        error_msg = f"Producto {idx + 1}: Falta el nombre"
+                        print(f"❌ {error_msg}")
+                        errores.append(error_msg)
+                        continue
+                    
+                    if not prod_data.get('categoria_id'):
+                        error_msg = f"Producto {idx + 1}: Falta la categoría"
+                        print(f"❌ {error_msg}")
+                        errores.append(error_msg)
+                        continue
+                    
+                    if not prod_data.get('proveedor_id'):
+                        error_msg = f"Producto {idx + 1}: Falta el proveedor"
+                        print(f"❌ {error_msg}")
+                        errores.append(error_msg)
+                        continue
+                    
+                    # Obtener categoría y proveedor
+                    print(f"🔍 Buscando categoría: {prod_data['categoria_id']}")
+                    try:
+                        categoria = Categoria.objects.get(id=prod_data['categoria_id'])
+                        print(f"✅ Categoría encontrada: {categoria.nombre}")
+                    except Categoria.DoesNotExist:
+                        error_msg = f"Producto {idx + 1}: Categoría no encontrada ({prod_data['categoria_id']})"
+                        print(f"❌ {error_msg}")
+                        errores.append(error_msg)
+                        continue
+                    
+                    print(f"🔍 Buscando proveedor: {prod_data['proveedor_id']}")
+                    try:
+                        proveedor = Proveedor.objects.get(id=prod_data['proveedor_id'])
+                        print(f"✅ Proveedor encontrado: {proveedor.nombre_comercial}")
+                    except Proveedor.DoesNotExist:
+                        error_msg = f"Producto {idx + 1}: Proveedor no encontrado ({prod_data['proveedor_id']})"
+                        print(f"❌ {error_msg}")
+                        errores.append(error_msg)
+                        continue
+                    
+                    # Generar código de barras único
+                    timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
+                    random_str = ''.join(random.choices(string.digits, k=4))
+                    codigo_barras = f"CBX-PRD-{timestamp[-8:]}{random_str}"
+                    print(f"🏷️ Código generado: {codigo_barras}")
+                    
+                    # Crear el producto
+                    print(f"💾 Creando producto...")
+                    producto = Producto.objects.create(
+                        codigo_barras=codigo_barras,
+                        nombre=prod_data['nombre'],
+                        descripcion=prod_data.get('descripcion', ''),
+                        categoria=categoria,
+                        proveedor=proveedor,
+                        tipo_inventario='NORMAL',
+                        precio_unitario=Decimal(str(prod_data.get('precio_venta', '0'))),
+                        iva=Decimal(str(prod_data.get('iva', '0.00'))),  # ✅ AGREGADO
+                        activo=True,
+                        usuario_registro=usuario
+                    )
+                    print(f"✅ Producto creado: {producto.id}")
+                    
+                    # Crear inventario normal
+                    cantidad = int(prod_data.get('cantidad', 0))
+                    costo_unitario = Decimal(str(prod_data.get('costo_unitario', '0')))
+                    
+                    print(f"💾 Creando inventario normal (cantidad: {cantidad}, costo: {costo_unitario})...")
+                    producto_normal = ProductoNormal.objects.create(
+                        producto=producto,
+                        stock_actual=cantidad,
+                        stock_minimo=10,
+                        costo_unitario=costo_unitario,
+                        lote=prod_data.get('lote', ''),
+                        fecha_vencimiento=prod_data.get('fecha_vencimiento') or None,
+                        fecha_ultima_entrada=timezone.now()
+                    )
+                    print(f"✅ Inventario creado: {producto_normal.id}")
+                    
+                    # Registrar movimiento
+                    print(f"💾 Registrando movimiento...")
+                    MovimientoInventario.objects.create(
+                        producto_normal=producto_normal,
+                        tipo_movimiento='ENTRADA_COMPRA',
+                        cantidad=cantidad,
+                        stock_antes=0,
+                        stock_despues=cantidad,
+                        costo_unitario=costo_unitario,
+                        costo_total=cantidad * costo_unitario,
+                        usuario=usuario,
+                        observaciones=f"Entrada inicial - {prod_data.get('lote', 'Sin lote')}"
+                    )
+                    print(f"✅ Movimiento registrado")
+                    
+                    productos_creados += 1
+                    
+                    # Preparar datos para códigos de barras
+                    codigo_data = {
+                        'producto_nombre': producto.nombre,
+                        'codigo_base': codigo_barras,
+                        'cantidad_codigos': cantidad,
+                        'unidad_medida': prod_data.get('unidad_medida_texto', 'UNIDAD'),
+                        'pdf_url': f'/panel/api/inventario/generar-pdf-codigos/?producto_id={producto.id}&cantidad={cantidad}'
+                    }
+                    codigos_generados.append(codigo_data)
+                    print(f"✅ Código agregado a la lista: {codigo_data}")
+                    
+                except Exception as e:
+                    error_msg = f"Producto {idx + 1} ({prod_data.get('nombre', 'Sin nombre')}): {str(e)}"
+                    print(f"❌ ERROR: {error_msg}")
+                    import traceback
+                    traceback.print_exc()
+                    errores.append(error_msg)
+                    continue
+        
+        print("\n" + "=" * 80)
+        print(f"✅ RESUMEN FINAL:")
+        print(f"   - Productos creados: {productos_creados}")
+        print(f"   - Códigos generados: {len(codigos_generados)}")
+        print(f"   - Errores: {len(errores)}")
+        if errores:
+            print(f"   - Detalles de errores:")
+            for error in errores:
+                print(f"     • {error}")
+        print("=" * 80)
+        
+        return JsonResponse({
+            'success': True,
+            'productos_creados': productos_creados,
+            'codigos_generados': codigos_generados,
+            'errores': errores,
+            'mensaje': f'{productos_creados} productos procesados exitosamente'
+        })
+        
+    except json.JSONDecodeError as e:
+        print(f"❌ ERROR JSON: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al decodificar JSON: {str(e)}'
+        }, status=400)
+    except Exception as e:
+        import traceback
+        error_detalle = traceback.format_exc()
+        print("=" * 80)
+        print("❌ ERROR CRÍTICO:")
+        print(error_detalle)
+        print("=" * 80)
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al procesar inventario: {str(e)}'
+        }, status=500)
 # ========================================
 # FINANZAS
 # ========================================
@@ -440,11 +2165,13 @@ def finanzas_dashboard_view(request):
     """Dashboard financiero"""
     return render(request, 'custom_admin/finanzas/dashboard.html')
 
+
 @ensure_csrf_cookie
 @auth_required
 def cajas_view(request):
     """Lista de cajas"""
     return render(request, 'custom_admin/finanzas/cajas_list.html')
+
 
 @ensure_csrf_cookie
 @auth_required
@@ -452,11 +2179,13 @@ def caja_detail_view(request, pk):
     """Detalle de caja"""
     return render(request, 'custom_admin/finanzas/caja_detail.html', {'caja_id': pk})
 
+
 @ensure_csrf_cookie
 @auth_required
 def arqueos_view(request):
     """Lista de arqueos"""
     return render(request, 'custom_admin/finanzas/arqueos_list.html')
+
 
 @ensure_csrf_cookie
 @auth_required
@@ -475,17 +2204,20 @@ def reportes_dashboard_view(request):
     """Dashboard de reportes"""
     return render(request, 'custom_admin/reportes/dashboard.html')
 
+
 @ensure_csrf_cookie
 @auth_required
 def reporte_ventas_view(request):
     """Reporte de ventas"""
     return render(request, 'custom_admin/reportes/ventas.html')
 
+
 @ensure_csrf_cookie
 @auth_required
 def reporte_inventario_view(request):
     """Reporte de inventario"""
     return render(request, 'custom_admin/reportes/inventario.html')
+
 
 @ensure_csrf_cookie
 @auth_required
@@ -515,6 +2247,7 @@ def logs_view(request):
     """Lista de logs"""
     return render(request, 'custom_admin/logs/list.html')
 
+
 @ensure_csrf_cookie
 @auth_required
 def logs_accesos_view(request):
@@ -543,11 +2276,13 @@ def configuracion_view(request):
     """Configuración general del sistema"""
     return render(request, 'custom_admin/configuracion/general.html')
 
+
 @ensure_csrf_cookie
 @auth_required
 def config_empresa_view(request):
     """Configuración de empresa"""
     return render(request, 'custom_admin/configuracion/empresa.html')
+
 
 @ensure_csrf_cookie
 @auth_required
@@ -589,11 +2324,13 @@ def perfil_view(request):
     """Perfil del usuario actual"""
     return render(request, 'custom_admin/perfil/view.html')
 
+
 @ensure_csrf_cookie
 @auth_required
 def perfil_editar_view(request):
     """Editar perfil"""
     return render(request, 'custom_admin/perfil/edit.html')
+
 
 @ensure_csrf_cookie
 @auth_required
@@ -603,12 +2340,12 @@ def perfil_cambiar_password_view(request):
 
 
 # ========================================
-# APIs MOCK PARA DASHBOARD (TEMPORALES)
+# APIs MOCK PARA DASHBOARD
 # ========================================
 
 @ensure_csrf_cookie
 def api_dashboard_stats(request):
-    """Estadísticas del dashboard - MOCK temporal"""
+    """Estadísticas del dashboard"""
     return JsonResponse({
         'ventas_hoy': 1250.50,
         'num_ventas': 15,

@@ -185,7 +185,7 @@ class Producto(models.Model):
         related_name='productos'
     )
     
-    # ⚖️ TIPO DE INVENTARIO (Lo que diferencia el comportamiento)
+    # ⚖️ TIPO DE INVENTARIO
     tipo_inventario = models.CharField(
         max_length=20,
         choices=TIPO_INVENTARIO_CHOICES,
@@ -194,7 +194,7 @@ class Producto(models.Model):
     )
     
     # ==========================================
-    # CAMPOS PARA QUINTALES (tipo_inventario='QUINTAL')
+    # CAMPOS PARA QUINTALES
     # ==========================================
     unidad_medida_base = models.ForeignKey(
         'UnidadMedida',
@@ -219,7 +219,7 @@ class Producto(models.Model):
     )
     
     # ==========================================
-    # CAMPOS PARA PRODUCTOS NORMALES (tipo_inventario='NORMAL')
+    # CAMPOS PARA PRODUCTOS NORMALES
     # ==========================================
     precio_unitario = models.DecimalField(
         max_digits=10,
@@ -227,6 +227,14 @@ class Producto(models.Model):
         null=True,
         blank=True,
         help_text="Precio por unidad completa"
+    )
+    
+    # ✅ NUEVO CAMPO IVA
+    iva = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0.00,
+        help_text="Porcentaje de IVA aplicado (%)"
     )
     
     # Imagen
@@ -247,6 +255,8 @@ class Producto(models.Model):
     )
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
+    
+    # ... resto del modelo igual
     
     class Meta:
         verbose_name = 'Producto'

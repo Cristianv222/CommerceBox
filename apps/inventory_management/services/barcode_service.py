@@ -1,4 +1,7 @@
-from ..models import Producto, Quintal, ProductoNormal
+"""
+Servicio para búsqueda y validación de códigos de barras
+"""
+
 from django.db.models import Q
 
 
@@ -24,6 +27,9 @@ class BarcodeService:
                 'puede_vender': bool
             }
         """
+        # Importar aquí para evitar importación circular
+        from ..models import Producto, Quintal, ProductoNormal
+        
         codigo = codigo.strip().upper()
         
         # 1. Buscar si es código de quintal individual (CBX-QNT-...)
@@ -143,6 +149,8 @@ class BarcodeService:
         Returns:
             QuerySet de Productos
         """
+        from ..models import Producto
+        
         return Producto.objects.filter(
             Q(codigo_barras__icontains=codigo_parcial) |
             Q(nombre__icontains=codigo_parcial),

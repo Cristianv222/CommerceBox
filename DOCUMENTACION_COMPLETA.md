@@ -4,7 +4,7 @@
 
 INFORMACIÓN GENERAL
 -------------------
-Fecha de generación: 2025-10-08 18:55:17
+Fecha de generación: 2025-10-09 19:54:44
 Ubicación: C:\Users\godoy\Desktop\CommerceBox
 Python Version: Python 3.13.7
 Pip Version: pip no disponible
@@ -44,8 +44,8 @@ Usuario: Desconocido
 │   │   ├── apps.py (166.0B)
 │   │   ├── models.py (60.0B)
 │   │   ├── tests.py (63.0B)
-│   │   ├── urls.py (2.9KB)
-│   │   └── views.py (10.1KB)
+│   │   ├── urls.py (5.3KB)
+│   │   └── views.py (79.9KB)
 │   ├── financial_management/ (13 elementos)
 │   │   ├── accounting/ (4 elementos)
 │   │   │   ├── __init__.py (404.0B)
@@ -79,7 +79,8 @@ Usuario: Desconocido
 │   │   ├── models.py (60.0B)
 │   │   ├── tests.py (63.0B)
 │   │   └── views.py (66.0B)
-│   ├── inventory_management/ (15 elementos)
+│   ├── inventory_management/ (16 elementos)
+│   │   ├── __pycache__/ (excluido)
 │   │   ├── management/ (2 elementos)
 │   │   │   ├── commands/ (4 elementos)
 │   │   │   │   ├── __init__.py (0B)
@@ -91,8 +92,8 @@ Usuario: Desconocido
 │   │   │   ├── 0001_initial.py (40.1KB)
 │   │   │   └── __init__.py (0B)
 │   │   ├── services/ (5 elementos)
-│   │   │   ├── __init__.py (303.0B)
-│   │   │   ├── barcode_service.py (5.4KB)
+│   │   │   ├── __init__.py (329.0B)
+│   │   │   ├── barcode_service.py (5.6KB)
 │   │   │   ├── inventory_service.py (9.5KB)
 │   │   │   ├── stock_service.py (6.2KB)
 │   │   │   └── traceability_service.py (6.6KB)
@@ -107,7 +108,7 @@ Usuario: Desconocido
 │   │   ├── apps.py (182.0B)
 │   │   ├── decorators.py (2.3KB)
 │   │   ├── forms.py (20.0KB)
-│   │   ├── mixins.py (3.2KB)
+│   │   ├── mixins.py (3.9KB)
 │   │   ├── models.py (40.1KB)
 │   │   ├── signals.py (8.2KB)
 │   │   ├── tests.py (63.0B)
@@ -160,8 +161,8 @@ Usuario: Desconocido
 │   │   ├── admin.py (14.1KB)
 │   │   ├── apps.py (401.0B)
 │   │   ├── forms.py (15.7KB)
-│   │   ├── models.py (19.3KB)
-│   │   ├── signals.py (1.3KB)
+│   │   ├── models.py (18.4KB)
+│   │   ├── signals.py (1.4KB)
 │   │   ├── tasks.py (2.1KB)
 │   │   ├── tests.py (63.0B)
 │   │   ├── urls.py (2.6KB)
@@ -200,7 +201,7 @@ Usuario: Desconocido
 │   ├── urls.py (1.4KB)
 │   └── wsgi.py (415.0B)
 ├── logs/ (2 elementos)
-│   ├── commercebox.log (3.1MB)
+│   ├── commercebox.log (3.5MB)
 │   └── commercebox_audit.log (0B)
 ├── media/ (4 elementos)
 │   ├── barcodes/ (2 elementos)
@@ -217,11 +218,15 @@ Usuario: Desconocido
 ├── templates/ (4 elementos)
 │   ├── authentication/ (1 elementos)
 │   │   └── login.html (23.0KB)
-│   ├── custom_admin/ (8 elementos)
-│   │   ├── inventario/ (1 elementos)
-│   │   │   └── productos_list.html (50.1KB)
+│   ├── custom_admin/ (9 elementos)
+│   │   ├── inventario/ (3 elementos)
+│   │   │   ├── categorias_list.html (51.3KB)
+│   │   │   ├── entrada_inventario.html (31.6KB)
+│   │   │   └── productos_list.html (50.3KB)
 │   │   ├── logs/ (1 elementos)
 │   │   │   └── accesos.html (33.8KB)
+│   │   ├── pos/ (1 elementos)
+│   │   │   └── punto_venta.html (48.2KB)
 │   │   ├── roles/ (1 elementos)
 │   │   │   └── list.html (54.0KB)
 │   │   ├── sesiones/ (1 elementos)
@@ -229,8 +234,8 @@ Usuario: Desconocido
 │   │   ├── usuarios/ (1 elementos)
 │   │   │   └── usuarios.html (65.0KB)
 │   │   ├── ventas/ (1 elementos)
-│   │   │   └── list.html (18.6KB)
-│   │   ├── base_admin.html (36.7KB)
+│   │   │   └── list.html (33.9KB)
+│   │   ├── base_admin.html (37.1KB)
 │   │   └── dashboard.html (28.9KB)
 │   ├── errors/ (0 elementos)
 │   └── base.html (23.9KB)
@@ -266,8 +271,8 @@ setup.cfg                 ❌ Faltante
 
 ESTADÍSTICAS POR EXTENSIÓN
 --------------------------
-.py                   150 archivos ( 86.2%)
-.html                  10 archivos (  5.7%)
+.py                   150 archivos ( 84.7%)
+.html                  13 archivos (  7.3%)
 (sin extensión)         3 archivos (  1.7%)
 .log                    2 archivos (  1.1%)
 .md                     2 archivos (  1.1%)
@@ -279,8 +284,8 @@ ESTADÍSTICAS POR EXTENSIÓN
 
 TOTALES
 -------
-Total de archivos: 174
-Total de directorios: 55
+Total de archivos: 177
+Total de directorios: 56
 
 ================================================================================
                            APLICACIONES DJANGO
@@ -477,13 +482,13 @@ Documentación:           ⚠️  Iniciada (60%)
 
 ESTADÍSTICAS GENERALES
 ---------------------
-Total directorios:       55
-Total archivos:          174
+Total directorios:       56
+Total archivos:          177
 Apps Django:             10
 Archivos Python:         150
 Paquetes instalados:     0
 
 ================================================================================
-Reporte generado automáticamente el 2025-10-08 18:55:17
+Reporte generado automáticamente el 2025-10-09 19:54:44
 Para actualizar, ejecuta: python documenter.py
 ================================================================================

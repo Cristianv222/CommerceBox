@@ -822,26 +822,31 @@
             </div>
 
             <div class="menu-group" id="group-ventas">
-                <div class="menu-group-header" onclick="toggleMenuGroup('group-ventas')">
-                    <i class="bi bi-cart-check-fill menu-group-icon"></i>
-                    <span class="menu-group-title">Ventas</span>
-                    <i class="bi bi-chevron-right menu-group-arrow"></i>
-                </div>
-                <div class="menu-group-items">
-                    <a href="/panel/ventas/historial/" class="menu-item {% if '/ventas/historial/' in request.path %}active{% endif %}">
-                        <i class="bi bi-receipt menu-item-icon"></i>
-                        <span class="menu-item-text">Historial de Ventas</span>
-                    </a>
-                    <a href="/panel/ventas/clientes/" class="menu-item {% if '/ventas/clientes/' in request.path %}active{% endif %}">
-                        <i class="bi bi-person-badge menu-item-icon"></i>
-                        <span class="menu-item-text">Clientes</span>
-                    </a>
-                    <a href="/panel/ventas/devoluciones/" class="menu-item {% if '/ventas/devoluciones/' in request.path %}active{% endif %}">
-                        <i class="bi bi-arrow-return-left menu-item-icon"></i>
-                        <span class="menu-item-text">Devoluciones</span>
-                    </a>
-                </div>
-            </div>
+    <div class="menu-group-header" onclick="toggleMenuGroup('group-ventas')">
+        <i class="bi bi-cart-check-fill menu-group-icon"></i>
+        <span class="menu-group-title">Ventas</span>
+        <i class="bi bi-chevron-right menu-group-arrow"></i>
+    </div>
+    <div class="menu-group-items">
+        <!-- ✅ PUNTO DE VENTA - PRIMERO -->
+        <a href="/panel/pos/" class="menu-item {% if '/pos/' in request.path %}active{% endif %}">
+            <i class="bi bi-calculator menu-item-icon"></i>
+            <span class="menu-item-text">Punto de Venta (POS)</span>
+        </a>
+        <a href="/panel/ventas/historial/" class="menu-item {% if '/ventas/historial/' in request.path %}active{% endif %}">
+            <i class="bi bi-receipt menu-item-icon"></i>
+            <span class="menu-item-text">Historial de Ventas</span>
+        </a>
+        <a href="/panel/ventas/clientes/" class="menu-item {% if '/ventas/clientes/' in request.path %}active{% endif %}">
+            <i class="bi bi-person-badge menu-item-icon"></i>
+            <span class="menu-item-text">Clientes</span>
+        </a>
+        <a href="/panel/ventas/devoluciones/" class="menu-item {% if '/ventas/devoluciones/' in request.path %}active{% endif %}">
+            <i class="bi bi-arrow-return-left menu-item-icon"></i>
+            <span class="menu-item-text">Devoluciones</span>
+        </a>
+    </div>
+</div>
 
             <div class="menu-group" id="group-finanzas">
                 <div class="menu-group-header" onclick="toggleMenuGroup('group-finanzas')">
@@ -872,6 +877,10 @@
                     <i class="bi bi-chevron-right menu-group-arrow"></i>
                 </div>
                 <div class="menu-group-items">
+                    <a href="/panel/inventario/entrada/" class="menu-item {% if '/inventario/entrada/' in request.path %}active{% endif %}">
+                        <i class="bi bi-box-arrow-in-down menu-item-icon"></i>
+                        <span class="menu-item-text">Entrada de Inventario</span>
+                    </a>
                     <a href="/panel/inventario/productos/" class="menu-item {% if '/inventario/productos/' in request.path %}active{% endif %}">
                         <i class="bi bi-box menu-item-icon"></i>
                         <span class="menu-item-text">Productos</span>

@@ -1,0 +1,1516 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Punto de Venta - CommerceBox{% endblock %}
+
+{% block extra_css %}
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    /* ============================================
+       LAYOUT OPTIMIZADO PARA MÁXIMA VISIBILIDAD
+       ============================================ */
+    .pos-container {
+        display: grid;
+        grid-template-columns: 350px 1fr;
+        gap: 1rem;
+        height: calc(100vh - 120px);
+        margin: -1rem;
+    }
+    
+    .productos-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+        overflow: hidden;
+    }
+    
+    .carrito-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+        overflow: hidden;
+    }
+    
+    /* ============================================
+       CARDS OPTIMIZADOS
+       ============================================ */
+    .pos-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 14px;
+        padding: 1rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08);
+    }
+    
+    .pos-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(ellipse 400px 300px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    
+    .pos-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, rgba(59, 130, 246, 0.3) 0%, rgba(96, 165, 250, 0.5) 50%, rgba(59, 130, 246, 0.3) 100%);
+        border-radius: 14px 14px 0 0;
+    }
+    
+    .pos-card-content {
+        position: relative;
+        z-index: 2;
+    }
+    
+    .pos-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.8rem;
+        padding-bottom: 0.6rem;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+    }
+    
+    .pos-card-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    
+    /* ============================================
+       BÚSQUEDA
+       ============================================ */
+    .search-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 0.6rem;
+    }
+    
+    .search-input-wrapper {
+        position: relative;
+    }
+    
+    .search-input {
+        width: 100%;
+        padding: 8px 12px 8px 36px;
+        background: rgba(248, 250, 252, 0.6);
+        border: 1.5px solid rgba(203, 213, 225, 0.5);
+        border-radius: 8px;
+        color: #1e293b;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+    }
+    
+    .search-input:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(96, 165, 250, 0.6);
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.08);
+    }
+    
+    .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: 0.9rem;
+    }
+    
+    .categoria-select {
+        width: 100%;
+        padding: 8px 12px;
+        background: rgba(248, 250, 252, 0.6);
+        border: 1.5px solid rgba(203, 213, 225, 0.5);
+        border-radius: 8px;
+        color: #1e293b;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .categoria-select:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(96, 165, 250, 0.6);
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.08);
+    }
+    
+    .btn-mostrar-todos {
+        width: 100%;
+        padding: 8px;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: 700;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+    }
+    
+    .btn-mostrar-todos:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+    }
+    
+    /* ============================================
+       LISTA DE PRODUCTOS
+       ============================================ */
+    .productos-lista {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.2rem;
+        max-height: calc(100vh - 340px);
+    }
+    
+    .producto-item {
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 8px;
+        padding: 0.6rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .producto-item:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        border-color: rgba(96, 165, 250, 0.6);
+        background: rgba(255, 255, 255, 0.9);
+    }
+    
+    .producto-info {
+        flex: 1;
+    }
+    
+    .producto-nombre {
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 0.8rem;
+        margin-bottom: 0.15rem;
+    }
+    
+    .producto-codigo {
+        font-size: 0.65rem;
+        color: #64748b;
+        font-weight: 600;
+    }
+    
+    .producto-precio {
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: #10b981;
+        white-space: nowrap;
+    }
+    
+    .productos-empty {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #94a3b8;
+    }
+    
+    /* ============================================
+       CARRITO - CON SCROLL Y TOTAL FIJO
+       ============================================ */
+    .carrito-card-wrapper {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    .carrito-items {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 0.5rem;
+        min-height: 200px;
+        max-height: calc(100vh - 440px);
+    }
+    
+    .carrito-item {
+        background: rgba(248, 250, 252, 0.6);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 8px;
+        padding: 0.6rem;
+        margin-bottom: 0.5rem;
+        transition: all 0.2s;
+    }
+    
+    .carrito-item:hover {
+        background: rgba(255, 255, 255, 0.8);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+    }
+    
+    .carrito-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(219, 234, 254, 0.3);
+    }
+    
+    .carrito-item-info {
+        flex: 1;
+    }
+    
+    .carrito-item-nombre {
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 0.85rem;
+        margin-bottom: 0.15rem;
+    }
+    
+    .carrito-item-codigo {
+        font-size: 0.65rem;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+    
+    .carrito-item-unidad {
+        display: inline-block;
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+        padding: 0.1rem 0.3rem;
+        border-radius: 4px;
+        font-size: 0.6rem;
+        font-weight: 700;
+    }
+    
+    .carrito-item-eliminar {
+        background: rgba(239, 68, 68, 0.1);
+        border: none;
+        color: #dc2626;
+        width: 26px;
+        height: 26px;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.8rem;
+        flex-shrink: 0;
+    }
+    
+    .carrito-item-eliminar:hover {
+        background: rgba(239, 68, 68, 0.2);
+        transform: scale(1.05);
+    }
+    
+    /* GRID COMPACTO */
+    .carrito-item-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.4rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .carrito-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .carrito-field-label {
+        font-size: 0.6rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    
+    .carrito-field-input {
+        padding: 5px 6px;
+        background: rgba(255, 255, 255, 0.8);
+        border: 1.5px solid rgba(219, 234, 254, 0.5);
+        border-radius: 5px;
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 0.8rem;
+        transition: all 0.3s;
+    }
+    
+    .carrito-field-input:focus {
+        outline: none;
+        border-color: rgba(96, 165, 250, 0.6);
+        box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.08);
+    }
+    
+    .cantidad-control {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        background: rgba(255, 255, 255, 0.8);
+        border: 1.5px solid rgba(219, 234, 254, 0.5);
+        border-radius: 5px;
+        padding: 0.15rem;
+    }
+    
+    .cantidad-btn {
+        background: rgba(59, 130, 246, 0.1);
+        border: none;
+        color: #3b82f6;
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-weight: 700;
+        transition: all 0.2s;
+        font-size: 0.75rem;
+        flex-shrink: 0;
+    }
+    
+    .cantidad-btn:hover {
+        background: rgba(59, 130, 246, 0.2);
+        transform: scale(1.05);
+    }
+    
+    .cantidad-input {
+        flex: 1;
+        text-align: center;
+        border: none;
+        background: transparent;
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 0.85rem;
+        padding: 0;
+        min-width: 0;
+    }
+    
+    /* FOOTER DEL ITEM */
+    .carrito-item-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 0.5rem;
+        border-top: 1px solid rgba(219, 234, 254, 0.3);
+        gap: 0.4rem;
+    }
+    
+    .item-total-info {
+        display: flex;
+        gap: 0.8rem;
+        font-size: 0.7rem;
+    }
+    
+    .item-total-info span {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .item-total-info-label {
+        color: #64748b;
+        font-size: 0.55rem;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+    
+    .item-total-info-value {
+        color: #0f172a;
+        font-weight: 800;
+        font-size: 0.8rem;
+    }
+    
+    .item-total-info-value.descuento {
+        color: #dc2626;
+    }
+    
+    .item-total-final {
+        text-align: right;
+    }
+    
+    .item-total-final-label {
+        font-size: 0.6rem;
+        color: #64748b;
+        font-weight: 600;
+    }
+    
+    .item-total-final-value {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #10b981;
+    }
+    
+    .carrito-empty {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #94a3b8;
+    }
+    
+    .carrito-empty i {
+        font-size: 3rem;
+        margin-bottom: 0.8rem;
+        opacity: 0.3;
+    }
+    
+    /* ============================================
+       TOTALES GENERALES - FIJO EN LA PARTE INFERIOR
+       ============================================ */
+    .totales-container {
+        background: rgba(248, 250, 252, 0.6);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 8px;
+        padding: 0.6rem;
+        margin-top: 0.6rem;
+        flex-shrink: 0;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.3rem 0;
+        color: #1e293b;
+        font-size: 0.85rem;
+    }
+    
+    .total-row.total-final {
+        border-top: 2px solid rgba(59, 130, 246, 0.3);
+        margin-top: 0.3rem;
+        padding-top: 0.5rem;
+        font-size: 1.3rem;
+        font-weight: 800;
+        color: #0f172a;
+    }
+    
+    /* ============================================
+       OPCIONES - MUY COMPACTAS
+       ============================================ */
+    .opciones-venta-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+        margin-bottom: 0.6rem;
+    }
+    
+    .opcion-venta-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+    
+    .opcion-venta-label {
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .cliente-select {
+        width: 100%;
+        padding: 6px 8px;
+        background: rgba(248, 250, 252, 0.6);
+        border: 1.5px solid rgba(203, 213, 225, 0.5);
+        border-radius: 6px;
+        color: #1e293b;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .cliente-select:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(96, 165, 250, 0.6);
+        box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.08);
+    }
+    
+    .tipo-venta-selector {
+        display: flex;
+        gap: 0.3rem;
+    }
+    
+    .tipo-venta-btn {
+        flex: 1;
+        padding: 6px;
+        background: rgba(248, 250, 252, 0.6);
+        border: 1.5px solid rgba(203, 213, 225, 0.5);
+        border-radius: 6px;
+        color: #64748b;
+        font-weight: 700;
+        font-size: 0.65rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+    }
+    
+    .tipo-venta-btn.active {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        border-color: transparent;
+        color: white;
+        box-shadow: 0 3px 10px rgba(59, 130, 246, 0.3);
+    }
+    
+    .metodo-pago-selector {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.3rem;
+    }
+    
+    .metodo-pago-btn {
+        padding: 6px;
+        background: rgba(248, 250, 252, 0.6);
+        border: 1.5px solid rgba(203, 213, 225, 0.5);
+        border-radius: 6px;
+        color: #64748b;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        font-size: 0.65rem;
+    }
+    
+    .metodo-pago-btn.active {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.95) 0%, rgba(5, 150, 105, 0.95) 100%);
+        border-color: transparent;
+        color: white;
+        box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3);
+    }
+    
+    /* ============================================
+       BOTONES
+       ============================================ */
+    .btn-procesar {
+        width: 100%;
+        padding: 0.85rem;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-size: 0.95rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .btn-procesar:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+    }
+    
+    .btn-procesar:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .btn-limpiar {
+        width: 100%;
+        padding: 0.5rem;
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 6px;
+        color: #dc2626;
+        font-weight: 700;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-bottom: 0.5rem;
+    }
+    
+    .btn-limpiar:hover {
+        background: rgba(239, 68, 68, 0.2);
+        transform: translateY(-2px);
+    }
+    
+    /* ============================================
+       MODAL
+       ============================================ */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .modal.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-dialog {
+        width: 90%;
+        max-width: 500px;
+        animation: slideIn 0.3s ease;
+    }
+    
+    .modal-content {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+    }
+    
+    .modal-header {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.95) 0%, rgba(5, 150, 105, 0.95) 100%);
+        color: white;
+        padding: 1.5rem;
+        text-align: center;
+    }
+    
+    .modal-header i {
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 0;
+    }
+    
+    .modal-body {
+        padding: 2rem;
+    }
+    
+    .venta-info {
+        background: rgba(248, 250, 252, 0.6);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .venta-info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(219, 234, 254, 0.3);
+    }
+    
+    .venta-info-row:last-child {
+        border-bottom: none;
+    }
+    
+    .venta-info-label {
+        color: #64748b;
+        font-weight: 600;
+    }
+    
+    .venta-info-value {
+        color: #0f172a;
+        font-weight: 700;
+    }
+    
+    .venta-total {
+        font-size: 2rem;
+        color: #10b981;
+        font-weight: 800;
+    }
+    
+    .modal-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+    
+    .btn-modal {
+        flex: 1;
+        padding: 1rem;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    
+    .btn-modal-primary {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    
+    .btn-modal-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+    }
+    
+    .btn-modal-secondary {
+        background: rgba(148, 163, 184, 0.15);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        color: #475569;
+    }
+    
+    .btn-modal-secondary:hover {
+        background: rgba(148, 163, 184, 0.25);
+    }
+    
+    /* ============================================
+       SPINNER
+       ============================================ */
+    .spinner {
+        display: inline-block;
+        width: 28px;
+        height: 28px;
+        border: 3px solid rgba(59, 130, 246, 0.2);
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* ============================================
+       SCROLLBAR
+       ============================================ */
+    .carrito-items::-webkit-scrollbar,
+    .productos-lista::-webkit-scrollbar {
+        width: 5px;
+    }
+    
+    .carrito-items::-webkit-scrollbar-track,
+    .productos-lista::-webkit-scrollbar-track {
+        background: rgba(248, 250, 252, 0.5);
+    }
+    
+    .carrito-items::-webkit-scrollbar-thumb,
+    .productos-lista::-webkit-scrollbar-thumb {
+        background: rgba(147, 197, 253, 0.6);
+        border-radius: 3px;
+    }
+    
+    .carrito-items::-webkit-scrollbar-thumb:hover,
+    .productos-lista::-webkit-scrollbar-thumb:hover {
+        background: rgba(96, 165, 250, 0.8);
+    }
+    
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 1024px) {
+        .pos-container {
+            grid-template-columns: 1fr;
+            height: auto;
+        }
+        
+        .productos-lista {
+            max-height: 400px;
+        }
+        
+        .carrito-items {
+            max-height: 300px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-container">
+    <!-- ============================================
+         PANEL IZQUIERDO - BÚSQUEDA Y PRODUCTOS
+         ============================================ -->
+    <div class="productos-panel">
+        <div class="pos-card">
+            <div class="pos-card-content">
+                <div class="pos-card-header">
+                    <h2 class="pos-card-title">
+                        <i class="fas fa-search"></i> Buscar Productos
+                    </h2>
+                </div>
+                
+                <!-- Búsqueda -->
+                <div class="search-container">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" 
+                               id="searchInput" 
+                               class="search-input" 
+                               placeholder="Buscar por nombre, código..."
+                               autocomplete="off">
+                    </div>
+                    
+                    <select id="categoriaFilter" class="categoria-select">
+                        <option value="">Todas las categorías</option>
+                        {% for categoria in categorias %}
+                        <option value="{{ categoria.id }}">{{ categoria.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                    
+                    <button type="button" class="btn-mostrar-todos" onclick="cargarTodosLosProductos()">
+                        <i class="fas fa-boxes"></i> Mostrar Todos
+                    </button>
+                </div>
+                
+                <!-- Lista de productos -->
+                <div id="productosLista" class="productos-lista">
+                    <div class="productos-empty">
+                        <i class="fas fa-info-circle"></i>
+                        <p style="font-size: 0.8rem;">Usa el buscador o<br>"Mostrar Todos"</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ============================================
+         PANEL DERECHO - CARRITO PROTAGONISTA
+         ============================================ -->
+    <div class="carrito-panel">
+        <!-- Carrito -->
+        <div class="pos-card carrito-card-wrapper">
+            <div class="pos-card-content" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="pos-card-header">
+                    <h2 class="pos-card-title">
+                        <i class="fas fa-shopping-cart"></i> Carrito de Venta
+                        <span id="carritoCount" style="background: #3b82f6; color: white; padding: 0.15rem 0.4rem; border-radius: 5px; font-size: 0.8rem; margin-left: 0.4rem;">0</span>
+                    </h2>
+                </div>
+                
+                <!-- Items del carrito -->
+                <div id="carritoItems" class="carrito-items">
+                    <div class="carrito-empty">
+                        <i class="fas fa-shopping-cart"></i>
+                        <h3 style="font-size: 1rem;">Carrito vacío</h3>
+                        <p style="font-size: 0.8rem;">Agrega productos para iniciar la venta</p>
+                    </div>
+                </div>
+                
+                <!-- Totales -->
+                <div class="totales-container">
+                    <div class="total-row">
+                        <span>Subtotal:</span>
+                        <strong id="subtotalDisplay">$0.00</strong>
+                    </div>
+                    <div class="total-row">
+                        <span>Descuento:</span>
+                        <strong id="descuentoDisplay" style="color: #dc2626;">-$0.00</strong>
+                    </div>
+                    <div class="total-row total-final">
+                        <span>TOTAL:</span>
+                        <strong id="totalDisplay">$0.00</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Opciones de Venta - SUPER COMPACTAS -->
+        <div class="pos-card">
+            <div class="pos-card-content">
+                <div class="opciones-venta-container">
+                    <!-- Cliente -->
+                    <div class="opcion-venta-group" style="grid-column: 1 / -1;">
+                        <label class="opcion-venta-label">
+                            <i class="fas fa-user"></i> Cliente
+                        </label>
+                        <select id="clienteSelect" class="cliente-select">
+                            <option value="">Consumidor Final</option>
+                            {% for cliente in clientes %}
+                            <option value="{{ cliente.id }}">{{ cliente.nombres }} {{ cliente.apellidos }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Tipo de Venta -->
+                    <div class="opcion-venta-group">
+                        <label class="opcion-venta-label">
+                            <i class="fas fa-file-invoice"></i> Tipo
+                        </label>
+                        <div class="tipo-venta-selector">
+                            <button type="button" class="tipo-venta-btn active" data-tipo="CONTADO">
+                                <i class="fas fa-money-bill-wave"></i> Contado
+                            </button>
+                            <button type="button" class="tipo-venta-btn" data-tipo="CREDITO">
+                                <i class="fas fa-file-invoice-dollar"></i> Crédito
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Método de Pago -->
+                    <div class="opcion-venta-group">
+                        <label class="opcion-venta-label">
+                            <i class="fas fa-credit-card"></i> Pago
+                        </label>
+                        <div class="metodo-pago-selector">
+                            <button type="button" class="metodo-pago-btn active" data-metodo="EFECTIVO">
+                                <i class="fas fa-money-bill"></i> Efectivo
+                            </button>
+                            <button type="button" class="metodo-pago-btn" data-metodo="TARJETA">
+                                <i class="fas fa-credit-card"></i> Tarjeta
+                            </button>
+                            <button type="button" class="metodo-pago-btn" data-metodo="TRANSFERENCIA">
+                                <i class="fas fa-exchange-alt"></i> Transfer.
+                            </button>
+                            <button type="button" class="metodo-pago-btn" data-metodo="OTRO">
+                                <i class="fas fa-ellipsis-h"></i> Otro
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Botones -->
+                <button type="button" class="btn-limpiar" onclick="limpiarCarrito()">
+                    <i class="fas fa-trash"></i> Limpiar Carrito
+                </button>
+                
+                <button type="button" id="btnProcesar" class="btn-procesar" onclick="procesarVenta()" disabled>
+                    <i class="fas fa-check-circle"></i> Procesar Venta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================
+     MODAL: VENTA EXITOSA
+     ============================================ -->
+<div id="modalVentaExitosa" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-check-circle"></i>
+                <h3 class="modal-title">¡Venta Procesada!</h3>
+            </div>
+            <div class="modal-body">
+                <div class="venta-info">
+                    <div class="venta-info-row">
+                        <span class="venta-info-label">N° Venta:</span>
+                        <span class="venta-info-value" id="modalNumeroVenta"></span>
+                    </div>
+                    <div class="venta-info-row">
+                        <span class="venta-info-label">Total:</span>
+                        <span class="venta-total" id="modalTotal"></span>
+                    </div>
+                    <div class="venta-info-row" id="modalCambioRow" style="display: none;">
+                        <span class="venta-info-label">Cambio:</span>
+                        <span class="venta-info-value" id="modalCambio"></span>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal btn-modal-primary" onclick="imprimirTicket()">
+                        <i class="fas fa-print"></i> Imprimir Ticket
+                    </button>
+                    <button type="button" class="btn-modal btn-modal-secondary" onclick="cerrarModalVenta()">
+                        <i class="fas fa-times"></i> Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ============================================
+// VARIABLES GLOBALES
+// ============================================
+let carrito = [];
+let subtotal = 0;
+let descuentoTotal = 0;
+let total = 0;
+let tipoVenta = 'CONTADO';
+let metodoPago = 'EFECTIVO';
+let ventaIdActual = null;
+
+// ============================================
+// INICIALIZACIÓN
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    // Event listeners
+    document.getElementById('searchInput').addEventListener('input', debounce(buscarProductos, 300));
+    document.getElementById('categoriaFilter').addEventListener('change', buscarProductos);
+    
+    // Tipo de venta
+    document.querySelectorAll('.tipo-venta-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.tipo-venta-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            tipoVenta = this.dataset.tipo;
+        });
+    });
+    
+    // Método de pago
+    document.querySelectorAll('.metodo-pago-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.metodo-pago-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            metodoPago = this.dataset.metodo;
+        });
+    });
+});
+
+// ============================================
+// CARGAR TODOS LOS PRODUCTOS
+// ============================================
+function cargarTodosLosProductos() {
+    document.getElementById('productosLista').innerHTML = `
+        <div class="productos-empty">
+            <div class="spinner"></div>
+            <p style="font-size: 0.8rem;">Cargando...</p>
+        </div>
+    `;
+    
+    fetch(`/panel/api/productos/buscar/?all=true`)
+        .then(response => response.json())
+        .then(data => {
+            mostrarProductos(data.productos);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('productosLista').innerHTML = `
+                <div class="productos-empty" style="color: #dc2626;">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p style="font-size: 0.8rem;">Error al cargar</p>
+                </div>
+            `;
+        });
+}
+
+// ============================================
+// BUSCAR PRODUCTOS
+// ============================================
+function buscarProductos() {
+    const query = document.getElementById('searchInput').value.trim();
+    const categoria = document.getElementById('categoriaFilter').value;
+    
+    if (!query && !categoria) {
+        document.getElementById('productosLista').innerHTML = `
+            <div class="productos-empty">
+                <i class="fas fa-info-circle"></i>
+                <p style="font-size: 0.8rem;">Usa el buscador o<br>"Mostrar Todos"</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Mostrar loading
+    document.getElementById('productosLista').innerHTML = `
+        <div class="productos-empty">
+            <div class="spinner"></div>
+            <p style="font-size: 0.8rem;">Buscando...</p>
+        </div>
+    `;
+    
+    // Hacer petición
+    const params = new URLSearchParams();
+    if (query) params.append('q', query);
+    if (categoria) params.append('categoria', categoria);
+    
+    fetch(`/panel/api/productos/buscar/?${params.toString()}`)
+        .then(response => response.json())
+        .then(data => {
+            mostrarProductos(data.productos);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('productosLista').innerHTML = `
+                <div class="productos-empty" style="color: #dc2626;">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p style="font-size: 0.8rem;">Error al buscar</p>
+                </div>
+            `;
+        });
+}
+
+function mostrarProductos(productos) {
+    const lista = document.getElementById('productosLista');
+    
+    if (productos.length === 0) {
+        lista.innerHTML = `
+            <div class="productos-empty">
+                <i class="fas fa-box-open"></i>
+                <p style="font-size: 0.8rem;">No se encontraron productos</p>
+            </div>
+        `;
+        return;
+    }
+    
+    lista.innerHTML = productos.map(producto => `
+        <div class="producto-item" onclick='agregarAlCarrito(${JSON.stringify(producto)})'>
+            <div class="producto-info">
+                <div class="producto-nombre">${producto.nombre}</div>
+                <div class="producto-codigo">
+                    <i class="fas fa-barcode"></i> ${producto.codigo_barras || 'Sin código'}
+                </div>
+            </div>
+            <div class="producto-precio">$${(producto.precio_unitario || producto.precio_por_unidad_peso).toFixed(2)}</div>
+        </div>
+    `).join('');
+}
+
+// ============================================
+// GESTIÓN DEL CARRITO
+// ============================================
+function agregarAlCarrito(producto) {
+    const itemExistente = carrito.find(item => item.producto_id === producto.id);
+    
+    if (itemExistente) {
+        itemExistente.cantidad++;
+        itemExistente.subtotal = itemExistente.cantidad * itemExistente.precio;
+        itemExistente.total = itemExistente.subtotal - itemExistente.descuento;
+    } else {
+        const precio = producto.precio_unitario || producto.precio_por_unidad_peso;
+        carrito.push({
+            producto_id: producto.id,
+            nombre: producto.nombre,
+            codigo: producto.codigo_barras || 'Sin código',
+            tipo_inventario: producto.tipo_inventario,
+            unidad_medida: producto.unidad_medida || 'und',
+            precio: precio,
+            cantidad: 1,
+            descuento_porcentaje: 0,
+            descuento: 0,
+            subtotal: precio,
+            total: precio,
+        });
+    }
+    
+    actualizarCarrito();
+}
+
+function eliminarDelCarrito(index) {
+    carrito.splice(index, 1);
+    actualizarCarrito();
+}
+
+function cambiarCantidad(index, delta) {
+    const item = carrito[index];
+    const nuevaCantidad = item.cantidad + delta;
+    if (nuevaCantidad >= 0.001) {
+        item.cantidad = nuevaCantidad;
+        item.subtotal = item.cantidad * item.precio;
+        item.total = item.subtotal - item.descuento;
+        actualizarCarrito();
+    }
+}
+
+function actualizarCantidadDirecta(index, valor) {
+    const item = carrito[index];
+    const cantidad = parseFloat(valor) || 0.001;
+    item.cantidad = Math.max(0.001, cantidad);
+    item.subtotal = item.cantidad * item.precio;
+    item.total = item.subtotal - item.descuento;
+    actualizarCarrito();
+}
+
+function actualizarPrecio(index, valor) {
+    const item = carrito[index];
+    const precio = parseFloat(valor) || 0;
+    item.precio = Math.max(0, precio);
+    item.subtotal = item.cantidad * item.precio;
+    item.total = item.subtotal - item.descuento;
+    actualizarCarrito();
+}
+
+function actualizarDescuento(index, valor) {
+    const item = carrito[index];
+    const descuento = parseFloat(valor) || 0;
+    item.descuento = Math.max(0, Math.min(descuento, item.subtotal));
+    item.descuento_porcentaje = (item.descuento / item.subtotal) * 100;
+    item.total = item.subtotal - item.descuento;
+    actualizarCarrito();
+}
+
+function actualizarCarrito() {
+    const container = document.getElementById('carritoItems');
+    
+    if (carrito.length === 0) {
+        container.innerHTML = `
+            <div class="carrito-empty">
+                <i class="fas fa-shopping-cart"></i>
+                <h3 style="font-size: 1rem;">Carrito vacío</h3>
+                <p style="font-size: 0.8rem;">Agrega productos para iniciar la venta</p>
+            </div>
+        `;
+        document.getElementById('btnProcesar').disabled = true;
+    } else {
+        container.innerHTML = carrito.map((item, index) => `
+            <div class="carrito-item">
+                <div class="carrito-item-header">
+                    <div class="carrito-item-info">
+                        <div class="carrito-item-nombre">${item.nombre}</div>
+                        <div class="carrito-item-codigo">
+                            <i class="fas fa-barcode"></i> ${item.codigo}
+                            <span class="carrito-item-unidad">${item.unidad_medida}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="carrito-item-eliminar" onclick="eliminarDelCarrito(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="carrito-item-grid">
+                    <div class="carrito-field">
+                        <label class="carrito-field-label">
+                            <i class="fas fa-cubes"></i> Cantidad
+                        </label>
+                        <div class="cantidad-control">
+                            <button type="button" class="cantidad-btn" onclick="cambiarCantidad(${index}, -1)">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <input type="number" 
+                                   class="cantidad-input" 
+                                   value="${item.cantidad}" 
+                                   min="0.001"
+                                   step="${item.tipo_inventario === 'QUINTAL' ? '0.001' : '1'}"
+                                   onchange="actualizarCantidadDirecta(${index}, this.value)">
+                            <button type="button" class="cantidad-btn" onclick="cambiarCantidad(${index}, 1)">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="carrito-field">
+                        <label class="carrito-field-label">
+                            <i class="fas fa-dollar-sign"></i> Precio Unit.
+                        </label>
+                        <input type="number" 
+                               class="carrito-field-input" 
+                               value="${item.precio.toFixed(2)}" 
+                               min="0"
+                               step="0.01"
+                               onchange="actualizarPrecio(${index}, this.value)">
+                    </div>
+                    
+                    <div class="carrito-field">
+                        <label class="carrito-field-label">
+                            <i class="fas fa-percentage"></i> Descuento ($)
+                        </label>
+                        <input type="number" 
+                               class="carrito-field-input" 
+                               value="${item.descuento.toFixed(2)}" 
+                               min="0"
+                               max="${item.subtotal.toFixed(2)}"
+                               step="0.01"
+                               onchange="actualizarDescuento(${index}, this.value)">
+                    </div>
+                    
+                    <div class="carrito-field">
+                        <label class="carrito-field-label">
+                            <i class="fas fa-calculator"></i> Subtotal
+                        </label>
+                        <input type="text" 
+                               class="carrito-field-input" 
+                               value="$${item.subtotal.toFixed(2)}" 
+                               readonly
+                               style="background: rgba(248, 250, 252, 0.6); cursor: not-allowed;">
+                    </div>
+                </div>
+                
+                <div class="carrito-item-footer">
+                    <div class="item-total-info">
+                        <span>
+                            <span class="item-total-info-label">Subtotal</span>
+                            <span class="item-total-info-value">$${item.subtotal.toFixed(2)}</span>
+                        </span>
+                        <span>
+                            <span class="item-total-info-label">Desc.</span>
+                            <span class="item-total-info-value descuento">-$${item.descuento.toFixed(2)}</span>
+                        </span>
+                    </div>
+                    <div class="item-total-final">
+                        <div class="item-total-final-label">TOTAL</div>
+                        <div class="item-total-final-value">$${item.total.toFixed(2)}</div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        document.getElementById('btnProcesar').disabled = false;
+    }
+    
+    // Actualizar totales generales
+    subtotal = carrito.reduce((sum, item) => sum + item.subtotal, 0);
+    descuentoTotal = carrito.reduce((sum, item) => sum + item.descuento, 0);
+    total = subtotal - descuentoTotal;
+    
+    document.getElementById('carritoCount').textContent = carrito.length;
+    document.getElementById('subtotalDisplay').textContent = `$${subtotal.toFixed(2)}`;
+    document.getElementById('descuentoDisplay').textContent = `-$${descuentoTotal.toFixed(2)}`;
+    document.getElementById('totalDisplay').textContent = `$${total.toFixed(2)}`;
+}
+
+function limpiarCarrito() {
+    if (carrito.length === 0) return;
+    
+    if (confirm('¿Deseas limpiar el carrito?')) {
+        carrito = [];
+        actualizarCarrito();
+    }
+}
+
+// ============================================
+// PROCESAR VENTA
+// ============================================
+function procesarVenta() {
+    if (carrito.length === 0) {
+        alert('El carrito está vacío');
+        return;
+    }
+    
+    const btnProcesar = document.getElementById('btnProcesar');
+    btnProcesar.disabled = true;
+    btnProcesar.innerHTML = '<div class="spinner" style="width: 18px; height: 18px; border-width: 2px;"></div> Procesando...';
+    
+    const data = {
+        items: carrito,
+        cliente_id: document.getElementById('clienteSelect').value || null,
+        tipo_venta: tipoVenta,
+        metodo_pago: metodoPago,
+        monto_recibido: total,
+    };
+    
+    fetch('/panel/api/ventas/procesar/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}',
+        },
+        body: JSON.stringify(data),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            ventaIdActual = data.venta_id;
+            mostrarModalVentaExitosa(data);
+            carrito = [];
+            actualizarCarrito();
+        } else {
+            alert('Error: ' + (data.error || 'No se pudo procesar la venta'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al procesar la venta');
+    })
+    .finally(() => {
+        btnProcesar.disabled = false;
+        btnProcesar.innerHTML = '<i class="fas fa-check-circle"></i> Procesar Venta';
+    });
+}
+
+function mostrarModalVentaExitosa(data) {
+    document.getElementById('modalNumeroVenta').textContent = data.numero_venta;
+    document.getElementById('modalTotal').textContent = `$${data.total.toFixed(2)}`;
+    
+    if (data.cambio > 0) {
+        document.getElementById('modalCambioRow').style.display = 'flex';
+        document.getElementById('modalCambio').textContent = `$${data.cambio.toFixed(2)}`;
+    } else {
+        document.getElementById('modalCambioRow').style.display = 'none';
+    }
+    
+    document.getElementById('modalVentaExitosa').classList.add('show');
+}
+
+function cerrarModalVenta() {
+    document.getElementById('modalVentaExitosa').classList.remove('show');
+    ventaIdActual = null;
+}
+
+function imprimirTicket() {
+    if (ventaIdActual) {
+        window.open(`/panel/ventas/${ventaIdActual}/ticket/`, '_blank');
+    }
+}
+
+// ============================================
+// UTILIDADES
+// ============================================
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Cerrar modal al hacer click fuera
+window.onclick = function(event) {
+    const modal = document.getElementById('modalVentaExitosa');
+    if (event.target === modal) {
+        cerrarModalVenta();
+    }
+}
+</script>
+{% endblock %}

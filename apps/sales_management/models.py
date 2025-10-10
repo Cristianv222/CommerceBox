@@ -249,29 +249,7 @@ class Venta(models.Model):
         return f"{self.numero_venta} - ${self.total} - {self.get_estado_display()}"
     
     def save(self, *args, **kwargs):
-        """Genera numero_venta automáticamente si no existe"""
-        if not self.numero_venta:
-            # Obtener el año actual
-            año_actual = timezone.now().year
-            
-            # Buscar el último número de venta del año
-            ultima_venta = Venta.objects.filter(
-                numero_venta__startswith=f'VNT-{año_actual}-'
-            ).order_by('-numero_venta').first()
-            
-            if ultima_venta:
-                # Extraer el número secuencial del último registro
-                try:
-                    ultimo_numero = int(ultima_venta.numero_venta.split('-')[-1])
-                    nuevo_numero = ultimo_numero + 1
-                except (ValueError, IndexError):
-                    nuevo_numero = 1
-            else:
-                nuevo_numero = 1
-            
-            # Generar el nuevo número de venta
-            self.numero_venta = f'VNT-{año_actual}-{nuevo_numero:05d}'
-        
+        """Genera numero_venta automáticamente si no existe"""  
         super().save(*args, **kwargs)
     
     def calcular_totales(self):
