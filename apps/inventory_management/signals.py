@@ -74,7 +74,7 @@ def producto_normal_post_save(sender, instance, created, **kwargs):
         # Buscar usuario del sistema (admin)
         from apps.authentication.models import Usuario
         usuario_sistema = Usuario.objects.filter(
-            rol='ADMIN'
+            rol__codigo='ADMIN'
         ).first()
         
         if usuario_sistema:

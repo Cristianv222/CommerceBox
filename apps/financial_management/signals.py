@@ -202,7 +202,7 @@ def analizar_patron_diferencias(sender, instance, created, **kwargs):
                 from apps.authentication.models import Usuario
                 
                 admins = Usuario.objects.filter(
-                    rol='ADMIN',
+                    rol__codigo='ADMIN',
                     is_active=True
                 )
                 

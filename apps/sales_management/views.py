@@ -320,6 +320,8 @@ class AgregarProductoCarritoView(VentasAccessMixin, View):
     """Agregar producto al carrito de compras"""
     
     def post(self, request):
+        from django.core.exceptions import ValidationError
+        
         try:
             producto_id = request.POST.get('producto_id')
             producto = get_object_or_404(Producto, pk=producto_id)
@@ -343,11 +345,17 @@ class AgregarProductoCarritoView(VentasAccessMixin, View):
                 
                 quintal = get_object_or_404(Quintal, pk=quintal_id)
                 
-                # Validar stock
+                # Validar stock disponible
                 if quintal.peso_actual < peso_vendido:
                     return JsonResponse({
                         'success': False,
-                        'error': 'No hay suficiente peso disponible'
+                        'error': f'Stock insuficiente. Disponible: {quintal.peso_actual} {quintal.unidad_medida.abreviatura}, Solicitado: {peso_vendido} {quintal.unidad_medida.abreviatura}'
+                    })
+                
+                if quintal.estado != 'DISPONIBLE':
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'El quintal no está disponible para venta'
                     })
                 
                 item.update({
@@ -363,18 +371,26 @@ class AgregarProductoCarritoView(VentasAccessMixin, View):
                 cantidad = int(request.POST.get('cantidad_unidades', '1'))
                 precio = Decimal(request.POST.get('precio', str(producto.precio_unitario)))
                 
-                # Validar stock
+                # Validar stock disponible
                 try:
                     inventario = producto.inventario_normal
-                    if inventario.stock_actual < cantidad:
+                    if not inventario:
                         return JsonResponse({
                             'success': False,
-                            'error': 'No hay suficiente stock disponible'
+                            'error': 'Producto sin inventario configurado'
                         })
+                    
+                    stock_disponible = inventario.stock_actual
+                    if stock_disponible < cantidad:
+                        return JsonResponse({
+                            'success': False,
+                            'error': f'Stock insuficiente para {producto.nombre}. Disponible: {stock_disponible} unidades, Solicitado: {cantidad} unidades'
+                        })
+                    
                 except ProductoNormal.DoesNotExist:
                     return JsonResponse({
                         'success': False,
-                        'error': 'Producto sin inventario'
+                        'error': 'Producto sin inventario configurado'
                     })
                 
                 item.update({
@@ -398,13 +414,23 @@ class AgregarProductoCarritoView(VentasAccessMixin, View):
             return JsonResponse({
                 'success': True,
                 'carrito_count': len(carrito),
-                'total_carrito': sum(Decimal(str(i['total'])) for i in carrito)
+                'total_carrito': float(sum(Decimal(str(i['total'])) for i in carrito))
             })
         
-        except Exception as e:
+        except ValueError as e:
             return JsonResponse({
                 'success': False,
                 'error': str(e)
+            })
+        except ValidationError as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'Error al agregar producto: {str(e)}'
             })
 
 
@@ -445,6 +471,8 @@ class ProcesarVentaPOSView(VentasAccessMixin, View):
     
     @transaction.atomic
     def post(self, request):
+        from django.core.exceptions import ValidationError
+        
         try:
             carrito = request.session.get('carrito', [])
             
@@ -462,8 +490,8 @@ class ProcesarVentaPOSView(VentasAccessMixin, View):
             if cliente_id:
                 cliente = get_object_or_404(Cliente, pk=cliente_id)
             
-            # Importar servicio POS (lo crearemos después)
-            from .services.pos_service import POSService
+            # Importar servicio POS
+            from .pos.pos_service import POSService
             
             # Crear venta
             venta = POSService.crear_venta(
@@ -476,24 +504,28 @@ class ProcesarVentaPOSView(VentasAccessMixin, View):
             for item in carrito:
                 producto = Producto.objects.get(pk=item['id'])
                 
-                if item['tipo'] == 'QUINTAL':
-                    quintal = Quintal.objects.get(pk=item['quintal_id'])
-                    POSService.agregar_item_quintal(
-                        venta=venta,
-                        producto=producto,
-                        quintal=quintal,
-                        peso_vendido=Decimal(str(item['peso_vendido'])),
-                        precio_por_unidad=Decimal(str(item['precio_unitario'])),
-                        descuento_porcentaje=Decimal(str(item.get('descuento_porcentaje', 0)))
-                    )
-                else:
-                    POSService.agregar_item_normal(
-                        venta=venta,
-                        producto=producto,
-                        cantidad_unidades=item['cantidad'],
-                        precio_unitario=Decimal(str(item['precio_unitario'])),
-                        descuento_porcentaje=Decimal(str(item.get('descuento_porcentaje', 0)))
-                    )
+                try:
+                    if item['tipo'] == 'QUINTAL':
+                        quintal = Quintal.objects.get(pk=item['quintal_id'])
+                        POSService.agregar_item_quintal(
+                            venta=venta,
+                            producto=producto,
+                            quintal=quintal,
+                            peso_vendido=Decimal(str(item['peso_vendido'])),
+                            precio_por_unidad=Decimal(str(item['precio_unitario'])),
+                            descuento_porcentaje=Decimal(str(item.get('descuento_porcentaje', 0)))
+                        )
+                    else:
+                        POSService.agregar_item_normal(
+                            venta=venta,
+                            producto=producto,
+                            cantidad_unidades=item['cantidad'],
+                            precio_unitario=Decimal(str(item['precio_unitario'])),
+                            descuento_porcentaje=Decimal(str(item.get('descuento_porcentaje', 0)))
+                        )
+                except (ValueError, ValidationError) as e:
+                    # Si hay error de stock, revertir la transacción
+                    raise ValueError(f'Error al procesar {producto.nombre}: {str(e)}')
             
             # Procesar pagos
             formas_pago = []
@@ -527,10 +559,20 @@ class ProcesarVentaPOSView(VentasAccessMixin, View):
                 'redirect_url': reverse('sales_management:venta_detail', args=[venta.pk])
             })
         
-        except Exception as e:
+        except ValueError as e:
             return JsonResponse({
                 'success': False,
                 'error': str(e)
+            })
+        except ValidationError as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'Error al procesar venta: {str(e)}'
             })
 
 

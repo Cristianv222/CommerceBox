@@ -8,6 +8,8 @@ from django.db.models import Q
 class BarcodeService:
     """
     Servicio para búsqueda y validación de códigos de barras
+    Nuevo formato: 3 letras + 5 números (ej: ABC12345)
+    Quintales: Q + 2 letras + 5 números (ej: QAB12345)
     """
     
     @staticmethod
@@ -32,8 +34,8 @@ class BarcodeService:
         
         codigo = codigo.strip().upper()
         
-        # 1. Buscar si es código de quintal individual (CBX-QNT-...)
-        if 'QNT' in codigo:
+        # 1. Buscar si es código de quintal individual (empieza con Q)
+        if codigo.startswith('Q') and len(codigo) == 8:
             try:
                 quintal = Quintal.objects.get(codigo_unico=codigo)
                 return {
@@ -111,7 +113,7 @@ class BarcodeService:
         Returns:
             dict: {'valido': bool, 'tipo': str, 'mensaje': str}
         """
-        codigo = codigo.strip()
+        codigo = codigo.strip().upper()
         
         if not codigo:
             return {'valido': False, 'tipo': None, 'mensaje': 'Código vacío'}
@@ -120,14 +122,24 @@ class BarcodeService:
         if len(codigo) < 5:
             return {'valido': False, 'tipo': None, 'mensaje': 'Código muy corto'}
         
-        # Detectar tipo de código
+        # Detectar códigos internos cortos (8 caracteres)
+        if len(codigo) == 8:
+            # Código de quintal: Q + 2 letras + 5 números
+            if codigo[0] == 'Q' and codigo[1:3].isalpha() and codigo[3:].isdigit():
+                return {'valido': True, 'tipo': 'QUINTAL', 'mensaje': 'Código de quintal interno'}
+            
+            # Código de producto: 3 letras + 5 números
+            if codigo[:3].isalpha() and codigo[3:].isdigit():
+                return {'valido': True, 'tipo': 'PRODUCTO', 'mensaje': 'Código de producto interno'}
+        
+        # Detectar códigos antiguos (compatibilidad)
         if codigo.startswith('CBX-PRD-'):
-            return {'valido': True, 'tipo': 'PRODUCTO', 'mensaje': 'Código de producto interno'}
+            return {'valido': True, 'tipo': 'PRODUCTO', 'mensaje': 'Código de producto interno (legacy)'}
         
         if codigo.startswith('CBX-QNT-'):
-            return {'valido': True, 'tipo': 'QUINTAL', 'mensaje': 'Código de quintal interno'}
+            return {'valido': True, 'tipo': 'QUINTAL', 'mensaje': 'Código de quintal interno (legacy)'}
         
-        # Códigos numéricos (EAN, UPC, etc.)
+        # Códigos numéricos estándar (EAN, UPC, etc.)
         if codigo.isdigit():
             if len(codigo) == 13:
                 return {'valido': True, 'tipo': 'EAN13', 'mensaje': 'Código EAN-13'}
@@ -136,6 +148,7 @@ class BarcodeService:
             elif len(codigo) == 12:
                 return {'valido': True, 'tipo': 'UPC', 'mensaje': 'Código UPC'}
         
+        # Código externo/desconocido (pero aceptable)
         return {'valido': True, 'tipo': 'OTRO', 'mensaje': 'Código externo'}
     
     @staticmethod
@@ -150,6 +163,8 @@ class BarcodeService:
             QuerySet de Productos
         """
         from ..models import Producto
+        
+        codigo_parcial = codigo_parcial.strip().upper()
         
         return Producto.objects.filter(
             Q(codigo_barras__icontains=codigo_parcial) |

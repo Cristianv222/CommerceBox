@@ -134,7 +134,7 @@ def producto_crear(request):
     
     if request.method == 'POST':
         try:
-            usuario = Usuario.objects.filter(rol='ADMIN').first()
+            usuario = Usuario.objects.filter(rol__codigo='ADMIN').first()
             
             if not usuario:
                 usuario = Usuario.objects.first()
@@ -195,7 +195,7 @@ def producto_editar(request, producto_id):
         producto = Producto.objects.get(id=producto_id)
         
         if request.method == 'POST':
-            usuario = Usuario.objects.filter(rol='ADMIN').first()
+            usuario = Usuario.objects.filter(rol__codigo='ADMIN').first()
             
             if not usuario:
                 usuario = Usuario.objects.first()
@@ -252,23 +252,53 @@ def producto_editar(request, producto_id):
 @ensure_csrf_cookie
 @auth_required
 def producto_eliminar(request, producto_id):
-    """Eliminar producto"""
+    """Eliminar o desactivar producto"""
     from apps.inventory_management.models import Producto
     from django.contrib import messages
+    from django.http import HttpResponseRedirect
+    from django.db.models import ProtectedError
     
-    if request.method == 'POST':
-        try:
-            producto = Producto.objects.get(id=producto_id)
-            nombre = producto.nombre
-            producto.delete()
-            messages.success(request, f'✅ Producto "{nombre}" eliminado exitosamente')
-        except Producto.DoesNotExist:
-            messages.error(request, '❌ Producto no encontrado')
-        except Exception as e:
-            messages.error(request, f'Error al eliminar producto: {str(e)}')
-    
-    return redirect('custom_admin:productos')
-
+    try:
+        producto = Producto.objects.get(id=producto_id)
+        nombre = producto.nombre
+        
+        # Verificar todas las relaciones protegidas
+        tiene_relaciones = (
+            producto.detalleventa_set.exists() or 
+            producto.detallecompra_set.exists() or
+            producto.quintales.exists()
+        )
+        
+        if tiene_relaciones:
+            # Tiene relaciones, solo desactivar
+            producto.activo = False
+            producto.save()
+            messages.warning(
+                request, 
+                f'El producto "{nombre}" tiene registros asociados (ventas, compras o quintales) y no puede eliminarse. Se ha desactivado.'
+            )
+        else:
+            # No tiene relaciones, eliminar
+            try:
+                producto.delete()
+                messages.success(request, f'Producto "{nombre}" eliminado correctamente.')
+            except ProtectedError as e:
+                # Si aún así hay error, desactivar
+                producto.activo = False
+                producto.save()
+                messages.warning(
+                    request, 
+                    f'El producto "{nombre}" tiene registros asociados y no puede eliminarse. Se ha desactivado.'
+                )
+        
+        return HttpResponseRedirect('/panel/inventario/productos/')
+        
+    except Producto.DoesNotExist:
+        messages.error(request, 'Producto no encontrado.')
+        return HttpResponseRedirect('/panel/inventario/productos/')
+    except Exception as e:
+        messages.error(request, f'Error al procesar producto: {str(e)}')
+        return HttpResponseRedirect('/panel/inventario/productos/')
 
 @ensure_csrf_cookie
 @auth_required
@@ -474,7 +504,7 @@ def ventas_view(request):
     
     # Datos para formulario
     vendedores = Usuario.objects.filter(
-        rol__in=['VENDEDOR', 'ADMIN', 'SUPERVISOR']
+        rol__codigo__in=['VENDEDOR', 'ADMIN', 'SUPERVISOR']
     ).order_by('nombres')
     
     clientes = Cliente.objects.filter(activo=True).order_by('apellidos', 'nombres')[:100]
@@ -554,7 +584,7 @@ def venta_anular_view(request, pk):
                 return redirect('custom_admin:venta_detail', pk=pk)
             
             from apps.sales_management.services.pos_service import POSService
-            usuario = Usuario.objects.filter(rol='ADMIN').first()
+            usuario = Usuario.objects.filter(rol__codigo='ADMIN').first()
             
             if not usuario:
                 usuario = Usuario.objects.first()
@@ -1241,11 +1271,10 @@ def pos_view(request):
     return render(request, 'custom_admin/pos/punto_venta.html', context)
 
 
-@ensure_csrf_cookie
 def api_buscar_productos(request):
     """API para buscar productos"""
-    from apps.inventory_management.models import Producto
-    from django.db.models import Q
+    from apps.inventory_management.models import Producto, ProductoNormal, Quintal
+    from django.db.models import Q, Sum
     from django.http import JsonResponse
     
     query = request.GET.get('q', '').strip()
@@ -1259,7 +1288,7 @@ def api_buscar_productos(request):
     
     if query:
         productos = productos.filter(
-            Q(nombre__icontains=query) | 
+            Q(nombre__icontains=query) |
             Q(codigo_barras__icontains=query) |
             Q(descripcion__icontains=query)
         )
@@ -1274,6 +1303,26 @@ def api_buscar_productos(request):
     
     data = []
     for p in productos:
+        # Obtener stock según tipo de inventario
+        stock_actual = 0
+        
+        if p.tipo_inventario == 'NORMAL':
+            try:
+                inventario = p.inventario_normal
+                stock_actual = float(inventario.stock_actual) if inventario else 0
+            except ProductoNormal.DoesNotExist:
+                stock_actual = 0
+        elif p.tipo_inventario == 'QUINTAL':
+            # Sumar el peso actual de todos los quintales disponibles
+            stock_actual = float(
+                Quintal.objects.filter(
+                    producto=p,
+                    estado='DISPONIBLE'
+                ).aggregate(
+                    total=Sum('peso_actual')
+                )['total'] or 0
+            )
+        
         data.append({
             'id': str(p.id),
             'nombre': p.nombre,
@@ -1282,7 +1331,7 @@ def api_buscar_productos(request):
             'tipo_inventario': p.tipo_inventario,
             'precio_unitario': float(p.precio_unitario) if p.precio_unitario else 0,
             'precio_por_unidad_peso': float(p.precio_por_unidad_peso) if p.precio_por_unidad_peso else 0,
-            'stock_actual': float(p.stock_actual) if hasattr(p, 'stock_actual') else 0,
+            'stock_actual': stock_actual,
             'unidad_medida': p.unidad_medida_base.abreviatura if p.unidad_medida_base else 'und',
         })
     
@@ -1347,7 +1396,7 @@ def api_procesar_venta(request):
         except:
             monto_recibido = Decimal('0')
         
-        usuario = Usuario.objects.filter(rol__in=['VENDEDOR', 'ADMIN', 'CAJERO']).first()
+        usuario = Usuario.objects.filter(rol__codigo__in=['VENDEDOR', 'ADMIN', 'CAJERO']).first()
         if not usuario:
             usuario = Usuario.objects.first()
         
@@ -1638,7 +1687,7 @@ def api_procesar_entrada_masiva(request):
         if not entradas:
             return JsonResponse({'success': False, 'error': 'No hay productos para procesar'})
         
-        usuario = Usuario.objects.filter(rol__in=['ADMIN', 'SUPERVISOR']).first()
+        usuario = Usuario.objects.filter(rol__codigo__in=['ADMIN', 'SUPERVISOR']).first()
         if not usuario:
             usuario = Usuario.objects.first()
         
@@ -1768,7 +1817,7 @@ def api_procesar_entrada_masiva(request):
         }, status=500)
 @ensure_csrf_cookie
 def api_generar_pdf_codigos(request):
-    """Genera y devuelve PDF con códigos de barras - VERSIÓN INTEGRADA"""
+    """Genera y devuelve PDF con códigos de barras - VERSIÓN ORGANIZADA"""
     from django.http import HttpResponse, JsonResponse
     from apps.inventory_management.models import Quintal, Producto
     from reportlab.lib.pagesizes import letter
@@ -1783,15 +1832,17 @@ def api_generar_pdf_codigos(request):
     cantidad = int(request.GET.get('cantidad', 50))
     
     try:
-        # Configuración de etiquetas
+        # ========================================
+        # CONFIGURACIÓN OPTIMIZADA PARA ETIQUETAS
+        # ========================================
         ETIQUETAS_POR_FILA = 3
-        ETIQUETAS_POR_COLUMNA = 7
-        ANCHO_ETIQUETA = 70 * mm
-        ALTO_ETIQUETA = 37 * mm
-        MARGEN_IZQUIERDO = 10 * mm
-        MARGEN_SUPERIOR = 10 * mm
+        ETIQUETAS_POR_COLUMNA = 8
+        ANCHO_ETIQUETA = 63 * mm
+        ALTO_ETIQUETA = 29 * mm
+        MARGEN_IZQUIERDO = 8 * mm
+        MARGEN_SUPERIOR = 12 * mm
         ESPACIO_HORIZONTAL = 5 * mm
-        ESPACIO_VERTICAL = 5 * mm
+        ESPACIO_VERTICAL = 4 * mm
         
         # Crear PDF
         buffer = BytesIO()
@@ -1822,38 +1873,38 @@ def api_generar_pdf_codigos(request):
                         x = MARGEN_IZQUIERDO + columna * (ANCHO_ETIQUETA + ESPACIO_HORIZONTAL)
                         y = letter[1] - MARGEN_SUPERIOR - (fila + 1) * (ALTO_ETIQUETA + ESPACIO_VERTICAL)
                         
-                        # Dibujar código de barras
-                        barcode_width = 50 * mm
-                        barcode_height = 12 * mm
+                        # === NOMBRE DEL PRODUCTO (ARRIBA) ===
+                        pdf.setFont("Helvetica-Bold", 8)
+                        nombre_truncado = nombre_producto[:22] + '...' if len(nombre_producto) > 22 else nombre_producto
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 24*mm, nombre_truncado)
+                        
+                        # === CÓDIGO DE BARRAS (CENTRO) ===
+                        barcode_width = 45 * mm
+                        barcode_height = 10 * mm
                         barcode_x = x + (ANCHO_ETIQUETA - barcode_width) / 2
-                        barcode_y = y + 20 * mm
+                        barcode_y = y + 12 * mm
                         
                         try:
-                            barcode_obj = code128.Code128(codigo, barWidth=0.8*mm, barHeight=barcode_height)
+                            barcode_obj = code128.Code128(codigo, barWidth=0.32*mm, barHeight=barcode_height)
                             barcode_obj.drawOn(pdf, barcode_x, barcode_y)
                         except:
                             pass
                         
-                        # Texto: Código
-                        pdf.setFont("Helvetica-Bold", 8)
-                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, barcode_y - 3*mm, codigo)
+                        # === CÓDIGO (DEBAJO DEL BARCODE) ===
+                        pdf.setFont("Helvetica-Bold", 6)
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 9*mm, codigo)
                         
-                        # Texto: Nombre
-                        pdf.setFont("Helvetica-Bold", 10)
-                        nombre_truncado = nombre_producto[:25] + '...' if len(nombre_producto) > 25 else nombre_producto
-                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 15*mm, nombre_truncado)
-                        
-                        # Texto: Peso
-                        pdf.setFont("Helvetica", 9)
-                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 11*mm, f"{peso_unitario} {unidad}")
-                        
-                        # Texto: Precio
-                        pdf.setFont("Helvetica-Bold", 11)
-                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 6*mm, f"${precio:.2f}")
-                        
-                        # Texto: Fecha
+                        # === PESO ===
                         pdf.setFont("Helvetica", 7)
-                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 2*mm, f"Fecha: {fecha}")
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 6*mm, f"{peso_unitario} {unidad}")
+                        
+                        # === PRECIO (DESTACADO) ===
+                        pdf.setFont("Helvetica-Bold", 10)
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 3*mm, f"${precio:.2f}")
+                        
+                        # === FECHA (ABAJO) ===
+                        pdf.setFont("Helvetica", 5)
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 0.5*mm, f"{fecha}")
                         
                         etiqueta_num += 1
                 
@@ -1883,34 +1934,34 @@ def api_generar_pdf_codigos(request):
                         x = MARGEN_IZQUIERDO + columna * (ANCHO_ETIQUETA + ESPACIO_HORIZONTAL)
                         y = letter[1] - MARGEN_SUPERIOR - (fila + 1) * (ALTO_ETIQUETA + ESPACIO_VERTICAL)
                         
-                        # Dibujar código de barras
-                        barcode_width = 50 * mm
-                        barcode_height = 12 * mm
+                        # === NOMBRE DEL PRODUCTO (ARRIBA) ===
+                        pdf.setFont("Helvetica-Bold", 8)
+                        nombre_truncado = nombre_producto[:22] + '...' if len(nombre_producto) > 22 else nombre_producto
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 24*mm, nombre_truncado)
+                        
+                        # === CÓDIGO DE BARRAS (CENTRO) ===
+                        barcode_width = 45 * mm
+                        barcode_height = 10 * mm
                         barcode_x = x + (ANCHO_ETIQUETA - barcode_width) / 2
-                        barcode_y = y + 20 * mm
+                        barcode_y = y + 12 * mm
                         
                         try:
-                            barcode_obj = code128.Code128(codigo, barWidth=0.8*mm, barHeight=barcode_height)
+                            barcode_obj = code128.Code128(codigo, barWidth=0.32*mm, barHeight=barcode_height)
                             barcode_obj.drawOn(pdf, barcode_x, barcode_y)
                         except:
                             pass
                         
-                        # Texto: Código
-                        pdf.setFont("Helvetica-Bold", 8)
-                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, barcode_y - 3*mm, codigo)
+                        # === CÓDIGO (DEBAJO DEL BARCODE) ===
+                        pdf.setFont("Helvetica-Bold", 6)
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 9*mm, codigo)
                         
-                        # Texto: Nombre
-                        pdf.setFont("Helvetica-Bold", 10)
-                        nombre_truncado = nombre_producto[:25] + '...' if len(nombre_producto) > 25 else nombre_producto
-                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 15*mm, nombre_truncado)
+                        # === PRECIO (DESTACADO) ===
+                        pdf.setFont("Helvetica-Bold", 11)
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 4*mm, f"${precio:.2f}")
                         
-                        # Texto: Precio
-                        pdf.setFont("Helvetica-Bold", 12)
-                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 8*mm, f"${precio:.2f}")
-                        
-                        # Texto: Fecha
-                        pdf.setFont("Helvetica", 7)
-                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 2*mm, f"Fecha: {fecha}")
+                        # === FECHA (ABAJO) ===
+                        pdf.setFont("Helvetica", 5)
+                        pdf.drawCentredString(x + ANCHO_ETIQUETA / 2, y + 1*mm, f"{fecha}")
                         
                         etiqueta_num += 1
                 
@@ -1982,7 +2033,7 @@ def api_procesar_entrada_unificada(request):
             })
         
         # Obtener usuario del sistema
-        usuario = Usuario.objects.filter(rol__in=['ADMIN', 'SUPERVISOR']).first()
+        usuario = Usuario.objects.filter(rol__codigo__in=['ADMIN', 'SUPERVISOR']).first()
         if not usuario:
             usuario = Usuario.objects.first()
         
@@ -2046,9 +2097,9 @@ def api_procesar_entrada_unificada(request):
                         continue
                     
                     # Generar código de barras único
-                    timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
-                    random_str = ''.join(random.choices(string.digits, k=4))
-                    codigo_barras = f"CBX-PRD-{timestamp[-8:]}{random_str}"
+                    # Generar código de barras corto
+                    from apps.inventory_management.utils.barcode_generator import BarcodeGenerator
+                    codigo_barras = BarcodeGenerator.generar_codigo_producto()
                     print(f"🏷️ Código generado: {codigo_barras}")
                     
                     # Crear el producto

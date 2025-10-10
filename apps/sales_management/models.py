@@ -2,6 +2,7 @@
 
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db.models import Sum, F, Q
 from decimal import Decimal
@@ -388,6 +389,38 @@ class DetalleVenta(models.Model):
             return f"{self.peso_vendido} {self.unidad_medida.abreviatura} de {self.producto.nombre}"
         return f"{self.cantidad_unidades} x {self.producto.nombre}"
     
+    def save(self, *args, **kwargs):
+        """Validar stock antes de guardar"""
+        if not self.pk:  # Solo validar al crear (no al editar)
+            producto = self.producto
+            
+            # Validar stock para productos normales
+            if producto.tipo_inventario == 'NORMAL' and self.cantidad_unidades:
+                try:
+                    inventario = producto.inventario_normal
+                    if inventario:
+                        stock_disponible = inventario.stock_actual
+                        if self.cantidad_unidades > stock_disponible:
+                            raise ValidationError(
+                                f'Stock insuficiente para {producto.nombre}. '
+                                f'Disponible: {stock_disponible} unidades, Solicitado: {self.cantidad_unidades} unidades'
+                            )
+                    else:
+                        raise ValidationError(f'El producto {producto.nombre} no tiene inventario configurado')
+                except AttributeError:
+                    raise ValidationError(f'El producto {producto.nombre} no tiene inventario configurado')
+            
+            # Validar peso para quintales
+            elif producto.tipo_inventario == 'QUINTAL' and self.quintal and self.peso_vendido:
+                quintal = self.quintal
+                if self.peso_vendido > quintal.peso_actual:
+                    raise ValidationError(
+                        f'Peso insuficiente en el quintal. '
+                        f'Disponible: {quintal.peso_actual} kg, Solicitado: {self.peso_vendido} kg'
+                    )
+        
+        super().save(*args, **kwargs)
+    
     def calcular_totales(self):
         """Calcula subtotal, descuento y total"""
         if self.producto.es_quintal():
@@ -567,8 +600,9 @@ class Devolucion(models.Model):
 # SIGNALS
 # ============================================================================
 
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
+from django.db import transaction
 
 @receiver(pre_save, sender=DetalleVenta)
 def detalle_venta_pre_save(sender, instance, **kwargs):
@@ -578,7 +612,38 @@ def detalle_venta_pre_save(sender, instance, **kwargs):
 
 @receiver(post_save, sender=DetalleVenta)
 def detalle_venta_post_save(sender, instance, created, **kwargs):
-    """Recalcular totales de la venta después de guardar detalle"""
+    """
+    Después de guardar un detalle de venta:
+    1. Descontar del inventario
+    2. Recalcular totales de la venta
+    """
+    if created:  # Solo al crear un nuevo detalle
+        # Descontar del inventario
+        with transaction.atomic():
+            producto = instance.producto
+            
+            if producto.tipo_inventario == 'QUINTAL' and instance.quintal:
+                # Descontar peso del quintal
+                quintal = instance.quintal
+                quintal.peso_actual -= instance.peso_vendido
+                if quintal.peso_actual <= 0:
+                    quintal.peso_actual = 0
+                    quintal.estado = 'AGOTADO'
+                quintal.save()
+                
+            elif producto.tipo_inventario == 'NORMAL' and instance.cantidad_unidades:
+                # Descontar unidades del inventario normal
+                try:
+                    inventario = producto.inventario_normal
+                    if inventario:
+                        inventario.stock_actual -= instance.cantidad_unidades
+                        if inventario.stock_actual < 0:
+                            inventario.stock_actual = 0
+                        inventario.save()
+                except Exception as e:
+                    print(f"Error al actualizar inventario: {e}")
+    
+    # Recalcular totales de la venta
     instance.venta.calcular_totales()
 
 
@@ -595,3 +660,32 @@ def pago_post_save(sender, instance, created, **kwargs):
         venta.estado = 'COMPLETADA'
     
     venta.save()
+
+
+@receiver(post_save, sender=Venta)
+def venta_anulada_revertir_stock(sender, instance, **kwargs):
+    """
+    Si una venta se anula, revertir el stock
+    """
+    if instance.estado == 'ANULADA':
+        with transaction.atomic():
+            for detalle in instance.detalles.all():
+                producto = detalle.producto
+                
+                if producto.tipo_inventario == 'QUINTAL' and detalle.quintal:
+                    # Revertir peso al quintal
+                    quintal = detalle.quintal
+                    quintal.peso_actual += detalle.peso_vendido
+                    if quintal.estado == 'AGOTADO':
+                        quintal.estado = 'DISPONIBLE'
+                    quintal.save()
+                    
+                elif producto.tipo_inventario == 'NORMAL' and detalle.cantidad_unidades:
+                    # Revertir unidades al inventario
+                    try:
+                        inventario = producto.inventario_normal
+                        if inventario:
+                            inventario.stock_actual += detalle.cantidad_unidades
+                            inventario.save()
+                    except Exception as e:
+                        print(f"Error al revertir inventario: {e}")

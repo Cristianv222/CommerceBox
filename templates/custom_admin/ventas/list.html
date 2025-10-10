@@ -530,7 +530,7 @@
     <!-- ESTADÍSTICAS -->
     <div class="stats-grid">
         <div class="stat-card">
-            <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
                 <i class="fas fa-receipt"></i>
             </div>
             <div class="stat-value">{{ count_ventas|default:0 }}</div>
@@ -538,7 +538,7 @@
         </div>
         
         <div class="stat-card">
-            <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
                 <i class="fas fa-dollar-sign"></i>
             </div>
             <div class="stat-value">${{ total_ventas|floatformat:2|default:"0.00" }}</div>
@@ -546,7 +546,7 @@
         </div>
         
         <div class="stat-card">
-            <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
                 <i class="fas fa-calendar-day"></i>
             </div>
             <div class="stat-value">{{ ventas_hoy|default:0 }}</div>
@@ -554,7 +554,7 @@
         </div>
         
         <div class="stat-card">
-            <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white;">
                 <i class="fas fa-calendar-alt"></i>
             </div>
             <div class="stat-value">{{ ventas_mes|default:0 }}</div>
@@ -763,7 +763,7 @@
                                     <div>
                                         <span style="font-weight: 600; color: #d97706;">Parcial</span>
                                         <br><small style="color: #94a3b8;">
-                                            Saldo: ${{ venta.total|floatformat:2 }}
+                                            Saldo: ${{ venta.saldo_pendiente|floatformat:2 }}
                                         </small>
                                     </div>
                                 {% else %}
@@ -890,22 +890,20 @@ function limpiarFiltros() {
 
 // Exportar a Excel
 function exportarExcel() {
-    const params = new URLSearchParams(window.location.search);
-    window.location.href = '{% url "custom_admin:ventas_export_excel" %}?' + params.toString();
+    alert('Función de exportación a Excel en desarrollo');
 }
 
 // Exportar a PDF
 function exportarPDF() {
-    const params = new URLSearchParams(window.location.search);
-    window.open('{% url "custom_admin:ventas_export_pdf" %}?' + params.toString(), '_blank');
+    alert('Función de exportación a PDF en desarrollo');
 }
 
 // Anular venta
 function anularVenta(ventaId, numeroVenta) {
-    if (confirm(`¿Está seguro de que desea anular la venta ${numeroVenta}?\n\n⚠️ Esta acción no se puede deshacer.`)) {
+    if (confirm(`¿Está seguro de que desea anular la venta ${numeroVenta}?\n\n⚠️ Esta acción no se puede deshacer y revertirá el inventario.`)) {
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = `/admin/ventas/${ventaId}/anular/`;
+        form.action = `/panel/ventas/${ventaId}/anular/`;
         
         const csrfInput = document.createElement('input');
         csrfInput.type = 'hidden';

@@ -209,6 +209,18 @@
         background: rgba(255, 255, 255, 0.9);
     }
     
+    .producto-item.sin-stock {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: rgba(239, 68, 68, 0.05);
+        border-color: rgba(239, 68, 68, 0.2);
+    }
+    
+    .producto-item.sin-stock:hover {
+        transform: none;
+        box-shadow: none;
+    }
+    
     .producto-info {
         flex: 1;
     }
@@ -224,6 +236,35 @@
         font-size: 0.65rem;
         color: #64748b;
         font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        flex-wrap: wrap;
+    }
+    
+    .stock-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 0.1rem 0.3rem;
+        border-radius: 4px;
+        font-size: 0.6rem;
+        font-weight: 700;
+    }
+    
+    .stock-badge.disponible {
+        background: rgba(16, 185, 129, 0.1);
+        color: #059669;
+    }
+    
+    .stock-badge.bajo {
+        background: rgba(245, 158, 11, 0.1);
+        color: #d97706;
+    }
+    
+    .stock-badge.agotado {
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
     }
     
     .producto-precio {
@@ -237,6 +278,111 @@
         text-align: center;
         padding: 2rem 1rem;
         color: #94a3b8;
+    }
+    
+    /* ============================================
+       ALERTAS
+       ============================================ */
+    .alert-toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        min-width: 300px;
+        max-width: 500px;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        z-index: 99999;
+        animation: slideInRight 0.3s ease-out;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    @keyframes slideInRight {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+    
+    .alert-toast.hiding {
+        animation: slideOutRight 0.3s ease-out forwards;
+    }
+    
+    .alert-toast.error {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+    
+    .alert-toast.warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+    
+    .alert-toast.success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    
+    .alert-toast.info {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+    }
+    
+    .alert-icon {
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+    
+    .alert-content {
+        flex: 1;
+    }
+    
+    .alert-title {
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin-bottom: 0.2rem;
+    }
+    
+    .alert-message {
+        font-size: 0.85rem;
+        opacity: 0.95;
+    }
+    
+    .alert-close {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+    
+    .alert-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.1);
     }
     
     /* ============================================
@@ -1090,6 +1236,51 @@ let metodoPago = 'EFECTIVO';
 let ventaIdActual = null;
 
 // ============================================
+// SISTEMA DE ALERTAS
+// ============================================
+function mostrarAlerta(tipo, titulo, mensaje) {
+    // Tipos: error, warning, success, info
+    const iconos = {
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        success: 'fa-check-circle',
+        info: 'fa-info-circle'
+    };
+    
+    const alerta = document.createElement('div');
+    alerta.className = `alert-toast ${tipo}`;
+    alerta.innerHTML = `
+        <i class="fas ${iconos[tipo]} alert-icon"></i>
+        <div class="alert-content">
+            <div class="alert-title">${titulo}</div>
+            <div class="alert-message">${mensaje}</div>
+        </div>
+        <button class="alert-close" onclick="cerrarAlerta(this)">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    document.body.appendChild(alerta);
+    
+    // Auto cerrar después de 5 segundos
+    setTimeout(() => {
+        if (alerta.parentElement) {
+            cerrarAlerta(alerta.querySelector('.alert-close'));
+        }
+    }, 5000);
+}
+
+function cerrarAlerta(btn) {
+    const alerta = btn.closest('.alert-toast');
+    alerta.classList.add('hiding');
+    setTimeout(() => {
+        if (alerta.parentElement) {
+            alerta.remove();
+        }
+    }, 300);
+}
+
+// ============================================
 // INICIALIZACIÓN
 // ============================================
 document.addEventListener('DOMContentLoaded', function() {
@@ -1140,6 +1331,7 @@ function cargarTodosLosProductos() {
                     <p style="font-size: 0.8rem;">Error al cargar</p>
                 </div>
             `;
+            mostrarAlerta('error', 'Error', 'No se pudieron cargar los productos');
         });
 }
 
@@ -1186,6 +1378,7 @@ function buscarProductos() {
                     <p style="font-size: 0.8rem;">Error al buscar</p>
                 </div>
             `;
+            mostrarAlerta('error', 'Error', 'No se pudo realizar la búsqueda');
         });
 }
 
@@ -1202,29 +1395,71 @@ function mostrarProductos(productos) {
         return;
     }
     
-    lista.innerHTML = productos.map(producto => `
-        <div class="producto-item" onclick='agregarAlCarrito(${JSON.stringify(producto)})'>
-            <div class="producto-info">
-                <div class="producto-nombre">${producto.nombre}</div>
-                <div class="producto-codigo">
-                    <i class="fas fa-barcode"></i> ${producto.codigo_barras || 'Sin código'}
+    lista.innerHTML = productos.map(producto => {
+        const stock = producto.stock_actual || 0;
+        let stockClass = 'disponible';
+        let stockBadge = '';
+        let itemClass = '';
+        
+        if (stock === 0) {
+            stockClass = 'agotado';
+            stockBadge = '<span class="stock-badge agotado"><i class="fas fa-times-circle"></i> SIN STOCK</span>';
+            itemClass = 'sin-stock';
+        } else if (stock < 10 && producto.tipo_inventario === 'NORMAL') {
+            stockClass = 'bajo';
+            stockBadge = `<span class="stock-badge bajo"><i class="fas fa-exclamation-triangle"></i> ${stock} und</span>`;
+        } else if (producto.tipo_inventario === 'NORMAL') {
+            stockBadge = `<span class="stock-badge disponible"><i class="fas fa-check-circle"></i> ${stock} und</span>`;
+        } else if (producto.tipo_inventario === 'QUINTAL') {
+            stockBadge = `<span class="stock-badge disponible"><i class="fas fa-weight"></i> ${stock} kg</span>`;
+        }
+        
+        const precio = producto.precio_unitario || producto.precio_por_unidad_peso;
+        const onclick = stock > 0 ? `onclick='agregarAlCarrito(${JSON.stringify(producto)})'` : '';
+        
+        return `
+            <div class="producto-item ${itemClass}" ${onclick}>
+                <div class="producto-info">
+                    <div class="producto-nombre">${producto.nombre}</div>
+                    <div class="producto-codigo">
+                        <i class="fas fa-barcode"></i> ${producto.codigo_barras || 'Sin código'}
+                        ${stockBadge}
+                    </div>
                 </div>
+                <div class="producto-precio">$${precio.toFixed(2)}</div>
             </div>
-            <div class="producto-precio">$${(producto.precio_unitario || producto.precio_por_unidad_peso).toFixed(2)}</div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // ============================================
 // GESTIÓN DEL CARRITO
 // ============================================
 function agregarAlCarrito(producto) {
+    // VALIDAR STOCK ANTES DE AGREGAR
+    const stockDisponible = producto.stock_actual || 0;
+    
+    if (stockDisponible <= 0) {
+        mostrarAlerta('error', '❌ Sin Stock', `No hay stock disponible de ${producto.nombre}`);
+        return;
+    }
+    
     const itemExistente = carrito.find(item => item.producto_id === producto.id);
     
     if (itemExistente) {
-        itemExistente.cantidad++;
+        const nuevaCantidad = itemExistente.cantidad + 1;
+        
+        // VALIDAR QUE NO EXCEDA EL STOCK
+        if (nuevaCantidad > stockDisponible) {
+            mostrarAlerta('warning', '⚠️ Stock Insuficiente', 
+                `Solo hay ${stockDisponible} ${producto.tipo_inventario === 'QUINTAL' ? 'kg' : 'unidades'} disponibles de ${producto.nombre}`);
+            return;
+        }
+        
+        itemExistente.cantidad = nuevaCantidad;
         itemExistente.subtotal = itemExistente.cantidad * itemExistente.precio;
         itemExistente.total = itemExistente.subtotal - itemExistente.descuento;
+        mostrarAlerta('info', '✓ Cantidad Actualizada', `${producto.nombre} x ${nuevaCantidad}`);
     } else {
         const precio = producto.precio_unitario || producto.precio_por_unidad_peso;
         carrito.push({
@@ -1235,24 +1470,36 @@ function agregarAlCarrito(producto) {
             unidad_medida: producto.unidad_medida || 'und',
             precio: precio,
             cantidad: 1,
+            stock_disponible: stockDisponible,
             descuento_porcentaje: 0,
             descuento: 0,
             subtotal: precio,
             total: precio,
         });
+        mostrarAlerta('success', '✓ Producto Agregado', `${producto.nombre} agregado al carrito`);
     }
     
     actualizarCarrito();
 }
 
 function eliminarDelCarrito(index) {
+    const item = carrito[index];
     carrito.splice(index, 1);
+    mostrarAlerta('info', 'Producto Eliminado', `${item.nombre} eliminado del carrito`);
     actualizarCarrito();
 }
 
 function cambiarCantidad(index, delta) {
     const item = carrito[index];
     const nuevaCantidad = item.cantidad + delta;
+    
+    // VALIDAR STOCK
+    if (nuevaCantidad > item.stock_disponible) {
+        mostrarAlerta('warning', '⚠️ Stock Insuficiente', 
+            `Solo hay ${item.stock_disponible} ${item.tipo_inventario === 'QUINTAL' ? 'kg' : 'unidades'} disponibles`);
+        return;
+    }
+    
     if (nuevaCantidad >= 0.001) {
         item.cantidad = nuevaCantidad;
         item.subtotal = item.cantidad * item.precio;
@@ -1264,7 +1511,18 @@ function cambiarCantidad(index, delta) {
 function actualizarCantidadDirecta(index, valor) {
     const item = carrito[index];
     const cantidad = parseFloat(valor) || 0.001;
-    item.cantidad = Math.max(0.001, cantidad);
+    
+    // VALIDAR STOCK
+    if (cantidad > item.stock_disponible) {
+        mostrarAlerta('warning', '⚠️ Stock Insuficiente', 
+            `Solo hay ${item.stock_disponible} ${item.tipo_inventario === 'QUINTAL' ? 'kg' : 'unidades'} disponibles de ${item.nombre}`);
+        // Restablecer al stock máximo
+        document.querySelector(`#carritoItems .carrito-item:nth-child(${index + 1}) .cantidad-input`).value = item.stock_disponible;
+        item.cantidad = item.stock_disponible;
+    } else {
+        item.cantidad = Math.max(0.001, cantidad);
+    }
+    
     item.subtotal = item.cantidad * item.precio;
     item.total = item.subtotal - item.descuento;
     actualizarCarrito();
@@ -1309,6 +1567,9 @@ function actualizarCarrito() {
                         <div class="carrito-item-codigo">
                             <i class="fas fa-barcode"></i> ${item.codigo}
                             <span class="carrito-item-unidad">${item.unidad_medida}</span>
+                            <span class="stock-badge disponible" style="font-size: 0.6rem;">
+                                <i class="fas fa-box"></i> Stock: ${item.stock_disponible}
+                            </span>
                         </div>
                     </div>
                     <button type="button" class="carrito-item-eliminar" onclick="eliminarDelCarrito(${index})">
@@ -1329,6 +1590,7 @@ function actualizarCarrito() {
                                    class="cantidad-input" 
                                    value="${item.cantidad}" 
                                    min="0.001"
+                                   max="${item.stock_disponible}"
                                    step="${item.tipo_inventario === 'QUINTAL' ? '0.001' : '1'}"
                                    onchange="actualizarCantidadDirecta(${index}, this.value)">
                             <button type="button" class="cantidad-btn" onclick="cambiarCantidad(${index}, 1)">
@@ -1412,6 +1674,7 @@ function limpiarCarrito() {
     if (confirm('¿Deseas limpiar el carrito?')) {
         carrito = [];
         actualizarCarrito();
+        mostrarAlerta('info', 'Carrito Limpiado', 'El carrito ha sido vaciado');
     }
 }
 
@@ -1420,7 +1683,7 @@ function limpiarCarrito() {
 // ============================================
 function procesarVenta() {
     if (carrito.length === 0) {
-        alert('El carrito está vacío');
+        mostrarAlerta('warning', 'Carrito Vacío', 'Agrega productos antes de procesar la venta');
         return;
     }
     
@@ -1451,13 +1714,14 @@ function procesarVenta() {
             mostrarModalVentaExitosa(data);
             carrito = [];
             actualizarCarrito();
+            mostrarAlerta('success', '✓ Venta Exitosa', `Venta ${data.numero_venta} procesada correctamente`);
         } else {
-            alert('Error: ' + (data.error || 'No se pudo procesar la venta'));
+            mostrarAlerta('error', 'Error en la Venta', data.error || 'No se pudo procesar la venta');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error al procesar la venta');
+        mostrarAlerta('error', 'Error', 'No se pudo conectar con el servidor');
     })
     .finally(() => {
         btnProcesar.disabled = false;
@@ -1469,7 +1733,7 @@ function mostrarModalVentaExitosa(data) {
     document.getElementById('modalNumeroVenta').textContent = data.numero_venta;
     document.getElementById('modalTotal').textContent = `$${data.total.toFixed(2)}`;
     
-    if (data.cambio > 0) {
+    if (data.cambio && data.cambio > 0) {
         document.getElementById('modalCambioRow').style.display = 'flex';
         document.getElementById('modalCambio').textContent = `$${data.cambio.toFixed(2)}`;
     } else {
