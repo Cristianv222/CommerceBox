@@ -49,9 +49,10 @@ class CustomJWTAuthentication(JWTAuthentication):
         if user.esta_bloqueado():
             raise AuthenticationFailed('Usuario bloqueado')
         
-        # Actualizar último acceso
-        user.fecha_ultimo_acceso = timezone.now()
-        user.save(update_fields=['fecha_ultimo_acceso'])
+        # Actualizar último acceso usando queryset (evita serialización)
+        Usuario.objects.filter(pk=user.pk).update(
+            fecha_ultimo_acceso=timezone.now()
+        )
         
         return user, validated_token
 
@@ -103,14 +104,17 @@ def role_required(*roles):
         def wrapped_view(request, *args, **kwargs):
             user = request.user
             
-            if not any(user.rol == role for role in roles):
+            # FIX: Comparar user.rol.codigo con los roles requeridos
+            user_role_code = user.rol.codigo if user.rol else None
+            
+            if not any(user_role_code == role for role in roles):
                 # Registrar intento de acceso no autorizado
                 LogAcceso.objects.create(
                     usuario=user,
                     tipo_evento='PERMISSION_DENIED',
                     ip_address=get_client_ip(request),
                     user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                    detalles=f'Intento de acceso con rol {user.rol} a endpoint que requiere {roles}',
+                    detalles=f'Intento de acceso con rol {user_role_code} a endpoint que requiere {roles}',
                     exitoso=False
                 )
                 
@@ -118,7 +122,7 @@ def role_required(*roles):
                     'error': 'No tiene permisos para acceder a este recurso',
                     'code': 'INSUFFICIENT_PERMISSIONS',
                     'required_roles': roles,
-                    'user_role': user.rol
+                    'user_role': user_role_code
                 }, status=403)
             
             return view_func(request, *args, **kwargs)
@@ -149,7 +153,7 @@ def vendedor_required(view_func):
                 tipo_evento='PERMISSION_DENIED',
                 ip_address=get_client_ip(request),
                 user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                detalles=f'Intento de acceso a funcionalidad de ventas con rol {user.rol}',
+                detalles=f'Intento de acceso a funcionalidad de ventas con rol {user.rol.codigo if user.rol else "None"}',
                 exitoso=False
             )
             
@@ -175,7 +179,7 @@ def cajero_required(view_func):
                 tipo_evento='PERMISSION_DENIED',
                 ip_address=get_client_ip(request),
                 user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                detalles=f'Intento de acceso a funcionalidad de caja con rol {user.rol}',
+                detalles=f'Intento de acceso a funcionalidad de caja con rol {user.rol.codigo if user.rol else "None"}',
                 exitoso=False
             )
             
@@ -202,7 +206,7 @@ def module_access_required(module_name):
                     tipo_evento='PERMISSION_DENIED',
                     ip_address=get_client_ip(request),
                     user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                    detalles=f'Intento de acceso al módulo {module_name} con rol {user.rol}',
+                    detalles=f'Intento de acceso al módulo {module_name} con rol {user.rol.codigo if user.rol else "None"}',
                     exitoso=False
                 )
                 

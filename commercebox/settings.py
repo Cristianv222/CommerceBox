@@ -212,25 +212,102 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 
-# Celery Configuration
+# ============================================================================
+# CONFIGURACIÓN DE CELERY - COMPLETA Y MEJORADA
+# ============================================================================
+
+# Importar crontab para tareas programadas
+from celery.schedules import crontab
+
+# -------- CONFIGURACIÓN DEL BROKER Y BACKEND --------
 CELERY_BROKER_URL = config('COMMERCEBOX_REDIS_URL', default='redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = config('COMMERCEBOX_REDIS_URL', default='redis://localhost:6379/0')
+
+# -------- SERIALIZACIÓN --------
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+
+# -------- ZONA HORARIA --------
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# -------- CONFIGURACIÓN DE TAREAS --------
 CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutos límite máximo
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutos límite suave (advertencia)
+CELERY_TASK_MAX_RETRIES = 3
+CELERY_TASK_DEFAULT_RETRY_DELAY = 5 * 60  # 5 minutos entre reintentos
 
-# Celery Beat Schedule
-from celery.schedules import crontab
+# -------- CONFIGURACIÓN DE RESULTADOS --------
+CELERY_RESULT_EXPIRES = 3600  # Los resultados expiran después de 1 hora
+CELERY_RESULT_PERSISTENT = True  # Persistir resultados en Redis
+CELERY_IGNORE_RESULT = False  # No ignorar resultados (queremos guardarlos)
 
+# -------- OPTIMIZACIÓN Y RENDIMIENTO --------
+CELERY_WORKER_PREFETCH_MULTIPLIER = 4  # Número de tareas a pre-cargar por worker
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000  # Reiniciar worker después de 1000 tareas
+CELERY_TASK_ACKS_LATE = True  # Reconocer tarea solo después de completarla
+CELERY_TASK_REJECT_ON_WORKER_LOST = True  # Rechazar tarea si el worker falla
+
+# -------- CONFIGURACIÓN DE REDIS --------
+CELERY_BROKER_CONNECTION_RETRY = True
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_CONNECTION_MAX_RETRIES = 10
+
+# -------- CONFIGURACIÓN DE LOGS --------
+CELERY_WORKER_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s] %(message)s'
+CELERY_WORKER_TASK_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s][%(task_name)s(%(task_id)s)] %(message)s'
+
+# -------- CELERY BEAT SCHEDULER (Tareas Programadas) --------
+# Si quieres usar django-celery-beat (base de datos para tareas programadas)
+# Descomenta las siguientes líneas y agrega 'django_celery_beat' a INSTALLED_APPS
+# CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# -------- TAREAS PROGRAMADAS --------
 CELERY_BEAT_SCHEDULE = {
+    # Verificar alertas de stock cada 30 minutos
     'check-stock-alerts': {
         'task': 'apps.stock_alert_system.tasks.check_stock_alerts',
-        'schedule': crontab(minute='*/30'),  # Cada 30 minutos
+        'schedule': crontab(minute='*/30'),
+        'options': {
+            'expires': 15 * 60,  # La tarea expira en 15 minutos si no se ejecuta
+        }
     },
+    
+    # Ejemplo: Generar reporte diario a las 00:00
+    # 'generate-daily-report': {
+    #     'task': 'apps.reports_analytics.tasks.generate_daily_report',
+    #     'schedule': crontab(hour=0, minute=0),
+    #     'options': {
+    #         'expires': 3600,
+    #     }
+    # },
+    
+    # Ejemplo: Limpiar sesiones expiradas cada domingo a las 3:00 AM
+    # 'cleanup-expired-sessions': {
+    #     'task': 'apps.authentication.tasks.cleanup_expired_sessions',
+    #     'schedule': crontab(hour=3, minute=0, day_of_week=0),
+    # },
+    
+    # Ejemplo: Enviar alertas de productos por vencer cada día a las 9:00 AM
+    # 'send-expiration-alerts': {
+    #     'task': 'apps.inventory_management.tasks.send_expiration_alerts',
+    #     'schedule': crontab(hour=9, minute=0),
+    # },
 }
+
+# -------- CONFIGURACIÓN DE MONITOREO --------
+CELERY_SEND_TASK_ERROR_EMAILS = False  # Cambiar a True en producción
+CELERY_SEND_TASK_SENT_EVENT = True  # Enviar eventos cuando se envía una tarea
+
+# -------- CONFIGURACIÓN DE SEGURIDAD --------
+CELERY_TASK_ALWAYS_EAGER = False  # False en producción, True solo para testing
+# Si CELERY_TASK_ALWAYS_EAGER = True, las tareas se ejecutan síncronamente (útil para tests)
+
+# ============================================================================
+# FIN DE CONFIGURACIÓN DE CELERY
+# ============================================================================
 
 # CommerceBox Specific Settings
 COMMERCEBOX_SETTINGS = {
@@ -339,7 +416,7 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # ============================================================================
-# CONFIGURACIÓN DE LOGIN Y REDIRECCIÓN - CORREGIDO
+# CONFIGURACIÓN DE LOGIN Y REDIRECCIÓN
 # ============================================================================
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/panel/dashboard/'

@@ -23,9 +23,13 @@ class JWTAuthenticationMiddleware:
     def __call__(self, request):
         # Procesar request antes de la vista
         if request.user.is_authenticated:
-            # Actualizar último acceso
-            request.user.fecha_ultimo_acceso = timezone.now()
-            request.user.save(update_fields=['fecha_ultimo_acceso'])
+            try:
+                # Actualizar último acceso usando queryset (evita serialización del objeto Rol)
+                Usuario.objects.filter(pk=request.user.pk).update(
+                    fecha_ultimo_acceso=timezone.now()
+                )
+            except Exception as e:
+                logger.error(f"Error actualizando último acceso: {e}")
         
         response = self.get_response(request)
         

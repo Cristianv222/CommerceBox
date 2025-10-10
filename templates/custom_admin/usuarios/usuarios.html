@@ -706,10 +706,7 @@
             <div class="col-md-2">
                 <select class="form-control-admin" id="filterRol" onchange="applyFilters()">
                     <option value="">Todos los roles</option>
-                    <option value="ADMIN">Administrador</option>
-                    <option value="SUPERVISOR">Supervisor</option>
-                    <option value="VENDEDOR">Vendedor</option>
-                    <option value="CAJERO">Cajero</option>
+                    <!-- Se cargan dinámicamente -->
                 </select>
             </div>
             <div class="col-md-2">
@@ -849,10 +846,7 @@
                                 </label>
                                 <select class="form-control-admin" id="rol" required>
                                     <option value="">Seleccionar rol</option>
-                                    <option value="ADMIN">Administrador</option>
-                                    <option value="SUPERVISOR">Supervisor</option>
-                                    <option value="VENDEDOR">Vendedor</option>
-                                    <option value="CAJERO">Cajero</option>
+                                    <!-- Se cargan dinámicamente -->
                                 </select>
                             </div>
                         </div>
@@ -1066,6 +1060,7 @@
     let currentPage = 1;
     let pageSize = 20;
     let searchTimeout = null;
+    let rolesCache = []; // Cache para los roles
     let currentFilters = {
         search: '',
         rol: '',
@@ -1108,15 +1103,49 @@
 
         container.appendChild(toast);
 
-        // Auto-remover después de 3 segundos
         setTimeout(() => {
             toast.classList.add('removing');
             setTimeout(() => toast.remove(), 300);
         }, 3000);
     }
 
+    // NUEVA FUNCIÓN: Cargar roles disponibles
+    async function loadRolesDisponibles() {
+        try {
+            const response = await fetch('/api/auth/roles/disponibles/', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                rolesCache = data.roles;
+                
+                // Actualizar select del modal
+                const selectRol = document.getElementById('rol');
+                selectRol.innerHTML = '<option value="">Seleccionar rol</option>';
+                data.roles.forEach(rol => {
+                    selectRol.innerHTML += `<option value="${rol.id}">${rol.nombre}</option>`;
+                });
+                
+                // Actualizar filtro
+                const filterRol = document.getElementById('filterRol');
+                const currentFilter = filterRol.value;
+                filterRol.innerHTML = '<option value="">Todos los roles</option>';
+                data.roles.forEach(rol => {
+                    filterRol.innerHTML += `<option value="${rol.id}">${rol.nombre}</option>`;
+                });
+                filterRol.value = currentFilter;
+            }
+        } catch (error) {
+            console.error('Error cargando roles:', error);
+        }
+    }
+
     // Cargar usuarios al iniciar
     document.addEventListener('DOMContentLoaded', function() {
+        loadRolesDisponibles();
         loadUsers();
         loadStats();
     });
@@ -1226,6 +1255,9 @@
 
         tbody.innerHTML = usuarios.map(user => {
             const isBloqueado = user.estado === 'BLOQUEADO';
+            // Manejar rol como objeto o string
+            const rolNombre = user.rol_nombre || (user.rol_detalle?.nombre) || (user.rol?.nombre) || 'Sin rol';
+            
             return `
             <tr>
                 <td><strong style="color: #3b82f6; font-weight: 700;">${user.codigo_empleado}</strong></td>
@@ -1242,7 +1274,7 @@
                 </td>
                 <td style="font-weight: 500;">${user.email}</td>
                 <td>
-                    <span class="badge-admin badge-info">${user.rol_display || user.rol}</span>
+                    <span class="badge-admin badge-info">${rolNombre}</span>
                 </td>
                 <td>
                     <span class="badge-admin badge-${getEstadoBadge(user.estado)}">
@@ -1347,6 +1379,8 @@
         document.getElementById('password').placeholder = 'Mínimo 8 caracteres';
         document.getElementById('confirm_password').placeholder = '';
         
+        loadRolesDisponibles();
+        
         const modal = new bootstrap.Modal(document.getElementById('userModal'));
         modal.show();
     }
@@ -1354,6 +1388,8 @@
     // Editar usuario
     async function editUser(userId) {
         try {
+            await loadRolesDisponibles();
+            
             const response = await fetch(`/api/auth/usuarios/${userId}/`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}`
@@ -1372,7 +1408,11 @@
             document.getElementById('apellidos').value = user.apellidos || '';
             document.getElementById('email').value = user.email || '';
             document.getElementById('documento_identidad').value = user.documento_identidad || '';
-            document.getElementById('rol').value = user.rol || '';
+            
+            // Asignar el ID del rol
+            const rolId = user.rol_detalle?.id || user.rol?.id || user.rol;
+            document.getElementById('rol').value = rolId || '';
+            
             document.getElementById('telefono').value = user.telefono || '';
             document.getElementById('estado').value = user.estado || 'ACTIVO';
             document.getElementById('is_active').checked = user.is_active !== false;
@@ -1497,8 +1537,12 @@
             
             document.getElementById('viewAvatar').textContent = user.full_name.charAt(0).toUpperCase();
             document.getElementById('viewFullName').textContent = user.full_name;
-            document.getElementById('viewRolBadge').textContent = user.rol_display || user.rol;
+            
+            // Manejar rol como objeto
+            const rolNombre = user.rol_nombre || user.rol_detalle?.nombre || user.rol?.nombre || 'Sin rol';
+            document.getElementById('viewRolBadge').textContent = rolNombre;
             document.getElementById('viewRolBadge').className = 'badge-admin badge-info';
+            
             document.getElementById('viewStatusBadge').textContent = user.estado_display || user.estado;
             document.getElementById('viewStatusBadge').className = `badge-admin badge-${getEstadoBadge(user.estado)}`;
             
