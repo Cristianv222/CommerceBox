@@ -3,9 +3,9 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.contrib.auth.password_validation import validate_password
-from .models import Usuario, PermisoPersonalizado, SesionUsuario, LogAcceso
-import uuid
 from .models import Usuario, PermisoPersonalizado, SesionUsuario, LogAcceso, Rol
+import uuid
+
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Serializer personalizado para obtener tokens JWT"""
@@ -18,7 +18,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['user_id'] = str(user.id)
         token['email'] = user.email
         token['full_name'] = user.get_full_name()
-        token['rol'] = user.rol
+        token['rol'] = user.rol.codigo if user.rol else None
+        token['rol_nombre'] = user.rol.nombre if user.rol else None
         token['codigo_empleado'] = user.codigo_empleado
         token['is_admin'] = user.is_admin()
         token['is_supervisor'] = user.is_supervisor()
@@ -44,7 +45,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             user_agent = request.META.get('HTTP_USER_AGENT', '')
             
             try:
-                user = Usuario.objects.get(username=username)
+                user = Usuario.objects.select_related('rol').get(username=username)
                 
                 # Verificar si el usuario está bloqueado
                 if user.esta_bloqueado():
@@ -80,7 +81,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 
                 if not user:
                     # Usuario existe pero contraseña incorrecta
-                    usuario_obj = Usuario.objects.get(username=username)
+                    usuario_obj = Usuario.objects.select_related('rol').get(username=username)
                     usuario_obj.incrementar_intentos_fallidos()
                     
                     LogAcceso.objects.create(
@@ -145,65 +146,183 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 
 class UsuarioSerializer(serializers.ModelSerializer):
-    """Serializer para el modelo Usuario"""
+    """
+    Serializer COMPLETO para usuarios.
+    Se usa para: Crear, Actualizar y Obtener detalles de un usuario individual.
+    Incluye validaciones, campos calculados y manejo de contraseñas.
+    """
     
-    password = serializers.CharField(write_only=True, validators=[validate_password])
-    confirm_password = serializers.CharField(write_only=True)
+    # Campos de contraseña (write-only)
+    password = serializers.CharField(write_only=True, required=False, validators=[validate_password])
+    confirm_password = serializers.CharField(write_only=True, required=False)
+    
+    # Campos calculados (read-only)
     full_name = serializers.CharField(source='get_full_name', read_only=True)
+    rol_display = serializers.CharField(source='get_rol_display', read_only=True)
+    estado_display = serializers.CharField(source='get_estado_display', read_only=True)
+    
+    # ✅ CRÍTICO: Declarar explícitamente cómo serializar el campo ForeignKey 'rol'
+    # Esto convierte el objeto Rol a su UUID (Primary Key) para que sea JSON serializable
+    rol = serializers.PrimaryKeyRelatedField(
+        queryset=Rol.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    
+    # Información adicional del rol (read-only)
+    rol_detalle = serializers.SerializerMethodField(read_only=True)
+    rol_nombre = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = Usuario
         fields = [
-            'id', 'codigo_empleado', 'email', 'username', 'nombres', 'apellidos',
-            'telefono', 'documento_identidad', 'rol', 'estado', 'is_active',
-            'date_joined', 'fecha_ultimo_acceso', 'password', 'confirm_password',
-            'full_name', 'intentos_fallidos'
+            'id', 'username', 'email', 'codigo_empleado',
+            'nombres', 'apellidos', 'full_name',
+            'documento_identidad', 'telefono',
+            'rol', 'rol_detalle', 'rol_display', 'rol_nombre',
+            'estado', 'estado_display',
+            'is_active', 'is_staff', 'is_superuser',
+            'date_joined', 'fecha_ultimo_acceso',
+            'password', 'confirm_password'
         ]
-        read_only_fields = ['id', 'date_joined', 'fecha_ultimo_acceso', 'intentos_fallidos']
-    
-    def validate(self, attrs):
-        if 'password' in attrs and 'confirm_password' in attrs:
-            if attrs['password'] != attrs['confirm_password']:
-                raise serializers.ValidationError("Las contraseñas no coinciden.")
-        return attrs
-    
+        read_only_fields = ['date_joined', 'fecha_ultimo_acceso']
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'confirm_password': {'write_only': True}
+        }
+
+    def get_rol_detalle(self, obj):
+        """Devuelve el rol completo como diccionario"""
+        if obj.rol:
+            return {
+                'id': str(obj.rol.id),
+                'codigo': obj.rol.codigo,
+                'nombre': obj.rol.nombre,
+                'descripcion': obj.rol.descripcion or ''
+            }
+        return None
+
+    def get_rol_nombre(self, obj):
+        """Devuelve solo el nombre del rol"""
+        return obj.rol.nombre if obj.rol else 'Sin rol'
+
+    def validate(self, data):
+        """Validación de datos"""
+        # Validar contraseñas si están presentes
+        password = data.get('password')
+        confirm_password = data.get('confirm_password')
+        
+        if password or confirm_password:
+            if password != confirm_password:
+                raise serializers.ValidationError({
+                    'confirm_password': 'Las contraseñas no coinciden'
+                })
+        
+        # Validar email único (excepto para el mismo usuario en actualización)
+        email = data.get('email')
+        if email:
+            usuario_id = self.instance.id if self.instance else None
+            if Usuario.objects.filter(email=email).exclude(id=usuario_id).exists():
+                raise serializers.ValidationError({
+                    'email': 'Este email ya está registrado'
+                })
+        
+        # Validar username único
+        username = data.get('username')
+        if username:
+            usuario_id = self.instance.id if self.instance else None
+            if Usuario.objects.filter(username=username).exclude(id=usuario_id).exists():
+                raise serializers.ValidationError({
+                    'username': 'Este nombre de usuario ya está en uso'
+                })
+        
+        # Validar código único
+        codigo = data.get('codigo_empleado')
+        if codigo:
+            usuario_id = self.instance.id if self.instance else None
+            if Usuario.objects.filter(codigo_empleado=codigo).exclude(id=usuario_id).exists():
+                raise serializers.ValidationError({
+                    'codigo_empleado': 'Este código de empleado ya está en uso'
+                })
+        
+        # Validar documento único
+        documento = data.get('documento_identidad')
+        if documento:
+            usuario_id = self.instance.id if self.instance else None
+            if Usuario.objects.filter(documento_identidad=documento).exclude(id=usuario_id).exists():
+                raise serializers.ValidationError({
+                    'documento_identidad': 'Este documento ya está registrado'
+                })
+        
+        return data
+
     def create(self, validated_data):
-        validated_data.pop('confirm_password', None)
-        password = validated_data.pop('password')
-        user = Usuario.objects.create_user(**validated_data)
-        user.set_password(password)
-        user.save()
-        return user
-    
-    def update(self, instance, validated_data):
+        """Crear nuevo usuario"""
+        # Remover campos de confirmación
         validated_data.pop('confirm_password', None)
         password = validated_data.pop('password', None)
         
+        # Validar que exista contraseña para nuevos usuarios
+        if not password:
+            raise serializers.ValidationError({
+                'password': 'La contraseña es obligatoria para nuevos usuarios'
+            })
+        
+        # Crear usuario
+        usuario = Usuario.objects.create_user(
+            password=password,
+            **validated_data
+        )
+        
+        return usuario
+
+    def update(self, instance, validated_data):
+        """Actualizar usuario existente"""
+        # Remover campos de confirmación
+        validated_data.pop('confirm_password', None)
+        password = validated_data.pop('password', None)
+        
+        # Actualizar campos
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         
+        # Actualizar contraseña si se proporcionó
         if password:
             instance.set_password(password)
-            instance.fecha_cambio_password = timezone.now()
         
         instance.save()
         return instance
 
 
 class UsuarioListSerializer(serializers.ModelSerializer):
-    """Serializer simplificado para listado de usuarios"""
+    """
+    Serializer SIMPLIFICADO para listado de usuarios.
+    Se usa para: Listar múltiples usuarios (GET /usuarios/).
+    Más ligero que UsuarioSerializer - solo incluye campos esenciales para mostrar en tablas.
+    """
     
     full_name = serializers.CharField(source='get_full_name', read_only=True)
-    rol_display = serializers.CharField(source='get_rol_display', read_only=True)
+    
+    # ✅ Usar SerializerMethodField para manejar casos donde rol pueda ser None
+    rol_nombre = serializers.SerializerMethodField(read_only=True)
+    rol_codigo = serializers.SerializerMethodField(read_only=True)
     estado_display = serializers.CharField(source='get_estado_display', read_only=True)
     
     class Meta:
         model = Usuario
         fields = [
             'id', 'codigo_empleado', 'email', 'username', 'full_name',
-            'rol', 'rol_display', 'estado', 'estado_display', 'is_active',
+            'rol', 'rol_nombre', 'rol_codigo', 'estado', 'estado_display', 'is_active',
             'fecha_ultimo_acceso', 'intentos_fallidos'
         ]
+    
+    def get_rol_nombre(self, obj):
+        """Obtener nombre del rol de forma segura"""
+        return obj.rol.nombre if obj.rol else 'Sin rol'
+    
+    def get_rol_codigo(self, obj):
+        """Obtener código del rol de forma segura"""
+        return obj.rol.codigo if obj.rol else None
 
 
 class CambiarPasswordSerializer(serializers.Serializer):
@@ -309,17 +428,27 @@ class PerfilUsuarioSerializer(serializers.ModelSerializer):
     """Serializer para el perfil del usuario autenticado"""
     
     full_name = serializers.CharField(source='get_full_name', read_only=True)
-    rol_display = serializers.CharField(source='get_rol_display', read_only=True)
+    rol_detalle = serializers.SerializerMethodField(read_only=True)
     permisos = serializers.SerializerMethodField()
     
     class Meta:
         model = Usuario
         fields = [
             'id', 'codigo_empleado', 'email', 'username', 'nombres', 'apellidos',
-            'telefono', 'documento_identidad', 'rol', 'rol_display', 'full_name',
+            'telefono', 'documento_identidad', 'rol', 'rol_detalle', 'full_name',
             'fecha_ultimo_acceso', 'permisos'
         ]
         read_only_fields = ['id', 'codigo_empleado', 'rol', 'fecha_ultimo_acceso']
+    
+    def get_rol_detalle(self, obj):
+        """Obtener información del rol"""
+        if obj.rol:
+            return {
+                'id': str(obj.rol.id),
+                'codigo': obj.rol.codigo,
+                'nombre': obj.rol.nombre
+            }
+        return None
     
     def get_permisos(self, obj):
         """Obtener permisos del usuario"""
@@ -335,6 +464,7 @@ class PerfilUsuarioSerializer(serializers.ModelSerializer):
             'is_vendedor': obj.is_vendedor(),
             'is_cajero': obj.is_cajero(),
         }
+
 
 class RolSerializer(serializers.ModelSerializer):
     """Serializer para el modelo Rol"""

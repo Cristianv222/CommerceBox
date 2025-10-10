@@ -25,7 +25,6 @@ class UsuarioManager(BaseUserManager):
         """Crear y guardar un superusuario"""
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('rol', 'ADMIN')
         extra_fields.setdefault('is_active', True)
         
         if extra_fields.get('is_staff') is not True:
@@ -33,18 +32,45 @@ class UsuarioManager(BaseUserManager):
         if extra_fields.get('is_superuser') is not True:
             raise ValueError('Superuser debe tener is_superuser=True.')
         
+        # Obtener o crear el rol ADMIN
+        rol_admin, _ = Rol.objects.get_or_create(
+            codigo='ADMIN',
+            defaults={
+                'nombre': 'Administrador',
+                'descripcion': 'Acceso total al sistema',
+                'permissions': ['*'],
+                'is_active': True
+            }
+        )
+        extra_fields['rol'] = rol_admin
+        
         return self.create_user(username, email, password, **extra_fields)
 
 
-class Usuario(AbstractBaseUser, PermissionsMixin):
-    """Modelo personalizado de usuario con roles específicos del sistema"""
+class Rol(models.Model):
+    """Modelo para gestión dinámica de roles"""
     
-    ROLES_CHOICES = [
-        ('ADMIN', 'Administrador'),
-        ('SUPERVISOR', 'Supervisor'),
-        ('VENDEDOR', 'Vendedor'),
-        ('CAJERO', 'Cajero'),
-    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    nombre = models.CharField(max_length=100, unique=True, verbose_name='Nombre del rol')
+    codigo = models.CharField(max_length=20, unique=True, verbose_name='Código del rol')
+    descripcion = models.TextField(blank=True, verbose_name='Descripción')
+    permissions = models.JSONField(default=list, verbose_name='Permisos asignados')
+    is_active = models.BooleanField(default=True, verbose_name='Activo')
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='Fecha de creación')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Última actualización')
+    
+    class Meta:
+        verbose_name = 'Rol'
+        verbose_name_plural = 'Roles'
+        db_table = 'auth_rol'
+        ordering = ['nombre']
+    
+    def __str__(self):
+        return f"{self.nombre} ({self.codigo})"
+
+
+class Usuario(AbstractBaseUser, PermissionsMixin):
+    """Modelo personalizado de usuario con roles dinámicos"""
     
     ESTADO_CHOICES = [
         ('ACTIVO', 'Activo'),
@@ -75,8 +101,15 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     )
     documento_identidad = models.CharField(max_length=20, unique=True, verbose_name='Documento de identidad')
     
-    # Rol y permisos
-    rol = models.CharField(max_length=20, choices=ROLES_CHOICES, default='VENDEDOR')
+    # Rol y permisos - AHORA USANDO FOREIGNKEY
+    rol = models.ForeignKey(
+        'Rol',
+        on_delete=models.PROTECT,  # Protege contra eliminación accidental
+        related_name='usuarios',
+        verbose_name='Rol',
+        null=True,  # Permite null durante la migración
+        blank=True
+    )
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='ACTIVO')
     
     # Control de acceso
@@ -119,31 +152,71 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     
     def is_admin(self):
         """Verifica si el usuario es administrador"""
-        return self.rol == 'ADMIN'
+        return self.rol and self.rol.codigo == 'ADMIN'
     
     def is_supervisor(self):
         """Verifica si el usuario es supervisor"""
-        return self.rol in ['ADMIN', 'SUPERVISOR']
+        return self.rol and self.rol.codigo in ['ADMIN', 'SUPERVISOR']
     
     def is_vendedor(self):
         """Verifica si el usuario puede realizar ventas"""
-        return self.rol in ['ADMIN', 'SUPERVISOR', 'VENDEDOR']
+        return self.rol and self.rol.codigo in ['ADMIN', 'SUPERVISOR', 'VENDEDOR']
     
     def is_cajero(self):
         """Verifica si el usuario puede manejar caja"""
-        return self.rol in ['ADMIN', 'SUPERVISOR', 'CAJERO']
+        return self.rol and self.rol.codigo in ['ADMIN', 'SUPERVISOR', 'CAJERO']
     
     def puede_acceder_modulo(self, modulo):
         """Verifica si el usuario puede acceder a un módulo específico"""
+        if not self.rol:
+            return False
+        
+        # Si el rol tiene permisos y contiene el permiso específico
+        if self.rol.permissions:
+            # Administrador tiene acceso a todo
+            if '*' in self.rol.permissions:
+                return True
+            
+            # Verificar si tiene el permiso específico del módulo
+            if f"{modulo}.view" in self.rol.permissions:
+                return True
+        
+        # Permisos por defecto según código de rol (backward compatibility)
         permisos_por_rol = {
-            'ADMIN': ['todos'],
+            'ADMIN': ['inventory', 'sales', 'financial', 'reports', 'notifications', 'system_config'],
             'SUPERVISOR': ['inventory', 'sales', 'financial', 'reports', 'notifications'],
             'VENDEDOR': ['inventory', 'sales'],
             'CAJERO': ['sales', 'financial'],
         }
         
-        permisos = permisos_por_rol.get(self.rol, [])
-        return 'todos' in permisos or modulo in permisos
+        permisos = permisos_por_rol.get(self.rol.codigo, [])
+        return modulo in permisos
+    
+    def tiene_permiso(self, permiso):
+        """
+        Verifica si el usuario tiene un permiso específico
+        Formato: 'modulo.accion' ejemplo: 'inventory.add', 'sales.delete'
+        """
+        if not self.rol:
+            return False
+        
+        if not self.rol.permissions:
+            return False
+        
+        # Administrador tiene todos los permisos
+        if '*' in self.rol.permissions:
+            return True
+        
+        # Verificar permiso específico
+        if permiso in self.rol.permissions:
+            return True
+        
+        # Verificar permiso con wildcard (ej: 'inventory.*')
+        modulo = permiso.split('.')[0]
+        if f"{modulo}.*" in self.rol.permissions:
+            return True
+        
+        return False
     
     def incrementar_intentos_fallidos(self):
         """Incrementa el contador de intentos fallidos"""
@@ -215,6 +288,17 @@ class LogAcceso(models.Model):
         ('PASSWORD_CHANGE', 'Cambio de contraseña'),
         ('ACCOUNT_LOCKED', 'Cuenta bloqueada'),
         ('PERMISSION_DENIED', 'Permiso denegado'),
+        ('USER_CREATED', 'Usuario creado'),
+        ('USER_UPDATED', 'Usuario actualizado'),
+        ('USER_DELETED', 'Usuario eliminado'),
+        ('USER_BLOCKED', 'Usuario bloqueado'),
+        ('USER_UNBLOCKED', 'Usuario desbloqueado'),
+        ('PERMISSION_CREATED', 'Permiso creado'),
+        ('PERMISSION_DELETED', 'Permiso eliminado'),
+        ('SESSION_CLOSED', 'Sesión cerrada'),
+        ('ROL_CREATED', 'Rol creado'),
+        ('ROL_UPDATED', 'Rol actualizado'),
+        ('ROL_DELETED', 'Rol eliminado'),
     ]
     
     usuario = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True, blank=True)
@@ -239,24 +323,3 @@ class LogAcceso(models.Model):
     def __str__(self):
         usuario_str = self.usuario.get_full_name() if self.usuario else self.email_intento
         return f"{usuario_str} - {self.get_tipo_evento_display()} - {self.fecha_evento}"
-
-class Rol(models.Model):
-    """Modelo para gestión dinámica de roles"""
-    
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    nombre = models.CharField(max_length=100, unique=True, verbose_name='Nombre del rol')
-    codigo = models.CharField(max_length=20, unique=True, verbose_name='Código del rol')
-    descripcion = models.TextField(blank=True, verbose_name='Descripción')
-    permissions = models.JSONField(default=list, verbose_name='Permisos asignados')
-    is_active = models.BooleanField(default=True, verbose_name='Activo')
-    created_at = models.DateTimeField(default=timezone.now, verbose_name='Fecha de creación')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='Última actualización')
-    
-    class Meta:
-        verbose_name = 'Rol'
-        verbose_name_plural = 'Roles'
-        db_table = 'auth_rol'
-        ordering = ['nombre']
-    
-    def __str__(self):
-        return f"{self.nombre} ({self.codigo})"

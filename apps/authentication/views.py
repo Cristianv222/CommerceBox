@@ -83,9 +83,9 @@ class CustomTokenRefreshView(TokenRefreshView):
                     key='access_token',
                     value=new_access_token,
                     httponly=True,
-                    secure=not settings.DEBUG,  # True en producción, False en desarrollo
+                    secure=not settings.DEBUG,
                     samesite='Lax',
-                    max_age=3600,  # 1 hora
+                    max_age=3600,
                     path='/'
                 )
             
@@ -98,55 +98,57 @@ class CustomTokenRefreshView(TokenRefreshView):
                         fecha_ultimo_acceso=timezone.now()
                     )
             except Exception:
-                pass  # No interrumpir el proceso si hay error
+                pass
         
         return response
 
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
-@rate_limit(max_requests=5, window_minutes=15)  # Máximo 5 intentos cada 15 minutos
+@rate_limit(max_requests=5, window_minutes=15)
 def login_view(request):
     """Vista de login con validaciones adicionales"""
     serializer = CustomTokenObtainPairSerializer(data=request.data, context={'request': request})
     
     if serializer.is_valid():
         tokens = serializer.validated_data
+        user = request.user
+        
+        # Manejar rol como ForeignKey
         user_data = {
-            'id': str(request.user.id),
-            'email': request.user.email,
-            'full_name': request.user.get_full_name(),
-            'rol': request.user.rol,
-            'codigo_empleado': request.user.codigo_empleado,
+            'id': str(user.id),
+            'email': user.email,
+            'full_name': user.get_full_name(),
+            'rol': user.rol.codigo if user.rol else None,
+            'rol_nombre': user.rol.nombre if user.rol else None,
+            'codigo_empleado': user.codigo_empleado,
         }
         
         # Crear respuesta con cookies HttpOnly
         response = Response({
             'message': 'Login exitoso',
-            'tokens': tokens,  # Opcional: puedes omitir esto si solo usas cookies
+            'tokens': tokens,
             'user': user_data
         }, status=status.HTTP_200_OK)
         
         # Establecer cookies HttpOnly para los tokens
-        # Access Token
         response.set_cookie(
             key='access_token',
             value=tokens['access'],
-            httponly=True,        # JavaScript NO puede acceder
-            secure=not settings.DEBUG,  # True en producción (HTTPS), False en desarrollo
-            samesite='Lax',       # Protección CSRF
-            max_age=3600,         # 1 hora (ajustar según tu configuración de JWT)
-            path='/'              # Disponible en toda la app
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite='Lax',
+            max_age=3600,
+            path='/'
         )
         
-        # Refresh Token
         response.set_cookie(
             key='refresh_token',
             value=tokens['refresh'],
             httponly=True,
             secure=not settings.DEBUG,
             samesite='Lax',
-            max_age=86400 * 7,    # 7 días (ajustar según tu configuración de JWT)
+            max_age=86400 * 7,
             path='/'
         )
         
@@ -274,7 +276,7 @@ def cambiar_password_view(request):
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
-@rate_limit(max_requests=3, window_minutes=60)  # Máximo 3 intentos por hora
+@rate_limit(max_requests=3, window_minutes=60)
 def recuperar_password_view(request):
     """Solicitar recuperación de contraseña"""
     serializer = RecuperarPasswordSerializer(data=request.data)
@@ -354,10 +356,10 @@ def restablecer_password_view(request):
 def usuarios_list_view(request):
     """Listar todos los usuarios - Solo administradores"""
     search = request.GET.get('search', '')
-    rol = request.GET.get('rol', '')
+    rol_id = request.GET.get('rol', '')
     estado = request.GET.get('estado', '')
     
-    queryset = Usuario.objects.all()
+    queryset = Usuario.objects.select_related('rol').all()
     
     if search:
         queryset = queryset.filter(
@@ -367,8 +369,8 @@ def usuarios_list_view(request):
             Q(codigo_empleado__icontains=search)
         )
     
-    if rol:
-        queryset = queryset.filter(rol=rol)
+    if rol_id:
+        queryset = queryset.filter(rol__id=rol_id)
     
     if estado:
         queryset = queryset.filter(estado=estado)
@@ -534,11 +536,9 @@ def bloquear_usuario_view(request, user_id):
 @api_view(['GET'])
 def roles_disponibles_view(request):
     """Obtener roles disponibles en el sistema"""
-    roles = [
-        {'value': choice[0], 'label': choice[1]} 
-        for choice in Usuario.ROLES_CHOICES
-    ]
-    return Response({'roles': roles})
+    roles = Rol.objects.filter(is_active=True).order_by('nombre')
+    serializer = RolSerializer(roles, many=True)
+    return Response({'roles': serializer.data})
 
 
 @api_view(['GET'])
@@ -742,9 +742,11 @@ def reporte_usuarios_activos_view(request):
     ).values('usuario').distinct().count()
     
     # Usuarios por rol
-    usuarios_por_rol = Usuario.objects.filter(is_active=True).values('rol').annotate(
+    usuarios_por_rol = Usuario.objects.filter(is_active=True).values(
+        'rol__nombre', 'rol__codigo'
+    ).annotate(
         total=Count('id')
-    ).order_by('rol')
+    ).order_by('rol__nombre')
     
     return Response({
         'periodo': {
@@ -907,7 +909,8 @@ def reporte_actividad_usuario_view(request, user_id):
             'id': str(usuario.id),
             'email': usuario.email,
             'full_name': usuario.get_full_name(),
-            'rol': usuario.rol,
+            'rol': usuario.rol.codigo if usuario.rol else None,
+            'rol_nombre': usuario.rol.nombre if usuario.rol else None,
             'estado': usuario.estado,
             'codigo_empleado': usuario.codigo_empleado
         },
@@ -989,7 +992,8 @@ def verificar_token_view(request):
             'id': str(request.user.id),
             'email': request.user.email,
             'full_name': request.user.get_full_name(),
-            'rol': request.user.rol,
+            'rol': request.user.rol.codigo if request.user.rol else None,
+            'rol_nombre': request.user.rol.nombre if request.user.rol else None,
             'estado': request.user.estado,
         }
     })
@@ -1003,7 +1007,7 @@ def health_check_view(request):
         'timestamp': timezone.now(),
         'auth_system': 'operational'
     })
-from .models import Rol
+
 
 # ========================================
 # GESTIÓN DE ROLES
@@ -1116,7 +1120,11 @@ def rol_delete_api_view(request, rol_id):
     rol = get_object_or_404(Rol, id=rol_id)
     
     # Verificar que no haya usuarios con este rol
-    # (Esto depende de si decides relacionar Usuario con Rol o mantener el CharField)
+    usuarios_con_rol = Usuario.objects.filter(rol=rol).count()
+    if usuarios_con_rol > 0:
+        return Response({
+            'error': f'No se puede eliminar el rol porque tiene {usuarios_con_rol} usuario(s) asignado(s)'
+        }, status=status.HTTP_400_BAD_REQUEST)
     
     rol_info = f"{rol.nombre} ({rol.codigo})"
     rol.delete()

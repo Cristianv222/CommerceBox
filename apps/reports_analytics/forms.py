@@ -75,10 +75,7 @@ class FiltroVentasForm(FiltroFechasForm):
     )
     
     vendedor = forms.ModelChoiceField(
-        queryset=Usuario.objects.filter(
-            rol__in=['ADMIN', 'SUPERVISOR', 'VENDEDOR'],
-            is_active=True
-        ),
+        queryset=Usuario.objects.filter(rol__codigo__in=['ADMIN', 'SUPERVISOR']),
         required=False,
         empty_label='Todos los vendedores',
         widget=forms.Select(attrs={'class': 'form-control'})
