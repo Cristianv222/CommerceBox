@@ -1047,6 +1047,572 @@ def venta_factura_view(request, pk):
     return HttpResponse(html, content_type='text/html')
 
 
+# ========================================
+# NUEVAS VISTAS PARA EXPORTACIONES
+# ========================================
+
+@ensure_csrf_cookie
+def venta_detalle_api(request, pk):
+    """API endpoint para obtener detalles de una venta"""
+    from apps.sales_management.models import Venta
+    from django.shortcuts import get_object_or_404
+    
+    try:
+        venta = get_object_or_404(Venta.objects.select_related('cliente', 'vendedor'), pk=pk)
+        
+        # Obtener items de la venta
+        items = []
+        for item in venta.detalles.select_related('producto', 'unidad_medida').all():
+            items.append({
+                'producto_nombre': item.producto.nombre,
+                'codigo_barras': item.producto.codigo_barras or 'Sin código',
+                'cantidad': str(item.cantidad_unidades) if item.cantidad_unidades else str(float(item.peso_vendido)),
+                'precio_unitario': str(item.precio_unitario) if item.precio_unitario else str(float(item.precio_por_unidad_peso)),
+                'descuento': str(item.descuento_monto),
+                'subtotal': str(item.subtotal),
+                'total': str(item.total),
+            })
+        
+        # Construir respuesta
+        data = {
+            'success': True,
+            'venta': {
+                'numero_venta': venta.numero_venta,
+                'fecha_venta': venta.fecha_venta.strftime('%d/%m/%Y %H:%M'),
+                'estado': venta.get_estado_display(),
+                'tipo_venta': venta.get_tipo_venta_display(),
+                'vendedor': venta.vendedor.get_full_name(),
+                'cliente': f"{venta.cliente.nombres} {venta.cliente.apellidos}" if venta.cliente else None,
+                'metodo_pago': venta.get_metodo_pago_display() if hasattr(venta, 'metodo_pago') else 'N/A',
+                'subtotal': str(venta.subtotal),
+                'descuento': str(venta.descuento),
+                'total': str(venta.total),
+                'monto_pagado': str(venta.monto_pagado),
+                'cambio': str(venta.cambio) if venta.cambio else '0.00',
+                'saldo_pendiente': str(venta.saldo_pendiente),
+                'items': items,
+            }
+        }
+        
+        return JsonResponse(data)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required
+def exportar_venta_excel_individual(request, pk):
+    """Exportar una venta individual a Excel"""
+    from apps.sales_management.models import Venta
+    from django.shortcuts import get_object_or_404
+    from django.http import HttpResponse
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from io import BytesIO
+    
+    venta = get_object_or_404(Venta.objects.select_related('cliente', 'vendedor'), pk=pk)
+    
+    # Crear workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"Venta {venta.numero_venta}"
+    
+    # Estilos
+    header_fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=12)
+    title_font = Font(bold=True, size=14)
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # TÍTULO
+    ws.merge_cells('A1:F1')
+    ws['A1'] = f"DETALLE DE VENTA - {venta.numero_venta}"
+    ws['A1'].font = title_font
+    ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    
+    # INFORMACIÓN GENERAL
+    row = 3
+    ws[f'A{row}'] = "Fecha:"
+    ws[f'B{row}'] = venta.fecha_venta.strftime('%d/%m/%Y %H:%M')
+    ws[f'A{row}'].font = Font(bold=True)
+    
+    row += 1
+    ws[f'A{row}'] = "Cliente:"
+    ws[f'B{row}'] = f"{venta.cliente.nombres} {venta.cliente.apellidos}" if venta.cliente else "Público General"
+    ws[f'A{row}'].font = Font(bold=True)
+    
+    row += 1
+    ws[f'A{row}'] = "Vendedor:"
+    ws[f'B{row}'] = venta.vendedor.get_full_name()
+    ws[f'A{row}'].font = Font(bold=True)
+    
+    row += 1
+    ws[f'A{row}'] = "Tipo de Venta:"
+    ws[f'B{row}'] = venta.get_tipo_venta_display()
+    ws[f'A{row}'].font = Font(bold=True)
+    
+    row += 1
+    ws[f'A{row}'] = "Estado:"
+    ws[f'B{row}'] = venta.get_estado_display()
+    ws[f'A{row}'].font = Font(bold=True)
+    
+    # PRODUCTOS
+    row += 2
+    headers = ['Producto', 'Cantidad', 'Precio Unit.', 'Descuento', 'Subtotal', 'Total']
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(row=row, column=col)
+        cell.value = header
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = border
+    
+    # Items
+    for item in venta.detalles.select_related('producto', 'unidad_medida').all():
+        row += 1
+        ws.cell(row=row, column=1, value=item.producto.nombre).border = border
+        
+        if item.cantidad_unidades:
+            ws.cell(row=row, column=2, value=float(item.cantidad_unidades)).border = border
+            ws.cell(row=row, column=3, value=float(item.precio_unitario)).border = border
+        else:
+            ws.cell(row=row, column=2, value=float(item.peso_vendido)).border = border
+            ws.cell(row=row, column=3, value=float(item.precio_por_unidad_peso)).border = border
+        
+        ws.cell(row=row, column=2).alignment = Alignment(horizontal='center')
+        ws.cell(row=row, column=3).number_format = '$#,##0.00'
+        ws.cell(row=row, column=4, value=float(item.descuento_monto)).border = border
+        ws.cell(row=row, column=4).number_format = '$#,##0.00'
+        ws.cell(row=row, column=5, value=float(item.subtotal)).border = border
+        ws.cell(row=row, column=5).number_format = '$#,##0.00'
+        ws.cell(row=row, column=6, value=float(item.total)).border = border
+        ws.cell(row=row, column=6).number_format = '$#,##0.00'
+    
+    # TOTALES
+    row += 2
+    ws.cell(row=row, column=5, value="Subtotal:").font = Font(bold=True)
+    ws.cell(row=row, column=6, value=float(venta.subtotal)).number_format = '$#,##0.00'
+    
+    row += 1
+    ws.cell(row=row, column=5, value="Descuento:").font = Font(bold=True)
+    ws.cell(row=row, column=6, value=float(venta.descuento)).number_format = '$#,##0.00'
+    
+    row += 1
+    ws.cell(row=row, column=5, value="TOTAL:").font = Font(bold=True, size=14)
+    ws.cell(row=row, column=6, value=float(venta.total)).font = Font(bold=True, size=14)
+    ws.cell(row=row, column=6).number_format = '$#,##0.00'
+    
+    # Ajustar anchos
+    ws.column_dimensions['A'].width = 30
+    ws.column_dimensions['B'].width = 12
+    ws.column_dimensions['C'].width = 15
+    ws.column_dimensions['D'].width = 15
+    ws.column_dimensions['E'].width = 15
+    ws.column_dimensions['F'].width = 15
+    
+    # Preparar respuesta
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename=venta_{venta.numero_venta}.xlsx'
+    
+    return response
+
+
+@ensure_csrf_cookie
+@auth_required
+def exportar_venta_pdf_individual(request, pk):
+    """Exportar una venta individual a PDF"""
+    from apps.sales_management.models import Venta
+    from django.shortcuts import get_object_or_404
+    from django.http import HttpResponse
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from io import BytesIO
+    
+    venta = get_object_or_404(Venta.objects.select_related('cliente', 'vendedor'), pk=pk)
+    
+    # Crear buffer
+    buffer = BytesIO()
+    
+    # Crear documento
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Estilo personalizado para título
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        textColor=colors.HexColor('#0f172a'),
+        spaceAfter=30,
+        alignment=1  # Centro
+    )
+    
+    # TÍTULO
+    title = Paragraph(f"DETALLE DE VENTA - {venta.numero_venta}", title_style)
+    elements.append(title)
+    
+    # INFORMACIÓN GENERAL
+    info_data = [
+        ['Fecha:', venta.fecha_venta.strftime('%d/%m/%Y %H:%M')],
+        ['Cliente:', f"{venta.cliente.nombres} {venta.cliente.apellidos}" if venta.cliente else "Público General"],
+        ['Vendedor:', venta.vendedor.get_full_name()],
+        ['Tipo de Venta:', venta.get_tipo_venta_display()],
+        ['Estado:', venta.get_estado_display()],
+    ]
+    
+    info_table = Table(info_data, colWidths=[2*inch, 4*inch])
+    info_table.setStyle(TableStyle([
+        ('FONT', (0, 0), (0, -1), 'Helvetica-Bold', 10),
+        ('FONT', (1, 0), (1, -1), 'Helvetica', 10),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#1e293b')),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(info_table)
+    elements.append(Spacer(1, 20))
+    
+    # PRODUCTOS
+    productos_header = Paragraph('<b>PRODUCTOS</b>', styles['Heading2'])
+    elements.append(productos_header)
+    elements.append(Spacer(1, 10))
+    
+    # Tabla de productos
+    productos_data = [['Producto', 'Cant.', 'Precio Unit.', 'Desc.', 'Subtotal', 'Total']]
+    
+    for item in venta.detalles.select_related('producto', 'unidad_medida').all():
+        if item.cantidad_unidades:
+            cantidad = str(item.cantidad_unidades)
+            precio = f"${item.precio_unitario:.2f}"
+        else:
+            cantidad = f"{float(item.peso_vendido):.3f}"
+            precio = f"${item.precio_por_unidad_peso:.2f}"
+        
+        productos_data.append([
+            item.producto.nombre,
+            cantidad,
+            precio,
+            f"${item.descuento_monto:.2f}",
+            f"${item.subtotal:.2f}",
+            f"${item.total:.2f}",
+        ])
+    
+    productos_table = Table(productos_data, colWidths=[2.5*inch, 0.7*inch, 1*inch, 0.9*inch, 1*inch, 1*inch])
+    productos_table.setStyle(TableStyle([
+        # Header
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3B82F6')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 10),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        
+        # Body
+        ('FONT', (0, 1), (-1, -1), 'Helvetica', 9),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#1e293b')),
+        ('ALIGN', (1, 1), (-1, -1), 'CENTER'),
+        ('ALIGN', (0, 1), (0, -1), 'LEFT'),
+        
+        # Borders
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e2e8f0')),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
+    ]))
+    elements.append(productos_table)
+    elements.append(Spacer(1, 20))
+    
+    # TOTALES
+    totales_data = [
+        ['Subtotal:', f"${venta.subtotal:.2f}"],
+        ['Descuento:', f"${venta.descuento:.2f}"],
+        ['', ''],
+        ['TOTAL:', f"${venta.total:.2f}"],
+    ]
+    
+    totales_table = Table(totales_data, colWidths=[4.5*inch, 1.5*inch])
+    totales_table.setStyle(TableStyle([
+        ('FONT', (0, 0), (0, 1), 'Helvetica-Bold', 10),
+        ('FONT', (1, 0), (1, 1), 'Helvetica', 10),
+        ('FONT', (0, 3), (-1, 3), 'Helvetica-Bold', 14),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#1e293b')),
+        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+        ('LINEABOVE', (0, 3), (-1, 3), 2, colors.HexColor('#3B82F6')),
+        ('TOPPADDING', (0, 3), (-1, 3), 10),
+    ]))
+    elements.append(totales_table)
+    
+    # Construir PDF
+    doc.build(elements)
+    
+    # Preparar respuesta
+    buffer.seek(0)
+    response = HttpResponse(buffer.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename=venta_{venta.numero_venta}.pdf'
+    
+    return response
+
+
+@ensure_csrf_cookie
+@auth_required
+def exportar_ventas_excel_general(request):
+    """Exportar todas las ventas filtradas a Excel"""
+    from apps.sales_management.models import Venta
+    from django.http import HttpResponse
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from datetime import datetime
+    from io import BytesIO
+    
+    # Obtener filtros de la URL
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    estado = request.GET.get('estado')
+    tipo_venta = request.GET.get('tipo_venta')
+    vendedor_id = request.GET.get('vendedor')
+    cliente_id = request.GET.get('cliente')
+    
+    # Filtrar ventas
+    ventas = Venta.objects.select_related('cliente', 'vendedor').all().order_by('-fecha_venta')
+    
+    if fecha_inicio:
+        ventas = ventas.filter(fecha_venta__date__gte=fecha_inicio)
+    if fecha_fin:
+        ventas = ventas.filter(fecha_venta__date__lte=fecha_fin)
+    if estado:
+        ventas = ventas.filter(estado=estado)
+    if tipo_venta:
+        ventas = ventas.filter(tipo_venta=tipo_venta)
+    if vendedor_id:
+        ventas = ventas.filter(vendedor_id=vendedor_id)
+    if cliente_id:
+        ventas = ventas.filter(cliente_id=cliente_id)
+    
+    # Crear workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Ventas"
+    
+    # Estilos
+    header_fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    title_font = Font(bold=True, size=14)
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # TÍTULO
+    ws.merge_cells('A1:J1')
+    ws['A1'] = f"REPORTE DE VENTAS - {datetime.now().strftime('%d/%m/%Y')}"
+    ws['A1'].font = title_font
+    ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    
+    # HEADERS
+    headers = ['N° Venta', 'Fecha', 'Cliente', 'Vendedor', 'Tipo', 'Estado', 
+               'Subtotal', 'Descuento', 'Total', 'Pagado']
+    
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(row=3, column=col)
+        cell.value = header
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = border
+    
+    # DATOS
+    row = 4
+    for venta in ventas:
+        ws.cell(row=row, column=1, value=venta.numero_venta).border = border
+        ws.cell(row=row, column=2, value=venta.fecha_venta.strftime('%d/%m/%Y %H:%M')).border = border
+        ws.cell(row=row, column=3, value=f"{venta.cliente.nombres} {venta.cliente.apellidos}" if venta.cliente else "Público General").border = border
+        ws.cell(row=row, column=4, value=venta.vendedor.get_full_name()).border = border
+        ws.cell(row=row, column=5, value=venta.get_tipo_venta_display()).border = border
+        ws.cell(row=row, column=6, value=venta.get_estado_display()).border = border
+        
+        ws.cell(row=row, column=7, value=float(venta.subtotal)).border = border
+        ws.cell(row=row, column=7).number_format = '$#,##0.00'
+        
+        ws.cell(row=row, column=8, value=float(venta.descuento)).border = border
+        ws.cell(row=row, column=8).number_format = '$#,##0.00'
+        
+        ws.cell(row=row, column=9, value=float(venta.total)).border = border
+        ws.cell(row=row, column=9).number_format = '$#,##0.00'
+        
+        ws.cell(row=row, column=10, value=float(venta.monto_pagado)).border = border
+        ws.cell(row=row, column=10).number_format = '$#,##0.00'
+        
+        row += 1
+    
+    # TOTALES
+    row += 1
+    ws.cell(row=row, column=8, value="TOTALES:").font = Font(bold=True)
+    
+    total_ventas = sum(float(v.total) for v in ventas)
+    ws.cell(row=row, column=9, value=total_ventas).font = Font(bold=True)
+    ws.cell(row=row, column=9).number_format = '$#,##0.00'
+    
+    total_pagado = sum(float(v.monto_pagado) for v in ventas)
+    ws.cell(row=row, column=10, value=total_pagado).font = Font(bold=True)
+    ws.cell(row=row, column=10).number_format = '$#,##0.00'
+    
+    # Ajustar anchos
+    ws.column_dimensions['A'].width = 15
+    ws.column_dimensions['B'].width = 18
+    ws.column_dimensions['C'].width = 25
+    ws.column_dimensions['D'].width = 20
+    ws.column_dimensions['E'].width = 12
+    ws.column_dimensions['F'].width = 12
+    ws.column_dimensions['G'].width = 12
+    ws.column_dimensions['H'].width = 12
+    ws.column_dimensions['I'].width = 12
+    ws.column_dimensions['J'].width = 12
+    
+    # Preparar respuesta
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    filename = f"ventas_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+    
+    return response
+
+
+@ensure_csrf_cookie
+@auth_required
+def exportar_ventas_pdf_general(request):
+    """Exportar todas las ventas filtradas a PDF"""
+    from apps.sales_management.models import Venta
+    from django.http import HttpResponse
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+    from io import BytesIO
+    from datetime import datetime
+    
+    # Obtener filtros (mismo código que Excel)
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    estado = request.GET.get('estado')
+    tipo_venta = request.GET.get('tipo_venta')
+    vendedor_id = request.GET.get('vendedor')
+    cliente_id = request.GET.get('cliente')
+    
+    # Filtrar ventas
+    ventas = Venta.objects.select_related('cliente', 'vendedor').all().order_by('-fecha_venta')
+    
+    if fecha_inicio:
+        ventas = ventas.filter(fecha_venta__date__gte=fecha_inicio)
+    if fecha_fin:
+        ventas = ventas.filter(fecha_venta__date__lte=fecha_fin)
+    if estado:
+        ventas = ventas.filter(estado=estado)
+    if tipo_venta:
+        ventas = ventas.filter(tipo_venta=tipo_venta)
+    if vendedor_id:
+        ventas = ventas.filter(vendedor_id=vendedor_id)
+    if cliente_id:
+        ventas = ventas.filter(cliente_id=cliente_id)
+    
+    # Crear buffer
+    buffer = BytesIO()
+    
+    # Crear documento (landscape para más espacio)
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), topMargin=0.5*inch)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Título
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        textColor=colors.HexColor('#0f172a'),
+        spaceAfter=20,
+        alignment=TA_CENTER
+    )
+    
+    title = Paragraph(f"REPORTE DE VENTAS - {datetime.now().strftime('%d/%m/%Y')}", title_style)
+    elements.append(title)
+    elements.append(Spacer(1, 10))
+    
+    # Tabla de ventas
+    data = [['N° Venta', 'Fecha', 'Cliente', 'Tipo', 'Total', 'Estado']]
+    
+    for venta in ventas:
+        data.append([
+            venta.numero_venta,
+            venta.fecha_venta.strftime('%d/%m/%Y'),
+            (f"{venta.cliente.nombres} {venta.cliente.apellidos}" if venta.cliente else "Público")[:20],
+            venta.get_tipo_venta_display(),
+            f"${venta.total:.2f}",
+            venta.get_estado_display(),
+        ])
+    
+    # Totales
+    total = sum(float(v.total) for v in ventas)
+    data.append(['', '', '', 'TOTAL:', f"${total:.2f}", ''])
+    
+    table = Table(data, colWidths=[1.2*inch, 1.1*inch, 1.8*inch, 1*inch, 1*inch, 1*inch])
+    table.setStyle(TableStyle([
+        # Header
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3B82F6')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 10),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        
+        # Body
+        ('FONT', (0, 1), (-1, -2), 'Helvetica', 8),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#1e293b')),
+        ('ALIGN', (4, 1), (4, -1), 'RIGHT'),
+        
+        # Total row
+        ('FONT', (0, -1), (-1, -1), 'Helvetica-Bold', 10),
+        ('LINEABOVE', (0, -1), (-1, -1), 2, colors.HexColor('#3B82F6')),
+        
+        # Borders
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#f8fafc')]),
+    ]))
+    
+    elements.append(table)
+    
+    # Construir PDF
+    doc.build(elements)
+    
+    # Preparar respuesta
+    buffer.seek(0)
+    filename = f"ventas_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    response = HttpResponse(buffer.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+    
+    return response
+
+
 @ensure_csrf_cookie
 @auth_required
 def clientes_view(request):
@@ -1064,189 +1630,15 @@ def devoluciones_view(request):
 @ensure_csrf_cookie
 @auth_required
 def ventas_export_excel(request):
-    """Exportar ventas a Excel"""
-    from apps.sales_management.models import Venta
-    from django.http import HttpResponse
-    from openpyxl import Workbook
-    from openpyxl.styles import Font, Alignment, PatternFill
-    from datetime import datetime
-    
-    fecha_inicio = request.GET.get('fecha_inicio', '')
-    fecha_fin = request.GET.get('fecha_fin', '')
-    estado = request.GET.get('estado', '')
-    tipo_venta = request.GET.get('tipo_venta', '')
-    
-    ventas = Venta.objects.select_related('cliente', 'vendedor').all().order_by('-fecha_venta')
-    
-    if fecha_inicio:
-        ventas = ventas.filter(fecha_venta__date__gte=fecha_inicio)
-    if fecha_fin:
-        ventas = ventas.filter(fecha_venta__date__lte=fecha_fin)
-    if estado:
-        ventas = ventas.filter(estado=estado)
-    if tipo_venta:
-        ventas = ventas.filter(tipo_venta=tipo_venta)
-    
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Ventas"
-    
-    header_fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid")
-    header_font = Font(bold=True, color="FFFFFF", size=12)
-    header_alignment = Alignment(horizontal="center", vertical="center")
-    
-    headers = [
-        'N° Venta', 'Fecha', 'Cliente', 'Vendedor', 
-        'Tipo', 'Subtotal', 'Descuento', 'Impuestos', 
-        'Total', 'Monto Pagado', 'Estado'
-    ]
-    
-    for col, header in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col, value=header)
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = header_alignment
-    
-    for row_idx, venta in enumerate(ventas, start=2):
-        ws.cell(row=row_idx, column=1, value=venta.numero_venta)
-        ws.cell(row=row_idx, column=2, value=venta.fecha_venta.strftime('%d/%m/%Y %H:%M'))
-        ws.cell(row=row_idx, column=3, value=f"{venta.cliente.nombres} {venta.cliente.apellidos}" if venta.cliente else "Público General")
-        ws.cell(row=row_idx, column=4, value=venta.vendedor.get_full_name())
-        ws.cell(row=row_idx, column=5, value=venta.get_tipo_venta_display())
-        ws.cell(row=row_idx, column=6, value=float(venta.subtotal))
-        ws.cell(row=row_idx, column=7, value=float(venta.descuento))
-        ws.cell(row=row_idx, column=8, value=float(venta.impuestos))
-        ws.cell(row=row_idx, column=9, value=float(venta.total))
-        ws.cell(row=row_idx, column=10, value=float(venta.monto_pagado))
-        ws.cell(row=row_idx, column=11, value=venta.get_estado_display())
-    
-    for col in ws.columns:
-        max_length = 0
-        column = col[0].column_letter
-        for cell in col:
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(cell.value)
-            except:
-                pass
-        adjusted_width = (max_length + 2)
-        ws.column_dimensions[column].width = adjusted_width
-    
-    response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
-    filename = f'ventas_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    
-    wb.save(response)
-    return response
+    """Exportar ventas a Excel - FUNCIÓN ANTIGUA (mantener por compatibilidad)"""
+    return exportar_ventas_excel_general(request)
 
 
 @ensure_csrf_cookie
 @auth_required
 def ventas_export_pdf(request):
-    """Exportar ventas a PDF"""
-    from apps.sales_management.models import Venta
-    from django.http import HttpResponse
-    from reportlab.lib.pagesizes import letter, landscape
-    from reportlab.lib import colors
-    from reportlab.lib.units import inch
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.enums import TA_CENTER
-    from io import BytesIO
-    from datetime import datetime
-    
-    fecha_inicio = request.GET.get('fecha_inicio', '')
-    fecha_fin = request.GET.get('fecha_fin', '')
-    estado = request.GET.get('estado', '')
-    tipo_venta = request.GET.get('tipo_venta', '')
-    
-    ventas = Venta.objects.select_related('cliente', 'vendedor').all().order_by('-fecha_venta')
-    
-    if fecha_inicio:
-        ventas = ventas.filter(fecha_venta__date__gte=fecha_inicio)
-    if fecha_fin:
-        ventas = ventas.filter(fecha_venta__date__lte=fecha_fin)
-    if estado:
-        ventas = ventas.filter(estado=estado)
-    if tipo_venta:
-        ventas = ventas.filter(tipo_venta=tipo_venta)
-    
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), topMargin=0.5*inch)
-    elements = []
-    
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        textColor=colors.HexColor('#1e293b'),
-        spaceAfter=30,
-        alignment=TA_CENTER
-    )
-    
-    title = Paragraph("📊 Reporte de Ventas", title_style)
-    elements.append(title)
-    elements.append(Spacer(1, 0.3*inch))
-    
-    subtitle_style = ParagraphStyle(
-        'Subtitle',
-        parent=styles['Normal'],
-        fontSize=12,
-        textColor=colors.HexColor('#64748b'),
-        alignment=TA_CENTER
-    )
-    subtitle = Paragraph(f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}", subtitle_style)
-    elements.append(subtitle)
-    elements.append(Spacer(1, 0.3*inch))
-    
-    data = [['N° Venta', 'Fecha', 'Cliente', 'Vendedor', 'Tipo', 'Total', 'Estado']]
-    
-    for venta in ventas:
-        cliente_nombre = f"{venta.cliente.nombres} {venta.cliente.apellidos}" if venta.cliente else "Público General"
-        data.append([
-            venta.numero_venta,
-            venta.fecha_venta.strftime('%d/%m/%Y'),
-            cliente_nombre[:30],
-            venta.vendedor.get_full_name()[:25],
-            venta.get_tipo_venta_display(),
-            f"${float(venta.total):,.2f}",
-            venta.get_estado_display()
-        ])
-    
-    table = Table(data, colWidths=[1.2*inch, 1*inch, 1.8*inch, 1.5*inch, 0.8*inch, 1*inch, 1*inch])
-    
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3b82f6')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-        ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#1e293b')),
-        ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 10),
-        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e2e8f0')),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
-    ]))
-    
-    elements.append(table)
-    doc.build(elements)
-    
-    pdf = buffer.getvalue()
-    buffer.close()
-    
-    response = HttpResponse(content_type='application/pdf')
-    filename = f'ventas_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    response.write(pdf)
-    
-    return response
+    """Exportar ventas a PDF - FUNCIÓN ANTIGUA (mantener por compatibilidad)"""
+    return exportar_ventas_pdf_general(request)
 
 
 # ========================================
@@ -1815,6 +2207,7 @@ def api_procesar_entrada_masiva(request):
             'success': False,
             'error': f'Error: {str(e)}'
         }, status=500)
+
 @ensure_csrf_cookie
 def api_generar_pdf_codigos(request):
     """Genera y devuelve PDF con códigos de barras - VERSIÓN ORGANIZADA"""
@@ -1995,9 +2388,10 @@ def api_generar_pdf_codigos(request):
             'error': f'Error generando PDF: {str(e)}',
             'detalle': traceback.format_exc()
         }, status=500)
+
 @ensure_csrf_cookie
 def api_procesar_entrada_unificada(request):
-    """API para procesar entrada unificada de inventario - CON DEBUGGING"""
+    """API para procesar entrada unificada de inventario - CON REABASTECIMIENTO INTELIGENTE"""
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
     
@@ -2009,8 +2403,6 @@ def api_procesar_entrada_unificada(request):
     from apps.authentication.models import Usuario
     from decimal import Decimal
     from django.utils import timezone
-    import random
-    import string
     
     try:
         # Leer datos
@@ -2024,7 +2416,6 @@ def api_procesar_entrada_unificada(request):
         productos_data = data.get('productos', [])
         
         print(f"📦 PRODUCTOS RECIBIDOS: {len(productos_data)}")
-        print(f"📦 DATOS: {productos_data}")
         
         if not productos_data:
             return JsonResponse({
@@ -2037,8 +2428,6 @@ def api_procesar_entrada_unificada(request):
         if not usuario:
             usuario = Usuario.objects.first()
         
-        print(f"👤 Usuario encontrado: {usuario}")
-        
         if not usuario:
             return JsonResponse({
                 'success': False,
@@ -2046,6 +2435,7 @@ def api_procesar_entrada_unificada(request):
             })
         
         productos_creados = 0
+        productos_reabastecidos = 0
         codigos_generados = []
         errores = []
         
@@ -2076,91 +2466,188 @@ def api_procesar_entrada_unificada(request):
                         continue
                     
                     # Obtener categoría y proveedor
-                    print(f"🔍 Buscando categoría: {prod_data['categoria_id']}")
                     try:
                         categoria = Categoria.objects.get(id=prod_data['categoria_id'])
                         print(f"✅ Categoría encontrada: {categoria.nombre}")
                     except Categoria.DoesNotExist:
-                        error_msg = f"Producto {idx + 1}: Categoría no encontrada ({prod_data['categoria_id']})"
+                        error_msg = f"Producto {idx + 1}: Categoría no encontrada"
                         print(f"❌ {error_msg}")
                         errores.append(error_msg)
                         continue
                     
-                    print(f"🔍 Buscando proveedor: {prod_data['proveedor_id']}")
                     try:
                         proveedor = Proveedor.objects.get(id=prod_data['proveedor_id'])
                         print(f"✅ Proveedor encontrado: {proveedor.nombre_comercial}")
                     except Proveedor.DoesNotExist:
-                        error_msg = f"Producto {idx + 1}: Proveedor no encontrado ({prod_data['proveedor_id']})"
+                        error_msg = f"Producto {idx + 1}: Proveedor no encontrado"
                         print(f"❌ {error_msg}")
                         errores.append(error_msg)
                         continue
                     
-                    # Generar código de barras único
-                    # Generar código de barras corto
-                    from apps.inventory_management.utils.barcode_generator import BarcodeGenerator
-                    codigo_barras = BarcodeGenerator.generar_codigo_producto()
-                    print(f"🏷️ Código generado: {codigo_barras}")
-                    
-                    # Crear el producto
-                    print(f"💾 Creando producto...")
-                    producto = Producto.objects.create(
-                        codigo_barras=codigo_barras,
-                        nombre=prod_data['nombre'],
-                        descripcion=prod_data.get('descripcion', ''),
+                    # ✅ BUSCAR SI EL PRODUCTO YA EXISTE
+                    nombre_producto = prod_data['nombre'].strip()
+                    producto_existente = Producto.objects.filter(
+                        nombre__iexact=nombre_producto,
                         categoria=categoria,
                         proveedor=proveedor,
-                        tipo_inventario='NORMAL',
-                        precio_unitario=Decimal(str(prod_data.get('precio_venta', '0'))),
-                        iva=Decimal(str(prod_data.get('iva', '0.00'))),  # ✅ AGREGADO
-                        activo=True,
-                        usuario_registro=usuario
-                    )
-                    print(f"✅ Producto creado: {producto.id}")
+                        activo=True
+                    ).first()
                     
-                    # Crear inventario normal
                     cantidad = int(prod_data.get('cantidad', 0))
                     costo_unitario = Decimal(str(prod_data.get('costo_unitario', '0')))
+                    precio_venta = Decimal(str(prod_data.get('precio_venta', '0')))
                     
-                    print(f"💾 Creando inventario normal (cantidad: {cantidad}, costo: {costo_unitario})...")
-                    producto_normal = ProductoNormal.objects.create(
-                        producto=producto,
-                        stock_actual=cantidad,
-                        stock_minimo=10,
-                        costo_unitario=costo_unitario,
-                        lote=prod_data.get('lote', ''),
-                        fecha_vencimiento=prod_data.get('fecha_vencimiento') or None,
-                        fecha_ultima_entrada=timezone.now()
-                    )
-                    print(f"✅ Inventario creado: {producto_normal.id}")
+                    if producto_existente:
+                        # ✅ PRODUCTO EXISTE - REABASTECER
+                        print(f"🔄 PRODUCTO EXISTENTE ENCONTRADO: {producto_existente.nombre}")
+                        print(f"   Código: {producto_existente.codigo_barras}")
+                        
+                        producto = producto_existente
+                        
+                        # Actualizar precio si es diferente
+                        if producto.precio_unitario != precio_venta:
+                            print(f"   💰 Actualizando precio: ${producto.precio_unitario} → ${precio_venta}")
+                            producto.precio_unitario = precio_venta
+                            producto.save()
+                        
+                        # Reabastecer inventario
+                        try:
+                            producto_normal = producto.inventario_normal
+                            stock_antes = producto_normal.stock_actual
+                            
+                            print(f"   📦 Stock antes: {stock_antes}")
+                            print(f"   ➕ Agregando: {cantidad}")
+                            
+                            producto_normal.stock_actual += cantidad
+                            
+                            # Actualizar costo promedio ponderado
+                            if stock_antes > 0:
+                                costo_total_anterior = stock_antes * producto_normal.costo_unitario
+                                costo_total_nuevo = cantidad * costo_unitario
+                                stock_total = stock_antes + cantidad
+                                producto_normal.costo_unitario = (costo_total_anterior + costo_total_nuevo) / stock_total
+                                print(f"   💵 Costo promedio actualizado: ${producto_normal.costo_unitario:.2f}")
+                            else:
+                                producto_normal.costo_unitario = costo_unitario
+                            
+                            producto_normal.fecha_ultima_entrada = timezone.now()
+                            
+                            # Actualizar lote y vencimiento si vienen
+                            if prod_data.get('lote'):
+                                producto_normal.lote = prod_data.get('lote')
+                            if prod_data.get('fecha_vencimiento'):
+                                producto_normal.fecha_vencimiento = prod_data.get('fecha_vencimiento')
+                            
+                            producto_normal.save()
+                            
+                            print(f"   📦 Stock después: {producto_normal.stock_actual}")
+                            
+                            # Registrar movimiento
+                            MovimientoInventario.objects.create(
+                                producto_normal=producto_normal,
+                                tipo_movimiento='ENTRADA_COMPRA',
+                                cantidad=cantidad,
+                                stock_antes=stock_antes,
+                                stock_despues=producto_normal.stock_actual,
+                                costo_unitario=costo_unitario,
+                                costo_total=cantidad * costo_unitario,
+                                usuario=usuario,
+                                observaciones=f"Reabastecimiento - {prod_data.get('lote', 'Sin lote')}"
+                            )
+                            
+                            productos_reabastecidos += 1
+                            
+                        except ProductoNormal.DoesNotExist:
+                            # No tiene inventario normal, crearlo
+                            print(f"   ⚠️ Producto sin inventario, creando...")
+                            producto_normal = ProductoNormal.objects.create(
+                                producto=producto,
+                                stock_actual=cantidad,
+                                stock_minimo=10,
+                                costo_unitario=costo_unitario,
+                                lote=prod_data.get('lote', ''),
+                                fecha_vencimiento=prod_data.get('fecha_vencimiento') or None,
+                                fecha_ultima_entrada=timezone.now()
+                            )
+                            
+                            MovimientoInventario.objects.create(
+                                producto_normal=producto_normal,
+                                tipo_movimiento='ENTRADA_COMPRA',
+                                cantidad=cantidad,
+                                stock_antes=0,
+                                stock_despues=cantidad,
+                                costo_unitario=costo_unitario,
+                                costo_total=cantidad * costo_unitario,
+                                usuario=usuario,
+                                observaciones=f"Primer inventario - {prod_data.get('lote', 'Sin lote')}"
+                            )
+                            
+                            productos_reabastecidos += 1
+                        
+                    else:
+                        # ✅ PRODUCTO NUEVO - CREAR
+                        print(f"🆕 PRODUCTO NUEVO: {nombre_producto}")
+                        
+                        from apps.inventory_management.utils.barcode_generator import BarcodeGenerator
+                        codigo_barras = BarcodeGenerator.generar_codigo_producto()
+                        print(f"   🏷️ Código generado: {codigo_barras}")
+                        
+                        # Crear el producto
+                        producto = Producto.objects.create(
+                            codigo_barras=codigo_barras,
+                            nombre=nombre_producto,
+                            descripcion=prod_data.get('descripcion', ''),
+                            categoria=categoria,
+                            proveedor=proveedor,
+                            tipo_inventario='NORMAL',
+                            precio_unitario=precio_venta,
+                            iva=Decimal(str(prod_data.get('iva', '0.00'))),
+                            activo=True,
+                            usuario_registro=usuario
+                        )
+                        print(f"   ✅ Producto creado: {producto.id}")
+                        
+                        # Crear inventario normal
+                        producto_normal = ProductoNormal.objects.create(
+                            producto=producto,
+                            stock_actual=cantidad,
+                            stock_minimo=10,
+                            costo_unitario=costo_unitario,
+                            lote=prod_data.get('lote', ''),
+                            fecha_vencimiento=prod_data.get('fecha_vencimiento') or None,
+                            fecha_ultima_entrada=timezone.now()
+                        )
+                        
+                        # Registrar movimiento
+                        MovimientoInventario.objects.create(
+                            producto_normal=producto_normal,
+                            tipo_movimiento='ENTRADA_COMPRA',
+                            cantidad=cantidad,
+                            stock_antes=0,
+                            stock_despues=cantidad,
+                            costo_unitario=costo_unitario,
+                            costo_total=cantidad * costo_unitario,
+                            usuario=usuario,
+                            observaciones=f"Entrada inicial - {prod_data.get('lote', 'Sin lote')}"
+                        )
+                        
+                        productos_creados += 1
                     
-                    # Registrar movimiento
-                    print(f"💾 Registrando movimiento...")
-                    MovimientoInventario.objects.create(
-                        producto_normal=producto_normal,
-                        tipo_movimiento='ENTRADA_COMPRA',
-                        cantidad=cantidad,
-                        stock_antes=0,
-                        stock_despues=cantidad,
-                        costo_unitario=costo_unitario,
-                        costo_total=cantidad * costo_unitario,
-                        usuario=usuario,
-                        observaciones=f"Entrada inicial - {prod_data.get('lote', 'Sin lote')}"
-                    )
-                    print(f"✅ Movimiento registrado")
+                    # ✅ GENERAR CÓDIGOS DE BARRAS (NUEVOS O ADICIONALES)
+                    cantidad_codigos = int(prod_data.get('cantidad_codigos', cantidad))
+                    print(f"🏷️ Stock procesado: {cantidad} | Códigos a generar: {cantidad_codigos}")
                     
-                    productos_creados += 1
-                    
-                    # Preparar datos para códigos de barras
                     codigo_data = {
                         'producto_nombre': producto.nombre,
-                        'codigo_base': codigo_barras,
-                        'cantidad_codigos': cantidad,
+                        'codigo_base': producto.codigo_barras,
+                        'cantidad_codigos': cantidad_codigos,
                         'unidad_medida': prod_data.get('unidad_medida_texto', 'UNIDAD'),
-                        'pdf_url': f'/panel/api/inventario/generar-pdf-codigos/?producto_id={producto.id}&cantidad={cantidad}'
+                        'pdf_url': f'/panel/api/inventario/generar-pdf-codigos/?producto_id={producto.id}&cantidad={cantidad_codigos}',
+                        'tipo_operacion': 'REABASTECIMIENTO' if producto_existente else 'NUEVO'
                     }
+                    
                     codigos_generados.append(codigo_data)
-                    print(f"✅ Código agregado a la lista: {codigo_data}")
+                    print(f"✅ Código agregado a la lista")
                     
                 except Exception as e:
                     error_msg = f"Producto {idx + 1} ({prod_data.get('nombre', 'Sin nombre')}): {str(e)}"
@@ -2172,7 +2659,8 @@ def api_procesar_entrada_unificada(request):
         
         print("\n" + "=" * 80)
         print(f"✅ RESUMEN FINAL:")
-        print(f"   - Productos creados: {productos_creados}")
+        print(f"   - Productos NUEVOS: {productos_creados}")
+        print(f"   - Productos REABASTECIDOS: {productos_reabastecidos}")
         print(f"   - Códigos generados: {len(codigos_generados)}")
         print(f"   - Errores: {len(errores)}")
         if errores:
@@ -2184,9 +2672,10 @@ def api_procesar_entrada_unificada(request):
         return JsonResponse({
             'success': True,
             'productos_creados': productos_creados,
+            'productos_reabastecidos': productos_reabastecidos,
             'codigos_generados': codigos_generados,
             'errores': errores,
-            'mensaje': f'{productos_creados} productos procesados exitosamente'
+            'mensaje': f'{productos_creados} nuevos, {productos_reabastecidos} reabastecidos'
         })
         
     except json.JSONDecodeError as e:
@@ -2206,6 +2695,7 @@ def api_procesar_entrada_unificada(request):
             'success': False,
             'error': f'Error al procesar inventario: {str(e)}'
         }, status=500)
+
 # ========================================
 # FINANZAS
 # ========================================

@@ -97,6 +97,18 @@
         cursor: not-allowed;
     }
 
+    /* DESTACAR CAMPO DE CÓDIGOS */
+    .field-highlight {
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        border: 2px solid #f59e0b !important;
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1) !important;
+    }
+
+    .field-highlight:focus {
+        border-color: #d97706 !important;
+        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2) !important;
+    }
+
     /* ALERTA DE CÓDIGO AUTOMÁTICO */
     .auto-code-alert {
         background: linear-gradient(135deg, #dbeafe, #bfdbfe);
@@ -117,6 +129,23 @@
         color: #1e40af;
         font-weight: 600;
         font-size: 0.9rem;
+    }
+
+    .codigo-alert {
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        border: 2px solid #f59e0b;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-top: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .codigo-alert-text {
+        color: #92400e;
+        font-weight: 700;
+        font-size: 0.85rem;
     }
 
     /* BOTONES DE ACCIÓN */
@@ -288,6 +317,13 @@
     .badge-warning {
         background: #fef3c7;
         color: #92400e;
+    }
+
+    .badge-orange {
+        background: linear-gradient(135deg, #fed7aa, #fdba74);
+        color: #9a3412;
+        font-weight: 700;
+        border: 1px solid #f97316;
     }
 
     /* BOTÓN ELIMINAR */
@@ -526,7 +562,7 @@
             📦 Entrada de Inventario Unificada
         </h1>
         <p style="color: #64748b; font-size: 1.1rem;">
-            Registra productos nuevos y genera códigos de barras automáticamente para cada unidad
+            Registra productos nuevos y genera códigos de barras personalizados para cada entrada
         </p>
     </div>
 
@@ -538,11 +574,11 @@
         </div>
         <div class="stat-card">
             <div class="stat-value" id="stat-unidades">0</div>
-            <div class="stat-label">Total Unidades</div>
+            <div class="stat-label">Total Unidades Stock</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value" id="stat-codigos">0</div>
-            <div class="stat-label">Códigos a Generar</div>
+        <div class="stat-card" style="border: 2px solid #f59e0b;">
+            <div class="stat-value" id="stat-codigos" style="color: #f59e0b;">0</div>
+            <div class="stat-label" style="color: #92400e;">🏷️ Códigos a Generar</div>
         </div>
         <div class="stat-card">
             <div class="stat-value" id="stat-valor">$0.00</div>
@@ -556,7 +592,7 @@
             <div class="form-header-icon">➕</div>
             <div class="form-header-title">
                 <h2>Agregar Producto al Inventario</h2>
-                <p>Los códigos de barras se generarán automáticamente según la cantidad ingresada</p>
+                <p>Define la cantidad de stock y cuántos códigos de barras generar (pueden ser diferentes)</p>
             </div>
         </div>
 
@@ -626,10 +662,10 @@
                     </select>
                 </div>
 
-                <!-- CANTIDAD DE UNIDADES -->
+                <!-- CANTIDAD DE UNIDADES (STOCK) -->
                 <div class="form-group">
                     <label class="form-label-custom">
-                        <span>Cantidad de Unidades</span>
+                        <span>📦 Cantidad de Stock</span>
                         <span class="required">*</span>
                     </label>
                     <input 
@@ -639,12 +675,34 @@
                         min="1" 
                         placeholder="Ej: 50"
                         required
-                        onchange="actualizarPreviewCodigos()"
                     >
                     <div class="auto-code-alert">
-                        <span class="auto-code-alert-icon">🏷️</span>
-                        <span class="auto-code-alert-text" id="preview-codigos">
-                            Se generarán códigos según la cantidad
+                        <span class="auto-code-alert-icon">📦</span>
+                        <span class="auto-code-alert-text">
+                            Unidades que entrarán al inventario
+                        </span>
+                    </div>
+                </div>
+
+                <!-- CANTIDAD DE CÓDIGOS A GENERAR (INDEPENDIENTE) -->
+                <div class="form-group">
+                    <label class="form-label-custom">
+                        <span>🏷️ Códigos de Barras a Generar</span>
+                        <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="number" 
+                        id="input_codigos" 
+                        class="form-input field-highlight" 
+                        min="1" 
+                        placeholder="Ej: 100"
+                        required
+                        onchange="actualizarPreviewCodigos()"
+                    >
+                    <div class="codigo-alert">
+                        <span style="font-size: 1.2rem;">🏷️</span>
+                        <span class="codigo-alert-text" id="preview-codigos">
+                            Número de etiquetas a imprimir
                         </span>
                     </div>
                 </div>
@@ -722,17 +780,17 @@
                 </div>
             </div>
 
-            <!-- ALERTA DE GENERACIÓN AUTOMÁTICA -->
-            <div style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); border: 2px solid #0ea5e9; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <!-- ALERTA DE GENERACIÓN INDEPENDIENTE -->
+            <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #f59e0b; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
                 <div style="display: flex; align-items: start; gap: 1rem;">
-                    <div style="font-size: 2rem;">🤖</div>
+                    <div style="font-size: 2rem;">🏷️</div>
                     <div>
-                        <h4 style="margin: 0 0 0.5rem 0; color: #0c4a6e; font-size: 1.1rem;">Generación Automática de Códigos de Barras</h4>
-                        <p style="margin: 0; color: #075985; line-height: 1.6;">
-                            <strong>El sistema generará automáticamente:</strong><br>
-                            ✅ Un código de barras único para cada unidad de producto<br>
-                            ✅ Etiquetas imprimibles en PDF para pegar en cada producto<br>
-                            ✅ Códigos listos para escanear en el punto de venta
+                        <h4 style="margin: 0 0 0.5rem 0; color: #92400e; font-size: 1.1rem;">Códigos de Barras Independientes</h4>
+                        <p style="margin: 0; color: #92400e; line-height: 1.6;">
+                            <strong>NUEVO:</strong> Ahora puedes generar más o menos códigos que tu cantidad de stock:<br>
+                            ✅ Stock de 50 unidades → Genera 100 códigos (extras para reposición)<br>
+                            ✅ Stock de 100 unidades → Genera 50 códigos (solo lo necesario)<br>
+                            ✅ Totalmente flexible según tus necesidades de etiquetado
                         </p>
                     </div>
                 </div>
@@ -778,13 +836,14 @@
                 <thead>
                     <tr>
                         <th style="width: 5%;">#</th>
-                        <th style="width: 25%;">Producto</th>
-                        <th style="width: 12%;">Categoría</th>
+                        <th style="width: 20%;">Producto</th>
+                        <th style="width: 10%;">Categoría</th>
                         <th style="width: 10%;">Unidad</th>
-                        <th style="width: 12%;">Cantidad</th>
+                        <th style="width: 10%;">Stock</th>
+                        <th style="width: 10%;">🏷️ Códigos</th>
                         <th style="width: 10%;">Costo Unit.</th>
-                        <th style="width: 12%;">Subtotal</th>
-                        <th style="width: 14%;">Acciones</th>
+                        <th style="width: 10%;">Subtotal</th>
+                        <th style="width: 15%;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="productos-lista">
@@ -820,7 +879,7 @@
             <strong style="color: #166534; font-size: 1.1rem;">✅ Inventario Procesado Exitosamente</strong>
             <p style="color: #166534; margin: 0.5rem 0 0 0; line-height: 1.6;">
                 Los productos han sido agregados al inventario y los códigos de barras están listos para imprimir.<br>
-                <strong>Cada PDF contiene las etiquetas necesarias para pegar en cada producto.</strong>
+                <strong>Cada PDF contiene las etiquetas según la cantidad que especificaste.</strong>
             </p>
         </div>
 
@@ -853,13 +912,13 @@ let contadorProductos = 0;
 // ACTUALIZAR PREVIEW DE CÓDIGOS
 // ========================================
 function actualizarPreviewCodigos() {
-    const cantidad = parseInt(document.getElementById('input_cantidad').value) || 0;
+    const cantidad_codigos = parseInt(document.getElementById('input_codigos').value) || 0;
     const preview = document.getElementById('preview-codigos');
     
-    if (cantidad > 0) {
-        preview.innerHTML = `Se generarán <strong>${cantidad} códigos de barras</strong> para imprimir y pegar`;
+    if (cantidad_codigos > 0) {
+        preview.innerHTML = `Se imprimirán <strong>${cantidad_codigos} etiquetas</strong> con código de barras`;
     } else {
-        preview.textContent = 'Se generarán códigos según la cantidad';
+        preview.textContent = 'Número de etiquetas a imprimir';
     }
 }
 
@@ -883,6 +942,7 @@ function agregarProducto() {
     const unidad_medida = document.getElementById('input_unidad').value;
     const unidad_medida_texto = document.getElementById('input_unidad').selectedOptions[0].text;
     const cantidad = parseInt(document.getElementById('input_cantidad').value);
+    const cantidad_codigos = parseInt(document.getElementById('input_codigos').value);
     const costo = parseFloat(document.getElementById('input_costo').value);
     const precio = parseFloat(document.getElementById('input_precio').value);
     const lote = document.getElementById('input_lote').value.trim();
@@ -897,8 +957,14 @@ function agregarProducto() {
     }
 
     if (cantidad < 1) {
-        mostrarNotificacion('La cantidad debe ser al menos 1 unidad', 'error');
+        mostrarNotificacion('La cantidad de stock debe ser al menos 1 unidad', 'error');
         document.getElementById('input_cantidad').focus();
+        return;
+    }
+
+    if (cantidad_codigos < 1) {
+        mostrarNotificacion('Debes generar al menos 1 código de barras', 'error');
+        document.getElementById('input_codigos').focus();
         return;
     }
 
@@ -913,6 +979,7 @@ function agregarProducto() {
         unidad_medida: unidad_medida,
         unidad_medida_texto: unidad_medida_texto,
         cantidad: cantidad,
+        cantidad_codigos: cantidad_codigos,
         costo_unitario: costo,
         precio_venta: precio,
         lote: lote,
@@ -929,7 +996,7 @@ function agregarProducto() {
     actualizarEstadisticas();
     limpiarFormulario();
     
-    mostrarNotificacion(`✅ Producto "${nombre}" agregado - Se generarán ${cantidad} códigos de barras`, 'success');
+    mostrarNotificacion(`✅ "${nombre}" agregado - Stock: ${cantidad} | Códigos: ${cantidad_codigos}`, 'success');
 }
 
 // ========================================
@@ -969,8 +1036,14 @@ function renderizarProductos() {
             </td>
             <td>
                 <strong style="font-size: 1.2rem; color: #3b82f6;">${producto.cantidad}</strong>
-                <div class="product-details" style="margin-top: 0.25rem;">
-                    🏷️ ${producto.cantidad} códigos
+                <div class="product-details">
+                    📦 unidades
+                </div>
+            </td>
+            <td>
+                <strong style="font-size: 1.2rem; color: #f59e0b;">${producto.cantidad_codigos}</strong>
+                <div class="product-details">
+                    🏷️ etiquetas
                 </div>
             </td>
             <td>$${producto.costo_unitario.toFixed(2)}</td>
@@ -994,7 +1067,7 @@ function renderizarProductos() {
 function actualizarEstadisticas() {
     const totalProductos = productos.length;
     const totalUnidades = productos.reduce((sum, p) => sum + p.cantidad, 0);
-    const totalCodigos = totalUnidades; // Un código por unidad
+    const totalCodigos = productos.reduce((sum, p) => sum + p.cantidad_codigos, 0);
     const valorTotal = productos.reduce((sum, p) => sum + p.subtotal, 0);
 
     document.getElementById('stat-productos').textContent = totalProductos;
@@ -1008,7 +1081,7 @@ function actualizarEstadisticas() {
 // ========================================
 function eliminarProducto(id) {
     const producto = productos.find(p => p.id === id);
-    if (confirm(`¿Eliminar "${producto.nombre}"?\nSe eliminarán ${producto.cantidad} códigos de barras programados.`)) {
+    if (confirm(`¿Eliminar "${producto.nombre}"?\nStock: ${producto.cantidad} | Códigos: ${producto.cantidad_codigos}`)) {
         productos = productos.filter(p => p.id !== id);
         renderizarProductos();
         actualizarEstadisticas();
@@ -1025,7 +1098,7 @@ function limpiarLista() {
         return;
     }
     
-    const totalCodigos = productos.reduce((sum, p) => sum + p.cantidad, 0);
+    const totalCodigos = productos.reduce((sum, p) => sum + p.cantidad_codigos, 0);
     if (confirm(`¿Limpiar toda la lista?\nSe eliminarán ${productos.length} productos y ${totalCodigos} códigos programados.`)) {
         productos = [];
         contadorProductos = 0;
@@ -1040,7 +1113,7 @@ function limpiarLista() {
 // ========================================
 function limpiarFormulario() {
     document.getElementById('form-producto').reset();
-    document.getElementById('preview-codigos').textContent = 'Se generarán códigos según la cantidad';
+    document.getElementById('preview-codigos').textContent = 'Número de etiquetas a imprimir';
     document.getElementById('input_nombre').focus();
 }
 
@@ -1054,9 +1127,10 @@ async function procesarInventario() {
     }
 
     const totalUnidades = productos.reduce((sum, p) => sum + p.cantidad, 0);
+    const totalCodigos = productos.reduce((sum, p) => sum + p.cantidad_codigos, 0);
     const totalProductos = productos.length;
 
-    if (!confirm(`¿Procesar entrada de inventario?\n\n📦 Productos: ${totalProductos}\n🏷️ Códigos a generar: ${totalUnidades}\n\nSe crearán los productos y sus códigos de barras automáticamente.`)) {
+    if (!confirm(`¿Procesar entrada de inventario?\n\n📦 Productos: ${totalProductos}\n📊 Stock Total: ${totalUnidades} unidades\n🏷️ Códigos a generar: ${totalCodigos}\n\nSe crearán los productos y sus códigos automáticamente.`)) {
         return;
     }
 
@@ -1091,7 +1165,7 @@ async function procesarInventario() {
             renderizarProductos();
             actualizarEstadisticas();
             
-            mostrarNotificacion(`✅ ${result.productos_creados} productos procesados y ${result.codigos_generados.length} códigos generados`, 'success');
+            mostrarNotificacion(`✅ ${result.productos_creados} productos procesados y ${totalCodigos} códigos generados`, 'success');
         } else {
             mostrarNotificacion(result.error || 'Error al procesar inventario', 'error');
         }
@@ -1205,8 +1279,8 @@ function getCookie(name) {
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('input_nombre').focus();
     
-    // Actualizar preview cuando se cambia la cantidad
-    document.getElementById('input_cantidad').addEventListener('input', actualizarPreviewCodigos);
+    // Actualizar preview cuando se cambia la cantidad de códigos
+    document.getElementById('input_codigos').addEventListener('input', actualizarPreviewCodigos);
 });
 </script>
 

@@ -9,10 +9,10 @@
 
 <style>
     /* ============================================
-       FIX CRÍTICO: Permitir que los modales estén por encima de todo
+       LAYOUT GENERAL
        ============================================ */
     body.modal-open {
-        position: static !important;
+        overflow: hidden;
     }
 
     /* ============================================
@@ -93,7 +93,7 @@
     }
     
     /* ============================================
-       ADMIN CARD (Filtros y Tabla)
+       ADMIN CARD
        ============================================ */
     .admin-card {
         background: rgba(255, 255, 255, 0.85);
@@ -372,12 +372,19 @@
     .btn-print:hover {
         background: rgba(16, 185, 129, 0.25);
     }
-    .btn-invoice {
-        background: rgba(245, 158, 11, 0.15);
-        color: #d97706;
+    .btn-excel {
+        background: rgba(34, 197, 94, 0.15);
+        color: #16a34a;
     }
-    .btn-invoice:hover {
-        background: rgba(245, 158, 11, 0.25);
+    .btn-excel:hover {
+        background: rgba(34, 197, 94, 0.25);
+    }
+    .btn-pdf {
+        background: rgba(239, 68, 68, 0.15);
+        color: #dc2626;
+    }
+    .btn-pdf:hover {
+        background: rgba(239, 68, 68, 0.25);
     }
     .btn-delete {
         background: rgba(239, 68, 68, 0.15);
@@ -385,6 +392,198 @@
     }
     .btn-delete:hover {
         background: rgba(239, 68, 68, 0.25);
+    }
+    
+    /* ============================================
+       MODAL DE DETALLES
+       ============================================ */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 9998;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .modal-overlay.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-container {
+        width: 90%;
+        max-width: 900px;
+        max-height: 90vh;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+        animation: slideIn 0.3s ease;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .modal-header {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        color: white;
+        padding: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+    }
+    
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .modal-close {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        font-size: 1.2rem;
+    }
+    
+    .modal-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.1);
+    }
+    
+    .modal-body {
+        padding: 2rem;
+        overflow-y: auto;
+        flex: 1;
+    }
+    
+    .detalle-section {
+        background: rgba(248, 250, 252, 0.6);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .detalle-section-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .detalle-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    
+    .detalle-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .detalle-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+    }
+    
+    .detalle-value {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    
+    /* Tabla de productos en modal */
+    .productos-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .productos-table thead {
+        background: rgba(59, 130, 246, 0.08);
+    }
+    
+    .productos-table th {
+        padding: 0.75rem;
+        text-align: left;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #1e293b;
+        text-transform: uppercase;
+        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
+    }
+    
+    .productos-table td {
+        padding: 0.75rem;
+        font-size: 0.9rem;
+        color: #1e293b;
+        border-bottom: 1px solid rgba(219, 234, 254, 0.3);
+    }
+    
+    .productos-table tbody tr:hover {
+        background: rgba(59, 130, 246, 0.05);
+    }
+    
+    .totales-resumen {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(37, 99, 235, 0.05) 100%);
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-top: 1rem;
+    }
+    
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    
+    .total-row.total-final {
+        border-top: 2px solid rgba(59, 130, 246, 0.3);
+        margin-top: 0.5rem;
+        padding-top: 1rem;
+        font-size: 1.8rem;
+        font-weight: 900;
+        color: #0f172a;
+    }
+    
+    .modal-footer {
+        padding: 1.5rem;
+        border-top: 1px solid rgba(219, 234, 254, 0.5);
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+        flex-shrink: 0;
     }
     
     /* ============================================
@@ -430,11 +629,10 @@
         padding: 4rem 2rem;
         color: #94a3b8;
     }
-    .empty-state svg {
-        width: 100px;
-        height: 100px;
-        margin-bottom: 1.5rem;
-        opacity: 0.5;
+    .empty-state i {
+        font-size: 100px;
+        opacity: 0.3;
+        margin-bottom: 1rem;
     }
     .empty-state h3 {
         color: #475569;
@@ -460,15 +658,37 @@
         .table-admin {
             font-size: 0.85rem;
         }
-        .btn-group {
-            flex-wrap: wrap;
-            gap: 0.3rem;
+        .modal-container {
+            width: 95%;
+            max-height: 95vh;
+        }
+        .modal-body {
+            padding: 1rem;
+        }
+        .detalle-grid {
+            grid-template-columns: 1fr;
         }
     }
     
     /* ============================================
        ANIMACIONES
        ============================================ */
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
     @keyframes fadeInUp {
         from {
             opacity: 0;
@@ -479,6 +699,7 @@
             transform: translateY(0);
         }
     }
+    
     .stat-card,
     .admin-card {
         animation: fadeInUp 0.5s ease-out backwards;
@@ -506,7 +727,7 @@
         z-index: 2;
     }
     
-    /* Filtros collapsible */
+    /* Filtros */
     .filtros-content {
         position: relative;
         z-index: 2;
@@ -517,8 +738,23 @@
         gap: 1rem;
         margin-bottom: 1rem;
     }
+    
+    /* Spinner de carga */
+    .spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }}
 </style>
 {% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <!-- HEADER -->
@@ -679,11 +915,11 @@
                 <i class="fas fa-list"></i> Listado de Ventas ({{ count_ventas }} registros)
             </h3>
             <div style="display: flex; gap: 0.5rem;">
-                <button class="btn-success-admin btn-sm-admin" onclick="exportarExcel()">
-                    <i class="fas fa-file-excel"></i> Excel
+                <button class="btn-success-admin btn-sm-admin" onclick="exportarExcelGeneral()">
+                    <i class="fas fa-file-excel"></i> Excel General
                 </button>
-                <button class="btn-success-admin btn-sm-admin" onclick="exportarPDF()">
-                    <i class="fas fa-file-pdf"></i> PDF
+                <button class="btn-success-admin btn-sm-admin" onclick="exportarPDFGeneral()">
+                    <i class="fas fa-file-pdf"></i> PDF General
                 </button>
             </div>
         </div>
@@ -773,13 +1009,14 @@
                             </div>
                         </td>
                         <td style="text-align: center;">
-                            <div style="display: inline-flex; gap: 0.5rem;">
+                            <div style="display: inline-flex; gap: 0.3rem; flex-wrap: wrap; justify-content: center;">
                                 <!-- Ver Detalle -->
-                                <a href="{% url 'custom_admin:venta_detail' venta.pk %}" 
-                                   class="btn-action btn-view"
-                                   title="Ver Detalle">
+                                <button type="button"
+                                        class="btn-action btn-view"
+                                        title="Ver Detalle"
+                                        onclick="verDetalleVenta('{{ venta.pk }}')">
                                     <i class="fas fa-eye"></i>
-                                </a>
+                                </button>
 
                                 <!-- Imprimir Ticket -->
                                 <a href="{% url 'custom_admin:venta_ticket' venta.pk %}" 
@@ -789,15 +1026,21 @@
                                     <i class="fas fa-print"></i>
                                 </a>
 
-                                <!-- Factura -->
-                                {% if venta.cliente %}
-                                <a href="{% url 'custom_admin:venta_factura' venta.pk %}" 
-                                   target="_blank"
-                                   class="btn-action btn-invoice"
-                                   title="Ver Factura">
-                                    <i class="fas fa-file-invoice"></i>
-                                </a>
-                                {% endif %}
+                                <!-- Excel Individual -->
+                                <button type="button"
+                                        class="btn-action btn-excel"
+                                        title="Exportar a Excel"
+                                        onclick="exportarExcelIndividual('{{ venta.pk }}')">
+                                    <i class="fas fa-file-excel"></i>
+                                </button>
+
+                                <!-- PDF Individual -->
+                                <button type="button"
+                                        class="btn-action btn-pdf"
+                                        title="Exportar a PDF"
+                                        onclick="exportarPDFIndividual('{{ venta.pk }}')">
+                                    <i class="fas fa-file-pdf"></i>
+                                </button>
 
                                 <!-- Anular -->
                                 {% if venta.estado != 'ANULADA' and venta.monto_pagado == 0 %}
@@ -858,18 +1101,62 @@
         {% else %}
         <!-- EMPTY STATE -->
         <div class="empty-state">
-            <i class="fas fa-inbox" style="font-size: 100px; opacity: 0.3; margin-bottom: 1rem;"></i>
+            <i class="fas fa-inbox"></i>
             <h3>No se encontraron ventas</h3>
             <p>Intenta ajustar los filtros de búsqueda o realiza una nueva venta.</p>
         </div>
         {% endif %}
     </div>
 </div>
+
+<!-- MODAL DE DETALLES -->
+<div id="modalDetalle" class="modal-overlay" onclick="cerrarModalSiFondoClick(event)">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <i class="fas fa-receipt"></i>
+                <span id="modalTituloVenta">Detalle de Venta</span>
+            </h3>
+            <button type="button" class="modal-close" onclick="cerrarModalDetalle()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body" id="modalDetalleBody">
+            <div style="text-align: center; padding: 3rem;">
+                <div class="spinner" style="border-color: rgba(59, 130, 246, 0.2); border-top-color: #3b82f6; width: 40px; height: 40px;"></div>
+                <p style="margin-top: 1rem; color: #64748b;">Cargando detalles...</p>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary-admin btn-sm-admin" onclick="cerrarModalDetalle()">
+                <i class="fas fa-times"></i> Cerrar
+            </button>
+            <button type="button" class="btn-success-admin btn-sm-admin" id="btnImprimirModalTicket" onclick="imprimirTicketDesdeModal()">
+                <i class="fas fa-print"></i> Imprimir Ticket
+            </button>
+            <button type="button" class="btn-success-admin btn-sm-admin" id="btnExportarModalExcel" onclick="exportarExcelDesdeModal()">
+                <i class="fas fa-file-excel"></i> Excel
+            </button>
+            <button type="button" class="btn-success-admin btn-sm-admin" id="btnExportarModalPDF" onclick="exportarPDFDesdeModal()">
+                <i class="fas fa-file-pdf"></i> PDF
+            </button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Toggle de filtros
+// ============================================
+// VARIABLES GLOBALES
+// ============================================
+let ventaIdActual = null;
+
+// ============================================
+// TOGGLE DE FILTROS
+// ============================================
 function toggleFiltros() {
     const content = document.getElementById('filtros-content');
     const icon = document.getElementById('filtros-icon');
@@ -883,22 +1170,254 @@ function toggleFiltros() {
     }
 }
 
-// Limpiar filtros
+// ============================================
+// LIMPIAR FILTROS
+// ============================================
 function limpiarFiltros() {
     window.location.href = '{% url "custom_admin:ventas_list" %}';
 }
 
-// Exportar a Excel
-function exportarExcel() {
-    alert('Función de exportación a Excel en desarrollo');
+// ============================================
+// VER DETALLE DE VENTA (MODAL)
+// ============================================
+function verDetalleVenta(ventaId) {
+    ventaIdActual = ventaId;
+    const modal = document.getElementById('modalDetalle');
+    modal.classList.add('show');
+    document.body.classList.add('modal-open');
+    
+    // ✅ URL CORREGIDA
+    fetch(`/panel/api/ventas/${ventaId}/info/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarDetalleEnModal(data.venta);
+            } else {
+                document.getElementById('modalDetalleBody').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <h3>Error al cargar</h3>
+                        <p>${data.error || 'No se pudo cargar el detalle de la venta'}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('modalDetalleBody').innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <h3>Error de conexión</h3>
+                    <p>No se pudo conectar con el servidor</p>
+                </div>
+            `;
+        });
 }
 
-// Exportar a PDF
-function exportarPDF() {
-    alert('Función de exportación a PDF en desarrollo');
+function mostrarDetalleEnModal(venta) {
+    document.getElementById('modalTituloVenta').textContent = `Venta ${venta.numero_venta}`;
+    
+    const html = `
+        <!-- INFORMACIÓN GENERAL -->
+        <div class="detalle-section">
+            <div class="detalle-section-title">
+                <i class="fas fa-info-circle"></i> Información General
+            </div>
+            <div class="detalle-grid">
+                <div class="detalle-item">
+                    <span class="detalle-label">Número de Venta</span>
+                    <span class="detalle-value">${venta.numero_venta}</span>
+                </div>
+                <div class="detalle-item">
+                    <span class="detalle-label">Fecha y Hora</span>
+                    <span class="detalle-value">${venta.fecha_venta}</span>
+                </div>
+                <div class="detalle-item">
+                    <span class="detalle-label">Estado</span>
+                    <span class="detalle-value">
+                        <span class="badge-admin ${venta.estado === 'COMPLETADA' ? 'badge-success' : venta.estado === 'ANULADA' ? 'badge-danger' : 'badge-warning'}">
+                            ${venta.estado}
+                        </span>
+                    </span>
+                </div>
+                <div class="detalle-item">
+                    <span class="detalle-label">Tipo de Venta</span>
+                    <span class="detalle-value">
+                        <span class="badge-admin ${venta.tipo_venta === 'Contado' ? 'badge-info' : 'badge-warning'}">
+                            ${venta.tipo_venta}
+                        </span>
+                    </span>
+                </div>
+                <div class="detalle-item">
+                    <span class="detalle-label">Vendedor</span>
+                    <span class="detalle-value">${venta.vendedor}</span>
+                </div>
+                <div class="detalle-item">
+                    <span class="detalle-label">Cliente</span>
+                    <span class="detalle-value">${venta.cliente || 'Público General'}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRODUCTOS -->
+        <div class="detalle-section">
+            <div class="detalle-section-title">
+                <i class="fas fa-box"></i> Productos Vendidos
+            </div>
+            <div class="table-responsive">
+                <table class="productos-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th style="text-align: center;">Cantidad</th>
+                            <th style="text-align: right;">Precio Unit.</th>
+                            <th style="text-align: right;">Descuento</th>
+                            <th style="text-align: right;">Subtotal</th>
+                            <th style="text-align: right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${venta.items.map(item => `
+                            <tr>
+                                <td>
+                                    <strong>${item.producto_nombre}</strong>
+                                    <br><small style="color: #94a3b8;">${item.codigo_barras || 'Sin código'}</small>
+                                </td>
+                                <td style="text-align: center; font-weight: 700;">${item.cantidad}</td>
+                                <td style="text-align: right;">$${parseFloat(item.precio_unitario).toFixed(2)}</td>
+                                <td style="text-align: right; color: #dc2626;">-$${parseFloat(item.descuento).toFixed(2)}</td>
+                                <td style="text-align: right;">$${parseFloat(item.subtotal).toFixed(2)}</td>
+                                <td style="text-align: right; font-weight: 700; color: #10b981;">$${parseFloat(item.total).toFixed(2)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- TOTALES -->
+            <div class="totales-resumen">
+                <div class="total-row">
+                    <span>Subtotal:</span>
+                    <strong>$${parseFloat(venta.subtotal).toFixed(2)}</strong>
+                </div>
+                <div class="total-row">
+                    <span>Descuento:</span>
+                    <strong style="color: #dc2626;">-$${parseFloat(venta.descuento).toFixed(2)}</strong>
+                </div>
+                <div class="total-row total-final">
+                    <span>TOTAL:</span>
+                    <strong>$${parseFloat(venta.total).toFixed(2)}</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- INFORMACIÓN DE PAGO -->
+        <div class="detalle-section">
+            <div class="detalle-section-title">
+                <i class="fas fa-credit-card"></i> Información de Pago
+            </div>
+            <div class="detalle-grid">
+                <div class="detalle-item">
+                    <span class="detalle-label">Método de Pago</span>
+                    <span class="detalle-value">${venta.metodo_pago}</span>
+                </div>
+                <div class="detalle-item">
+                    <span class="detalle-label">Monto Pagado</span>
+                    <span class="detalle-value" style="color: #10b981;">$${parseFloat(venta.monto_pagado).toFixed(2)}</span>
+                </div>
+                ${parseFloat(venta.cambio) > 0 ? `
+                <div class="detalle-item">
+                    <span class="detalle-label">Cambio</span>
+                    <span class="detalle-value" style="color: #059669;">$${parseFloat(venta.cambio).toFixed(2)}</span>
+                </div>
+                ` : ''}
+                ${parseFloat(venta.saldo_pendiente) > 0 ? `
+                <div class="detalle-item">
+                    <span class="detalle-label">Saldo Pendiente</span>
+                    <span class="detalle-value" style="color: #dc2626;">$${parseFloat(venta.saldo_pendiente).toFixed(2)}</span>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('modalDetalleBody').innerHTML = html;
 }
 
-// Anular venta
+// ============================================
+// CERRAR MODAL
+// ============================================
+function cerrarModalDetalle() {
+    const modal = document.getElementById('modalDetalle');
+    modal.classList.remove('show');
+    document.body.classList.remove('modal-open');
+    ventaIdActual = null;
+}
+
+function cerrarModalSiFondoClick(event) {
+    if (event.target.id === 'modalDetalle') {
+        cerrarModalDetalle();
+    }
+}
+
+// ============================================
+// IMPRIMIR DESDE MODAL
+// ============================================
+function imprimirTicketDesdeModal() {
+    if (ventaIdActual) {
+        window.open(`/panel/ventas/${ventaIdActual}/ticket/`, '_blank');
+    }
+}
+
+// ============================================
+// EXPORTAR EXCEL INDIVIDUAL
+// ============================================
+function exportarExcelIndividual(ventaId) {
+    // ✅ URL CORREGIDA
+    window.location.href = `/panel/ventas/${ventaId}/export/excel/`;
+}
+
+function exportarExcelDesdeModal() {
+    if (ventaIdActual) {
+        exportarExcelIndividual(ventaIdActual);
+    }
+}
+
+// ============================================
+// EXPORTAR PDF INDIVIDUAL
+// ============================================
+function exportarPDFIndividual(ventaId) {
+    // ✅ URL CORREGIDA
+    window.open(`/panel/ventas/${ventaId}/export/pdf/`, '_blank');
+}
+
+function exportarPDFDesdeModal() {
+    if (ventaIdActual) {
+        exportarPDFIndividual(ventaIdActual);
+    }
+}
+
+// ============================================
+// EXPORTAR EXCEL GENERAL
+// ============================================
+function exportarExcelGeneral() {
+    const params = new URLSearchParams(window.location.search);
+    // ✅ URL CORREGIDA
+    window.location.href = `/panel/ventas/export-all/excel/?${params.toString()}`;
+}
+
+// ============================================
+// EXPORTAR PDF GENERAL
+// ============================================
+function exportarPDFGeneral() {
+    const params = new URLSearchParams(window.location.search);
+    // ✅ URL CORREGIDA
+    window.open(`/panel/ventas/export-all/pdf/?${params.toString()}`, '_blank');
+}
+
+// ============================================
+// ANULAR VENTA
+// ============================================
 function anularVenta(ventaId, numeroVenta) {
     if (confirm(`¿Está seguro de que desea anular la venta ${numeroVenta}?\n\n⚠️ Esta acción no se puede deshacer y revertirá el inventario.`)) {
         const form = document.createElement('form');
@@ -916,12 +1435,21 @@ function anularVenta(ventaId, numeroVenta) {
     }
 }
 
-// Inicializar
+// ============================================
+// INICIALIZACIÓN
+// ============================================
 document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.toString() && urlParams.get('page') === null) {
         document.getElementById('filtros-content').style.display = 'block';
     }
+    
+    // Cerrar modal con ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            cerrarModalDetalle();
+        }
+    });
 });
 </script>
 {% endblock %}
