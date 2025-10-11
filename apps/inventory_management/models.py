@@ -3,7 +3,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, RegexValidator
 from django.utils import timezone
-from django.db.models import Manager, Sum, Q, F
+from django.db.models import Manager, Sum, Q, F, Count
 from decimal import Decimal
 import uuid
 
@@ -99,6 +99,114 @@ class Proveedor(models.Model):
         return self.nombre_comercial
 
 
+class Marca(models.Model):
+    """
+    Marcas de productos
+    Ejemplos: Coca-Cola, Nestlé, Del Monte, Maggi, Colgate, etc.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Información básica
+    nombre = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Nombre de la marca"
+    )
+    descripcion = models.TextField(
+        blank=True,
+        help_text="Descripción de la marca y sus productos"
+    )
+    
+    # Información adicional
+    pais_origen = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="País de origen de la marca"
+    )
+    fabricante = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Empresa fabricante o dueña de la marca"
+    )
+    logo = models.ImageField(
+        upload_to='marcas/',
+        null=True,
+        blank=True,
+        help_text="Logo de la marca"
+    )
+    sitio_web = models.URLField(
+        blank=True,
+        help_text="Sitio web oficial de la marca"
+    )
+    
+    # Control
+    activa = models.BooleanField(
+        default=True,
+        help_text="Marca activa en el sistema"
+    )
+    destacada = models.BooleanField(
+        default=False,
+        help_text="Marca destacada (para mostrar en reportes o destacados)"
+    )
+    orden = models.IntegerField(
+        default=0,
+        help_text="Orden de visualización"
+    )
+    
+    # Auditoría
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Marca'
+        verbose_name_plural = 'Marcas'
+        ordering = ['orden', 'nombre']
+        db_table = 'inv_marca'
+        indexes = [
+            models.Index(fields=['nombre']),
+            models.Index(fields=['activa', 'orden']),
+            models.Index(fields=['destacada', 'activa']),
+        ]
+    
+    def __str__(self):
+        return self.nombre
+    
+    def total_productos(self):
+        """Retorna el total de productos activos de esta marca"""
+        return self.productos.filter(activo=True).count()
+    
+    def productos_con_stock(self):
+        """
+        Retorna productos de esta marca que tienen stock disponible
+        Considera tanto quintales como productos normales
+        """
+        return self.productos.filter(
+            activo=True
+        ).filter(
+            Q(tipo_inventario='QUINTAL', quintales__estado='DISPONIBLE', quintales__peso_actual__gt=0) |
+            Q(tipo_inventario='NORMAL', inventario_normal__stock_actual__gt=0)
+        ).distinct()
+    
+    def valor_inventario_marca(self):
+        """Calcula el valor total del inventario de esta marca"""
+        # Valor de quintales de esta marca
+        valor_quintales = Quintal.objects.filter(
+            producto__marca=self,
+            estado='DISPONIBLE'
+        ).aggregate(
+            total=Sum(F('peso_actual') * F('costo_por_unidad'))
+        )['total'] or Decimal('0')
+        
+        # Valor de productos normales de esta marca
+        valor_normales = ProductoNormal.objects.filter(
+            producto__marca=self
+        ).aggregate(
+            total=Sum(F('stock_actual') * F('costo_unitario'))
+        )['total'] or Decimal('0')
+        
+        return valor_quintales + valor_normales
+
+
 class UnidadMedida(models.Model):
     """
     Unidades de medida para quintales (kg, lb, arroba, quintal)
@@ -177,6 +285,14 @@ class Producto(models.Model):
         on_delete=models.PROTECT,
         related_name='productos'
     )
+    marca = models.ForeignKey(
+        'Marca',
+        on_delete=models.PROTECT,
+        related_name='productos',
+        null=True,
+        blank=True,
+        help_text="Marca del producto"
+    )
     proveedor = models.ForeignKey(
         'Proveedor',
         on_delete=models.PROTECT,
@@ -229,7 +345,7 @@ class Producto(models.Model):
         help_text="Precio por unidad completa"
     )
     
-    # ✅ NUEVO CAMPO IVA
+    # ✅ CAMPO IVA
     iva = models.DecimalField(
         max_digits=5,
         decimal_places=2,
@@ -256,8 +372,6 @@ class Producto(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
     
-    # ... resto del modelo igual
-    
     class Meta:
         verbose_name = 'Producto'
         verbose_name_plural = 'Productos'
@@ -267,11 +381,13 @@ class Producto(models.Model):
             models.Index(fields=['codigo_barras']),
             models.Index(fields=['tipo_inventario', 'activo']),
             models.Index(fields=['categoria', 'activo']),
+            models.Index(fields=['marca', 'activo']),
         ]
     
     def __str__(self):
         tipo_icon = "🌾" if self.tipo_inventario == 'QUINTAL' else "📦"
-        return f"{tipo_icon} {self.nombre} ({self.codigo_barras})"
+        marca_texto = f" - {self.marca.nombre}" if self.marca else ""
+        return f"{tipo_icon} {self.nombre}{marca_texto} ({self.codigo_barras})"
     
     def es_quintal(self):
         """Verifica si es producto a granel"""
@@ -932,7 +1048,6 @@ class Compra(models.Model):
     
     def calcular_totales(self):
         """Recalcula los totales de la compra basado en los detalles"""
-        from django.db.models import Sum
         self.subtotal = self.detalles.aggregate(
             total=Sum('subtotal')
         )['total'] or Decimal('0')
@@ -1238,3 +1353,43 @@ class EstadisticasInventario:
     def proximos_vencer(dias=7):
         """Productos próximos a vencer"""
         return Quintal.objects.proximos_a_vencer(dias=dias)
+    
+    @staticmethod
+    def productos_por_marca():
+        """Estadísticas de productos agrupados por marca"""
+        return Marca.objects.filter(activa=True).annotate(
+            total_productos=Count('productos', filter=Q(productos__activo=True)),
+            productos_con_stock=Count(
+                'productos',
+                filter=Q(productos__activo=True) & (
+                    Q(productos__tipo_inventario='QUINTAL', 
+                      productos__quintales__estado='DISPONIBLE',
+                      productos__quintales__peso_actual__gt=0) |
+                    Q(productos__tipo_inventario='NORMAL',
+                      productos__inventario_normal__stock_actual__gt=0)
+                ),
+                distinct=True
+            )
+        ).order_by('-total_productos')
+    
+    @staticmethod
+    def marcas_mas_vendidas(fecha_inicio=None, fecha_fin=None):
+        """Retorna las marcas más vendidas en un período"""
+        try:
+            from apps.sales_management.models import DetalleVenta
+            
+            filtros = {}
+            if fecha_inicio:
+                filtros['venta__fecha_venta__gte'] = fecha_inicio
+            if fecha_fin:
+                filtros['venta__fecha_venta__lte'] = fecha_fin
+            
+            return Marca.objects.filter(
+                productos__detalles_venta__isnull=False,
+                **filtros
+            ).annotate(
+                total_ventas=Count('productos__detalles_venta'),
+                monto_total=Sum('productos__detalles_venta__subtotal')
+            ).order_by('-monto_total')[:10]
+        except:
+            return Marca.objects.none()

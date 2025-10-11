@@ -14,12 +14,12 @@ from decimal import Decimal
 from datetime import timedelta
 
 from .models import (
-    Categoria, Proveedor, UnidadMedida, Producto,
+    Categoria, Proveedor, UnidadMedida, Producto, Marca,
     Quintal, MovimientoQuintal, ProductoNormal,
     MovimientoInventario, Compra, DetalleCompra
 )
 from .forms import (
-    CategoriaForm, ProveedorForm, ProductoForm,
+    CategoriaForm, ProveedorForm, ProductoForm, MarcaForm,
     QuintalForm, ProductoNormalForm, BuscarCodigoBarrasForm,
     AjusteInventarioQuintalForm, AjusteInventarioNormalForm,
     CompraForm
@@ -48,6 +48,7 @@ class InventoryDashboardView(InventarioAccessMixin, TemplateView):
         context['total_productos'] = Producto.objects.filter(activo=True).count()
         context['total_categorias'] = Categoria.objects.filter(activa=True).count()
         context['total_proveedores'] = Proveedor.objects.filter(activo=True).count()
+        context['total_marcas'] = Marca.objects.filter(activa=True).count()
         
         # Quintales
         quintales_disponibles = Quintal.objects.filter(
@@ -95,6 +96,19 @@ class InventoryDashboardView(InventarioAccessMixin, TemplateView):
             fecha_vencimiento__gte=timezone.now().date()
         ).count()
         
+        # Marcas destacadas
+        context['marcas_destacadas'] = Marca.objects.filter(
+            activa=True,
+            destacada=True
+        ).order_by('orden')[:5]
+        
+        # Top marcas por productos
+        context['top_marcas'] = Marca.objects.filter(
+            activa=True
+        ).annotate(
+            total_productos=Count('productos', filter=Q(productos__activo=True))
+        ).order_by('-total_productos')[:5]
+        
         # Últimos movimientos
         context['ultimos_movimientos_quintales'] = MovimientoQuintal.objects.select_related(
             'quintal', 'quintal__producto', 'usuario'
@@ -128,6 +142,232 @@ class InventoryDashboardView(InventarioAccessMixin, TemplateView):
         ).order_by('-total_vendido')[:5]
         
         return context
+
+
+# ============================================================================
+# VISTAS DE MARCAS
+# ============================================================================
+
+class MarcaListView(InventarioAccessMixin, ListView):
+    """Lista de marcas"""
+    model = Marca
+    template_name = 'inventory/marca_list.html'
+    context_object_name = 'marcas'
+    paginate_by = 20
+    
+    def get_queryset(self):
+        queryset = Marca.objects.filter(activa=True)
+        
+        # Búsqueda
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(nombre__icontains=search) |
+                Q(descripcion__icontains=search) |
+                Q(fabricante__icontains=search) |
+                Q(pais_origen__icontains=search)
+            )
+        
+        # Filtro por destacada
+        destacada = self.request.GET.get('destacada')
+        if destacada == '1':
+            queryset = queryset.filter(destacada=True)
+        
+        # Filtro por país
+        pais = self.request.GET.get('pais')
+        if pais:
+            queryset = queryset.filter(pais_origen=pais)
+        
+        # Agregar estadísticas
+        queryset = queryset.annotate(
+            total_productos=Count('productos', filter=Q(productos__activo=True)),
+            productos_con_stock=Count(
+                'productos',
+                filter=Q(
+                    productos__activo=True,
+                    productos__inventario_normal__stock_actual__gt=0
+                ),
+                distinct=True
+            )
+        ).order_by('orden', 'nombre')
+        
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Marcas destacadas (para sidebar)
+        context['marcas_destacadas'] = Marca.objects.filter(
+            activa=True,
+            destacada=True
+        ).order_by('orden')[:6]
+        
+        # Países disponibles (para filtro)
+        context['paises'] = Marca.objects.filter(
+            activa=True
+        ).exclude(
+            pais_origen=''
+        ).values_list('pais_origen', flat=True).distinct().order_by('pais_origen')
+        
+        # Filtros actuales
+        context['search'] = self.request.GET.get('search', '')
+        context['destacada_selected'] = self.request.GET.get('destacada', '')
+        context['pais_selected'] = self.request.GET.get('pais', '')
+        
+        return context
+
+
+class MarcaDetailView(InventarioAccessMixin, DetailView):
+    """Detalle de marca con sus productos"""
+    model = Marca
+    template_name = 'inventory/marca_detail.html'
+    context_object_name = 'marca'
+    
+    def get_queryset(self):
+        return Marca.objects.filter(activa=True)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        marca = self.get_object()
+        
+        # Productos de la marca
+        productos = marca.productos.filter(
+            activo=True
+        ).select_related(
+            'categoria',
+            'proveedor',
+            'unidad_medida_base'
+        )
+        
+        # Filtros
+        categoria_id = self.request.GET.get('categoria')
+        if categoria_id:
+            productos = productos.filter(categoria_id=categoria_id)
+        
+        tipo = self.request.GET.get('tipo')
+        if tipo:
+            productos = productos.filter(tipo_inventario=tipo)
+        
+        busqueda = self.request.GET.get('q')
+        if busqueda:
+            productos = productos.filter(
+                Q(nombre__icontains=busqueda) |
+                Q(codigo_barras__icontains=busqueda) |
+                Q(descripcion__icontains=busqueda)
+            )
+        
+        # Solo con stock
+        solo_stock = self.request.GET.get('stock')
+        if solo_stock == '1':
+            productos = productos.filter(
+                Q(tipo_inventario='QUINTAL', quintales__estado='DISPONIBLE', quintales__peso_actual__gt=0) |
+                Q(tipo_inventario='NORMAL', inventario_normal__stock_actual__gt=0)
+            ).distinct()
+        
+        # Ordenamiento
+        orden = self.request.GET.get('orden', 'nombre')
+        orden_map = {
+            'nombre': 'nombre',
+            'precio_asc': 'precio_unitario',
+            'precio_desc': '-precio_unitario',
+            'categoria': 'categoria__nombre',
+            'reciente': '-fecha_creacion',
+        }
+        productos = productos.order_by(orden_map.get(orden, 'nombre'))
+        
+        context['productos'] = productos
+        
+        # Estadísticas de la marca
+        context['stats'] = {
+            'total_productos': marca.total_productos(),
+            'productos_con_stock': marca.productos_con_stock().count(),
+            'valor_inventario': marca.valor_inventario_marca(),
+        }
+        
+        # Categorías disponibles (para filtro)
+        context['categorias'] = Categoria.objects.filter(
+            productos__marca=marca,
+            productos__activo=True,
+            activa=True
+        ).distinct().order_by('nombre')
+        
+        # Filtros activos
+        context['filtros_activos'] = {
+            'categoria': categoria_id,
+            'tipo': tipo,
+            'busqueda': busqueda,
+            'orden': orden,
+            'stock': solo_stock,
+        }
+        
+        return context
+
+
+class MarcaCreateView(InventarioEditMixin, FormMessagesMixin, CreateView):
+    """Crear marca"""
+    model = Marca
+    form_class = MarcaForm
+    template_name = 'inventory/marca_form.html'
+    success_url = reverse_lazy('inventory_management:marca_list')
+    success_message = "Marca '{object.nombre}' creada exitosamente."
+
+
+class MarcaUpdateView(InventarioEditMixin, FormMessagesMixin, UpdateView):
+    """Editar marca"""
+    model = Marca
+    form_class = MarcaForm
+    template_name = 'inventory/marca_form.html'
+    success_message = "Marca '{object.nombre}' actualizada exitosamente."
+    
+    def get_success_url(self):
+        return reverse('inventory_management:marca_detail', kwargs={'pk': self.object.pk})
+
+
+class MarcaDeleteView(InventarioDeleteMixin, DeleteMessageMixin, DeleteView):
+    """Eliminar (desactivar) marca"""
+    model = Marca
+    template_name = 'inventory/marca_confirm_delete.html'
+    success_url = reverse_lazy('inventory_management:marca_list')
+    delete_message = "Marca '{object.nombre}' desactivada exitosamente."
+    
+    def delete(self, request, *args, **kwargs):
+        """Override para soft delete y validar productos"""
+        self.object = self.get_object()
+        
+        # Verificar si tiene productos asociados
+        total_productos = self.object.productos.filter(activo=True).count()
+        
+        if total_productos > 0:
+            messages.error(
+                request,
+                f'No se puede eliminar la marca "{self.object.nombre}" porque tiene '
+                f'{total_productos} producto(s) activo(s) asociado(s).'
+            )
+            return redirect('inventory_management:marca_detail', pk=self.object.pk)
+        
+        # Soft delete
+        self.object.activa = False
+        self.object.save()
+        
+        messages.success(request, self.get_delete_message())
+        return redirect(self.success_url)
+
+
+class MarcaToggleDestacadaView(InventarioEditMixin, View):
+    """Toggle destacada de una marca"""
+    
+    def post(self, request, pk):
+        marca = get_object_or_404(Marca, pk=pk)
+        marca.destacada = not marca.destacada
+        marca.save()
+        
+        estado = "destacada" if marca.destacada else "normal"
+        messages.success(
+            request,
+            f'Marca "{marca.nombre}" marcada como {estado}.'
+        )
+        
+        return redirect('inventory_management:marca_detail', pk=pk)
 
 
 # ============================================================================
@@ -279,22 +519,27 @@ class ProductoListView(InventarioAccessMixin, ListView):
     paginate_by = 20
     
     def get_queryset(self):
-        queryset = super().get_queryset().select_related('categoria', 'proveedor')
+        queryset = super().get_queryset().select_related('categoria', 'proveedor', 'marca')
         
         # Filtros
         search = self.request.GET.get('search')
         categoria_id = self.request.GET.get('categoria')
+        marca_id = self.request.GET.get('marca')
         tipo = self.request.GET.get('tipo')
         
         if search:
             queryset = queryset.filter(
                 Q(nombre__icontains=search) |
                 Q(codigo_barras__icontains=search) |
-                Q(descripcion__icontains=search)
+                Q(descripcion__icontains=search) |
+                Q(marca__nombre__icontains=search)
             )
         
         if categoria_id:
             queryset = queryset.filter(categoria_id=categoria_id)
+        
+        if marca_id:
+            queryset = queryset.filter(marca_id=marca_id)
         
         if tipo:
             queryset = queryset.filter(tipo_inventario=tipo)
@@ -303,9 +548,11 @@ class ProductoListView(InventarioAccessMixin, ListView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['categorias'] = Categoria.objects.filter(activa=True)
+        context['categorias'] = Categoria.objects.filter(activa=True).order_by('nombre')
+        context['marcas'] = Marca.objects.filter(activa=True).order_by('nombre')
         context['search'] = self.request.GET.get('search', '')
         context['categoria_selected'] = self.request.GET.get('categoria', '')
+        context['marca_selected'] = self.request.GET.get('marca', '')
         context['tipo_selected'] = self.request.GET.get('tipo', '')
         return context
 
@@ -397,7 +644,7 @@ class QuintalListView(InventarioAccessMixin, ListView):
     
     def get_queryset(self):
         queryset = super().get_queryset().select_related(
-            'producto', 'producto__categoria', 'proveedor', 'unidad_medida'
+            'producto', 'producto__categoria', 'producto__marca', 'proveedor', 'unidad_medida'
         )
         
         # Filtros
@@ -560,22 +807,29 @@ class ProductoNormalListView(InventarioAccessMixin, ListView):
     paginate_by = 20
     
     def get_queryset(self):
-        queryset = super().get_queryset().select_related('producto', 'producto__categoria')
+        queryset = super().get_queryset().select_related(
+            'producto', 'producto__categoria', 'producto__marca'
+        )
         
         # Filtros
         search = self.request.GET.get('search')
         categoria_id = self.request.GET.get('categoria')
+        marca_id = self.request.GET.get('marca')
         estado = self.request.GET.get('estado')
         
         if search:
             queryset = queryset.filter(
                 Q(producto__nombre__icontains=search) |
                 Q(producto__codigo_barras__icontains=search) |
+                Q(producto__marca__nombre__icontains=search) |
                 Q(lote__icontains=search)
             )
         
         if categoria_id:
             queryset = queryset.filter(producto__categoria_id=categoria_id)
+        
+        if marca_id:
+            queryset = queryset.filter(producto__marca_id=marca_id)
         
         if estado == 'CRITICO':
             queryset = queryset.filter(stock_actual__lte=F('stock_minimo'))
@@ -592,8 +846,10 @@ class ProductoNormalListView(InventarioAccessMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['categorias'] = Categoria.objects.filter(activa=True)
+        context['marcas'] = Marca.objects.filter(activa=True).order_by('nombre')
         context['search'] = self.request.GET.get('search', '')
         context['categoria_selected'] = self.request.GET.get('categoria', '')
+        context['marca_selected'] = self.request.GET.get('marca', '')
         context['estado_selected'] = self.request.GET.get('estado', '')
         return context
 
@@ -738,6 +994,7 @@ class BuscarCodigoAPIView(AjaxInventarioMixin, View):
                 response_data['producto'] = {
                     'id': str(producto.id),
                     'nombre': producto.nombre,
+                    'marca': producto.marca.nombre if producto.marca else None,
                     'precio': float(producto.precio_por_unidad_peso),
                     'unidad': producto.unidad_medida_base.abreviatura,
                     'codigo_barras': producto.codigo_barras
@@ -762,6 +1019,7 @@ class BuscarCodigoAPIView(AjaxInventarioMixin, View):
                     'id': str(quintal.id),
                     'codigo': quintal.codigo_unico,
                     'producto_nombre': quintal.producto.nombre,
+                    'marca': quintal.producto.marca.nombre if quintal.producto.marca else None,
                     'peso_actual': float(quintal.peso_actual),
                     'unidad': quintal.unidad_medida.abreviatura,
                     'precio': float(quintal.producto.precio_por_unidad_peso)
@@ -774,6 +1032,7 @@ class BuscarCodigoAPIView(AjaxInventarioMixin, View):
                 response_data['producto'] = {
                     'id': str(producto.id),
                     'nombre': producto.nombre,
+                    'marca': producto.marca.nombre if producto.marca else None,
                     'precio': float(producto.precio_unitario),
                     'stock': inventario.stock_actual if inventario else 0,
                     'codigo_barras': producto.codigo_barras
@@ -966,7 +1225,7 @@ class CompraDetailView(InventarioAccessMixin, DetailView):
         # Detalles de la compra
         context['detalles'] = DetalleCompra.objects.filter(
             compra=compra
-        ).select_related('producto', 'unidad_medida')
+        ).select_related('producto', 'producto__marca', 'unidad_medida')
         
         return context
 
@@ -1082,18 +1341,18 @@ class StockCriticoReportView(InventarioAccessMixin, TemplateView):
             estado='DISPONIBLE',
             peso_actual__lte=F('peso_inicial') * 0.1,
             peso_actual__gt=0
-        ).select_related('producto', 'proveedor', 'unidad_medida')
+        ).select_related('producto', 'producto__marca', 'proveedor', 'unidad_medida')
         
         # Productos normales críticos
         context['productos_criticos'] = ProductoNormal.objects.filter(
             stock_actual__lte=F('stock_minimo'),
             stock_actual__gt=0
-        ).select_related('producto', 'producto__categoria')
+        ).select_related('producto', 'producto__categoria', 'producto__marca')
         
         # Productos agotados
         context['productos_agotados'] = ProductoNormal.objects.filter(
             stock_actual=0
-        ).select_related('producto')
+        ).select_related('producto', 'producto__marca')
         
         return context
 
@@ -1113,13 +1372,13 @@ class ProximosVencerReportView(InventarioAccessMixin, TemplateView):
             estado='DISPONIBLE',
             fecha_vencimiento__lte=fecha_limite,
             fecha_vencimiento__gte=hoy
-        ).select_related('producto', 'proveedor').order_by('fecha_vencimiento')
+        ).select_related('producto', 'producto__marca', 'proveedor').order_by('fecha_vencimiento')
         
         # Quintales vencidos
         context['quintales_vencidos'] = Quintal.objects.filter(
             estado='DISPONIBLE',
             fecha_vencimiento__lt=hoy
-        ).select_related('producto', 'proveedor')
+        ).select_related('producto', 'producto__marca', 'proveedor')
         
         return context
 
@@ -1177,6 +1436,11 @@ class ValorInventarioReportView(InventarioAccessMixin, TemplateView):
             )
         ).order_by('-valor_quintales')
         
+        # Desglose por marca
+        context['valor_por_marca'] = Marca.objects.filter(activa=True).annotate(
+            total_productos=Count('productos', filter=Q(productos__activo=True)),
+        ).order_by('-total_productos')[:10]
+        
         return context
 
 
@@ -1208,6 +1472,46 @@ class TrazabilidadQuintalView(InventarioAccessMixin, DetailView):
         return context
 
 
+class ReporteMarcasView(InventarioAccessMixin, TemplateView):
+    """Reporte de estadísticas por marca"""
+    template_name = 'inventory/reporte_marcas.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Marcas con estadísticas
+        marcas = Marca.objects.filter(activa=True).annotate(
+            total_productos=Count('productos', filter=Q(productos__activo=True)),
+            productos_con_stock=Count(
+                'productos',
+                filter=Q(
+                    productos__activo=True,
+                    productos__inventario_normal__stock_actual__gt=0
+                ),
+                distinct=True
+            )
+        ).order_by('-total_productos')
+        
+        # Calcular valor de inventario para cada marca
+        marcas_con_valor = []
+        for marca in marcas:
+            marca.valor_inv = marca.valor_inventario_marca()
+            marcas_con_valor.append(marca)
+        
+        # Ordenar por valor si se solicita
+        orden = self.request.GET.get('orden', 'nombre')
+        if orden == 'valor':
+            marcas_con_valor.sort(key=lambda x: x.valor_inv, reverse=True)
+        elif orden == 'productos':
+            marcas_con_valor.sort(key=lambda x: x.total_productos, reverse=True)
+        
+        context['marcas'] = marcas_con_valor
+        context['total_marcas'] = len(marcas_con_valor)
+        context['orden'] = orden
+        
+        return context
+
+
 # ============================================================================
 # APIs JSON
 # ============================================================================
@@ -1223,9 +1527,11 @@ class ProductoBuscarAPIView(AjaxInventarioMixin, View):
             return JsonResponse({'results': []})
         
         productos = Producto.objects.filter(
-            Q(nombre__icontains=query) | Q(codigo_barras__icontains=query),
+            Q(nombre__icontains=query) | 
+            Q(codigo_barras__icontains=query) |
+            Q(marca__nombre__icontains=query),
             activo=True
-        )
+        ).select_related('marca')
         
         if tipo:
             productos = productos.filter(tipo_inventario=tipo)
@@ -1237,6 +1543,7 @@ class ProductoBuscarAPIView(AjaxInventarioMixin, View):
                 'id': str(p.id),
                 'text': f"{p.nombre} ({p.codigo_barras})",
                 'nombre': p.nombre,
+                'marca': p.marca.nombre if p.marca else None,
                 'codigo': p.codigo_barras,
                 'tipo': p.tipo_inventario
             }
@@ -1244,6 +1551,57 @@ class ProductoBuscarAPIView(AjaxInventarioMixin, View):
         ]
         
         return JsonResponse({'results': results})
+
+
+class MarcaBuscarAPIView(AjaxInventarioMixin, View):
+    """API para buscar marcas (autocomplete)"""
+    
+    def get(self, request):
+        query = request.GET.get('q', '').strip()
+        
+        if len(query) < 2:
+            return JsonResponse({'results': []})
+        
+        marcas = Marca.objects.filter(
+            Q(nombre__icontains=query),
+            activa=True
+        ).order_by('nombre')[:10]
+        
+        results = [
+            {
+                'id': str(m.id),
+                'text': m.nombre,
+                'nombre': m.nombre,
+                'pais': m.pais_origen
+            }
+            for m in marcas
+        ]
+        
+        return JsonResponse({'results': results})
+
+
+class MarcaDetalleAPIView(AjaxInventarioMixin, View):
+    """API para obtener detalles de una marca"""
+    
+    def get(self, request, pk):
+        marca = get_object_or_404(Marca, pk=pk, activa=True)
+        
+        data = {
+            'id': str(marca.id),
+            'nombre': marca.nombre,
+            'descripcion': marca.descripcion,
+            'pais_origen': marca.pais_origen,
+            'fabricante': marca.fabricante,
+            'sitio_web': marca.sitio_web,
+            'activa': marca.activa,
+            'destacada': marca.destacada,
+            'logo': marca.logo.url if marca.logo else None,
+            'total_productos': marca.total_productos(),
+            'productos_con_stock': marca.productos_con_stock().count(),
+            'valor_inventario': float(marca.valor_inventario_marca()),
+        }
+        
+        return JsonResponse(data)
 
 
 class QuintalesDisponiblesAPIView(AjaxInventarioMixin, View):
@@ -1288,7 +1646,8 @@ class StockStatusAPIView(AjaxInventarioMixin, View):
                     'tipo': 'QUINTAL',
                     'disponible': float(peso_total) > 0,
                     'cantidad': float(peso_total),
-                    'unidad': producto.unidad_medida_base.abreviatura
+                    'unidad': producto.unidad_medida_base.abreviatura,
+                    'marca': producto.marca.nombre if producto.marca else None
                 })
             else:
                 try:
@@ -1298,14 +1657,16 @@ class StockStatusAPIView(AjaxInventarioMixin, View):
                         'disponible': inventario.stock_actual > 0,
                         'cantidad': inventario.stock_actual,
                         'estado': inventario.estado_stock(),
-                        'unidad': 'unidades'
+                        'unidad': 'unidades',
+                        'marca': producto.marca.nombre if producto.marca else None
                     })
                 except ProductoNormal.DoesNotExist:
                     return JsonResponse({
                         'tipo': 'NORMAL',
                         'disponible': False,
                         'cantidad': 0,
-                        'estado': 'AGOTADO'
+                        'estado': 'AGOTADO',
+                        'marca': producto.marca.nombre if producto.marca else None
                     })
         
         except Producto.DoesNotExist:

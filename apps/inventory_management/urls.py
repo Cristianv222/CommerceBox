@@ -1,3 +1,5 @@
+# apps/inventory_management/urls.py
+
 from django.urls import path
 from .views import (
     # Dashboard
@@ -8,6 +10,14 @@ from .views import (
     CategoriaCreateView,
     CategoriaUpdateView,
     CategoriaDeleteView,
+    
+    # Marcas
+    MarcaListView,
+    MarcaCreateView,
+    MarcaDetailView,
+    MarcaUpdateView,
+    MarcaDeleteView,
+    MarcaToggleDestacadaView,
     
     # Proveedores
     ProveedorListView,
@@ -56,11 +66,14 @@ from .views import (
     ProximosVencerReportView,
     ValorInventarioReportView,
     TrazabilidadQuintalView,
+    ReporteMarcasView,
     
     # APIs JSON
     ProductoBuscarAPIView,
     QuintalesDisponiblesAPIView,
     StockStatusAPIView,
+    MarcaBuscarAPIView,
+    MarcaDetalleAPIView,
 )
 
 app_name = 'inventory_management'
@@ -78,6 +91,16 @@ urlpatterns = [
     path('categorias/crear/', CategoriaCreateView.as_view(), name='categoria_create'),
     path('categorias/<uuid:pk>/editar/', CategoriaUpdateView.as_view(), name='categoria_update'),
     path('categorias/<uuid:pk>/eliminar/', CategoriaDeleteView.as_view(), name='categoria_delete'),
+    
+    # ========================================================================
+    # MARCAS
+    # ========================================================================
+    path('marcas/', MarcaListView.as_view(), name='marca_list'),
+    path('marcas/crear/', MarcaCreateView.as_view(), name='marca_create'),
+    path('marcas/<uuid:pk>/', MarcaDetailView.as_view(), name='marca_detail'),
+    path('marcas/<uuid:pk>/editar/', MarcaUpdateView.as_view(), name='marca_update'),
+    path('marcas/<uuid:pk>/eliminar/', MarcaDeleteView.as_view(), name='marca_delete'),
+    path('marcas/<uuid:pk>/toggle-destacada/', MarcaToggleDestacadaView.as_view(), name='marca_toggle_destacada'),
     
     # ========================================================================
     # PROVEEDORES
@@ -142,6 +165,7 @@ urlpatterns = [
     path('reportes/proximos-vencer/', ProximosVencerReportView.as_view(), name='reporte_proximos_vencer'),
     path('reportes/valor-inventario/', ValorInventarioReportView.as_view(), name='reporte_valor_inventario'),
     path('reportes/trazabilidad/<uuid:pk>/', TrazabilidadQuintalView.as_view(), name='trazabilidad_quintal'),
+    path('reportes/marcas/', ReporteMarcasView.as_view(), name='reporte_marcas'),
     
     # ========================================================================
     # APIs JSON (Para uso con JavaScript/AJAX)
@@ -149,4 +173,6 @@ urlpatterns = [
     path('api/productos/buscar/', ProductoBuscarAPIView.as_view(), name='api_producto_buscar'),
     path('api/productos/<uuid:producto_id>/quintales/', QuintalesDisponiblesAPIView.as_view(), name='api_quintales_disponibles'),
     path('api/productos/<uuid:producto_id>/stock/', StockStatusAPIView.as_view(), name='api_stock_status'),
+    path('api/marcas/buscar/', MarcaBuscarAPIView.as_view(), name='api_marca_buscar'),
+    path('api/marcas/<uuid:pk>/', MarcaDetalleAPIView.as_view(), name='api_marca_detalle'),
 ]

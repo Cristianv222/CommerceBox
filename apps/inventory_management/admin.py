@@ -7,7 +7,7 @@ from django.db.models import Sum, F, Q
 from decimal import Decimal
 
 from .models import (
-    Categoria, Proveedor, UnidadMedida, Producto,
+    Categoria, Proveedor, Marca, UnidadMedida, Producto,
     Quintal, MovimientoQuintal, ProductoNormal,
     MovimientoInventario, Compra, DetalleCompra, ConversionUnidad
 )
@@ -104,6 +104,77 @@ class CategoriaAdmin(admin.ModelAdmin):
 
 
 # ============================================================================
+# ADMIN: Marca
+# ============================================================================
+
+@admin.register(Marca)
+class MarcaAdmin(admin.ModelAdmin):
+    list_display = [
+        'nombre', 'pais_origen', 'destacada_display',
+        'activa', 'cantidad_productos', 'orden'
+    ]
+    list_filter = ['activa', 'destacada', 'pais_origen']
+    search_fields = ['nombre', 'descripcion', 'fabricante', 'pais_origen']
+    ordering = ['orden', 'nombre']
+    
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('nombre', 'descripcion', 'logo')
+        }),
+        ('Información Adicional', {
+            'fields': ('pais_origen', 'fabricante', 'sitio_web')
+        }),
+        ('Control', {
+            'fields': ('activa', 'destacada', 'orden')
+        }),
+    )
+    
+    readonly_fields = ['fecha_creacion', 'fecha_actualizacion']
+    
+    def destacada_display(self, obj):
+        if obj.destacada:
+            return format_html(
+                '<span style="color: gold; font-weight: bold;">⭐ DESTACADA</span>'
+            )
+        return format_html(
+            '<span style="color: gray;">-</span>'
+        )
+    destacada_display.short_description = 'Destacada'
+    
+    def cantidad_productos(self, obj):
+        count = obj.total_productos()
+        con_stock = obj.productos_con_stock().count()
+        return format_html(
+            '<span style="font-weight: bold;">{} productos</span><br>'
+            '<small style="color: green;">({} con stock)</small>',
+            count, con_stock
+        )
+    cantidad_productos.short_description = 'Productos'
+    
+    actions = ['marcar_destacada', 'desmarcar_destacada', 'activar_marcas', 'desactivar_marcas']
+    
+    def marcar_destacada(self, request, queryset):
+        updated = queryset.update(destacada=True)
+        self.message_user(request, f"{updated} marcas marcadas como destacadas.")
+    marcar_destacada.short_description = "⭐ Marcar como destacadas"
+    
+    def desmarcar_destacada(self, request, queryset):
+        updated = queryset.update(destacada=False)
+        self.message_user(request, f"{updated} marcas desmarcadas como destacadas.")
+    desmarcar_destacada.short_description = "Desmarcar destacadas"
+    
+    def activar_marcas(self, request, queryset):
+        updated = queryset.update(activa=True)
+        self.message_user(request, f"{updated} marcas activadas.")
+    activar_marcas.short_description = "Activar marcas seleccionadas"
+    
+    def desactivar_marcas(self, request, queryset):
+        updated = queryset.update(activa=False)
+        self.message_user(request, f"{updated} marcas desactivadas.")
+    desactivar_marcas.short_description = "Desactivar marcas seleccionadas"
+
+
+# ============================================================================
 # ADMIN: Proveedor
 # ============================================================================
 
@@ -174,25 +245,26 @@ class UnidadMedidaAdmin(admin.ModelAdmin):
 class ProductoAdmin(admin.ModelAdmin):
     list_display = [
         'tipo_icon', 'nombre', 'codigo_barras',
-        'categoria', 'tipo_inventario', 'precio_display',
-        'stock_display', 'activo'
+        'marca', 'categoria', 'tipo_inventario',
+        'precio_display', 'stock_display', 'activo'
     ]
     list_filter = [
-        'tipo_inventario', 'categoria', 'activo',
-        'fecha_creacion'
+        'tipo_inventario', 'categoria', 'marca',
+        'activo', 'fecha_creacion'
     ]
     search_fields = [
-        'nombre', 'codigo_barras', 'descripcion'
+        'nombre', 'codigo_barras', 'descripcion',
+        'marca__nombre'
     ]
     ordering = ['-fecha_creacion']
-    autocomplete_fields = ['categoria', 'proveedor', 'unidad_medida_base']
+    autocomplete_fields = ['categoria', 'marca', 'proveedor', 'unidad_medida_base']
     
     fieldsets = (
         ('Identificación', {
             'fields': ('codigo_barras', 'nombre', 'descripcion', 'imagen')
         }),
         ('Clasificación', {
-            'fields': ('categoria', 'proveedor', 'tipo_inventario')
+            'fields': ('categoria', 'marca', 'proveedor', 'tipo_inventario')
         }),
         ('Configuración para QUINTALES', {
             'fields': (
@@ -207,6 +279,9 @@ class ProductoAdmin(admin.ModelAdmin):
             'classes': ('collapse',),
             'description': 'Solo para productos tipo NORMAL'
         }),
+        ('Impuestos', {
+            'fields': ('iva',)
+        }),
         ('Control', {
             'fields': ('activo', 'usuario_registro')
         }),
@@ -216,8 +291,8 @@ class ProductoAdmin(admin.ModelAdmin):
     
     def tipo_icon(self, obj):
         if obj.tipo_inventario == 'QUINTAL':
-            return format_html('<span style="color: green;">Quintal</span>')
-        return format_html('<span style="color: blue;">Normal</span>')
+            return format_html('<span style="color: green;">🌾 Quintal</span>')
+        return format_html('<span style="color: blue;">📦 Normal</span>')
     tipo_icon.short_description = 'Tipo'
     
     def precio_display(self, obj):
@@ -288,16 +363,17 @@ class ProductoAdmin(admin.ModelAdmin):
 @admin.register(Quintal)
 class QuintalAdmin(admin.ModelAdmin):
     list_display = [
-        'codigo_unico', 'producto', 'estado_display',
+        'codigo_unico', 'producto_display', 'estado_display',
         'peso_actual_display', 'porcentaje_display',
         'proveedor', 'fecha_recepcion'
     ]
     list_filter = [
-        'estado', 'producto__categoria',
+        'estado', 'producto__categoria', 'producto__marca',
         'proveedor', 'fecha_recepcion'
     ]
     search_fields = [
         'codigo_unico', 'producto__nombre',
+        'producto__marca__nombre',
         'lote_proveedor', 'numero_factura_compra'
     ]
     ordering = ['-fecha_recepcion']
@@ -332,24 +408,33 @@ class QuintalAdmin(admin.ModelAdmin):
     
     inlines = [MovimientoQuintalInline]
     
+    def producto_display(self, obj):
+        if obj.producto.marca:
+            return format_html(
+                '{}<br><small style="color: gray;">{}</small>',
+                obj.producto.nombre,
+                obj.producto.marca.nombre
+            )
+        return obj.producto.nombre
+    producto_display.short_description = 'Producto'
+    
     def estado_display(self, obj):
         if obj.estado == 'DISPONIBLE':
-            icon = 'D'
+            icon = '🟢'
             color = 'green'
         elif obj.estado == 'AGOTADO':
-            icon = 'A'
+            icon = '⚫'
             color = 'gray'
         else:
-            icon = 'V'
+            icon = '🔴'
             color = 'red'
         return format_html(
-            '<span style="color: {}; font-weight: bold;">[{}] {}</span>',
+            '<span style="color: {}; font-weight: bold;">{} {}</span>',
             color, icon, obj.get_estado_display()
         )
     estado_display.short_description = 'Estado'
     
     def peso_actual_display(self, obj):
-        # Formatear ANTES de pasar a format_html
         peso_actual_fmt = f"{obj.peso_actual:.2f}"
         peso_inicial_fmt = f"{obj.peso_inicial:.2f}"
         
@@ -369,7 +454,6 @@ class QuintalAdmin(admin.ModelAdmin):
         else:
             color = 'red'
         
-        # Formatear ANTES de pasar a format_html
         porcentaje_width = f"{porcentaje:.0f}"
         porcentaje_text = f"{porcentaje:.1f}"
         
@@ -403,6 +487,7 @@ class MovimientoQuintalAdmin(admin.ModelAdmin):
     ]
     search_fields = [
         'quintal__codigo_unico', 'quintal__producto__nombre',
+        'quintal__producto__marca__nombre',
         'observaciones'
     ]
     ordering = ['-fecha_movimiento']
@@ -442,14 +527,16 @@ class MovimientoQuintalAdmin(admin.ModelAdmin):
 @admin.register(ProductoNormal)
 class ProductoNormalAdmin(admin.ModelAdmin):
     list_display = [
-        'producto', 'stock_display', 'valor_inventario_display',
+        'producto_display', 'stock_display', 'valor_inventario_display',
         'estado_stock_display', 'ubicacion_almacen'
     ]
     list_filter = [
-        'producto__categoria', 'fecha_ultima_entrada'
+        'producto__categoria', 'producto__marca',
+        'fecha_ultima_entrada'
     ]
     search_fields = [
         'producto__nombre', 'producto__codigo_barras',
+        'producto__marca__nombre',
         'lote', 'ubicacion_almacen'
     ]
     ordering = ['producto__nombre']
@@ -484,23 +571,33 @@ class ProductoNormalAdmin(admin.ModelAdmin):
     
     inlines = [MovimientoInventarioInline]
     
+    def producto_display(self, obj):
+        if obj.producto.marca:
+            return format_html(
+                '{}<br><small style="color: gray;">{}</small>',
+                obj.producto.nombre,
+                obj.producto.marca.nombre
+            )
+        return obj.producto.nombre
+    producto_display.short_description = 'Producto'
+    
     def stock_display(self, obj):
         estado = obj.estado_stock()
         if estado == 'AGOTADO':
             color = 'red'
-            icon = 'A'
+            icon = '⚫'
         elif estado == 'CRITICO':
             color = 'red'
-            icon = 'C'
+            icon = '🔴'
         elif estado == 'BAJO':
             color = 'orange'
-            icon = 'B'
+            icon = '🟡'
         else:
             color = 'green'
-            icon = 'N'
+            icon = '🟢'
         
         return format_html(
-            '<span style="color: {}; font-weight: bold;">[{}] {} unidades</span>'
+            '<span style="color: {}; font-weight: bold;">{} {} unidades</span>'
             '<br><small>Min: {} | Max: {}</small>',
             color, icon, obj.stock_actual,
             obj.stock_minimo, obj.stock_maximo or 'N/A'
@@ -525,18 +622,14 @@ class ProductoNormalAdmin(admin.ModelAdmin):
     def valor_inventario_display(self, obj):
         valor = obj.valor_inventario()
         
-        # Convertir a número si es necesario
         if isinstance(valor, (Decimal, float, int)):
             valor_num = float(valor)
         else:
-            # Si valor es string o SafeString, intentar convertir
             try:
                 valor_num = float(str(valor).replace('$', '').replace(',', ''))
             except (ValueError, AttributeError):
-                # Si no se puede convertir, retornar tal cual
                 return valor
         
-        # Formatear ANTES de pasar a format_html
         valor_formateado = f"${valor_num:,.2f}"
         
         return format_html(
@@ -561,6 +654,7 @@ class MovimientoInventarioAdmin(admin.ModelAdmin):
     ]
     search_fields = [
         'producto_normal__producto__nombre',
+        'producto_normal__producto__marca__nombre',
         'observaciones'
     ]
     ordering = ['-fecha_movimiento']
@@ -648,7 +742,6 @@ class CompraAdmin(admin.ModelAdmin):
     estado_display.short_description = 'Estado'
     
     def total_display(self, obj):
-        # Formatear ANTES de pasar a format_html
         total_formateado = f"${float(obj.total):,.2f}"
         
         return format_html(

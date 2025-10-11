@@ -4,7 +4,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 from .models import (
-    Categoria, Proveedor, Producto, Quintal,
+    Categoria, Marca, Proveedor, Producto, Quintal,
     ProductoNormal, UnidadMedida, Compra, DetalleCompra
 )
 from .utils.barcode_generator import BarcodeGenerator
@@ -58,6 +58,116 @@ class CategoriaForm(forms.ModelForm):
         if descuento and descuento > 100:
             raise ValidationError("El descuento no puede ser mayor a 100%")
         return descuento
+
+
+# ============================================================================
+# FORMULARIOS PARA MARCAS
+# ============================================================================
+
+class MarcaForm(forms.ModelForm):
+    """Formulario para crear/editar marcas"""
+    
+    class Meta:
+        model = Marca
+        fields = [
+            'nombre', 'descripcion', 'logo',
+            'pais_origen', 'fabricante', 'sitio_web',
+            'activa', 'destacada', 'orden'
+        ]
+        widgets = {
+            'nombre': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nombre de la marca',
+                'required': True
+            }),
+            'descripcion': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Descripción de la marca (opcional)'
+            }),
+            'logo': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
+            }),
+            'pais_origen': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ej: Ecuador, Colombia, México',
+                'list': 'paises-list'
+            }),
+            'fabricante': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nombre del fabricante (opcional)'
+            }),
+            'sitio_web': forms.URLInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'https://www.ejemplo.com'
+            }),
+            'activa': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+            'destacada': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+            'orden': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'value': '0'
+            })
+        }
+        labels = {
+            'nombre': 'Nombre de la Marca',
+            'descripcion': 'Descripción',
+            'logo': 'Logo de la Marca',
+            'pais_origen': 'País de Origen',
+            'fabricante': 'Fabricante',
+            'sitio_web': 'Sitio Web',
+            'activa': 'Activa',
+            'destacada': 'Marca Destacada',
+            'orden': 'Orden de Visualización'
+        }
+        help_texts = {
+            'destacada': 'Las marcas destacadas aparecen en el dashboard y en destacados',
+            'orden': 'Menor número = mayor prioridad en listados',
+            'sitio_web': 'URL completa (debe comenzar con http:// o https://)'
+        }
+    
+    def clean_nombre(self):
+        """Validar que el nombre no esté duplicado (case insensitive)"""
+        nombre = self.cleaned_data.get('nombre')
+        if nombre:
+            nombre = nombre.strip()
+            
+            # Verificar duplicados
+            qs = Marca.objects.filter(nombre__iexact=nombre)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            
+            if qs.exists():
+                raise ValidationError(
+                    f'Ya existe una marca con el nombre "{nombre}"'
+                )
+        
+        return nombre
+    
+    def clean_sitio_web(self):
+        """Validar formato de URL"""
+        sitio_web = self.cleaned_data.get('sitio_web')
+        if sitio_web:
+            sitio_web = sitio_web.strip()
+            if not sitio_web.startswith(('http://', 'https://')):
+                raise ValidationError(
+                    'La URL debe comenzar con http:// o https://'
+                )
+        return sitio_web
+    
+    def clean_orden(self):
+        """Asegurar que el orden sea positivo"""
+        orden = self.cleaned_data.get('orden')
+        if orden is None:
+            orden = 0
+        elif orden < 0:
+            raise ValidationError('El orden no puede ser negativo')
+        return orden
 
 
 # ============================================================================
@@ -134,7 +244,7 @@ class ProductoForm(forms.ModelForm):
         model = Producto
         fields = [
             'codigo_barras', 'nombre', 'descripcion', 'categoria',
-            'proveedor', 'tipo_inventario', 'imagen', 'activo',
+            'marca', 'proveedor', 'tipo_inventario', 'imagen', 'iva', 'activo',
             # Para quintales
             'unidad_medida_base', 'precio_por_unidad_peso', 'peso_base_quintal',
             # Para normales
@@ -151,10 +261,15 @@ class ProductoForm(forms.ModelForm):
             }),
             'descripcion': forms.Textarea(attrs={
                 'class': 'form-control',
-                'rows': 3
+                'rows': 3,
+                'placeholder': 'Descripción del producto (opcional)'
             }),
             'categoria': forms.Select(attrs={
                 'class': 'form-select'
+            }),
+            'marca': forms.Select(attrs={
+                'class': 'form-select',
+                'required': False
             }),
             'proveedor': forms.Select(attrs={
                 'class': 'form-select'
@@ -184,6 +299,13 @@ class ProductoForm(forms.ModelForm):
                 'min': '0',
                 'placeholder': '0.00'
             }),
+            'iva': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'max': '100',
+                'value': '15.00'
+            }),
             'imagen': forms.FileInput(attrs={
                 'class': 'form-control',
                 'accept': 'image/*'
@@ -192,9 +314,19 @@ class ProductoForm(forms.ModelForm):
                 'class': 'form-check-input'
             })
         }
+        labels = {
+            'marca': 'Marca (opcional)',
+            'iva': 'IVA (%)'
+        }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # Filtrar solo marcas activas
+        self.fields['marca'].queryset = Marca.objects.filter(activa=True).order_by('nombre')
+        
+        # Hacer que marca sea opcional
+        self.fields['marca'].required = False
         
         # Si es edición, deshabilitar generar automático
         if self.instance and self.instance.pk:
