@@ -1,0 +1,1216 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Movimientos de Inventario - CommerceBox{% endblock %}
+
+{% block extra_css %}
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    /* ============================================
+       LAYOUT GENERAL
+       ============================================ */
+    body.modal-open {
+        overflow: hidden;
+    }
+
+    /* ============================================
+       HEADER
+       ============================================ */
+    .card-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+    }
+    
+    /* ============================================
+       STAT CARDS CON GLASSMORPHISM
+       ============================================ */
+    .stat-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 300px 200px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 
+            0 12px 40px rgba(59, 130, 246, 0.15),
+            0 4px 12px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        border-color: rgba(96, 165, 250, 0.6);
+    }
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 2;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+    .stat-label {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+        position: relative;
+        z-index: 2;
+    }
+    
+    /* ============================================
+       ADMIN CARD
+       ============================================ */
+    .admin-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        margin-bottom: 1.5rem;
+    }
+    .admin-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 400px 300px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    .admin-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg, 
+            rgba(59, 130, 246, 0.3) 0%, 
+            rgba(96, 165, 250, 0.5) 25%,
+            rgba(147, 197, 253, 0.4) 50%,
+            rgba(96, 165, 250, 0.5) 75%,
+            rgba(59, 130, 246, 0.3) 100%);
+        border-radius: 16px 16px 0 0;
+    }
+    
+    /* ============================================
+       FORM CONTROLS
+       ============================================ */
+    .form-control-admin {
+        width: 100%;
+        padding: 14px 18px;
+        background: rgba(248, 250, 252, 0.6);
+        border: 1.5px solid rgba(203, 213, 225, 0.5);
+        border-radius: 12px;
+        color: #1e293b;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+    }
+    .form-control-admin:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(96, 165, 250, 0.6);
+        box-shadow: 
+            0 0 0 4px rgba(96, 165, 250, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.15);
+    }
+    .form-control-admin::placeholder {
+        color: #9ca3af;
+    }
+    
+    .form-label-admin {
+        display: flex;
+        align-items: center;
+        color: #1e293b;
+        font-size: 0.875rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .form-group-admin {
+        margin-bottom: 1rem;
+    }
+    
+    /* ============================================
+       TABLA
+       ============================================ */
+    .table-responsive {
+        position: relative;
+        z-index: 2;
+        overflow-x: auto;
+    }
+    .table-admin {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .table-admin thead {
+        background: rgba(59, 130, 246, 0.08);
+        border-radius: 12px 12px 0 0;
+    }
+    .table-admin thead th {
+        padding: 1rem 1rem;
+        color: #1e293b;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
+        white-space: nowrap;
+    }
+    .table-admin thead th:first-child {
+        border-radius: 12px 0 0 0;
+    }
+    .table-admin thead th:last-child {
+        border-radius: 0 12px 0 0;
+    }
+    .table-admin tbody tr {
+        transition: all 0.2s ease;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+    }
+    .table-admin tbody tr:hover {
+        background: rgba(59, 130, 246, 0.05);
+    }
+    .table-admin tbody td {
+        padding: 1rem 1rem;
+        color: #1e293b;
+        font-size: 0.9rem;
+        vertical-align: middle;
+    }
+    
+    /* ============================================
+       BADGES
+       ============================================ */
+    .badge-admin {
+        padding: 0.4rem 0.9rem;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        display: inline-block;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    .badge-success {
+        background: rgba(16, 185, 129, 0.15);
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .badge-danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .badge-warning {
+        background: rgba(245, 158, 11, 0.15);
+        color: #d97706;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .badge-info {
+        background: rgba(59, 130, 246, 0.15);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    
+    /* ============================================
+       BOTONES
+       ============================================ */
+    .btn-primary-admin,
+    .btn-success-admin {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        box-shadow: 
+            0 8px 20px rgba(59, 130, 246, 0.25),
+            0 2px 8px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .btn-primary-admin:hover,
+    .btn-success-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 12px 28px rgba(59, 130, 246, 0.3),
+            0 4px 12px rgba(96, 165, 250, 0.25),
+            inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.95) 0%, rgba(59, 130, 246, 0.95) 100%);
+    }
+    
+    .btn-secondary-admin {
+        padding: 12px 24px;
+        background: rgba(148, 163, 184, 0.15);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        border-radius: 12px;
+        color: #475569;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    .btn-secondary-admin:hover {
+        background: rgba(148, 163, 184, 0.25);
+        transform: translateY(-2px);
+    }
+    
+    .btn-sm-admin {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+    }
+    
+    /* Botones de acción */
+    .btn-action {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 1rem;
+    }
+    .btn-action:hover {
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .btn-view {
+        background: rgba(59, 130, 246, 0.15);
+        color: #2563eb;
+    }
+    .btn-view:hover {
+        background: rgba(59, 130, 246, 0.25);
+    }
+    .btn-excel {
+        background: rgba(34, 197, 94, 0.15);
+        color: #16a34a;
+    }
+    .btn-excel:hover {
+        background: rgba(34, 197, 94, 0.25);
+    }
+    .btn-pdf {
+        background: rgba(239, 68, 68, 0.15);
+        color: #dc2626;
+    }
+    .btn-pdf:hover {
+        background: rgba(239, 68, 68, 0.25);
+    }
+    
+    /* ============================================
+       MODAL DE DETALLES
+       ============================================ */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 9998;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .modal-overlay.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-container {
+        width: 90%;
+        max-width: 800px;
+        max-height: 90vh;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+        animation: slideIn 0.3s ease;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .modal-header {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        color: white;
+        padding: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+    }
+    
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .modal-close {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        font-size: 1.2rem;
+    }
+    
+    .modal-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.1);
+    }
+    
+    .modal-body {
+        padding: 2rem;
+        overflow-y: auto;
+        flex: 1;
+    }
+    
+    .detalle-section {
+        background: rgba(248, 250, 252, 0.6);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .detalle-section-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .detalle-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    
+    .detalle-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .detalle-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+    }
+    
+    .detalle-value {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    
+    .modal-footer {
+        padding: 1.5rem;
+        border-top: 1px solid rgba(219, 234, 254, 0.5);
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+        flex-shrink: 0;
+    }
+    
+    /* ============================================
+       PAGINACIÓN
+       ============================================ */
+    .pagination {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 1.5rem;
+    }
+    .page-item .page-link {
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+        font-weight: 600;
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        background: rgba(255, 255, 255, 0.6);
+        color: #1e293b;
+        text-decoration: none;
+    }
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        color: white;
+        border-color: transparent;
+    }
+    .page-item:not(.active):not(.disabled) .page-link:hover {
+        background: rgba(59, 130, 246, 0.15);
+        transform: translateY(-1px);
+    }
+    .page-item.disabled .page-link {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    /* ============================================
+       EMPTY STATE
+       ============================================ */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #94a3b8;
+    }
+    .empty-state i {
+        font-size: 100px;
+        opacity: 0.3;
+        margin-bottom: 1rem;
+    }
+    .empty-state h3 {
+        color: #475569;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    .empty-state p {
+        color: #94a3b8;
+        font-size: 1rem;
+    }
+    
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 768px) {
+        .card-title {
+            font-size: 1.5rem;
+        }
+        .stat-card {
+            margin-bottom: 1rem;
+        }
+        .table-admin {
+            font-size: 0.85rem;
+        }
+        .modal-container {
+            width: 95%;
+            max-height: 95vh;
+        }
+        .modal-body {
+            padding: 1rem;
+        }
+        .detalle-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    /* ============================================
+       ANIMACIONES
+       ============================================ */
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .stat-card,
+    .admin-card {
+        animation: fadeInUp 0.5s ease-out backwards;
+    }
+    .stat-card:nth-child(1) { animation-delay: 0.05s; }
+    .stat-card:nth-child(2) { animation-delay: 0.1s; }
+    .stat-card:nth-child(3) { animation-delay: 0.15s; }
+    .stat-card:nth-child(4) { animation-delay: 0.2s; }
+    
+    /* Grid para stats */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    /* Header del card */
+    .card-header-admin {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        position: relative;
+        z-index: 2;
+    }
+    
+    /* Filtros */
+    .filtros-content {
+        position: relative;
+        z-index: 2;
+    }
+    .filtros-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    /* Spinner de carga */
+    .spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- HEADER -->
+    <div class="mb-4">
+        <h1 class="card-title"><i class="fas fa-exchange-alt"></i> Movimientos de Inventario</h1>
+        <p style="color: #64748b; font-weight: 500;">Historial completo de entradas y salidas de productos</p>
+    </div>
+
+    <!-- ESTADÍSTICAS -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                <i class="fas fa-clipboard-list"></i>
+            </div>
+            <div class="stat-value">{{ total_movimientos|default:0 }}</div>
+            <div class="stat-label">Total Movimientos</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                <i class="fas fa-arrow-down"></i>
+            </div>
+            <div class="stat-value">{{ total_entradas|floatformat:0|default:0 }}</div>
+            <div class="stat-label">Entradas ({{ count_entradas }} mov.)</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
+                <i class="fas fa-arrow-up"></i>
+            </div>
+            <div class="stat-value">{{ total_salidas|floatformat:0|default:0 }}</div>
+            <div class="stat-label">Salidas ({{ count_salidas }} mov.)</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white;">
+                <i class="fas fa-calendar-day"></i>
+            </div>
+            <div class="stat-value">{{ movimientos_hoy|default:0 }}</div>
+            <div class="stat-label">Movimientos Hoy</div>
+        </div>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="admin-card">
+        <div class="card-header-admin">
+            <h3 style="margin: 0; font-size: 1.2rem; font-weight: 700; color: #0f172a;">
+                <i class="fas fa-filter"></i> Filtros de Búsqueda
+            </h3>
+            <button type="button" class="btn-secondary-admin btn-sm-admin" onclick="toggleFiltros()">
+                <i class="fas fa-chevron-down" id="filtros-icon"></i> Mostrar/Ocultar
+            </button>
+        </div>
+
+        <div id="filtros-content" class="filtros-content" style="display: block;">
+            <form method="get" id="filtros-form">
+                <div class="filtros-grid">
+                    <!-- Búsqueda -->
+                    <div class="form-group-admin" style="grid-column: span 2;">
+                        <label for="search" class="form-label-admin">
+                            <i class="fas fa-search"></i> Búsqueda General
+                        </label>
+                        <input type="text" 
+                               name="search" 
+                               id="search" 
+                               class="form-control-admin"
+                               placeholder="Producto, observaciones, referencia..."
+                               value="{{ search }}">
+                    </div>
+
+                    <!-- Fecha Inicio -->
+                    <div class="form-group-admin">
+                        <label for="fecha_inicio" class="form-label-admin">
+                            <i class="fas fa-calendar-alt"></i> Fecha Inicio
+                        </label>
+                        <input type="date" 
+                               name="fecha_inicio" 
+                               id="fecha_inicio" 
+                               class="form-control-admin"
+                               value="{{ fecha_inicio }}">
+                    </div>
+
+                    <!-- Fecha Fin -->
+                    <div class="form-group-admin">
+                        <label for="fecha_fin" class="form-label-admin">
+                            <i class="fas fa-calendar-alt"></i> Fecha Fin
+                        </label>
+                        <input type="date" 
+                               name="fecha_fin" 
+                               id="fecha_fin" 
+                               class="form-control-admin"
+                               value="{{ fecha_fin }}">
+                    </div>
+
+                    <!-- Tipo de Movimiento -->
+                    <div class="form-group-admin">
+                        <label for="tipo_movimiento" class="form-label-admin">
+                            <i class="fas fa-exchange-alt"></i> Tipo de Movimiento
+                        </label>
+                        <select name="tipo_movimiento" id="tipo_movimiento" class="form-control-admin">
+                            {% for value, label in tipos_movimiento %}
+                            <option value="{{ value }}" {% if tipo_movimiento_selected == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Producto -->
+                    <div class="form-group-admin">
+                        <label for="producto" class="form-label-admin">
+                            <i class="fas fa-box"></i> Producto
+                        </label>
+                        <select name="producto" id="producto" class="form-control-admin">
+                            <option value="">Todos los productos</option>
+                            {% for producto in productos %}
+                            <option value="{{ producto.id }}" {% if producto_selected == producto.id|stringformat:"s" %}selected{% endif %}>
+                                {{ producto.nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Usuario -->
+                    <div class="form-group-admin">
+                        <label for="usuario" class="form-label-admin">
+                            <i class="fas fa-user"></i> Usuario
+                        </label>
+                        <select name="usuario" id="usuario" class="form-control-admin">
+                            <option value="">Todos los usuarios</option>
+                            {% for usuario in usuarios %}
+                            <option value="{{ usuario.id }}" {% if usuario_selected == usuario.id|stringformat:"s" %}selected{% endif %}>
+                                {{ usuario.get_full_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <div style="display: flex; gap: 0.75rem; margin-top: 1rem; position: relative; z-index: 2;">
+                    <button type="submit" class="btn-primary-admin">
+                        <i class="fas fa-search"></i> Aplicar Filtros
+                    </button>
+                    <button type="button" class="btn-secondary-admin" onclick="limpiarFiltros()">
+                        <i class="fas fa-eraser"></i> Limpiar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TABLA DE MOVIMIENTOS -->
+    <div class="admin-card">
+        <div class="card-header-admin">
+            <h3 style="margin: 0; font-size: 1.2rem; font-weight: 700; color: #0f172a;">
+                <i class="fas fa-list"></i> Listado de Movimientos ({{ total_movimientos }} registros)
+            </h3>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn-success-admin btn-sm-admin" onclick="exportarExcelGeneral()">
+                    <i class="fas fa-file-excel"></i> Excel General
+                </button>
+                <button class="btn-success-admin btn-sm-admin" onclick="exportarPDFGeneral()">
+                    <i class="fas fa-file-pdf"></i> PDF General
+                </button>
+            </div>
+        </div>
+
+        {% if movimientos %}
+        <div class="table-responsive">
+            <table class="table-admin">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Producto</th>
+                        <th style="text-align: center;">Cantidad</th>
+                        <th style="text-align: center;">Stock</th>
+                        <th>Usuario</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mov in movimientos %}
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600; color: #1e293b;">
+                                {{ mov.fecha_movimiento|date:"d/m/Y" }}
+                            </div>
+                            <small style="color: #94a3b8;">{{ mov.fecha_movimiento|date:"H:i" }}</small>
+                        </td>
+                        <td>
+                            {% if 'ENTRADA' in mov.tipo_movimiento or mov.tipo_movimiento == 'DEVOLUCION' %}
+                                <span class="badge-admin badge-success">
+                                    <i class="fas fa-arrow-down"></i> {{ mov.get_tipo_movimiento_display }}
+                                </span>
+                            {% else %}
+                                <span class="badge-admin badge-danger">
+                                    <i class="fas fa-arrow-up"></i> {{ mov.get_tipo_movimiento_display }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong style="color: #1e293b;">{{ mov.producto_normal.producto.nombre }}</strong>
+                            {% if mov.producto_normal.producto.codigo_barras %}
+                            <br><small style="color: #94a3b8;">{{ mov.producto_normal.producto.codigo_barras }}</small>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            <strong style="color: #0f172a; font-size: 1.1rem;">{{ mov.cantidad|floatformat:0 }}</strong>
+                        </td>
+                        <td style="text-align: center;">
+                            <div style="color: #64748b; font-weight: 600;">
+                                {{ mov.stock_antes|floatformat:0 }} → 
+                                <strong style="color: #10b981;">{{ mov.stock_despues|floatformat:0 }}</strong>
+                            </div>
+                        </td>
+                        <td style="color: #1e293b; font-weight: 500;">
+                            {% if mov.usuario %}
+                                {{ mov.usuario.get_full_name }}
+                            {% else %}
+                                <em style="color: #94a3b8;">Sistema</em>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            <div style="display: inline-flex; gap: 0.3rem; flex-wrap: wrap; justify-content: center;">
+                                <!-- Ver Detalle -->
+                                <button type="button"
+                                        class="btn-action btn-view"
+                                        title="Ver Detalle"
+                                        onclick="verDetalleMovimiento('{{ mov.id }}')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+
+                                <!-- Excel Individual -->
+                                <a href="{% url 'custom_admin:exportar_movimiento_excel' mov.id %}"
+                                   class="btn-action btn-excel"
+                                   title="Exportar a Excel">
+                                    <i class="fas fa-file-excel"></i>
+                                </a>
+
+                                <!-- PDF Individual -->
+                                <a href="{% url 'custom_admin:exportar_movimiento_pdf' mov.id %}"
+                                   target="_blank"
+                                   class="btn-action btn-pdf"
+                                   title="Exportar a PDF">
+                                    <i class="fas fa-file-pdf"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- PAGINACIÓN -->
+        {% if page_obj.has_other_pages %}
+        <div style="position: relative; z-index: 2;">
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            <i class="fas fa-angle-double-left"></i> Primera
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            <i class="fas fa-angle-left"></i> Anterior
+                        </a>
+                    </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link">
+                        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            Siguiente <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            Última <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <!-- EMPTY STATE -->
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <h3>No se encontraron movimientos</h3>
+            <p>Intenta ajustar los filtros de búsqueda para ver más resultados.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- MODAL DE DETALLES -->
+<div id="modalDetalle" class="modal-overlay" onclick="cerrarModalSiFondoClick(event)">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <i class="fas fa-info-circle"></i>
+                <span id="modalTituloMovimiento">Detalle del Movimiento</span>
+            </h3>
+            <button type="button" class="modal-close" onclick="cerrarModalDetalle()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body" id="modalDetalleBody">
+            <div style="text-align: center; padding: 3rem;">
+                <div class="spinner" style="border-color: rgba(59, 130, 246, 0.2); border-top-color: #3b82f6; width: 40px; height: 40px;"></div>
+                <p style="margin-top: 1rem; color: #64748b;">Cargando detalles...</p>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary-admin btn-sm-admin" onclick="cerrarModalDetalle()">
+                <i class="fas fa-times"></i> Cerrar
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ============================================
+// VARIABLES GLOBALES
+// ============================================
+let movimientoIdActual = null;
+
+// ============================================
+// TOGGLE DE FILTROS
+// ============================================
+function toggleFiltros() {
+    const content = document.getElementById('filtros-content');
+    const icon = document.getElementById('filtros-icon');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.className = 'fas fa-chevron-down';
+    } else {
+        content.style.display = 'none';
+        icon.className = 'fas fa-chevron-right';
+    }
+}
+
+// ============================================
+// LIMPIAR FILTROS
+// ============================================
+function limpiarFiltros() {
+    window.location.href = '{% url "custom_admin:movimientos_inventario" %}';
+}
+
+// ============================================
+// VER DETALLE DE MOVIMIENTO (MODAL)
+// ============================================
+function verDetalleMovimiento(movimientoId) {
+    movimientoIdActual = movimientoId;
+    const modal = document.getElementById('modalDetalle');
+    modal.classList.add('show');
+    document.body.classList.add('modal-open');
+    
+    fetch(`/panel/api/movimientos/${movimientoId}/info/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarDetalleEnModal(data.movimiento);
+            } else {
+                document.getElementById('modalDetalleBody').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <h3>Error al cargar</h3>
+                        <p>${data.error || 'No se pudo cargar el detalle del movimiento'}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('modalDetalleBody').innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <h3>Error de conexión</h3>
+                    <p>No se pudo conectar con el servidor</p>
+                </div>
+            `;
+        });
+}
+
+function mostrarDetalleEnModal(mov) {
+    document.getElementById('modalTituloMovimiento').textContent = `Movimiento - ${mov.tipo_movimiento}`;
+    
+    const html = `
+        <!-- INFORMACIÓN GENERAL -->
+        <div class="detalle-section">
+            <div class="detalle-section-title">
+                <i class="fas fa-info-circle"></i> Información General
+            </div>
+            <div class="detalle-grid">
+                <div class="detalle-item">
+                    <span class="detalle-label">Fecha y Hora</span>
+                    <span class="detalle-value">${mov.fecha_movimiento}</span>
+                </div>
+                <div class="detalle-item">
+                    <span class="detalle-label">Tipo de Movimiento</span>
+                    <span class="detalle-value">
+                        <span class="badge-admin ${mov.tipo_movimiento_code.includes('ENTRADA') || mov.tipo_movimiento_code === 'DEVOLUCION' ? 'badge-success' : 'badge-danger'}">
+                            ${mov.tipo_movimiento}
+                        </span>
+                    </span>
+                </div>
+                <div class="detalle-item">
+                    <span class="detalle-label">Usuario</span>
+                    <span class="detalle-value">${mov.usuario}</span>
+                </div>
+                <div class="detalle-item">
+                    <span class="detalle-label">Referencia</span>
+                    <span class="detalle-value">${mov.referencia}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRODUCTO -->
+        <div class="detalle-section">
+            <div class="detalle-section-title">
+                <i class="fas fa-box"></i> Información del Producto
+            </div>
+            <div class="detalle-grid">
+                <div class="detalle-item" style="grid-column: span 2;">
+                    <span class="detalle-label">Producto</span>
+                    <span class="detalle-value">${mov.producto_nombre}</span>
+                </div>
+                <div class="detalle-item">
+                    <span class="detalle-label">Código de Barras</span>
+                    <span class="detalle-value">${mov.producto_codigo}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CANTIDADES Y STOCK -->
+        <div class="detalle-section">
+            <div class="detalle-section-title">
+                <i class="fas fa-boxes"></i> Movimiento de Stock
+            </div>
+            <div class="detalle-grid">
+                <div class="detalle-item">
+                    <span class="detalle-label">Cantidad</span>
+                    <span class="detalle-value" style="font-size: 1.5rem; color: #3b82f6;">${mov.cantidad}</span>
+                </div>
+                <div class="detalle-item">
+                    <span class="detalle-label">Stock Antes</span>
+                    <span class="detalle-value" style="color: #64748b;">${mov.stock_antes}</span>
+                </div>
+                <div class="detalle-item">
+                    <span class="detalle-label">Stock Después</span>
+                    <span class="detalle-value" style="color: #10b981;">${mov.stock_despues}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- COSTOS -->
+        <div class="detalle-section">
+            <div class="detalle-section-title">
+                <i class="fas fa-dollar-sign"></i> Información de Costos
+            </div>
+            <div class="detalle-grid">
+                <div class="detalle-item">
+                    <span class="detalle-label">Costo Unitario</span>
+                    <span class="detalle-value">$${parseFloat(mov.costo_unitario).toFixed(2)}</span>
+                </div>
+                <div class="detalle-item">
+                    <span class="detalle-label">Costo Total</span>
+                    <span class="detalle-value" style="font-size: 1.3rem; color: #059669;">$${parseFloat(mov.costo_total).toFixed(2)}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- OBSERVACIONES -->
+        ${mov.observaciones !== 'Sin observaciones' ? `
+        <div class="detalle-section">
+            <div class="detalle-section-title">
+                <i class="fas fa-comment-alt"></i> Observaciones
+            </div>
+            <p style="color: #1e293b; font-weight: 500; margin: 0;">${mov.observaciones}</p>
+        </div>
+        ` : ''}
+    `;
+    
+    document.getElementById('modalDetalleBody').innerHTML = html;
+}
+
+// ============================================
+// CERRAR MODAL
+// ============================================
+function cerrarModalDetalle() {
+    const modal = document.getElementById('modalDetalle');
+    modal.classList.remove('show');
+    document.body.classList.remove('modal-open');
+    movimientoIdActual = null;
+}
+
+function cerrarModalSiFondoClick(event) {
+    if (event.target.id === 'modalDetalle') {
+        cerrarModalDetalle();
+    }
+}
+
+// ============================================
+// EXPORTAR EXCEL GENERAL
+// ============================================
+function exportarExcelGeneral() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/panel/inventario/movimientos/export-all/excel/?${params.toString()}`;
+}
+
+// ============================================
+// EXPORTAR PDF GENERAL
+// ============================================
+function exportarPDFGeneral() {
+    const params = new URLSearchParams(window.location.search);
+    window.open(`/panel/inventario/movimientos/export-all/pdf/?${params.toString()}`, '_blank');
+}
+
+// ============================================
+// INICIALIZACIÓN
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.toString() && urlParams.get('page') === null) {
+        document.getElementById('filtros-content').style.display = 'block';
+    }
+    
+    // Cerrar modal con ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            cerrarModalDetalle();
+        }
+    });
+});
+</script>
+{% endblock %}

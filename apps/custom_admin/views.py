@@ -2696,6 +2696,553 @@ def api_procesar_entrada_unificada(request):
             'error': f'Error al procesar inventario: {str(e)}'
         }, status=500)
 
+# ============================================================================
+# MOVIMIENTOS DE INVENTARIO
+# ============================================================================
+
+@ensure_csrf_cookie
+@auth_required
+def movimientos_inventario_view(request):
+    """Vista principal de movimientos de inventario con filtros"""
+    from apps.inventory_management.models import MovimientoInventario, Producto
+    from apps.authentication.models import Usuario
+    from django.db.models import Q, Sum, Count
+    from django.core.paginator import Paginator
+    from decimal import Decimal
+    
+    # Base queryset
+    movimientos = MovimientoInventario.objects.select_related(
+        'producto_normal__producto',
+        'usuario'
+    ).all().order_by('-fecha_movimiento')
+    
+    # ========================================
+    # FILTROS
+    # ========================================
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
+    tipo_movimiento = request.GET.get('tipo_movimiento', '')
+    producto_id = request.GET.get('producto', '')
+    usuario_id = request.GET.get('usuario', '')
+    search = request.GET.get('search', '')
+    
+    if fecha_inicio:
+        movimientos = movimientos.filter(fecha_movimiento__date__gte=fecha_inicio)
+    
+    if fecha_fin:
+        movimientos = movimientos.filter(fecha_movimiento__date__lte=fecha_fin)
+    
+    if tipo_movimiento:
+        movimientos = movimientos.filter(tipo_movimiento=tipo_movimiento)
+    
+    if producto_id:
+        movimientos = movimientos.filter(producto_normal__producto_id=producto_id)
+    
+    if usuario_id:
+        movimientos = movimientos.filter(usuario_id=usuario_id)
+    
+    if search:
+        movimientos = movimientos.filter(
+            Q(producto_normal__producto__nombre__icontains=search) |
+            Q(observaciones__icontains=search)
+        )
+    
+    # ========================================
+    # ESTADÍSTICAS
+    # ========================================
+    total_movimientos = movimientos.count()
+    
+    entradas = movimientos.filter(
+        tipo_movimiento__in=['ENTRADA_COMPRA', 'ENTRADA_AJUSTE', 'ENTRADA_DEVOLUCION']
+    ).aggregate(
+        total=Sum('cantidad'),
+        count=Count('id')
+    )
+    
+    salidas = movimientos.filter(
+        tipo_movimiento__in=['SALIDA_VENTA', 'SALIDA_AJUSTE', 'SALIDA_MERMA', 'SALIDA_DEVOLUCION']
+    ).aggregate(
+        total=Sum('cantidad'),
+        count=Count('id')
+    )
+    
+    total_entradas = abs(entradas['total'] or 0)
+    count_entradas = entradas['count'] or 0
+    
+    total_salidas = abs(salidas['total'] or 0)
+    count_salidas = salidas['count'] or 0
+    
+    # Movimientos del día
+    hoy = timezone.now().date()
+    movimientos_hoy = MovimientoInventario.objects.filter(
+        fecha_movimiento__date=hoy
+    ).count()
+    
+    # ========================================
+    # PAGINACIÓN
+    # ========================================
+    paginator = Paginator(movimientos, 20)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    # ========================================
+    # DATOS PARA FORMULARIOS
+    # ========================================
+    productos = Producto.objects.filter(
+        tipo_inventario='NORMAL',
+        activo=True
+    ).order_by('nombre')
+    
+    usuarios = Usuario.objects.filter(is_active=True).order_by('nombres')
+    
+    # Tipos de movimiento
+    tipos_movimiento = [
+        ('', 'Todos'),
+        ('ENTRADA_COMPRA', 'Entrada por Compra'),
+        ('ENTRADA_DEVOLUCION', 'Entrada por Devolución'),
+        ('ENTRADA_AJUSTE', 'Entrada por Ajuste'),
+        ('SALIDA_VENTA', 'Salida por Venta'),
+        ('SALIDA_DEVOLUCION', 'Salida por Devolución'),
+        ('SALIDA_MERMA', 'Salida por Merma'),
+        ('SALIDA_AJUSTE', 'Salida por Ajuste'),
+    ]
+    
+    context = {
+        'page_obj': page_obj,
+        'movimientos': page_obj,
+        'total_movimientos': total_movimientos,
+        'total_entradas': total_entradas,
+        'count_entradas': count_entradas,
+        'total_salidas': total_salidas,
+        'count_salidas': count_salidas,
+        'movimientos_hoy': movimientos_hoy,
+        'productos': productos,
+        'usuarios': usuarios,
+        'tipos_movimiento': tipos_movimiento,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'tipo_movimiento_selected': tipo_movimiento,
+        'producto_selected': producto_id,
+        'usuario_selected': usuario_id,
+        'search': search,
+    }
+    
+    return render(request, 'custom_admin/inventario/movimientos_list.html', context)
+
+
+@ensure_csrf_cookie
+@auth_required
+def movimiento_detalle_api(request, pk):
+    """API para obtener detalles de un movimiento de inventario"""
+    from apps.inventory_management.models import MovimientoInventario
+    from django.http import JsonResponse
+    
+    try:
+        movimiento = MovimientoInventario.objects.select_related(
+            'producto_normal__producto',
+            'usuario'
+        ).get(pk=pk)
+        
+        data = {
+            'success': True,
+            'movimiento': {
+                'fecha_movimiento': movimiento.fecha_movimiento.strftime('%d/%m/%Y %H:%M'),
+                'tipo_movimiento': movimiento.get_tipo_movimiento_display(),
+                'tipo_movimiento_code': movimiento.tipo_movimiento,
+                'producto_nombre': movimiento.producto_normal.producto.nombre,
+                'producto_codigo': movimiento.producto_normal.producto.codigo_barras or 'Sin código',
+                'cantidad': str(movimiento.cantidad),
+                'stock_antes': str(movimiento.stock_antes),
+                'stock_despues': str(movimiento.stock_despues),
+                'costo_unitario': str(movimiento.costo_unitario),
+                'costo_total': str(movimiento.costo_total),
+                'usuario': movimiento.usuario.get_full_name() if movimiento.usuario else 'Sistema',
+                'referencia': movimiento.venta.numero_venta if movimiento.venta else 'N/A',
+                'observaciones': movimiento.observaciones or 'Sin observaciones',
+            }
+        }
+        return JsonResponse(data)
+        
+    except MovimientoInventario.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Movimiento no encontrado'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required
+def exportar_movimiento_excel(request, pk):
+    """Exporta un movimiento individual a Excel"""
+    from apps.inventory_management.models import MovimientoInventario
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from django.http import HttpResponse
+    
+    try:
+        movimiento = MovimientoInventario.objects.select_related(
+            'producto_normal__producto',
+            'usuario'
+        ).get(pk=pk)
+        
+        # Crear workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Movimiento"
+        
+        # Encabezado
+        ws['A1'] = 'DETALLE DE MOVIMIENTO DE INVENTARIO'
+        ws['A1'].font = Font(size=14, bold=True)
+        ws.merge_cells('A1:D1')
+        
+        # Información
+        row = 3
+        ws[f'A{row}'] = 'Fecha:'
+        ws[f'B{row}'] = movimiento.fecha_movimiento.strftime('%d/%m/%Y %H:%M')
+        row += 1
+        
+        ws[f'A{row}'] = 'Tipo:'
+        ws[f'B{row}'] = movimiento.get_tipo_movimiento_display()
+        row += 1
+        
+        ws[f'A{row}'] = 'Producto:'
+        ws[f'B{row}'] = movimiento.producto_normal.producto.nombre
+        row += 1
+        
+        ws[f'A{row}'] = 'Cantidad:'
+        ws[f'B{row}'] = movimiento.cantidad
+        row += 1
+        
+        ws[f'A{row}'] = 'Stock Antes:'
+        ws[f'B{row}'] = movimiento.stock_antes
+        row += 1
+        
+        ws[f'A{row}'] = 'Stock Después:'
+        ws[f'B{row}'] = movimiento.stock_despues
+        row += 1
+        
+        ws[f'A{row}'] = 'Usuario:'
+        ws[f'B{row}'] = movimiento.usuario.get_full_name() if movimiento.usuario else 'Sistema'
+        
+        # Ajustar columnas
+        ws.column_dimensions['A'].width = 20
+        ws.column_dimensions['B'].width = 40
+        
+        # Respuesta
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="movimiento_{pk}.xlsx"'
+        wb.save(response)
+        return response
+        
+    except MovimientoInventario.DoesNotExist:
+        messages.error(request, 'Movimiento no encontrado')
+        return redirect('custom_admin:movimientos_inventario')
+
+
+@ensure_csrf_cookie
+@auth_required
+def exportar_movimiento_pdf(request, pk):
+    """Exporta un movimiento individual a PDF"""
+    from apps.inventory_management.models import MovimientoInventario
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet
+    from django.http import HttpResponse
+    
+    try:
+        movimiento = MovimientoInventario.objects.select_related(
+            'producto_normal__producto',
+            'usuario'
+        ).get(pk=pk)
+        
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="movimiento_{pk}.pdf"'
+        
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+        
+        # Título
+        title = Paragraph('<b>DETALLE DE MOVIMIENTO DE INVENTARIO</b>', styles['Title'])
+        elements.append(title)
+        elements.append(Spacer(1, 12))
+        
+        # Datos
+        data = [
+            ['Fecha:', movimiento.fecha_movimiento.strftime('%d/%m/%Y %H:%M')],
+            ['Tipo:', movimiento.get_tipo_movimiento_display()],
+            ['Producto:', movimiento.producto_normal.producto.nombre],
+            ['Cantidad:', str(movimiento.cantidad)],
+            ['Stock Antes:', str(movimiento.stock_antes)],
+            ['Stock Después:', str(movimiento.stock_despues)],
+            ['Costo Unitario:', f'${movimiento.costo_unitario}'],
+            ['Costo Total:', f'${movimiento.costo_total}'],
+            ['Usuario:', movimiento.usuario.get_full_name() if movimiento.usuario else 'Sistema'],
+        ]
+        
+        table = Table(data, colWidths=[150, 350])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.grey),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('BACKGROUND', (1, 0), (1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        elements.append(table)
+        doc.build(elements)
+        return response
+        
+    except MovimientoInventario.DoesNotExist:
+        messages.error(request, 'Movimiento no encontrado')
+        return redirect('custom_admin:movimientos_inventario')
+
+
+@ensure_csrf_cookie
+@auth_required
+def exportar_movimientos_excel_general(request):
+    """Exportar todos los movimientos filtrados a Excel"""
+    from apps.inventory_management.models import MovimientoInventario
+    from django.http import HttpResponse
+    from django.db.models import Q
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from datetime import datetime
+    from io import BytesIO
+    
+    # Obtener filtros
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    tipo_movimiento = request.GET.get('tipo_movimiento')
+    producto_id = request.GET.get('producto')
+    usuario_id = request.GET.get('usuario')
+    search = request.GET.get('search')
+    
+    # Filtrar movimientos
+    movimientos = MovimientoInventario.objects.select_related(
+        'producto_normal__producto',
+        'usuario'
+    ).all().order_by('-fecha_movimiento')
+    
+    if fecha_inicio:
+        movimientos = movimientos.filter(fecha_movimiento__date__gte=fecha_inicio)
+    if fecha_fin:
+        movimientos = movimientos.filter(fecha_movimiento__date__lte=fecha_fin)
+    if tipo_movimiento:
+        movimientos = movimientos.filter(tipo_movimiento=tipo_movimiento)
+    if producto_id:
+        movimientos = movimientos.filter(producto_normal__producto_id=producto_id)
+    if usuario_id:
+        movimientos = movimientos.filter(usuario_id=usuario_id)
+    if search:
+        movimientos = movimientos.filter(
+            Q(producto_normal__producto__nombre__icontains=search) |
+            Q(observaciones__icontains=search)
+        )
+    
+    # Crear workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Movimientos"
+    
+    # Estilos
+    header_fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    title_font = Font(bold=True, size=14)
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # TÍTULO
+    ws.merge_cells('A1:J1')
+    ws['A1'] = f"REPORTE DE MOVIMIENTOS DE INVENTARIO - {datetime.now().strftime('%d/%m/%Y')}"
+    ws['A1'].font = title_font
+    ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    
+    # HEADERS
+    headers = ['Fecha', 'Tipo', 'Producto', 'Cantidad', 'Stock Antes', 
+               'Stock Después', 'Costo Unit.', 'Costo Total', 'Usuario', 'Observaciones']
+    
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(row=3, column=col)
+        cell.value = header
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = border
+    
+    # DATOS
+    row = 4
+    for mov in movimientos:
+        ws.cell(row=row, column=1, value=mov.fecha_movimiento.strftime('%d/%m/%Y %H:%M')).border = border
+        ws.cell(row=row, column=2, value=mov.get_tipo_movimiento_display()).border = border
+        ws.cell(row=row, column=3, value=mov.producto_normal.producto.nombre).border = border
+        ws.cell(row=row, column=4, value=float(mov.cantidad)).border = border
+        ws.cell(row=row, column=4).alignment = Alignment(horizontal='center')
+        ws.cell(row=row, column=5, value=float(mov.stock_antes)).border = border
+        ws.cell(row=row, column=5).alignment = Alignment(horizontal='center')
+        ws.cell(row=row, column=6, value=float(mov.stock_despues)).border = border
+        ws.cell(row=row, column=6).alignment = Alignment(horizontal='center')
+        ws.cell(row=row, column=7, value=float(mov.costo_unitario)).border = border
+        ws.cell(row=row, column=7).number_format = '$#,##0.00'
+        ws.cell(row=row, column=8, value=float(mov.costo_total)).border = border
+        ws.cell(row=row, column=8).number_format = '$#,##0.00'
+        ws.cell(row=row, column=9, value=mov.usuario.get_full_name() if mov.usuario else 'Sistema').border = border
+        ws.cell(row=row, column=10, value=mov.observaciones or 'N/A').border = border
+        row += 1
+    
+    # Ajustar anchos
+    ws.column_dimensions['A'].width = 18
+    ws.column_dimensions['B'].width = 20
+    ws.column_dimensions['C'].width = 30
+    ws.column_dimensions['D'].width = 12
+    ws.column_dimensions['E'].width = 12
+    ws.column_dimensions['F'].width = 12
+    ws.column_dimensions['G'].width = 12
+    ws.column_dimensions['H'].width = 12
+    ws.column_dimensions['I'].width = 20
+    ws.column_dimensions['J'].width = 25
+    
+    # Preparar respuesta
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    filename = f"movimientos_inventario_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+    
+    return response
+
+
+@ensure_csrf_cookie
+@auth_required
+def exportar_movimientos_pdf_general(request):
+    """Exportar todos los movimientos filtrados a PDF"""
+    from apps.inventory_management.models import MovimientoInventario
+    from django.http import HttpResponse
+    from django.db.models import Q
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+    from io import BytesIO
+    from datetime import datetime
+    
+    # Obtener filtros
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    tipo_movimiento = request.GET.get('tipo_movimiento')
+    producto_id = request.GET.get('producto')
+    usuario_id = request.GET.get('usuario')
+    search = request.GET.get('search')
+    
+    # Filtrar movimientos
+    movimientos = MovimientoInventario.objects.select_related(
+        'producto_normal__producto',
+        'usuario'
+    ).all().order_by('-fecha_movimiento')
+    
+    if fecha_inicio:
+        movimientos = movimientos.filter(fecha_movimiento__date__gte=fecha_inicio)
+    if fecha_fin:
+        movimientos = movimientos.filter(fecha_movimiento__date__lte=fecha_fin)
+    if tipo_movimiento:
+        movimientos = movimientos.filter(tipo_movimiento=tipo_movimiento)
+    if producto_id:
+        movimientos = movimientos.filter(producto_normal__producto_id=producto_id)
+    if usuario_id:
+        movimientos = movimientos.filter(usuario_id=usuario_id)
+    if search:
+        movimientos = movimientos.filter(
+            Q(producto_normal__producto__nombre__icontains=search) |
+            Q(observaciones__icontains=search)
+        )
+    
+    # Limitar a 200 registros para PDF
+    movimientos = movimientos[:200]
+    
+    # Crear buffer
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), topMargin=0.5*inch)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Título
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        textColor=colors.HexColor('#0f172a'),
+        spaceAfter=20,
+        alignment=TA_CENTER
+    )
+    
+    title = Paragraph(f"REPORTE DE MOVIMIENTOS DE INVENTARIO - {datetime.now().strftime('%d/%m/%Y')}", title_style)
+    elements.append(title)
+    elements.append(Spacer(1, 10))
+    
+    # Tabla de movimientos
+    data = [['Fecha', 'Tipo', 'Producto', 'Cant.', 'Stock Antes', 'Stock Después', 'Usuario']]
+    
+    for mov in movimientos:
+        data.append([
+            mov.fecha_movimiento.strftime('%d/%m/%Y'),
+            mov.get_tipo_movimiento_display()[:15],
+            mov.producto_normal.producto.nombre[:25],
+            str(mov.cantidad),
+            str(mov.stock_antes),
+            str(mov.stock_despues),
+            (mov.usuario.get_full_name() if mov.usuario else 'Sistema')[:20],
+        ])
+    
+    table = Table(data, colWidths=[1*inch, 1.3*inch, 2*inch, 0.7*inch, 1*inch, 1*inch, 1.5*inch])
+    table.setStyle(TableStyle([
+        # Header
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3B82F6')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 10),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        
+        # Body
+        ('FONT', (0, 1), (-1, -1), 'Helvetica', 8),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#1e293b')),
+        ('ALIGN', (3, 1), (5, -1), 'CENTER'),
+        
+        # Borders
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
+    ]))
+    
+    elements.append(table)
+    doc.build(elements)
+    
+    # Preparar respuesta
+    buffer.seek(0)
+    filename = f"movimientos_inventario_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    response = HttpResponse(buffer.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+    
+    return response
 # ========================================
 # FINANZAS
 # ========================================

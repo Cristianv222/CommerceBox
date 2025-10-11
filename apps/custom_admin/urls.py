@@ -41,6 +41,21 @@ urlpatterns = [
     path('inventario/categorias/<uuid:pk>/eliminar/', views.categoria_eliminar_view, name='categoria_eliminar'),
     
     path('inventario/proveedores/', views.proveedores_view, name='proveedores'),
+    # ========================================
+    # MOVIMIENTOS DE INVENTARIO
+    # ========================================
+    path('inventario/movimientos/', views.movimientos_inventario_view, name='movimientos_inventario'),
+
+    #  API para detalles del movimiento
+    path('api/movimientos/<uuid:pk>/info/', views.movimiento_detalle_api, name='movimiento_detalle_api'),
+
+    # Exportación individual
+    path('inventario/movimientos/<uuid:pk>/export/excel/', views.exportar_movimiento_excel, name='exportar_movimiento_excel'),
+    path('inventario/movimientos/<uuid:pk>/export/pdf/', views.exportar_movimiento_pdf, name='exportar_movimiento_pdf'),
+
+    # Exportación general
+    path('inventario/movimientos/export-all/excel/', views.exportar_movimiento_excel, name='exportar_movimientos_excel'),
+    path('inventario/movimientos/export-all/pdf/', views.exportar_movimiento_pdf, name='exportar_movimientos_pdf'),
     
     # ========================================
     # ENTRADA DE INVENTARIO UNIFICADA

@@ -885,10 +885,6 @@
                         <i class="bi bi-box menu-item-icon"></i>
                         <span class="menu-item-text">Productos</span>
                     </a>
-                    <a href="/panel/inventario/quintales/" class="menu-item {% if '/inventario/quintales/' in request.path %}active{% endif %}">
-                        <i class="bi bi-boxes menu-item-icon"></i>
-                        <span class="menu-item-text">Quintales</span>
-                    </a>
                     <a href="/panel/inventario/categorias/" class="menu-item {% if '/inventario/categorias/' in request.path %}active{% endif %}">
                         <i class="bi bi-tags-fill menu-item-icon"></i>
                         <span class="menu-item-text">Categorías</span>
@@ -897,7 +893,7 @@
                         <i class="bi bi-building menu-item-icon"></i>
                         <span class="menu-item-text">Proveedores</span>
                     </a>
-                    <a href="/panel/inventario/" class="menu-item {% if request.path == '/panel/inventario/' %}active{% endif %}">
+                    <a href="/panel/inventario/movimientos/" class="menu-item {% if '/inventario/movimientos/' in request.path %}active{% endif %}">
                         <i class="bi bi-arrow-left-right menu-item-icon"></i>
                         <span class="menu-item-text">Movimientos</span>
                         <span class="menu-item-badge" id="badge-inventario" style="display:none;">0</span>
