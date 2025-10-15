@@ -9,6 +9,17 @@ from .models import Cliente, Venta, DetalleVenta, Pago, Devolucion
 
 
 # ============================================================================
+# HELPERS
+# ============================================================================
+
+def format_currency(amount):
+    """Helper para formatear montos como moneda"""
+    if amount is None:
+        return '$0.00'
+    return f'${float(amount):,.2f}'
+
+
+# ============================================================================
 # INLINES
 # ============================================================================
 
@@ -89,6 +100,7 @@ class ClienteAdmin(admin.ModelAdmin):
     readonly_fields = ['fecha_registro', 'fecha_ultima_compra', 'total_compras']
     
     def nombre_completo_display(self, obj):
+        """Muestra el nombre completo del cliente"""
         if obj.nombre_comercial:
             return format_html(
                 '<strong>{}</strong><br><small>{}</small>',
@@ -99,6 +111,7 @@ class ClienteAdmin(admin.ModelAdmin):
     nombre_completo_display.short_description = 'Cliente'
     
     def credito_display(self, obj):
+        """Muestra el crédito disponible con código de colores"""
         if obj.limite_credito > 0:
             porcentaje = (obj.credito_disponible / obj.limite_credito) * 100
             if porcentaje > 50:
@@ -108,37 +121,20 @@ class ClienteAdmin(admin.ModelAdmin):
             else:
                 color = 'red'
             
-            # Formatear ANTES de pasar a format_html
-            credito_disp = f"${float(obj.credito_disponible):,.2f}"
-            limite = f"${float(obj.limite_credito):,.2f}"
+            disponible = format_currency(obj.credito_disponible)
+            limite = format_currency(obj.limite_credito)
             
             return format_html(
                 '<span style="color: {};">{} / {}</span>',
-                color, credito_disp, limite
+                color, disponible, limite
             )
         return '-'
     credito_display.short_description = 'Crédito Disponible'
     
     def total_compras_display(self, obj):
-        from decimal import Decimal
-        from django.db import connection
-        
-        # Obtener valor directamente de la base de datos
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT total_compras FROM sales_cliente WHERE id = %s",
-                [str(obj.id)]
-            )
-            row = cursor.fetchone()
-            total = row[0] if row else Decimal('0')
-        
-        # Formatear ANTES de pasar a format_html
-        total_formateado = f"${float(total):,.2f}"
-        
-        return format_html(
-            '<strong>{}</strong>',
-            total_formateado
-        )
+        """Muestra el total de compras acumuladas"""
+        total = format_currency(obj.total_compras)
+        return format_html('<strong>{}</strong>', total)
     total_compras_display.short_description = 'Total Compras'
 
 
@@ -203,6 +199,7 @@ class VentaAdmin(admin.ModelAdmin):
     inlines = [DetalleVentaInline, PagoInline]
     
     def cliente_display(self, obj):
+        """Muestra información del cliente"""
         if obj.cliente:
             return format_html(
                 '{}<br><small>{}</small>',
@@ -213,43 +210,47 @@ class VentaAdmin(admin.ModelAdmin):
     cliente_display.short_description = 'Cliente'
     
     def total_display(self, obj):
-        # Formatear ANTES de pasar a format_html
-        total_formateado = f"${float(obj.total):,.2f}"
+        """Muestra el total de la venta"""
+        total = format_currency(obj.total)
         return format_html(
             '<strong style="font-size: 14px;">{}</strong>',
-            total_formateado
+            total
         )
     total_display.short_description = 'Total'
     
     def estado_display(self, obj):
+        """Muestra el estado de la venta con colores"""
         estados = {
-            'PENDIENTE': ('orange', 'PEND'),
-            'COMPLETADA': ('green', 'COMP'),
-            'ANULADA': ('red', 'ANUL'),
+            'PENDIENTE': ('orange', '⏳', 'PENDIENTE'),
+            'COMPLETADA': ('green', '✅', 'COMPLETADA'),
+            'ANULADA': ('red', '❌', 'ANULADA'),
         }
-        color, texto = estados.get(obj.estado, ('black', obj.estado))
+        color, icono, texto = estados.get(obj.estado, ('black', '●', obj.estado))
         return format_html(
-            '<span style="color: {}; font-weight: bold;">[{}]</span>',
-            color, texto
+            '<span style="color: {};">{} {}</span>',
+            color, icono, texto
         )
     estado_display.short_description = 'Estado'
     
     def estado_pago_display(self, obj):
+        """Muestra el estado del pago"""
         if obj.esta_pagada():
-            return format_html('<span style="color: green;">PAGADO</span>')
-        elif obj.monto_pagado > 0:
-            saldo = obj.saldo_pendiente()
-            # Formatear ANTES de pasar a format_html
-            saldo_formateado = f"${float(saldo):,.2f}"
             return format_html(
-                '<span style="color: orange;">PARCIAL<br>{}</span>',
-                saldo_formateado
+                '<span style="color: green; font-weight: bold;">✅ PAGADO</span>'
             )
-        return format_html('<span style="color: red;">PENDIENTE</span>')
-    estado_pago_display.short_description = 'Pago'
+        elif obj.monto_pagado > 0:
+            saldo = format_currency(obj.saldo_pendiente())
+            return format_html(
+                '<span style="color: orange; font-weight: bold;">⚠️ PARCIAL</span><br><small>Saldo: {}</small>',
+                saldo
+            )
+        return format_html(
+            '<span style="color: red; font-weight: bold;">❌ PENDIENTE</span>'
+        )
+    estado_pago_display.short_description = 'Estado Pago'
     
     def has_delete_permission(self, request, obj=None):
-        # Solo permitir eliminar ventas pendientes
+        """Solo permitir eliminar ventas pendientes"""
         if obj and obj.estado != 'PENDIENTE':
             return False
         return super().has_delete_permission(request, obj)
@@ -262,7 +263,7 @@ class VentaAdmin(admin.ModelAdmin):
 @admin.register(DetalleVenta)
 class DetalleVentaAdmin(admin.ModelAdmin):
     list_display = [
-        'venta', 'producto', 'cantidad_display',
+        'venta_numero', 'producto', 'cantidad_display',
         'precio_display', 'subtotal_display',
         'descuento_porcentaje', 'total_display'
     ]
@@ -276,41 +277,76 @@ class DetalleVentaAdmin(admin.ModelAdmin):
     readonly_fields = [
         'venta', 'producto', 'quintal', 'peso_vendido',
         'cantidad_unidades', 'precio_por_unidad_peso',
-        'precio_unitario', 'subtotal', 'total'
+        'precio_unitario', 'subtotal', 'total', 'costo_unitario', 'costo_total'
     ]
     
+    fieldsets = (
+        ('Venta', {
+            'fields': ('venta',)
+        }),
+        ('Producto', {
+            'fields': ('producto', 'quintal')
+        }),
+        ('Cantidad y Precio', {
+            'fields': (
+                'peso_vendido', 'unidad_medida', 'precio_por_unidad_peso',
+                'cantidad_unidades', 'precio_unitario'
+            )
+        }),
+        ('Totales', {
+            'fields': ('subtotal', 'descuento_porcentaje', 'descuento_monto', 'total')
+        }),
+        ('Costos', {
+            'fields': ('costo_unitario', 'costo_total'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def venta_numero(self, obj):
+        """Muestra el número de venta"""
+        return obj.venta.numero_venta
+    venta_numero.short_description = 'Venta'
+    venta_numero.admin_order_field = 'venta__numero_venta'
+    
     def cantidad_display(self, obj):
+        """Muestra la cantidad vendida según el tipo de producto"""
         if obj.producto.es_quintal():
             return format_html(
-                '{} {}',
+                '<strong>{}</strong> {}',
                 obj.peso_vendido,
-                obj.unidad_medida.abreviatura
+                obj.unidad_medida.abreviatura if obj.unidad_medida else 'kg'
             )
-        return f"{obj.cantidad_unidades} unidades"
+        return format_html('<strong>{}</strong> unidades', obj.cantidad_unidades)
     cantidad_display.short_description = 'Cantidad'
     
     def precio_display(self, obj):
+        """Muestra el precio según el tipo de producto"""
         if obj.producto.es_quintal():
-            return f"${obj.precio_por_unidad_peso}/{obj.unidad_medida.abreviatura}"
-        return f"${obj.precio_unitario}/unidad"
+            precio = format_currency(obj.precio_por_unidad_peso)
+            unidad = obj.unidad_medida.abreviatura if obj.unidad_medida else 'kg'
+            return format_html('{}/{}', precio, unidad)
+        precio = format_currency(obj.precio_unitario)
+        return format_html('{}/unidad', precio)
     precio_display.short_description = 'Precio'
     
     def subtotal_display(self, obj):
-        # Formatear ANTES de pasar a format_html
-        subtotal_formateado = f"${float(obj.subtotal):,.2f}"
-        return format_html('{}', subtotal_formateado)
+        """Muestra el subtotal"""
+        subtotal = format_currency(obj.subtotal)
+        return format_html('<span>{}</span>', subtotal)
     subtotal_display.short_description = 'Subtotal'
     
     def total_display(self, obj):
-        # Formatear ANTES de pasar a format_html
-        total_formateado = f"${float(obj.total):,.2f}"
-        return format_html('<strong>{}</strong>', total_formateado)
+        """Muestra el total"""
+        total = format_currency(obj.total)
+        return format_html('<strong style="color: green;">{}</strong>', total)
     total_display.short_description = 'Total'
     
     def has_add_permission(self, request):
+        """No permitir agregar detalles directamente"""
         return False
     
     def has_delete_permission(self, request, obj=None):
+        """No permitir eliminar detalles directamente"""
         return False
 
 
@@ -321,31 +357,74 @@ class DetalleVentaAdmin(admin.ModelAdmin):
 @admin.register(Pago)
 class PagoAdmin(admin.ModelAdmin):
     list_display = [
-        'fecha_pago', 'venta', 'forma_pago',
-        'monto_display', 'numero_referencia', 'usuario'
+        'fecha_pago', 'venta_numero', 'forma_pago_display',
+        'monto_display', 'numero_referencia', 'banco', 'usuario'
     ]
-    list_filter = ['forma_pago', 'fecha_pago']
+    list_filter = ['forma_pago', 'fecha_pago', 'banco']
     search_fields = [
-        'venta__numero_venta', 'numero_referencia', 'banco'
+        'venta__numero_venta', 'numero_referencia', 
+        'banco', 'venta__cliente__nombres'
     ]
     ordering = ['-fecha_pago']
     date_hierarchy = 'fecha_pago'
+    
+    fieldsets = (
+        ('Venta', {
+            'fields': ('venta',)
+        }),
+        ('Pago', {
+            'fields': ('forma_pago', 'monto', 'fecha_pago')
+        }),
+        ('Detalles', {
+            'fields': ('numero_referencia', 'banco')
+        }),
+        ('Usuario', {
+            'fields': ('usuario',)
+        }),
+    )
     
     readonly_fields = [
         'venta', 'forma_pago', 'monto',
         'numero_referencia', 'banco', 'fecha_pago', 'usuario'
     ]
     
+    def venta_numero(self, obj):
+        """Muestra el número de venta"""
+        return obj.venta.numero_venta
+    venta_numero.short_description = 'Venta'
+    venta_numero.admin_order_field = 'venta__numero_venta'
+    
+    def forma_pago_display(self, obj):
+        """Muestra la forma de pago con ícono"""
+        iconos = {
+            'EFECTIVO': '💵',
+            'TARJETA_DEBITO': '💳',
+            'TARJETA_CREDITO': '💳',
+            'TRANSFERENCIA': '🏦',
+            'CHEQUE': '📝',
+            'CREDITO': '📋',
+        }
+        icono = iconos.get(obj.forma_pago, '💰')
+        return format_html('{} {}', icono, obj.get_forma_pago_display())
+    forma_pago_display.short_description = 'Forma de Pago'
+    forma_pago_display.admin_order_field = 'forma_pago'
+    
     def monto_display(self, obj):
-        # Formatear ANTES de pasar a format_html
-        monto_formateado = f"${float(obj.monto):,.2f}"
-        return format_html('<strong>{}</strong>', monto_formateado)
+        """Muestra el monto del pago"""
+        monto = format_currency(obj.monto)
+        return format_html(
+            '<strong style="color: green; font-size: 14px;">{}</strong>',
+            monto
+        )
     monto_display.short_description = 'Monto'
+    monto_display.admin_order_field = 'monto'
     
     def has_add_permission(self, request):
+        """No permitir agregar pagos directamente"""
         return False
     
     def has_delete_permission(self, request, obj=None):
+        """No permitir eliminar pagos directamente"""
         return False
 
 
@@ -357,13 +436,13 @@ class PagoAdmin(admin.ModelAdmin):
 class DevolucionAdmin(admin.ModelAdmin):
     list_display = [
         'numero_devolucion', 'fecha_devolucion',
-        'venta_original', 'motivo', 'monto_display',
-        'estado_display', 'usuario_solicita'
+        'venta_numero', 'producto_devuelto', 'motivo_display',
+        'monto_display', 'estado_display', 'usuario_solicita'
     ]
     list_filter = ['estado', 'motivo', 'fecha_devolucion']
     search_fields = [
         'numero_devolucion', 'venta_original__numero_venta',
-        'descripcion'
+        'descripcion', 'detalle_venta__producto__nombre'
     ]
     ordering = ['-fecha_devolucion']
     date_hierarchy = 'fecha_devolucion'
@@ -389,24 +468,99 @@ class DevolucionAdmin(admin.ModelAdmin):
     
     readonly_fields = [
         'numero_devolucion', 'fecha_devolucion',
-        'usuario_solicita', 'usuario_aprueba', 'fecha_procesado'
+        'usuario_solicita', 'usuario_aprueba', 'fecha_procesado', 'monto_devolucion'
     ]
     
+    def venta_numero(self, obj):
+        """Muestra el número de la venta original"""
+        return obj.venta_original.numero_venta
+    venta_numero.short_description = 'Venta'
+    venta_numero.admin_order_field = 'venta_original__numero_venta'
+    
+    def producto_devuelto(self, obj):
+        """Muestra el producto que se devolvió"""
+        return obj.detalle_venta.producto.nombre
+    producto_devuelto.short_description = 'Producto'
+    
+    def motivo_display(self, obj):
+        """Muestra el motivo con ícono"""
+        iconos = {
+            'DEFECTUOSO': '🔧',
+            'EQUIVOCACION': '❌',
+            'NO_SATISFECHO': '😞',
+            'VENCIDO': '📅',
+            'OTRO': '❓',
+        }
+        icono = iconos.get(obj.motivo, '●')
+        return format_html('{} {}', icono, obj.get_motivo_display())
+    motivo_display.short_description = 'Motivo'
+    motivo_display.admin_order_field = 'motivo'
+    
     def monto_display(self, obj):
-        # Formatear ANTES de pasar a format_html
-        monto_formateado = f"${float(obj.monto_devolucion):,.2f}"
-        return format_html('<strong>{}</strong>', monto_formateado)
+        """Muestra el monto de la devolución"""
+        monto = format_currency(obj.monto_devolucion)
+        return format_html(
+            '<strong style="color: red;">{}</strong>',
+            monto
+        )
     monto_display.short_description = 'Monto'
+    monto_display.admin_order_field = 'monto_devolucion'
     
     def estado_display(self, obj):
+        """Muestra el estado de la devolución con colores"""
         estados = {
-            'PENDIENTE': ('orange', 'PEND'),
-            'APROBADA': ('green', 'APROB'),
-            'RECHAZADA': ('red', 'RECH'),
+            'PENDIENTE': ('orange', '⏳', 'PENDIENTE'),
+            'APROBADA': ('green', '✅', 'APROBADA'),
+            'RECHAZADA': ('red', '❌', 'RECHAZADA'),
         }
-        color, texto = estados.get(obj.estado, ('black', obj.estado))
+        color, icono, texto = estados.get(obj.estado, ('black', '●', obj.estado))
         return format_html(
-            '<span style="color: {}; font-weight: bold;">[{}]</span>',
-            color, texto
+            '<span style="color: {}; font-weight: bold;">{} {}</span>',
+            color, icono, texto
         )
     estado_display.short_description = 'Estado'
+    estado_display.admin_order_field = 'estado'
+    
+    def has_delete_permission(self, request, obj=None):
+        """Solo permitir eliminar devoluciones pendientes"""
+        if obj and obj.estado != 'PENDIENTE':
+            return False
+        return super().has_delete_permission(request, obj)
+
+
+# ============================================================================
+# ACCIONES PERSONALIZADAS
+# ============================================================================
+
+@admin.action(description='Marcar como activo')
+def marcar_activo(modeladmin, request, queryset):
+    """Acción para marcar clientes como activos"""
+    count = queryset.update(activo=True)
+    modeladmin.message_user(
+        request,
+        f'{count} cliente(s) marcado(s) como activo(s).'
+    )
+
+
+@admin.action(description='Marcar como inactivo')
+def marcar_inactivo(modeladmin, request, queryset):
+    """Acción para marcar clientes como inactivos"""
+    count = queryset.update(activo=False)
+    modeladmin.message_user(
+        request,
+        f'{count} cliente(s) marcado(s) como inactivo(s).'
+    )
+
+
+# Agregar acciones al ClienteAdmin
+ClienteAdmin.actions = [marcar_activo, marcar_inactivo]
+
+
+# ============================================================================
+# CONFIGURACIÓN DEL ADMIN SITE
+# ============================================================================
+
+# Personalizar el título del admin
+admin.site.site_header = 'CommerceBox - Administración de Ventas'
+admin.site.site_title = 'CommerceBox Admin'
+admin.site.index_title = 'Panel de Administración de Ventas'
