@@ -659,7 +659,7 @@ class AnularVentaView(VentasAccessMixin, View):
             return redirect('sales_management:venta_detail', pk=pk)
         
         # Importar servicio
-        from .services.pos_service import POSService
+        from .pos.pos_service import POSService
         
         try:
             POSService.anular_venta(venta, request.user)
@@ -711,7 +711,7 @@ class DevolucionCreateView(VentasAccessMixin, FormMessagesMixin, CreateView):
         devolucion = form.save(commit=False)
         
         # Generar número de devolución
-        from .services.pos_service import POSService
+        from .pos.pos_service import POSService
         devolucion.numero_devolucion = POSService.generar_numero_devolucion()
         
         # Calcular monto
@@ -758,7 +758,7 @@ class AprobarDevolucionView(VentasAccessMixin, View):
             
             # Si se aprueba, procesar la devolución
             if decision == 'APROBADA':
-                from .services.pos_service import POSService
+                from .pos.pos_service import POSService
                 try:
                     POSService.procesar_devolucion(devolucion, request.user)
                     messages.success(request, 'Devolución aprobada y procesada exitosamente.')
