@@ -155,6 +155,84 @@
     .form-control-admin::placeholder {
         color: #9ca3af;
     }
+    
+    /* ============================================
+       ✅ IMAGEN UPLOAD Y PREVIEW
+       ============================================ */
+    .image-upload-container {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 1rem;
+        background: rgba(248, 250, 252, 0.6);
+        border: 2px dashed rgba(203, 213, 225, 0.5);
+        border-radius: 12px;
+        transition: all 0.3s ease;
+    }
+    .image-upload-container:hover {
+        border-color: rgba(96, 165, 250, 0.6);
+        background: rgba(255, 255, 255, 0.9);
+    }
+    .image-preview-box {
+        width: 120px;
+        height: 120px;
+        border-radius: 12px;
+        overflow: hidden;
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(59, 130, 246, 0.3) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        position: relative;
+    }
+    .image-preview-box img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .image-preview-placeholder {
+        font-size: 3rem;
+        color: #3b82f6;
+    }
+    .image-upload-input {
+        display: none;
+    }
+    .btn-upload-image {
+        padding: 0.7rem 1.5rem;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        font-size: 0.9rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+    }
+    .btn-upload-image:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+    }
+    .btn-remove-image {
+        padding: 0.5rem 1rem;
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 8px;
+        color: #dc2626;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .btn-remove-image:hover {
+        background: rgba(239, 68, 68, 0.25);
+        transform: scale(1.05);
+    }
+    
     /* ============================================
        TABLA
        ============================================ */
@@ -260,6 +338,14 @@
         color: #7c3aed;
         border: 1px solid rgba(139, 92, 246, 0.3);
     }
+    /* ✅ NUEVO: Badge para marcas */
+    .badge-brand {
+        background: rgba(236, 72, 153, 0.15);
+        color: #db2777;
+        border: 1px solid rgba(236, 72, 153, 0.3);
+        font-size: 0.75rem;
+        padding: 0.3rem 0.7rem;
+    }
     /* ============================================
        BOTONES
        ============================================ */
@@ -355,7 +441,7 @@
        MODALES
        ============================================ */
     .modal-dialog {
-        margin-top: 5rem !important;
+        margin-top: 3rem !important;
     }
     
     .modal-content {
@@ -610,6 +696,9 @@
             right: 10px;
             max-width: none;
         }
+        .image-upload-container {
+            flex-direction: column;
+        }
     }
     /* ============================================
        ANIMACIONES DE ENTRADA
@@ -758,6 +847,7 @@
                         <th>Producto</th>
                         <th>Código</th>
                         <th>Categoría</th>
+                        <th>Marca</th>
                         <th>Tipo</th>
                         <th>Stock</th>
                         <th>Precio</th>
@@ -802,6 +892,15 @@
                             <td><span class="badge-admin badge-info">{{ producto.codigo_barras }}</span></td>
                             <td>{{ producto.categoria.nombre|default:"Sin categoría" }}</td>
                             <td>
+                                {% if producto.marca %}
+                                    <span class="badge-admin badge-brand">
+                                        <i class="bi bi-tag-fill me-1"></i>{{ producto.marca.nombre }}
+                                    </span>
+                                {% else %}
+                                    <span style="color: #9ca3af; font-size: 0.85rem;">Sin marca</span>
+                                {% endif %}
+                            </td>
+                            <td>
                                 {% if producto.tipo_inventario == 'QUINTAL' %}
                                     <span class="badge-admin badge-info">
                                         <i class="bi bi-box-seam me-1"></i>Quintal
@@ -814,7 +913,6 @@
                             </td>
                             <td>
                                 {% if producto.tipo_inventario == 'QUINTAL' %}
-                                    <!-- Mostrar peso total en quintales -->
                                     {% with producto.quintales.filter as quintales %}
                                         {% if quintales %}
                                             <div style="font-weight: 700; color: #3b82f6; font-size: 1.1rem;">
@@ -831,7 +929,6 @@
                                         {% endif %}
                                     {% endwith %}
                                 {% else %}
-                                    <!-- Mostrar stock para productos normales -->
                                     {% if producto.inventario_normal %}
                                         {% with stock=producto.inventario_normal.stock_actual %}
                                             {% if stock > 0 %}
@@ -892,7 +989,7 @@
                         {% endfor %}
                     {% else %}
                     <tr>
-                        <td colspan="9" class="text-center" style="padding: 3rem;">
+                        <td colspan="10" class="text-center" style="padding: 3rem;">
                             <i class="bi bi-inbox" style="font-size: 3rem; color: #64748b;"></i>
                             <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">No se encontraron productos</p>
                             <button class="btn-primary-admin mt-3" onclick="openCreateModal()">
@@ -960,7 +1057,8 @@
 <!-- Modal Crear/Editar Producto -->
 <div class="modal fade" id="productoModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-lg">
-        <form id="productoForm" method="POST" action="">
+        <!-- ✅ Agregar enctype para subir archivos -->
+        <form id="productoForm" method="POST" action="" enctype="multipart/form-data">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="productoModalTitle">
@@ -972,6 +1070,33 @@
                     {% csrf_token %}
                     <input type="hidden" id="productoId" name="producto_id">
                     
+                    <!-- ✅ SECCIÓN DE IMAGEN -->
+                    <div class="form-group-admin">
+                        <label class="form-label-admin">
+                            <i class="bi bi-image-fill"></i>Imagen del Producto
+                        </label>
+                        <div class="image-upload-container">
+                            <div class="image-preview-box" id="imagePreviewBox">
+                                <i class="bi bi-image image-preview-placeholder" id="imagePlaceholder"></i>
+                                <img id="imagePreview" style="display: none;">
+                            </div>
+                            <div style="flex: 1;">
+                                <input type="file" id="imagenInput" name="imagen" class="image-upload-input" accept="image/*" onchange="previewImage(this)">
+                                <button type="button" class="btn-upload-image" onclick="document.getElementById('imagenInput').click()">
+                                    <i class="bi bi-cloud-upload-fill"></i>
+                                    Subir Imagen
+                                </button>
+                                <button type="button" class="btn-remove-image" id="btnRemoveImage" style="display: none; margin-left: 0.5rem;" onclick="removeImage()">
+                                    <i class="bi bi-trash"></i> Quitar
+                                </button>
+                                <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    JPG, PNG o WEBP (Máx. 5MB)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row">
                         <div class="col-md-8">
                             <div class="form-group-admin">
@@ -1012,7 +1137,24 @@
                                 </select>
                             </div>
                         </div>
+                        <!-- ✅ CAMPO DE MARCA -->
                         <div class="col-md-6">
+                            <div class="form-group-admin">
+                                <label class="form-label-admin">
+                                    <i class="bi bi-tag"></i>Marca
+                                </label>
+                                <select class="form-control-admin" id="marca" name="marca">
+                                    <option value="">Sin marca</option>
+                                    {% for marca in marcas %}
+                                    <option value="{{ marca.id }}">{{ marca.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
                             <div class="form-group-admin">
                                 <label class="form-label-admin">
                                     <i class="bi bi-box"></i>Tipo de Inventario *
@@ -1176,6 +1318,40 @@
         }, 3000);
     }
 
+    // ✅ Preview de imagen
+    function previewImage(input) {
+        const preview = document.getElementById('imagePreview');
+        const placeholder = document.getElementById('imagePlaceholder');
+        const btnRemove = document.getElementById('btnRemoveImage');
+        
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+                placeholder.style.display = 'none';
+                btnRemove.style.display = 'inline-block';
+            };
+            
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // ✅ Quitar imagen
+    function removeImage() {
+        const input = document.getElementById('imagenInput');
+        const preview = document.getElementById('imagePreview');
+        const placeholder = document.getElementById('imagePlaceholder');
+        const btnRemove = document.getElementById('btnRemoveImage');
+        
+        input.value = '';
+        preview.src = '';
+        preview.style.display = 'none';
+        placeholder.style.display = 'block';
+        btnRemove.style.display = 'none';
+    }
+
     // Cargar estadísticas al iniciar
     document.addEventListener('DOMContentLoaded', function() {
         loadStats();
@@ -1256,6 +1432,9 @@
         document.getElementById('productoId').value = '';
         document.getElementById('activo').checked = true;
         
+        // ✅ Limpiar preview de imagen
+        removeImage();
+        
         toggleTipoInventario();
         
         form.action = "{% url 'custom_admin:producto_crear' %}";
@@ -1291,6 +1470,21 @@
         
         const activo = row.querySelector('.badge-success') !== null;
         document.getElementById('activo').checked = activo;
+        
+        // ✅ Mostrar imagen si existe
+        const imgElement = row.querySelector('.product-image');
+        if (imgElement) {
+            const preview = document.getElementById('imagePreview');
+            const placeholder = document.getElementById('imagePlaceholder');
+            const btnRemove = document.getElementById('btnRemoveImage');
+            
+            preview.src = imgElement.src;
+            preview.style.display = 'block';
+            placeholder.style.display = 'none';
+            btnRemove.style.display = 'inline-block';
+        } else {
+            removeImage();
+        }
         
         form.action = `/panel/inventario/productos/${productoId}/editar/`;
         

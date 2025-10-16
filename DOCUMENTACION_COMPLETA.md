@@ -4,7 +4,7 @@
 
 INFORMACIÓN GENERAL
 -------------------
-Fecha de generación: 2025-10-11 03:50:20
+Fecha de generación: 2025-10-16 00:18:50
 Ubicación: C:\Users\godoy\Desktop\CommerceBox
 Python Version: Python 3.13.7
 Pip Version: pip no disponible
@@ -16,7 +16,7 @@ Usuario: Desconocido
                             ESTRUCTURA DEL PROYECTO
 ================================================================================
 
-├── apps/ (10 elementos)
+├── apps/ (11 elementos)
 │   ├── authentication/ (16 elementos)
 │   │   ├── management/ (2 elementos)
 │   │   │   ├── commands/ (3 elementos)
@@ -51,8 +51,8 @@ Usuario: Desconocido
 │   │   ├── apps.py (166.0B)
 │   │   ├── models.py (60.0B)
 │   │   ├── tests.py (63.0B)
-│   │   ├── urls.py (8.5KB)
-│   │   └── views.py (132.7KB)
+│   │   ├── urls.py (8.8KB)
+│   │   └── views.py (134.2KB)
 │   ├── financial_management/ (13 elementos)
 │   │   ├── accounting/ (4 elementos)
 │   │   │   ├── __init__.py (404.0B)
@@ -77,15 +77,21 @@ Usuario: Desconocido
 │   │   ├── tests.py (63.0B)
 │   │   ├── urls.py (3.1KB)
 │   │   └── views.py (33.3KB)
-│   ├── hardware_integration/ (7 elementos)
-│   │   ├── migrations/ (1 elementos)
+│   ├── hardware_integration/ (9 elementos)
+│   │   ├── migrations/ (2 elementos)
+│   │   │   ├── 0001_initial.py (38.4KB)
 │   │   │   └── __init__.py (0B)
+│   │   ├── printers/ (3 elementos)
+│   │   │   ├── __init__.py (0B)
+│   │   │   ├── cash_drawer_service.py (7.0KB)
+│   │   │   └── printer_service.py (32.3KB)
 │   │   ├── __init__.py (0B)
-│   │   ├── admin.py (66.0B)
+│   │   ├── admin.py (9.2KB)
 │   │   ├── apps.py (182.0B)
-│   │   ├── models.py (60.0B)
+│   │   ├── forms.py (14.2KB)
+│   │   ├── models.py (26.8KB)
 │   │   ├── tests.py (63.0B)
-│   │   └── views.py (66.0B)
+│   │   └── views.py (27.9KB)
 │   ├── inventory_management/ (16 elementos)
 │   │   ├── __pycache__/ (excluido)
 │   │   ├── management/ (2 elementos)
@@ -95,9 +101,10 @@ Usuario: Desconocido
 │   │   │   │   ├── setup_inventory_data.py (3.8KB)
 │   │   │   │   └── validate_inventory_integrity.py (3.4KB)
 │   │   │   └── __init__.py (0B)
-│   │   ├── migrations/ (3 elementos)
+│   │   ├── migrations/ (4 elementos)
 │   │   │   ├── 0001_initial.py (40.1KB)
 │   │   │   ├── 0002_producto_iva.py (540.0B)
+│   │   │   ├── 0003_agregar_marca.py (3.1KB)
 │   │   │   └── __init__.py (0B)
 │   │   ├── services/ (5 elementos)
 │   │   │   ├── __init__.py (329.0B)
@@ -112,25 +119,31 @@ Usuario: Desconocido
 │   │   │   ├── unit_converter.py (1.4KB)
 │   │   │   └── validators.py (1.2KB)
 │   │   ├── __init__.py (0B)
-│   │   ├── admin.py (23.0KB)
+│   │   ├── admin.py (26.6KB)
 │   │   ├── apps.py (182.0B)
 │   │   ├── decorators.py (2.3KB)
-│   │   ├── forms.py (20.0KB)
+│   │   ├── forms.py (24.8KB)
 │   │   ├── mixins.py (3.9KB)
-│   │   ├── models.py (40.3KB)
+│   │   ├── models.py (45.5KB)
 │   │   ├── signals.py (8.2KB)
 │   │   ├── tests.py (63.0B)
-│   │   ├── urls.py (7.2KB)
-│   │   └── views.py (50.2KB)
-│   ├── notifications/ (7 elementos)
-│   │   ├── migrations/ (1 elementos)
+│   │   ├── urls.py (8.4KB)
+│   │   └── views.py (63.4KB)
+│   ├── notifications/ (10 elementos)
+│   │   ├── migrations/ (2 elementos)
+│   │   │   ├── 0001_initial.py (28.1KB)
 │   │   │   └── __init__.py (0B)
-│   │   ├── __init__.py (0B)
-│   │   ├── admin.py (66.0B)
-│   │   ├── apps.py (169.0B)
-│   │   ├── models.py (60.0B)
+│   │   ├── services/ (2 elementos)
+│   │   │   ├── __init__.py (0B)
+│   │   │   └── notification_service.py (26.0KB)
+│   │   ├── __init__.py (100.0B)
+│   │   ├── admin.py (17.9KB)
+│   │   ├── apps.py (405.0B)
+│   │   ├── models.py (25.3KB)
+│   │   ├── signals.py (10.3KB)
 │   │   ├── tests.py (63.0B)
-│   │   └── views.py (66.0B)
+│   │   ├── url.py (471.0B)
+│   │   └── views.py (1.0KB)
 │   ├── reports_analytics/ (11 elementos)
 │   │   ├── generators/ (6 elementos)
 │   │   │   ├── __init__.py (507.0B)
@@ -166,7 +179,7 @@ Usuario: Desconocido
 │   │   │   ├── pos_service.py (19.1KB)
 │   │   │   └── pricing_calculator.py (8.4KB)
 │   │   ├── __init__.py (110.0B)
-│   │   ├── admin.py (14.1KB)
+│   │   ├── admin.py (19.8KB)
 │   │   ├── apps.py (401.0B)
 │   │   ├── forms.py (15.7KB)
 │   │   ├── models.py (22.7KB)
@@ -175,48 +188,64 @@ Usuario: Desconocido
 │   │   ├── tests.py (63.0B)
 │   │   ├── urls.py (2.6KB)
 │   │   └── views.py (38.8KB)
-│   ├── stock_alert_system/ (7 elementos)
-│   │   ├── migrations/ (2 elementos)
-│   │   │   ├── 0001_initial.py (10.4KB)
+│   ├── stock_alert_system/ (11 elementos)
+│   │   ├── management/ (2 elementos)
+│   │   │   ├── commands/ (3 elementos)
+│   │   │   │   ├── __init__.py (0B)
+│   │   │   │   ├── procesar_alertas.py (6.0KB)
+│   │   │   │   └── recalcular_stock.py (9.7KB)
 │   │   │   └── __init__.py (0B)
-│   │   ├── __init__.py (0B)
-│   │   ├── admin.py (66.0B)
-│   │   ├── apps.py (177.0B)
-│   │   ├── models.py (10.2KB)
+│   │   ├── migrations/ (3 elementos)
+│   │   │   ├── 0001_initial.py (10.4KB)
+│   │   │   ├── 0002_estadostock_historialestado_and_more.py (14.5KB)
+│   │   │   └── __init__.py (0B)
+│   │   ├── __init__.py (212.0B)
+│   │   ├── admin.py (35.6KB)
+│   │   ├── apps.py (633.0B)
+│   │   ├── models.py (25.0KB)
+│   │   ├── signals.py (7.3KB)
+│   │   ├── status_calculator.py (20.3KB)
+│   │   ├── tasks.py (19.1KB)
 │   │   ├── tests.py (63.0B)
 │   │   └── views.py (66.0B)
-│   └── system_configuration/ (10 elementos)
-│       ├── management/ (2 elementos)
-│       │   ├── commands/ (2 elementos)
-│       │   │   ├── __init__.py (0B)
-│       │   │   └── setup_commercebox.py.disabled (5.8KB)
-│       │   └── __init__.py (0B)
-│       ├── migrations/ (1 elementos)
-│       │   └── __init__.py (0B)
-│       ├── __init__.py (0B)
-│       ├── admin.py (0B)
-│       ├── apps.py (182.0B)
-│       ├── forms.py (0B)
-│       ├── models.py (60.0B)
-│       ├── signals.py (0B)
-│       ├── tests.py (63.0B)
-│       └── views.py (66.0B)
+│   ├── system_configuration/ (11 elementos)
+│   │   ├── management/ (2 elementos)
+│   │   │   ├── commands/ (3 elementos)
+│   │   │   │   ├── __init__.py (0B)
+│   │   │   │   ├── setup_commercebox.py (27.9KB)
+│   │   │   │   └── system_health_check.py (9.1KB)
+│   │   │   └── __init__.py (0B)
+│   │   ├── migrations/ (2 elementos)
+│   │   │   ├── 0001_initial.py (37.4KB)
+│   │   │   └── __init__.py (0B)
+│   │   ├── __init__.py (0B)
+│   │   ├── admin.py (23.3KB)
+│   │   ├── apps.py (182.0B)
+│   │   ├── forms.py (15.0KB)
+│   │   ├── models.py (29.9KB)
+│   │   ├── signals.py (0B)
+│   │   ├── tests.py (63.0B)
+│   │   ├── urls.py (2.3KB)
+│   │   └── views.py (23.6KB)
+│   └── context_processors.py (544.0B)
 ├── commercebox/ (7 elementos)
 │   ├── __pycache__/ (excluido)
 │   ├── __init__.py (257.0B)
 │   ├── asgi.py (415.0B)
 │   ├── celery.py (811.0B)
-│   ├── settings.py (16.4KB)
+│   ├── settings.py (16.5KB)
 │   ├── urls.py (1.4KB)
 │   └── wsgi.py (415.0B)
 ├── logs/ (2 elementos)
-│   ├── commercebox.log (4.1MB)
+│   ├── commercebox.log (4.2MB)
 │   └── commercebox_audit.log (0B)
-├── media/ (4 elementos)
+├── media/ (5 elementos)
 │   ├── barcodes/ (2 elementos)
 │   │   ├── productos/ (0 elementos)
 │   │   └── quintales/ (0 elementos)
 │   ├── invoices/ (0 elementos)
+│   ├── marcas/ (1 elementos)
+│   │   └── senal-satelital.png (38.5KB)
 │   ├── productos/ (1 elementos)
 │   │   └── lunar.webp (5.1KB)
 │   └── reports/ (0 elementos)
@@ -228,9 +257,10 @@ Usuario: Desconocido
 │   ├── authentication/ (1 elementos)
 │   │   └── login.html (23.0KB)
 │   ├── custom_admin/ (9 elementos)
-│   │   ├── inventario/ (4 elementos)
+│   │   ├── inventario/ (5 elementos)
 │   │   │   ├── categorias_list.html (51.3KB)
 │   │   │   ├── entrada_inventario.html (41.9KB)
+│   │   │   ├── marcas_list.html (47.3KB)
 │   │   │   ├── movimientos_list.html (42.9KB)
 │   │   │   └── productos_list.html (53.5KB)
 │   │   ├── logs/ (1 elementos)
@@ -261,7 +291,7 @@ Usuario: Desconocido
 ├── env.example (1.1KB)
 ├── manage.py (689.0B)
 ├── README.md (9.9KB)
-└── requirements.txt (2.6KB)
+└── requirements.txt (2.4KB)
 
 ================================================================================
                             ANÁLISIS DE ARCHIVOS
@@ -270,7 +300,7 @@ Usuario: Desconocido
 ARCHIVOS IMPORTANTES
 --------------------
 manage.py                 ✅ Existe (689.0B)
-requirements.txt          ✅ Existe (2.6KB)
+requirements.txt          ✅ Existe (2.4KB)
 .env                      ✅ Existe (2.1KB)
 .env.example              ❌ Faltante
 .gitignore                ✅ Existe (2.0KB)
@@ -282,12 +312,12 @@ setup.cfg                 ❌ Faltante
 
 ESTADÍSTICAS POR EXTENSIÓN
 --------------------------
-.py                   157 archivos ( 84.4%)
-.html                  14 archivos (  7.5%)
-(sin extensión)         4 archivos (  2.2%)
-.log                    2 archivos (  1.1%)
-.md                     2 archivos (  1.1%)
-.disabled               1 archivos (  0.5%)
+.py                   181 archivos ( 85.8%)
+.html                  15 archivos (  7.1%)
+(sin extensión)         4 archivos (  1.9%)
+.log                    2 archivos (  0.9%)
+.md                     2 archivos (  0.9%)
+.png                    1 archivos (  0.5%)
 .webp                   1 archivos (  0.5%)
 .ps1                    1 archivos (  0.5%)
 .yml                    1 archivos (  0.5%)
@@ -295,8 +325,8 @@ ESTADÍSTICAS POR EXTENSIÓN
 
 TOTALES
 -------
-Total de archivos: 186
-Total de directorios: 58
+Total de archivos: 211
+Total de directorios: 63
 
 ================================================================================
                            APLICACIONES DJANGO
@@ -309,13 +339,13 @@ App                  Estado     Básicos    Total      Archivos Existentes
 authentication       Completa   5/5      18         models.py, views.py, urls.py...
 custom_admin         Completa   5/5      6          models.py, views.py, urls.py...
 financial_management Completa   5/5      16         models.py, views.py, urls.py...
-hardware_integration Parcial    4/5      5          models.py, views.py, admin.py...
-inventory_management Completa   5/5      23         models.py, views.py, urls.py...
-notifications        Parcial    4/5      5          models.py, views.py, admin.py...
+hardware_integration Parcial    4/5      9          models.py, views.py, admin.py...
+inventory_management Completa   5/5      24         models.py, views.py, urls.py...
+notifications        Parcial    4/5      9          models.py, views.py, admin.py...
 reports_analytics    Completa   5/5      14         models.py, views.py, urls.py...
 sales_management     Completa   5/5      16         models.py, views.py, urls.py...
-stock_alert_system   Parcial    4/5      6          models.py, views.py, admin.py...
-system_configuration Parcial    3/5      7          models.py, views.py, apps.py...
+stock_alert_system   Parcial    4/5      12         models.py, views.py, admin.py...
+system_configuration Completa   5/5      11         models.py, views.py, urls.py...
 
 DETALLE POR APP
 ==================================================
@@ -345,7 +375,7 @@ DETALLE POR APP
    Ubicación: apps\hardware_integration/
    Estado: Parcial
    Archivos básicos: 4/5
-   Archivos encontrados: models.py, views.py, admin.py, apps.py, tests.py
+   Archivos encontrados: models.py, views.py, admin.py, apps.py, forms.py, tests.py
    ❌ Archivos faltantes: urls.py
 
 📦 App: inventory_management
@@ -359,7 +389,7 @@ DETALLE POR APP
    Ubicación: apps\notifications/
    Estado: Parcial
    Archivos básicos: 4/5
-   Archivos encontrados: models.py, views.py, admin.py, apps.py, tests.py
+   Archivos encontrados: models.py, views.py, admin.py, apps.py, tests.py, signals.py
    ❌ Archivos faltantes: urls.py
 
 📦 App: reports_analytics
@@ -380,15 +410,15 @@ DETALLE POR APP
    Ubicación: apps\stock_alert_system/
    Estado: Parcial
    Archivos básicos: 4/5
-   Archivos encontrados: models.py, views.py, admin.py, apps.py, tests.py
+   Archivos encontrados: models.py, views.py, admin.py, apps.py, tests.py, signals.py
    ❌ Archivos faltantes: urls.py
 
 📦 App: system_configuration
    Ubicación: apps\system_configuration/
-   Estado: Parcial
-   Archivos básicos: 3/5
-   Archivos encontrados: models.py, views.py, apps.py, tests.py
-   ❌ Archivos faltantes: urls.py, admin.py
+   Estado: Completa
+   Archivos básicos: 5/5
+   Archivos encontrados: models.py, views.py, urls.py, admin.py, apps.py, forms.py, tests.py
+   ✅ Todos los archivos básicos presentes
 
 ================================================================================
                          CONFIGURACIÓN DJANGO
@@ -440,7 +470,7 @@ storage/invoices/pdf/               ❌ Facturas PDF generadas
 storage/invoices/sent/              ❌ Facturas enviadas al SRI 
 storage/logs/                       ❌ Logs del sistema 
 storage/backups/                    ❌ Respaldos de BD 
-media/                              ✅ Archivos de media (7 archivos)
+media/                              ✅ Archivos de media (9 archivos)
 static/                             ✅ Archivos estáticos (1 archivos)
 uploads/                            ❌ Archivos subidos 
 
@@ -453,7 +483,6 @@ APPS DJANGO SIN CONFIGURAR
 ❌ hardware_integration - Parcial
 ❌ notifications - Parcial
 ❌ stock_alert_system - Parcial
-❌ system_configuration - Parcial
 
 TAREAS PRIORITARIAS
 ===================
@@ -463,7 +492,6 @@ TAREAS PRIORITARIAS
    - hardware_integration: urls.py
    - notifications: urls.py
    - stock_alert_system: urls.py
-   - system_configuration: urls.py, admin.py
 
 COMANDOS ÚTILES
 ===============
@@ -488,18 +516,18 @@ PROGRESO DEL PROYECTO
 ---------------------
 Estructura básica:       ✅ Completada (100%)
 Configuración Django:    ⚠️  Parcial (80%)
-Apps implementadas:      ❌ Pendiente (60%)
+Apps implementadas:      ❌ Pendiente (70%)
 Documentación:           ⚠️  Iniciada (60%)
 
 ESTADÍSTICAS GENERALES
 ---------------------
-Total directorios:       58
-Total archivos:          186
+Total directorios:       63
+Total archivos:          211
 Apps Django:             10
-Archivos Python:         157
+Archivos Python:         181
 Paquetes instalados:     0
 
 ================================================================================
-Reporte generado automáticamente el 2025-10-11 03:50:20
+Reporte generado automáticamente el 2025-10-16 00:18:50
 Para actualizar, ejecuta: python documenter.py
 ================================================================================

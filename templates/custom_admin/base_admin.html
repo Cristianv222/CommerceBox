@@ -9,7 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
     :root {
         --sidebar-width: 280px;
@@ -871,35 +871,43 @@
             </div>
 
             <div class="menu-group" id="group-inventario">
-                <div class="menu-group-header" onclick="toggleMenuGroup('group-inventario')">
-                    <i class="bi bi-box-seam menu-group-icon"></i>
-                    <span class="menu-group-title">Inventario</span>
-                    <i class="bi bi-chevron-right menu-group-arrow"></i>
-                </div>
-                <div class="menu-group-items">
-                    <a href="/panel/inventario/entrada/" class="menu-item {% if '/inventario/entrada/' in request.path %}active{% endif %}">
-                        <i class="bi bi-box-arrow-in-down menu-item-icon"></i>
-                        <span class="menu-item-text">Entrada de Inventario</span>
-                    </a>
-                    <a href="/panel/inventario/productos/" class="menu-item {% if '/inventario/productos/' in request.path %}active{% endif %}">
-                        <i class="bi bi-box menu-item-icon"></i>
-                        <span class="menu-item-text">Productos</span>
-                    </a>
-                    <a href="/panel/inventario/categorias/" class="menu-item {% if '/inventario/categorias/' in request.path %}active{% endif %}">
-                        <i class="bi bi-tags-fill menu-item-icon"></i>
-                        <span class="menu-item-text">Categorías</span>
-                    </a>
-                    <a href="/panel/inventario/proveedores/" class="menu-item {% if '/inventario/proveedores/' in request.path %}active{% endif %}">
-                        <i class="bi bi-building menu-item-icon"></i>
-                        <span class="menu-item-text">Proveedores</span>
-                    </a>
-                    <a href="/panel/inventario/movimientos/" class="menu-item {% if '/inventario/movimientos/' in request.path %}active{% endif %}">
-                        <i class="bi bi-arrow-left-right menu-item-icon"></i>
-                        <span class="menu-item-text">Movimientos</span>
-                        <span class="menu-item-badge" id="badge-inventario" style="display:none;">0</span>
-                    </a>
-                </div>
-            </div>
+    <div class="menu-group-header" onclick="toggleMenuGroup('group-inventario')">
+        <i class="bi bi-box-seam menu-group-icon"></i>
+        <span class="menu-group-title">Inventario</span>
+        <i class="bi bi-chevron-right menu-group-arrow"></i>
+    </div>
+    <div class="menu-group-items">
+        <a href="/panel/inventario/entrada/" class="menu-item {% if '/inventario/entrada/' in request.path %}active{% endif %}">
+            <i class="bi bi-box-arrow-in-down menu-item-icon"></i>
+            <span class="menu-item-text">Entrada de Inventario</span>
+        </a>
+        <a href="/panel/inventario/productos/" class="menu-item {% if '/inventario/productos/' in request.path %}active{% endif %}">
+            <i class="bi bi-box menu-item-icon"></i>
+            <span class="menu-item-text">Productos</span>
+        </a>
+        <a href="/panel/inventario/categorias/" class="menu-item {% if '/inventario/categorias/' in request.path %}active{% endif %}">
+            <i class="bi bi-tags-fill menu-item-icon"></i>
+            <span class="menu-item-text">Categorías</span>
+        </a>
+        
+        <!-- ✅ NUEVO ELEMENTO: MARCAS -->
+        <a href="/panel/inventario/marcas/" class="menu-item {% if '/inventario/marcas/' in request.path %}active{% endif %}">
+            <i class="bi bi-award-fill menu-item-icon"></i>
+            <span class="menu-item-text">Marcas</span>
+        </a>
+        <!-- FIN NUEVO ELEMENTO -->
+        
+        <a href="/panel/inventario/proveedores/" class="menu-item {% if '/inventario/proveedores/' in request.path %}active{% endif %}">
+            <i class="bi bi-building menu-item-icon"></i>
+            <span class="menu-item-text">Proveedores</span>
+        </a>
+        <a href="/panel/inventario/movimientos/" class="menu-item {% if '/inventario/movimientos/' in request.path %}active{% endif %}">
+            <i class="bi bi-arrow-left-right menu-item-icon"></i>
+            <span class="menu-item-text">Movimientos</span>
+            <span class="menu-item-badge" id="badge-inventario" style="display:none;">0</span>
+        </a>
+    </div>
+</div>
 
             <div class="menu-group" id="group-reportes">
                 <div class="menu-group-header" onclick="toggleMenuGroup('group-reportes')">

@@ -1,0 +1,1153 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Proveedores{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<style>
+    /* ============================================
+       FIX CRÍTICO: Permitir que los modales estén por encima de todo
+       ============================================ */
+    body.modal-open {
+        position: static !important;
+    }
+
+    /* ============================================
+       OCULTAR MENSAJES TRADICIONALES DE DJANGO
+       ============================================ */
+    .messages,
+    .alert:not(.alert-admin):not(.toast-notification .alert),
+    body > .messages,
+    body > .alert:not(.alert-admin) {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    /* ============================================
+       HEADER
+       ============================================ */
+    .card-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+    }
+
+    /* ============================================
+       STAT CARDS CON GLASSMORPHISM
+       ============================================ */
+    .stat-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 300px 200px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 
+            0 12px 40px rgba(59, 130, 246, 0.15),
+            0 4px 12px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        border-color: rgba(96, 165, 250, 0.6);
+    }
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 2;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+    .stat-label {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* ============================================
+       ADMIN CARD (Filtros y Tabla)
+       ============================================ */
+    .admin-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    .admin-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 400px 300px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    .admin-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg, 
+            rgba(59, 130, 246, 0.3) 0%, 
+            rgba(96, 165, 250, 0.5) 25%,
+            rgba(147, 197, 253, 0.4) 50%,
+            rgba(96, 165, 250, 0.5) 75%,
+            rgba(59, 130, 246, 0.3) 100%);
+        border-radius: 16px 16px 0 0;
+    }
+
+    /* ============================================
+       FORM CONTROLS
+       ============================================ */
+    .form-control-admin {
+        width: 100%;
+        padding: 14px 18px;
+        background: rgba(248, 250, 252, 0.6);
+        border: 1.5px solid rgba(203, 213, 225, 0.5);
+        border-radius: 12px;
+        color: #1e293b;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+    }
+    .form-control-admin:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(96, 165, 250, 0.6);
+        box-shadow: 
+            0 0 0 4px rgba(96, 165, 250, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.15);
+    }
+    .form-control-admin::placeholder {
+        color: #9ca3af;
+    }
+
+    /* ============================================
+       TABLA
+       ============================================ */
+    .table-responsive {
+        position: relative;
+        z-index: 2;
+    }
+    .table-admin {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .table-admin thead {
+        background: rgba(59, 130, 246, 0.08);
+        border-radius: 12px 12px 0 0;
+    }
+    .table-admin thead th {
+        padding: 1rem 1rem;
+        color: #1e293b;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
+        white-space: nowrap;
+    }
+    .table-admin thead th:first-child {
+        border-radius: 12px 0 0 0;
+    }
+    .table-admin thead th:last-child {
+        border-radius: 0 12px 0 0;
+    }
+    .table-admin tbody tr {
+        transition: all 0.2s ease;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+    }
+    .table-admin tbody tr:hover {
+        background: rgba(59, 130, 246, 0.05);
+    }
+    .table-admin tbody td {
+        padding: 1rem 1rem;
+        color: #1e293b;
+        font-size: 0.9rem;
+        vertical-align: middle;
+    }
+
+    /* ============================================
+       BADGES
+       ============================================ */
+    .badge-admin {
+        padding: 0.4rem 0.9rem;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        display: inline-block;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    .badge-success {
+        background: rgba(16, 185, 129, 0.15);
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .badge-danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .badge-warning {
+        background: rgba(245, 158, 11, 0.15);
+        color: #d97706;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .badge-info {
+        background: rgba(59, 130, 246, 0.15);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    /* ============================================
+       BOTONES
+       ============================================ */
+    .btn-primary-admin,
+    .btn-success-admin {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 
+            0 8px 20px rgba(59, 130, 246, 0.25),
+            0 2px 8px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .btn-primary-admin:hover,
+    .btn-success-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 12px 28px rgba(59, 130, 246, 0.3),
+            0 4px 12px rgba(96, 165, 250, 0.25),
+            inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.95) 0%, rgba(59, 130, 246, 0.95) 100%);
+    }
+    .btn-danger-admin {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(220, 38, 38, 0.95) 100%);
+        border: none;
+        padding: 12px 24px;
+        border-radius: 12px;
+        color: white;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 
+            0 8px 20px rgba(239, 68, 68, 0.25),
+            0 2px 8px rgba(239, 68, 68, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .btn-danger-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 12px 28px rgba(239, 68, 68, 0.3),
+            0 4px 12px rgba(239, 68, 68, 0.25);
+    }
+    .btn-primary-admin:disabled,
+    .btn-success-admin:disabled,
+    .btn-danger-admin:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* Botones de acción en tabla */
+    .btn-group .btn {
+        transition: all 0.2s ease;
+    }
+    .btn-group .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* ============================================
+       PAGINACIÓN
+       ============================================ */
+    .pagination {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .page-item .page-link {
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+        font-weight: 600;
+        border: 1px solid rgba(219, 234, 254, 0.5);
+    }
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    .page-item:not(.active):not(.disabled) .page-link:hover {
+        background: rgba(59, 130, 246, 0.15);
+        transform: translateY(-1px);
+    }
+
+    /* ============================================
+       MODALES
+       ============================================ */
+    .modal-dialog {
+        margin-top: 5rem !important;
+    }
+    
+    .modal-content {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 20px;
+        box-shadow: 
+            0 20px 60px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        position: relative;
+        overflow: hidden;
+    }
+    .modal-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 600px 400px at 50% 50%, rgba(219, 234, 254, 0.15) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    .modal-header {
+        border-bottom: 1px solid rgba(59, 130, 246, 0.15);
+        position: relative;
+        z-index: 2;
+        padding: 1rem 1.5rem;
+    }
+    .modal-title {
+        color: #0f172a;
+        font-weight: 700;
+        font-size: 1.25rem;
+    }
+    .modal-body {
+        color: #1e293b;
+        position: relative;
+        z-index: 2;
+        padding: 1.25rem 1.5rem;
+        max-height: calc(100vh - 250px);
+        overflow-y: auto;
+    }
+    .modal-footer {
+        border-top: 1px solid rgba(59, 130, 246, 0.15);
+        position: relative;
+        z-index: 2;
+        padding: 1rem 1.5rem;
+    }
+
+    /* ============================================
+       FORM GROUPS EN MODAL
+       ============================================ */
+    .form-group-admin {
+        margin-bottom: 0.85rem;
+    }
+    .form-label-admin {
+        display: flex;
+        align-items: center;
+        color: #1e293b;
+        font-size: 0.875rem;
+        font-weight: 700;
+        margin-bottom: 0.35rem;
+    }
+    .form-label-admin i {
+        font-size: 0.9rem;
+    }
+    .modal-body .form-control-admin {
+        padding: 10px 14px;
+        font-size: 0.9rem;
+    }
+    .form-control-admin:focus {
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.08);
+    }
+
+    /* ============================================
+       ALERTS
+       ============================================ */
+    .alert-admin {
+        padding: 0.75rem 1rem;
+        border-radius: 12px;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        position: relative;
+        z-index: 2;
+        font-size: 0.85rem;
+    }
+    .alert-info-admin {
+        background: rgba(59, 130, 246, 0.15);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    /* ============================================
+       TOAST NOTIFICATIONS
+       ============================================ */
+    #toastContainer {
+        position: fixed;
+        top: 90px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 400px;
+    }
+    .toast-notification {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        animation: slideIn 0.3s ease-out;
+    }
+    .toast-notification.removing {
+        animation: slideOut 0.3s ease-out forwards;
+    }
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+    .toast-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .toast-success .toast-icon {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+    }
+    .toast-error .toast-icon {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+    }
+    .toast-warning .toast-icon {
+        background: rgba(245, 158, 11, 0.2);
+        color: #f59e0b;
+    }
+    .toast-info .toast-icon {
+        background: rgba(59, 130, 246, 0.2);
+        color: #3b82f6;
+    }
+    .toast-content {
+        flex: 1;
+        color: #1e293b;
+    }
+    .toast-title {
+        font-weight: 700;
+        margin-bottom: 0.2rem;
+        font-size: 0.95rem;
+    }
+    .toast-message {
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+    .toast-close {
+        background: rgba(59, 130, 246, 0.1);
+        border: none;
+        color: #3b82f6;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex-shrink: 0;
+        font-weight: 700;
+    }
+    .toast-close:hover {
+        background: rgba(59, 130, 246, 0.2);
+        transform: scale(1.1);
+    }
+    .toast-progress {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+        border-radius: 0 0 12px 12px;
+        animation: progress 3s linear forwards;
+    }
+    @keyframes progress {
+        from { width: 100%; }
+        to { width: 0%; }
+    }
+
+    /* ============================================
+       LOADING SPINNER
+       ============================================ */
+    .spinner-border {
+        border-color: rgba(59, 130, 246, 0.3);
+        border-top-color: #3b82f6;
+    }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 768px) {
+        .card-title {
+            font-size: 1.5rem;
+        }
+        .stat-card {
+            margin-bottom: 1rem;
+        }
+        .table-admin {
+            font-size: 0.85rem;
+        }
+        .btn-group {
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+        .modal-dialog {
+            margin: 1rem !important;
+            margin-top: 2rem !important;
+        }
+        #toastContainer {
+            left: 10px;
+            right: 10px;
+            max-width: none;
+        }
+    }
+    @media (max-width: 480px) {
+        .admin-card {
+            padding: 1rem;
+        }
+        .table-admin thead th,
+        .table-admin tbody td {
+            padding: 0.75rem 0.5rem;
+        }
+    }
+
+    /* ============================================
+       ANIMACIONES DE ENTRADA
+       ============================================ */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    .stat-card,
+    .admin-card {
+        animation: fadeInUp 0.5s ease-out backwards;
+    }
+    .stat-card:nth-child(1) { animation-delay: 0.05s; }
+    .stat-card:nth-child(2) { animation-delay: 0.1s; }
+    .stat-card:nth-child(3) { animation-delay: 0.15s; }
+    .stat-card:nth-child(4) { animation-delay: 0.2s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Contenedor de Notificaciones Toast -->
+<div id="toastContainer"></div>
+
+<!-- MENSAJES DE DJANGO (OCULTOS) -->
+{% if messages %}
+<div id="django-messages" style="display: none;">
+    {% for message in messages %}
+    <div class="django-message" data-type="{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="card-title">Gestión de Proveedores</h1>
+            <p style="color: #64748b; margin: 0; font-weight: 500;">Administra los proveedores del sistema</p>
+        </div>
+        <div>
+            <button class="btn-primary-admin" onclick="abrirModalCrear()">
+                <i class="bi bi-plus-circle me-2"></i>Nuevo Proveedor
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(59, 130, 246, 0.2); color: #3b82f6;">
+                    <i class="bi bi-building-fill"></i>
+                </div>
+                <div class="stat-value">{{ page_obj.paginator.count }}</div>
+                <div class="stat-label">Total Proveedores</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <div class="stat-value">{{ proveedores|length }}</div>
+                <div class="stat-label">Activos</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">
+                    <i class="bi bi-box-seam-fill"></i>
+                </div>
+                <div class="stat-value">{% widthratio page_obj.paginator.count 1 1 %}</div>
+                <div class="stat-label">Productos</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6;">
+                    <i class="bi bi-calendar-event-fill"></i>
+                </div>
+                <div class="stat-value">30</div>
+                <div class="stat-label">Días Crédito Prom.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="admin-card mb-4" style="animation-delay: 0.25s;">
+        <form method="GET" action="{% url 'custom_admin:proveedores' %}" class="row g-3">
+            <div class="col-md-5">
+                <div style="position: relative;">
+                    <i class="bi bi-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 0.95rem; z-index: 2;"></i>
+                    <input 
+                        type="text" 
+                        class="form-control-admin" 
+                        name="search" 
+                        placeholder="Buscar por nombre, RUC/NIT, email..." 
+                        value="{{ search }}"
+                        style="padding-left: 42px;"
+                    >
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-control-admin" name="activo">
+                    <option value="">Todos los estados</option>
+                    <option value="true" {% if activo_selected == 'true' %}selected{% endif %}>Activos</option>
+                    <option value="false" {% if activo_selected == 'false' %}selected{% endif %}>Inactivos</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn-primary-admin w-100">
+                    <i class="bi bi-search"></i> Buscar
+                </button>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn-success-admin w-100" onclick="window.location.reload()">
+                    <i class="bi bi-arrow-clockwise"></i> Actualizar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabla de Proveedores -->
+    <div class="admin-card" style="animation-delay: 0.3s;">
+        <div class="table-responsive">
+            <table class="table-admin">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Proveedor</th>
+                        <th>RUC/NIT</th>
+                        <th>Contacto</th>
+                        <th>Productos</th>
+                        <th>Crédito</th>
+                        <th>Estado</th>
+                        <th style="width: 200px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if proveedores %}
+                        {% for proveedor in proveedores %}
+                        <tr data-proveedor-id="{{ proveedor.id }}"
+                            data-nombre-comercial="{{ proveedor.nombre_comercial }}"
+                            data-razon-social="{{ proveedor.razon_social }}"
+                            data-ruc-nit="{{ proveedor.ruc_nit }}"
+                            data-direccion="{{ proveedor.direccion }}"
+                            data-telefono="{{ proveedor.telefono }}"
+                            data-email="{{ proveedor.email }}"
+                            data-dias-credito="{{ proveedor.dias_credito }}"
+                            data-limite-credito="{{ proveedor.limite_credito }}"
+                            data-activo="{{ proveedor.activo|yesno:'true,false' }}">
+                            <td>
+                                <strong style="color: #3b82f6; font-weight: 700;">{{ forloop.counter|add:page_obj.start_index|add:"-1" }}</strong>
+                            </td>
+                            <td>
+                                <div style="font-weight: 600; color: #1e293b;">{{ proveedor.nombre_comercial }}</div>
+                                <div style="font-size: 0.85rem; color: #64748b; font-weight: 500;">{{ proveedor.razon_social|default:"Sin razón social" }}</div>
+                            </td>
+                            <td style="font-weight: 500; font-family: monospace;">{{ proveedor.ruc_nit }}</td>
+                            <td>
+                                {% if proveedor.telefono %}
+                                <div style="font-weight: 600; color: #1e293b;">
+                                    <i class="bi bi-telephone-fill me-1"></i>{{ proveedor.telefono }}
+                                </div>
+                                {% endif %}
+                                {% if proveedor.email %}
+                                <div style="font-size: 0.85rem; color: #64748b;">
+                                    <i class="bi bi-envelope-fill me-1"></i>{{ proveedor.email }}
+                                </div>
+                                {% endif %}
+                                {% if not proveedor.telefono and not proveedor.email %}
+                                <span style="color: #94a3b8;">Sin contacto</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span style="font-size: 1.1rem; font-weight: 700; color: #3b82f6;">
+                                    {{ proveedor.total_productos }}
+                                </span>
+                            </td>
+                            <td>
+                                <div style="font-weight: 700; color: #1e293b;">{{ proveedor.dias_credito }} días</div>
+                                <div style="font-size: 0.85rem; color: #64748b;">${{ proveedor.limite_credito|floatformat:2 }}</div>
+                            </td>
+                            <td>
+                                {% if proveedor.activo %}
+                                <span class="badge-admin badge-success">
+                                    <i class="bi bi-check-circle-fill me-1"></i>Activo
+                                </span>
+                                {% else %}
+                                <span class="badge-admin badge-danger">
+                                    <i class="bi bi-x-circle-fill me-1"></i>Inactivo
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button 
+                                        class="btn btn-sm" 
+                                        style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; margin-right: 0.3rem; font-weight: 600;" 
+                                        onclick="abrirModalEditar('{{ proveedor.id }}')" 
+                                        title="Editar"
+                                    >
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button 
+                                        class="btn btn-sm" 
+                                        style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600;" 
+                                        onclick="confirmarEliminar('{{ proveedor.id }}', '{{ proveedor.nombre_comercial|escapejs }}')" 
+                                        title="Eliminar"
+                                    >
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center" style="padding: 3rem;">
+                                <i class="bi bi-inbox" style="font-size: 3rem; color: #64748b;"></i>
+                                <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">No se encontraron proveedores</p>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginación -->
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <div style="color: #64748b; font-weight: 600;">
+                Mostrando <span>{{ page_obj.start_index }}</span> - <span>{{ page_obj.end_index }}</span> de <span>{{ page_obj.paginator.count }}</span> proveedores
+            </div>
+            {% if page_obj.has_other_pages %}
+            <div>
+                <nav>
+                    <ul class="pagination" style="margin: 0;">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if activo_selected %}&activo={{ activo_selected }}{% endif %}">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">
+                                {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if activo_selected %}&activo={{ activo_selected }}{% endif %}">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Crear/Editar Proveedor -->
+<div class="modal fade" id="modalProveedor" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formProveedor" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Nuevo Proveedor</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group-admin">
+                                <label class="form-label-admin">
+                                    <i class="bi bi-shop me-1"></i>Nombre Comercial *
+                                </label>
+                                <input type="text" class="form-control-admin" name="nombre_comercial" id="input_nombre_comercial" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group-admin">
+                                <label class="form-label-admin">
+                                    <i class="bi bi-building me-1"></i>Razón Social
+                                </label>
+                                <input type="text" class="form-control-admin" name="razon_social" id="input_razon_social">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group-admin">
+                        <label class="form-label-admin">
+                            <i class="bi bi-card-text me-1"></i>RUC/NIT *
+                        </label>
+                        <input type="text" class="form-control-admin" name="ruc_nit" id="input_ruc_nit" required pattern="\d{10,20}" placeholder="10-20 dígitos">
+                    </div>
+
+                    <div class="form-group-admin">
+                        <label class="form-label-admin">
+                            <i class="bi bi-geo-alt-fill me-1"></i>Dirección
+                        </label>
+                        <input type="text" class="form-control-admin" name="direccion" id="input_direccion">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group-admin">
+                                <label class="form-label-admin">
+                                    <i class="bi bi-telephone-fill me-1"></i>Teléfono
+                                </label>
+                                <input type="text" class="form-control-admin" name="telefono" id="input_telefono">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group-admin">
+                                <label class="form-label-admin">
+                                    <i class="bi bi-envelope-fill me-1"></i>Email
+                                </label>
+                                <input type="email" class="form-control-admin" name="email" id="input_email">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group-admin">
+                                <label class="form-label-admin">
+                                    <i class="bi bi-calendar-event me-1"></i>Días de Crédito
+                                </label>
+                                <input type="number" class="form-control-admin" name="dias_credito" id="input_dias_credito" value="0" min="0">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group-admin">
+                                <label class="form-label-admin">
+                                    <i class="bi bi-currency-dollar me-1"></i>Límite de Crédito
+                                </label>
+                                <input type="number" class="form-control-admin" name="limite_credito" id="input_limite_credito" value="0.00" step="0.01" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group-admin">
+                        <label class="form-label-admin d-flex align-items-center" style="cursor: pointer;">
+                            <input type="checkbox" name="activo" id="input_activo" checked style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer; accent-color: #3b82f6;">
+                            <span>Proveedor Activo</span>
+                        </label>
+                    </div>
+
+                    <div class="alert-admin alert-info-admin">
+                        <i class="bi bi-info-circle-fill"></i>
+                        Los campos marcados con (*) son obligatorios
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-danger-admin" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn-primary-admin" id="btnGuardar">
+                        <i class="bi bi-save me-2"></i>Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- FORM ELIMINAR -->
+<form id="formEliminar" method="POST" style="display: none;">
+    {% csrf_token %}
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let modalProveedor;
+
+    // Sistema de Notificaciones Toast
+    function showNotification(type, message, title = null) {
+        const container = document.getElementById('toastContainer');
+        
+        const icons = {
+            success: 'bi-check-circle-fill',
+            error: 'bi-x-circle-fill',
+            warning: 'bi-exclamation-triangle-fill',
+            info: 'bi-info-circle-fill'
+        };
+
+        const titles = {
+            success: title || 'Éxito',
+            error: title || 'Error',
+            warning: title || 'Advertencia',
+            info: title || 'Información'
+        };
+
+        const toast = document.createElement('div');
+        toast.className = `toast-notification toast-${type}`;
+        toast.innerHTML = `
+            <div class="toast-icon">
+                <i class="bi ${icons[type]}"></i>
+            </div>
+            <div class="toast-content">
+                <div class="toast-title">${titles[type]}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+            <button class="toast-close" onclick="this.parentElement.remove()">
+                <i class="bi bi-x"></i>
+            </button>
+            <div class="toast-progress"></div>
+        `;
+
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.add('removing');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        modalProveedor = new bootstrap.Modal(document.getElementById('modalProveedor'));
+        mostrarMensajesDjango();
+    });
+
+    function mostrarMensajesDjango() {
+        const contenedorMensajes = document.getElementById('django-messages');
+        if (!contenedorMensajes) return;
+        
+        const mensajes = contenedorMensajes.querySelectorAll('.django-message');
+        mensajes.forEach((mensaje, index) => {
+            setTimeout(() => {
+                const tipo = mensaje.getAttribute('data-type');
+                const texto = mensaje.textContent.trim();
+                
+                const tipoMap = {
+                    'success': 'success',
+                    'error': 'error',
+                    'warning': 'warning',
+                    'info': 'info',
+                    'danger': 'error'
+                };
+                
+                showNotification(tipoMap[tipo] || 'info', texto);
+            }, index * 200);
+        });
+    }
+
+    function abrirModalCrear() {
+        document.getElementById('modalTitle').textContent = 'Nuevo Proveedor';
+        document.getElementById('formProveedor').action = "{% url 'custom_admin:proveedor_crear' %}";
+        document.getElementById('formProveedor').reset();
+        document.getElementById('input_activo').checked = true;
+        document.getElementById('btnGuardar').disabled = false;
+        document.getElementById('btnGuardar').innerHTML = '<i class="bi bi-save me-2"></i>Guardar';
+        modalProveedor.show();
+    }
+
+    function abrirModalEditar(proveedorId) {
+        // Buscar la fila con los datos del proveedor
+        const fila = document.querySelector(`tr[data-proveedor-id="${proveedorId}"]`);
+        
+        if (!fila) {
+            showNotification('error', 'No se encontró el proveedor');
+            return;
+        }
+        
+        // Cambiar título y acción del formulario
+        document.getElementById('modalTitle').textContent = 'Editar Proveedor';
+        document.getElementById('formProveedor').action = `/panel/inventario/proveedores/${proveedorId}/editar/`;
+        
+        // Llenar los campos con los datos de la fila
+        document.getElementById('input_nombre_comercial').value = fila.dataset.nombreComercial || '';
+        document.getElementById('input_razon_social').value = fila.dataset.razonSocial || '';
+        document.getElementById('input_ruc_nit').value = fila.dataset.rucNit || '';
+        document.getElementById('input_direccion').value = fila.dataset.direccion || '';
+        document.getElementById('input_telefono').value = fila.dataset.telefono || '';
+        document.getElementById('input_email').value = fila.dataset.email || '';
+        document.getElementById('input_dias_credito').value = fila.dataset.diasCredito || '0';
+        document.getElementById('input_limite_credito').value = fila.dataset.limiteCredito || '0.00';
+        document.getElementById('input_activo').checked = fila.dataset.activo === 'true';
+        
+        // Resetear botón
+        document.getElementById('btnGuardar').disabled = false;
+        document.getElementById('btnGuardar').innerHTML = '<i class="bi bi-save me-2"></i>Guardar';
+        
+        // Mostrar el modal
+        modalProveedor.show();
+    }
+
+    function confirmarEliminar(proveedorId, nombre) {
+        if (confirm(`¿Estás seguro de eliminar el proveedor "${nombre}"?\n\nSi tiene productos asociados, solo se desactivará.`)) {
+            const form = document.getElementById('formEliminar');
+            form.action = `/panel/inventario/proveedores/${proveedorId}/eliminar/`;
+            form.submit();
+        }
+    }
+
+    // Mostrar spinner al enviar el formulario
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('formProveedor');
+        const btnGuardar = document.getElementById('btnGuardar');
+        
+        form.addEventListener('submit', function(e) {
+            // Validar que el formulario tenga action
+            if (!form.action || form.action === window.location.href) {
+                e.preventDefault();
+                showNotification('error', 'Error: No se ha configurado la acción del formulario');
+                return;
+            }
+            
+            // Mostrar spinner y deshabilitar botón
+            btnGuardar.disabled = true;
+            btnGuardar.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+        });
+    });
+</script>
+{% endblock %}

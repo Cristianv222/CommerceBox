@@ -3,12 +3,13 @@ Views del Panel Administrativo Personalizado
 Solo sirven HTML, la lógica está en JavaScript con JWT
 """
 
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.http import JsonResponse
 from django.utils import timezone
+from django.contrib import messages
 from functools import wraps
-
+from apps.inventory_management.models import Marca
 
 # ========================================
 # DECORATOR DE AUTENTICACIÓN
@@ -73,7 +74,7 @@ def inventario_dashboard_view(request):
 @auth_required
 def productos_view(request):
     """Lista de productos con datos reales"""
-    from apps.inventory_management.models import Producto, Categoria
+    from apps.inventory_management.models import Producto, Categoria, Marca
     from django.db.models import Q
     from django.core.paginator import Paginator
     
@@ -97,8 +98,9 @@ def productos_view(request):
     if tipo:
         productos = productos.filter(tipo_inventario=tipo)
     
-    # Obtener todas las categorías para el filtro
+    # Obtener todas las categorías y marcas para los filtros
     categorias = Categoria.objects.filter(activa=True).order_by('nombre')
+    marcas = Marca.objects.filter(activa=True).order_by('nombre')
     
     # Paginación
     paginator = Paginator(productos, 20)
@@ -108,6 +110,7 @@ def productos_view(request):
     context = {
         'productos': page_obj,
         'page_obj': page_obj,
+        'marcas': marcas,
         'categorias': categorias,
         'search': search,
         'categoria_selected': categoria_id,
@@ -115,7 +118,6 @@ def productos_view(request):
     }
     
     return render(request, 'custom_admin/inventario/productos_list.html', context)
-
 
 @ensure_csrf_cookie
 @auth_required
@@ -130,7 +132,6 @@ def producto_crear(request):
     """Crear nuevo producto"""
     from apps.inventory_management.models import Producto
     from apps.authentication.models import Usuario
-    from django.contrib import messages
     
     if request.method == 'POST':
         try:
@@ -189,7 +190,6 @@ def producto_editar(request, producto_id):
     """Editar producto existente"""
     from apps.inventory_management.models import Producto
     from apps.authentication.models import Usuario
-    from django.contrib import messages
     
     try:
         producto = Producto.objects.get(id=producto_id)
@@ -254,7 +254,6 @@ def producto_editar(request, producto_id):
 def producto_eliminar(request, producto_id):
     """Eliminar o desactivar producto"""
     from apps.inventory_management.models import Producto
-    from django.contrib import messages
     from django.http import HttpResponseRedirect
     from django.db.models import ProtectedError
     
@@ -349,7 +348,6 @@ def categorias_view(request):
 def categoria_crear_view(request):
     """Crear categoría"""
     from apps.inventory_management.models import Categoria
-    from django.contrib import messages
     
     if request.method == 'POST':
         try:
@@ -373,8 +371,6 @@ def categoria_crear_view(request):
 def categoria_editar_view(request, pk):
     """Editar categoría"""
     from apps.inventory_management.models import Categoria
-    from django.shortcuts import get_object_or_404
-    from django.contrib import messages
     
     categoria = get_object_or_404(Categoria, pk=pk)
     
@@ -399,8 +395,6 @@ def categoria_editar_view(request, pk):
 def categoria_eliminar_view(request, pk):
     """Eliminar categoría"""
     from apps.inventory_management.models import Categoria
-    from django.shortcuts import get_object_or_404
-    from django.contrib import messages
     
     categoria = get_object_or_404(Categoria, pk=pk)
     
@@ -418,12 +412,449 @@ def categoria_eliminar_view(request, pk):
     return redirect('custom_admin:categorias')
 
 
+# ============================================================================
+# VISTAS DE MARCAS - ✅ VERSIÓN CORREGIDA
+# ============================================================================
+
+@ensure_csrf_cookie
+@auth_required
+def marcas_list(request):
+    """Lista todas las marcas de productos con filtros y paginación"""
+    from apps.inventory_management.models import Marca
+    from django.core.paginator import Paginator
+    from django.db.models import Q, Count
+    
+    marcas = Marca.objects.annotate(
+        total_productos=Count('productos', distinct=True),
+        productos_con_stock=Count(
+            'productos',
+            filter=Q(
+                productos__activo=True,
+                productos__tipo_inventario='NORMAL',
+                productos__inventario_normal__stock_actual__gt=0
+            ),
+            distinct=True
+        )
+    ).order_by('orden', 'nombre')
+    
+    # Filtros
+    search = request.GET.get('search', '')
+    destacada_selected = request.GET.get('destacada', '')
+    pais_selected = request.GET.get('pais', '')
+    
+    if search:
+        marcas = marcas.filter(
+            Q(nombre__icontains=search) |
+            Q(descripcion__icontains=search) |
+            Q(fabricante__icontains=search)
+        )
+    
+    if destacada_selected:
+        marcas = marcas.filter(destacada=True)
+    
+    if pais_selected:
+        marcas = marcas.filter(pais_origen=pais_selected)
+    
+    # Obtener lista de países únicos para el filtro
+    paises = Marca.objects.exclude(
+        pais_origen__isnull=True
+    ).exclude(
+        pais_origen=''
+    ).values_list('pais_origen', flat=True).distinct().order_by('pais_origen')
+    
+    # Paginación
+    paginator = Paginator(marcas, 20)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'marcas': page_obj,
+        'page_obj': page_obj,
+        'paises': paises,
+        'search': search,
+        'destacada_selected': destacada_selected,
+        'pais_selected': pais_selected,
+    }
+    
+    return render(request, 'custom_admin/inventario/marcas_list.html', context)
+
+
+@ensure_csrf_cookie
+@auth_required
+def marca_crear(request):
+    """Crear una nueva marca - VERSIÓN COMPLETA"""
+    from apps.inventory_management.models import Marca
+    
+    if request.method == 'POST':
+        try:
+            # ✅ Obtener todos los campos del formulario
+            nombre = request.POST.get('nombre', '').strip()
+            descripcion = request.POST.get('descripcion', '').strip()
+            pais_origen = request.POST.get('pais_origen', '').strip()
+            fabricante = request.POST.get('fabricante', '').strip()
+            sitio_web = request.POST.get('sitio_web', '').strip()
+            orden = request.POST.get('orden', '0')
+            
+            # ✅ Campos booleanos (checkbox)
+            activa = request.POST.get('activa') == 'on'
+            destacada = request.POST.get('destacada') == 'on'
+            
+            # ✅ Archivo de logo (si existe)
+            logo = request.FILES.get('logo')
+            
+            # Validación básica
+            if not nombre:
+                messages.error(request, '❌ El nombre de la marca es obligatorio.')
+                return redirect('custom_admin:marcas')
+            
+            # Verificar si ya existe
+            if Marca.objects.filter(nombre__iexact=nombre).exists():
+                messages.error(request, f'❌ Ya existe una marca con el nombre "{nombre}".')
+                return redirect('custom_admin:marcas')
+            
+            # ✅ Crear la marca con TODOS los campos
+            marca_data = {
+                'nombre': nombre,
+                'descripcion': descripcion,
+                'pais_origen': pais_origen,
+                'fabricante': fabricante,
+                'sitio_web': sitio_web,
+                'activa': activa,
+                'destacada': destacada,
+                'orden': int(orden) if orden else 0,
+            }
+            
+            # ✅ Agregar logo si existe
+            if logo:
+                marca_data['logo'] = logo
+            
+            marca = Marca.objects.create(**marca_data)
+            
+            messages.success(
+                request, 
+                f'✅ Marca "{marca.nombre}" creada exitosamente.'
+            )
+            
+        except Exception as e:
+            messages.error(request, f'❌ Error al crear la marca: {str(e)}')
+    
+    return redirect('custom_admin:marcas')
+
+
+@ensure_csrf_cookie
+@auth_required
+def marca_editar(request, pk):
+    """Editar una marca existente - VERSIÓN COMPLETA"""
+    from apps.inventory_management.models import Marca
+    
+    marca = get_object_or_404(Marca, pk=pk)
+    
+    if request.method == 'POST':
+        try:
+            # ✅ Actualizar todos los campos
+            nombre = request.POST.get('nombre', '').strip()
+            
+            if not nombre:
+                messages.error(request, '❌ El nombre de la marca es obligatorio.')
+                return redirect('custom_admin:marcas')
+            
+            # Verificar duplicados (excluyendo la marca actual)
+            if Marca.objects.filter(nombre__iexact=nombre).exclude(pk=pk).exists():
+                messages.error(request, f'❌ Ya existe otra marca con el nombre "{nombre}".')
+                return redirect('custom_admin:marcas')
+            
+            # ✅ Actualizar campos
+            marca.nombre = nombre
+            marca.descripcion = request.POST.get('descripcion', '').strip()
+            marca.pais_origen = request.POST.get('pais_origen', '').strip()
+            marca.fabricante = request.POST.get('fabricante', '').strip()
+            marca.sitio_web = request.POST.get('sitio_web', '').strip()
+            marca.orden = int(request.POST.get('orden', '0'))
+            marca.activa = request.POST.get('activa') == 'on'
+            marca.destacada = request.POST.get('destacada') == 'on'
+            
+            # ✅ Actualizar logo si se subió uno nuevo
+            logo = request.FILES.get('logo')
+            if logo:
+                # Eliminar logo anterior si existe
+                if marca.logo:
+                    marca.logo.delete(save=False)
+                marca.logo = logo
+            
+            marca.save()
+            
+            messages.success(
+                request, 
+                f'✅ Marca "{marca.nombre}" actualizada exitosamente.'
+            )
+            
+        except Exception as e:
+            messages.error(request, f'❌ Error al actualizar la marca: {str(e)}')
+    
+    return redirect('custom_admin:marcas')
+
+
+@ensure_csrf_cookie
+@auth_required
+def marca_eliminar(request, pk):
+    """Eliminar una marca (o desactivar si tiene productos)"""
+    from apps.inventory_management.models import Marca
+    
+    marca = get_object_or_404(Marca, pk=pk)
+    nombre = marca.nombre
+    
+    if request.method == 'POST':
+        try:
+            # Verificar si tiene productos asociados
+            if marca.productos.exists():
+                # Tiene productos, solo desactivar
+                marca.activa = False
+                marca.save()
+                messages.warning(
+                    request,
+                    f'⚠️ La marca "{nombre}" tiene productos asociados y no puede eliminarse. Se ha desactivado.'
+                )
+            else:
+                # No tiene productos, eliminar completamente
+                marca.delete()
+                messages.success(
+                    request,
+                    f'✅ Marca "{nombre}" eliminada exitosamente.'
+                )
+        except Exception as e:
+            messages.error(request, f'❌ Error al eliminar la marca: {str(e)}')
+    
+    return redirect('custom_admin:marcas')
+
+# ============================================================================
+# PROVEEDORES - MÓDULO COMPLETO CORREGIDO
+# ============================================================================
+
 @ensure_csrf_cookie
 @auth_required
 def proveedores_view(request):
-    """Lista de proveedores"""
-    return render(request, 'custom_admin/inventario/proveedores_list.html')
+    """Lista de proveedores con datos reales"""
+    from apps.inventory_management.models import Proveedor
+    from django.db.models import Q, Count
+    from django.core.paginator import Paginator
+    
+    proveedores = Proveedor.objects.annotate(
+        total_productos=Count('productos', distinct=True)
+    ).order_by('nombre_comercial')
+    
+    # Filtros
+    search = request.GET.get('search', '')
+    activo_selected = request.GET.get('activo', '')
+    
+    if search:
+        proveedores = proveedores.filter(
+            Q(nombre_comercial__icontains=search) |
+            Q(razon_social__icontains=search) |
+            Q(ruc_nit__icontains=search) |
+            Q(email__icontains=search)
+        )
+    
+    if activo_selected:
+        proveedores = proveedores.filter(activo=(activo_selected == 'true'))
+    
+    # Paginación
+    paginator = Paginator(proveedores, 20)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'proveedores': page_obj,
+        'page_obj': page_obj,
+        'search': search,
+        'activo_selected': activo_selected,
+    }
+    
+    return render(request, 'custom_admin/inventario/proveedores_list.html', context)
 
+
+@ensure_csrf_cookie
+@auth_required
+def proveedor_crear(request):
+    """Crear un nuevo proveedor"""
+    from apps.inventory_management.models import Proveedor
+    from decimal import Decimal
+    
+    if request.method == 'POST':
+        try:
+            nombre_comercial = request.POST.get('nombre_comercial', '').strip()
+            ruc_nit = request.POST.get('ruc_nit', '').strip()
+            
+            if not nombre_comercial:
+                messages.error(request, '❌ El nombre comercial es obligatorio.')
+                return redirect('custom_admin:proveedores')
+            
+            if not ruc_nit:
+                messages.error(request, '❌ El RUC/NIT es obligatorio.')
+                return redirect('custom_admin:proveedores')
+            
+            # Verificar si ya existe por nombre
+            if Proveedor.objects.filter(nombre_comercial__iexact=nombre_comercial).exists():
+                messages.error(request, f'❌ Ya existe un proveedor con el nombre "{nombre_comercial}".')
+                return redirect('custom_admin:proveedores')
+            
+            # Verificar si ya existe por RUC
+            if Proveedor.objects.filter(ruc_nit=ruc_nit).exists():
+                messages.error(request, f'❌ Ya existe un proveedor con el RUC/NIT "{ruc_nit}".')
+                return redirect('custom_admin:proveedores')
+            
+            # Preparar datos
+            dias_credito = request.POST.get('dias_credito', '0').strip()
+            limite_credito = request.POST.get('limite_credito', '0').strip()
+            
+            proveedor = Proveedor.objects.create(
+                nombre_comercial=nombre_comercial,
+                razon_social=request.POST.get('razon_social', '').strip(),
+                ruc_nit=ruc_nit,
+                direccion=request.POST.get('direccion', '').strip(),
+                telefono=request.POST.get('telefono', '').strip(),
+                email=request.POST.get('email', '').strip(),
+                dias_credito=int(dias_credito) if dias_credito else 0,
+                limite_credito=Decimal(limite_credito) if limite_credito else Decimal('0.00'),
+                activo=request.POST.get('activo') == 'on'
+            )
+            
+            messages.success(request, f'✅ Proveedor "{proveedor.nombre_comercial}" creado exitosamente.')
+            
+        except ValueError as e:
+            messages.error(request, f'❌ Error en los datos: {str(e)}')
+        except Exception as e:
+            messages.error(request, f'❌ Error al crear el proveedor: {str(e)}')
+            import traceback
+            traceback.print_exc()
+    
+    return redirect('custom_admin:proveedores')
+
+
+@ensure_csrf_cookie
+@auth_required
+def proveedor_editar(request, pk):
+    """Editar un proveedor existente"""
+    from apps.inventory_management.models import Proveedor
+    from decimal import Decimal
+    
+    proveedor = get_object_or_404(Proveedor, pk=pk)
+    
+    if request.method == 'POST':
+        try:
+            nombre_comercial = request.POST.get('nombre_comercial', '').strip()
+            ruc_nit = request.POST.get('ruc_nit', '').strip()
+            
+            if not nombre_comercial:
+                messages.error(request, '❌ El nombre comercial es obligatorio.')
+                return redirect('custom_admin:proveedores')
+            
+            if not ruc_nit:
+                messages.error(request, '❌ El RUC/NIT es obligatorio.')
+                return redirect('custom_admin:proveedores')
+            
+            # Verificar duplicados por nombre (excluyendo el proveedor actual)
+            if Proveedor.objects.filter(nombre_comercial__iexact=nombre_comercial).exclude(pk=pk).exists():
+                messages.error(request, f'❌ Ya existe otro proveedor con el nombre "{nombre_comercial}".')
+                return redirect('custom_admin:proveedores')
+            
+            # Verificar duplicados por RUC (excluyendo el proveedor actual)
+            if Proveedor.objects.filter(ruc_nit=ruc_nit).exclude(pk=pk).exists():
+                messages.error(request, f'❌ Ya existe otro proveedor con el RUC/NIT "{ruc_nit}".')
+                return redirect('custom_admin:proveedores')
+            
+            # Actualizar campos
+            proveedor.nombre_comercial = nombre_comercial
+            proveedor.razon_social = request.POST.get('razon_social', '').strip()
+            proveedor.ruc_nit = ruc_nit
+            proveedor.direccion = request.POST.get('direccion', '').strip()
+            proveedor.telefono = request.POST.get('telefono', '').strip()
+            proveedor.email = request.POST.get('email', '').strip()
+            
+            dias_credito = request.POST.get('dias_credito', '0').strip()
+            limite_credito = request.POST.get('limite_credito', '0').strip()
+            
+            proveedor.dias_credito = int(dias_credito) if dias_credito else 0
+            proveedor.limite_credito = Decimal(limite_credito) if limite_credito else Decimal('0.00')
+            proveedor.activo = request.POST.get('activo') == 'on'
+            
+            proveedor.save()
+            
+            messages.success(request, f'✅ Proveedor "{proveedor.nombre_comercial}" actualizado exitosamente.')
+            
+        except ValueError as e:
+            messages.error(request, f'❌ Error en los datos: {str(e)}')
+        except Exception as e:
+            messages.error(request, f'❌ Error al actualizar el proveedor: {str(e)}')
+            import traceback
+            traceback.print_exc()
+    
+    return redirect('custom_admin:proveedores')
+
+
+@ensure_csrf_cookie
+@auth_required
+def proveedor_eliminar(request, pk):
+    """Eliminar un proveedor (o desactivar si tiene productos)"""
+    from apps.inventory_management.models import Proveedor
+    
+    proveedor = get_object_or_404(Proveedor, pk=pk)
+    nombre = proveedor.nombre_comercial
+    
+    if request.method == 'POST':
+        try:
+            # Verificar si tiene productos asociados
+            if proveedor.productos.exists():
+                # Tiene productos, solo desactivar
+                proveedor.activo = False
+                proveedor.save()
+                messages.warning(
+                    request,
+                    f'⚠️ El proveedor "{nombre}" tiene {proveedor.productos.count()} productos asociados y no puede eliminarse. Se ha desactivado.'
+                )
+            else:
+                # No tiene productos, eliminar completamente
+                proveedor.delete()
+                messages.success(request, f'✅ Proveedor "{nombre}" eliminado exitosamente.')
+        except Exception as e:
+            messages.error(request, f'❌ Error al eliminar el proveedor: {str(e)}')
+            import traceback
+            traceback.print_exc()
+    
+    return redirect('custom_admin:proveedores')
+
+
+@ensure_csrf_cookie
+@auth_required
+def proveedor_detalle_api(request, pk):
+    """API para obtener detalles de un proveedor (para edición)"""
+    from apps.inventory_management.models import Proveedor
+    
+    try:
+        proveedor = get_object_or_404(Proveedor, pk=pk)
+        
+        data = {
+            'success': True,
+            'proveedor': {
+                'id': str(proveedor.id),
+                'nombre_comercial': proveedor.nombre_comercial,
+                'razon_social': proveedor.razon_social or '',
+                'ruc_nit': proveedor.ruc_nit,
+                'direccion': proveedor.direccion or '',
+                'telefono': proveedor.telefono or '',
+                'email': proveedor.email or '',
+                'dias_credito': proveedor.dias_credito,
+                'limite_credito': str(proveedor.limite_credito),
+                'activo': proveedor.activo,
+            }
+        }
+        
+        return JsonResponse(data)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 
 # ========================================
 # VENTAS
@@ -545,7 +976,6 @@ def ventas_view(request):
 def venta_detail_view(request, pk):
     """Detalle de venta con datos reales"""
     from apps.sales_management.models import Venta
-    from django.shortcuts import get_object_or_404
     
     venta = get_object_or_404(Venta.objects.select_related('cliente', 'vendedor', 'caja'), pk=pk)
     detalles = venta.detalles.select_related('producto', 'quintal', 'unidad_medida').all()
@@ -567,8 +997,6 @@ def venta_detail_view(request, pk):
 def venta_anular_view(request, pk):
     """Anular una venta"""
     from apps.sales_management.models import Venta
-    from django.shortcuts import get_object_or_404
-    from django.contrib import messages
     from apps.authentication.models import Usuario
     
     if request.method == 'POST':
@@ -604,7 +1032,6 @@ def venta_anular_view(request, pk):
 def venta_ticket_view(request, pk):
     """Imprimir ticket de venta"""
     from apps.sales_management.models import Venta
-    from django.shortcuts import get_object_or_404
     from django.http import HttpResponse
     
     venta = get_object_or_404(Venta.objects.select_related('cliente', 'vendedor'), pk=pk)
@@ -802,13 +1229,11 @@ def venta_ticket_view(request, pk):
 def venta_factura_view(request, pk):
     """Generar factura de venta"""
     from apps.sales_management.models import Venta
-    from django.shortcuts import get_object_or_404
     from django.http import HttpResponse
     
     venta = get_object_or_404(Venta.objects.select_related('cliente', 'vendedor'), pk=pk)
     
     if not venta.cliente:
-        from django.contrib import messages
         messages.error(request, 'No se puede generar factura para ventas sin cliente.')
         return redirect('custom_admin:venta_detail', pk=pk)
     
@@ -1055,7 +1480,6 @@ def venta_factura_view(request, pk):
 def venta_detalle_api(request, pk):
     """API endpoint para obtener detalles de una venta"""
     from apps.sales_management.models import Venta
-    from django.shortcuts import get_object_or_404
     
     try:
         venta = get_object_or_404(Venta.objects.select_related('cliente', 'vendedor'), pk=pk)
@@ -1108,7 +1532,6 @@ def venta_detalle_api(request, pk):
 def exportar_venta_excel_individual(request, pk):
     """Exportar una venta individual a Excel"""
     from apps.sales_management.models import Venta
-    from django.shortcuts import get_object_or_404
     from django.http import HttpResponse
     from openpyxl import Workbook
     from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
@@ -1237,7 +1660,6 @@ def exportar_venta_excel_individual(request, pk):
 def exportar_venta_pdf_individual(request, pk):
     """Exportar una venta individual a PDF"""
     from apps.sales_management.models import Venta
-    from django.shortcuts import get_object_or_404
     from django.http import HttpResponse
     from reportlab.lib.pagesizes import letter
     from reportlab.lib import colors
@@ -1734,7 +2156,6 @@ def api_buscar_productos(request):
 def api_obtener_producto(request, producto_id):
     """API para obtener info completa de un producto"""
     from apps.inventory_management.models import Producto
-    from django.shortcuts import get_object_or_404
     from django.http import JsonResponse
     
     producto = get_object_or_404(Producto.objects.select_related('categoria', 'unidad_medida_base'), pk=producto_id)
@@ -1933,7 +2354,6 @@ def api_procesar_venta(request):
 def api_venta_detalle(request, venta_id):
     """API para obtener detalle de una venta"""
     from apps.sales_management.models import Venta
-    from django.shortcuts import get_object_or_404
     from django.http import JsonResponse
     
     venta = get_object_or_404(
@@ -1996,21 +2416,22 @@ def api_venta_detalle(request, venta_id):
 @auth_required
 def entrada_inventario_view(request):
     """Pantalla unificada de entrada de inventario"""
-    from apps.inventory_management.models import Proveedor, UnidadMedida, Categoria
+    from apps.inventory_management.models import Proveedor, UnidadMedida, Categoria, Marca
     
     # ✅ CARGAR TODOS LOS DATOS NECESARIOS
     categorias = Categoria.objects.filter(activa=True).order_by('orden', 'nombre')
     proveedores = Proveedor.objects.filter(activo=True).order_by('nombre_comercial')
+    marcas = Marca.objects.filter(activa=True).order_by('nombre')  # ✅ AGREGADO
     unidades_medida = UnidadMedida.objects.filter(activa=True).order_by('orden_display')
     
     context = {
-        'categorias': categorias,      # ✅ AGREGADO
+        'categorias': categorias,
         'proveedores': proveedores,
+        'marcas': marcas,  # ✅ AGREGADO
         'unidades_medida': unidades_medida,
     }
     
     return render(request, 'custom_admin/inventario/entrada_inventario.html', context)
-
 @ensure_csrf_cookie
 def api_buscar_producto_codigo(request):
     """API para buscar producto por código de barras"""
@@ -2391,31 +2812,34 @@ def api_generar_pdf_codigos(request):
 
 @ensure_csrf_cookie
 def api_procesar_entrada_unificada(request):
-    """API para procesar entrada unificada de inventario - CON REABASTECIMIENTO INTELIGENTE"""
+    """API para procesar entrada unificada de inventario - CON IMÁGENES"""
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
     
     import json
     from django.db import transaction
     from apps.inventory_management.models import (
-        Producto, Categoria, Proveedor, ProductoNormal, MovimientoInventario
+        Producto, Categoria, Marca, Proveedor, ProductoNormal, MovimientoInventario
     )
     from apps.authentication.models import Usuario
     from decimal import Decimal
     from django.utils import timezone
     
     try:
-        # Leer datos
-        raw_body = request.body.decode('utf-8')
-        print("=" * 80)
-        print("📥 RAW BODY RECIBIDO:")
-        print(raw_body)
-        print("=" * 80)
+        # ✅ LEER DATOS DEL FORMDATA
+        productos_json = request.POST.get('productos')
         
-        data = json.loads(raw_body)
-        productos_data = data.get('productos', [])
+        if not productos_json:
+            return JsonResponse({
+                'success': False,
+                'error': 'No se recibieron datos de productos'
+            })
         
+        productos_data = json.loads(productos_json)
+        
+        print("=" * 80)
         print(f"📦 PRODUCTOS RECIBIDOS: {len(productos_data)}")
+        print("=" * 80)
         
         if not productos_data:
             return JsonResponse({
@@ -2453,24 +2877,42 @@ def api_procesar_entrada_unificada(request):
                         errores.append(error_msg)
                         continue
                     
+                    # Obtener marca
+                    marca_id = prod_data.get('marca_id')
+                    if not marca_id:
+                        error_msg = f"Producto {idx + 1}: Falta la marca"
+                        print(f"❌ {error_msg}")
+                        errores.append(error_msg)
+                        continue
+                    
+                    try:
+                        marca = Marca.objects.get(id=marca_id)
+                        print(f"✅ Marca encontrada: {marca.nombre}")
+                    except Marca.DoesNotExist:
+                        error_msg = f"Producto {idx + 1}: Marca no encontrada"
+                        print(f"❌ {error_msg}")
+                        errores.append(error_msg)
+                        continue
+                    
+                    # Obtener categoría
                     if not prod_data.get('categoria_id'):
                         error_msg = f"Producto {idx + 1}: Falta la categoría"
                         print(f"❌ {error_msg}")
                         errores.append(error_msg)
                         continue
                     
-                    if not prod_data.get('proveedor_id'):
-                        error_msg = f"Producto {idx + 1}: Falta el proveedor"
-                        print(f"❌ {error_msg}")
-                        errores.append(error_msg)
-                        continue
-                    
-                    # Obtener categoría y proveedor
                     try:
                         categoria = Categoria.objects.get(id=prod_data['categoria_id'])
                         print(f"✅ Categoría encontrada: {categoria.nombre}")
                     except Categoria.DoesNotExist:
                         error_msg = f"Producto {idx + 1}: Categoría no encontrada"
+                        print(f"❌ {error_msg}")
+                        errores.append(error_msg)
+                        continue
+                    
+                    # Obtener proveedor
+                    if not prod_data.get('proveedor_id'):
+                        error_msg = f"Producto {idx + 1}: Falta el proveedor"
                         print(f"❌ {error_msg}")
                         errores.append(error_msg)
                         continue
@@ -2484,12 +2926,12 @@ def api_procesar_entrada_unificada(request):
                         errores.append(error_msg)
                         continue
                     
-                    # ✅ BUSCAR SI EL PRODUCTO YA EXISTE
+                    # ✅ BUSCAR SI EL PRODUCTO YA EXISTE (por nombre, marca, categoría)
                     nombre_producto = prod_data['nombre'].strip()
                     producto_existente = Producto.objects.filter(
                         nombre__iexact=nombre_producto,
+                        marca=marca,
                         categoria=categoria,
-                        proveedor=proveedor,
                         activo=True
                     ).first()
                     
@@ -2497,10 +2939,17 @@ def api_procesar_entrada_unificada(request):
                     costo_unitario = Decimal(str(prod_data.get('costo_unitario', '0')))
                     precio_venta = Decimal(str(prod_data.get('precio_venta', '0')))
                     
+                    # ✅ OBTENER IMAGEN SI EXISTE
+                    imagen_file = None
+                    if prod_data.get('tiene_imagen'):
+                        imagen_key = f'imagen_{idx}'
+                        if imagen_key in request.FILES:
+                            imagen_file = request.FILES[imagen_key]
+                            print(f"📷 Imagen recibida: {imagen_file.name}")
+                    
                     if producto_existente:
                         # ✅ PRODUCTO EXISTE - REABASTECER
                         print(f"🔄 PRODUCTO EXISTENTE ENCONTRADO: {producto_existente.nombre}")
-                        print(f"   Código: {producto_existente.codigo_barras}")
                         
                         producto = producto_existente
                         
@@ -2508,7 +2957,15 @@ def api_procesar_entrada_unificada(request):
                         if producto.precio_unitario != precio_venta:
                             print(f"   💰 Actualizando precio: ${producto.precio_unitario} → ${precio_venta}")
                             producto.precio_unitario = precio_venta
-                            producto.save()
+                        
+                        # Actualizar imagen si se subió una nueva
+                        if imagen_file:
+                            print(f"   📷 Actualizando imagen")
+                            if producto.imagen:
+                                producto.imagen.delete(save=False)
+                            producto.imagen = imagen_file
+                        
+                        producto.save()
                         
                         # Reabastecer inventario
                         try:
@@ -2526,21 +2983,17 @@ def api_procesar_entrada_unificada(request):
                                 costo_total_nuevo = cantidad * costo_unitario
                                 stock_total = stock_antes + cantidad
                                 producto_normal.costo_unitario = (costo_total_anterior + costo_total_nuevo) / stock_total
-                                print(f"   💵 Costo promedio actualizado: ${producto_normal.costo_unitario:.2f}")
                             else:
                                 producto_normal.costo_unitario = costo_unitario
                             
                             producto_normal.fecha_ultima_entrada = timezone.now()
                             
-                            # Actualizar lote y vencimiento si vienen
                             if prod_data.get('lote'):
                                 producto_normal.lote = prod_data.get('lote')
                             if prod_data.get('fecha_vencimiento'):
                                 producto_normal.fecha_vencimiento = prod_data.get('fecha_vencimiento')
                             
                             producto_normal.save()
-                            
-                            print(f"   📦 Stock después: {producto_normal.stock_actual}")
                             
                             # Registrar movimiento
                             MovimientoInventario.objects.create(
@@ -2558,8 +3011,6 @@ def api_procesar_entrada_unificada(request):
                             productos_reabastecidos += 1
                             
                         except ProductoNormal.DoesNotExist:
-                            # No tiene inventario normal, crearlo
-                            print(f"   ⚠️ Producto sin inventario, creando...")
                             producto_normal = ProductoNormal.objects.create(
                                 producto=producto,
                                 stock_actual=cantidad,
@@ -2592,19 +3043,28 @@ def api_procesar_entrada_unificada(request):
                         codigo_barras = BarcodeGenerator.generar_codigo_producto()
                         print(f"   🏷️ Código generado: {codigo_barras}")
                         
+                        # Preparar datos del producto
+                        producto_data = {
+                            'codigo_barras': codigo_barras,
+                            'nombre': nombre_producto,
+                            'descripcion': prod_data.get('descripcion', ''),
+                            'marca': marca,
+                            'categoria': categoria,
+                            'proveedor': proveedor,
+                            'tipo_inventario': 'NORMAL',
+                            'precio_unitario': precio_venta,
+                            'iva': Decimal(str(prod_data.get('iva', '0.00'))),
+                            'activo': True,
+                            'usuario_registro': usuario
+                        }
+                        
+                        # Agregar imagen si existe
+                        if imagen_file:
+                            producto_data['imagen'] = imagen_file
+                            print(f"   📷 Imagen agregada al producto")
+                        
                         # Crear el producto
-                        producto = Producto.objects.create(
-                            codigo_barras=codigo_barras,
-                            nombre=nombre_producto,
-                            descripcion=prod_data.get('descripcion', ''),
-                            categoria=categoria,
-                            proveedor=proveedor,
-                            tipo_inventario='NORMAL',
-                            precio_unitario=precio_venta,
-                            iva=Decimal(str(prod_data.get('iva', '0.00'))),
-                            activo=True,
-                            usuario_registro=usuario
-                        )
+                        producto = Producto.objects.create(**producto_data)
                         print(f"   ✅ Producto creado: {producto.id}")
                         
                         # Crear inventario normal
@@ -2633,9 +3093,9 @@ def api_procesar_entrada_unificada(request):
                         
                         productos_creados += 1
                     
-                    # ✅ GENERAR CÓDIGOS DE BARRAS (NUEVOS O ADICIONALES)
+                    # ✅ GENERAR CÓDIGOS DE BARRAS
                     cantidad_codigos = int(prod_data.get('cantidad_codigos', cantidad))
-                    print(f"🏷️ Stock procesado: {cantidad} | Códigos a generar: {cantidad_codigos}")
+                    print(f"🏷️ Códigos a generar: {cantidad_codigos}")
                     
                     codigo_data = {
                         'producto_nombre': producto.nombre,
@@ -2647,7 +3107,6 @@ def api_procesar_entrada_unificada(request):
                     }
                     
                     codigos_generados.append(codigo_data)
-                    print(f"✅ Código agregado a la lista")
                     
                 except Exception as e:
                     error_msg = f"Producto {idx + 1} ({prod_data.get('nombre', 'Sin nombre')}): {str(e)}"
@@ -2663,10 +3122,6 @@ def api_procesar_entrada_unificada(request):
         print(f"   - Productos REABASTECIDOS: {productos_reabastecidos}")
         print(f"   - Códigos generados: {len(codigos_generados)}")
         print(f"   - Errores: {len(errores)}")
-        if errores:
-            print(f"   - Detalles de errores:")
-            for error in errores:
-                print(f"     • {error}")
         print("=" * 80)
         
         return JsonResponse({
@@ -3243,6 +3698,8 @@ def exportar_movimientos_pdf_general(request):
     response['Content-Disposition'] = f'attachment; filename={filename}'
     
     return response
+
+
 # ========================================
 # FINANZAS
 # ========================================
