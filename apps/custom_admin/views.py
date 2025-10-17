@@ -1202,7 +1202,7 @@ def venta_ticket_view(request, pk):
             cantidad = f"{detalle.cantidad_unidades} und"
             precio = f"${float(detalle.precio_unitario):,.2f}"
         else:
-            cantidad = f"{float(detalle.peso_vendido):,.3f} {detalle.unidad_medida.abreviatura}"
+            cantidad = f"{float(detalle.peso_vendido):,.3f} {detalle.unidad_medida.abreviatura if detalle.unidad_medida else 'kg'}"
             precio = f"${float(detalle.precio_por_unidad_peso):,.2f}/{detalle.unidad_medida.abreviatura}"
         
         html += f"""
@@ -1457,7 +1457,7 @@ def venta_factura_view(request, pk):
             cantidad = f"{detalle.cantidad_unidades} und"
             precio = f"${float(detalle.precio_unitario):,.2f}"
         else:
-            cantidad = f"{float(detalle.peso_vendido):,.3f} {detalle.unidad_medida.abreviatura}"
+            cantidad = f"{float(detalle.peso_vendido):,.3f} {detalle.unidad_medida.abreviatura if detalle.unidad_medida else 'kg'}"
             precio = f"${float(detalle.precio_por_unidad_peso):,.2f}"
         
         html += f"""
@@ -4201,3 +4201,75 @@ def api_alertas_count(request):
             'error': str(e),
             'count': 0
         })
+
+# API para quintales (agregar al final del archivo)
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from apps.inventory_management.models import Quintal
+from apps.sales_management.quintal_service import QuintalSalesService
+from decimal import Decimal
+import json
+
+@csrf_exempt
+def api_quintales_por_producto(request, producto_id):
+    """Obtiene quintales disponibles de un producto"""
+    try:
+        quintales = Quintal.objects.filter(
+            producto_id=producto_id,
+            estado='DISPONIBLE',
+            peso_actual__gt=0
+        ).order_by('fecha_recepcion')  # FIFO
+        
+        data = []
+        for q in quintales:
+            data.append({
+                'id': str(q.id),
+                'codigo': q.codigo_unico,
+                'peso_actual': float(q.peso_actual),
+                'unidad': q.unidad_medida.abreviatura,
+                'precio_por_unidad': float(q.producto.precio_por_unidad_peso)
+            })
+        
+        return JsonResponse({'success': True, 'quintales': data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@csrf_exempt
+def api_calcular_quintal(request):
+    """Calcula conversión entre peso y dinero"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'})
+    
+    try:
+        data = json.loads(request.body)
+        quintal_id = data.get('quintal_id')
+        tipo = data.get('tipo')  # 'peso_a_dinero' o 'dinero_a_peso'
+        valor = Decimal(str(data.get('valor', 0)))
+        
+        quintal = Quintal.objects.get(id=quintal_id)
+        service = QuintalSalesService()
+        
+        if tipo == 'peso_a_dinero':
+            dinero = service.calcular_dinero_por_peso(quintal, valor)
+            return JsonResponse({
+                'success': True,
+                'peso': float(valor),
+                'dinero': float(dinero),
+                'unidad': quintal.unidad_medida.abreviatura
+            })
+        else:  # dinero_a_peso
+            peso = service.calcular_peso_por_dinero(quintal, valor)
+            # Validar disponibilidad
+            if peso > quintal.peso_actual:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Peso insuficiente. Máximo disponible: {quintal.peso_actual} {quintal.unidad_medida.abreviatura}'
+                })
+            return JsonResponse({
+                'success': True,
+                'peso': float(peso),
+                'dinero': float(valor),
+                'unidad': quintal.unidad_medida.abreviatura
+            })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

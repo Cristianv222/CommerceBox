@@ -689,3 +689,5 @@ def venta_anulada_revertir_stock(sender, instance, **kwargs):
                             inventario.save()
                     except Exception as e:
                         print(f"Error al revertir inventario: {e}")
+# Agregar al modelo DetalleVenta si no existe
+# unidad_medida = models.ForeignKey('inventory_management.UnidadMedida', on_delete=models.SET_NULL, null=True, blank=True)

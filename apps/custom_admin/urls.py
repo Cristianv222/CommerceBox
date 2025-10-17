@@ -203,4 +203,9 @@ urlpatterns = [
     # HEALTH CHECK
     # ========================================
     path('health/', views.health_check_view, name='health_check'),
+    # ========================================
+    # APIs PARA QUINTALES
+    # ========================================
+    path('api/productos/<uuid:producto_id>/quintales/', views.api_quintales_por_producto, name='api_quintales_por_producto'),
+    path('api/quintales/calcular/', views.api_calcular_quintal, name='api_calcular_quintal'),
 ]
