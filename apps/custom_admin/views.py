@@ -1203,7 +1203,7 @@ def venta_ticket_view(request, pk):
             precio = f"${float(detalle.precio_unitario):,.2f}"
         else:
             cantidad = f"{float(detalle.peso_vendido):,.3f} {detalle.unidad_medida.abreviatura if detalle.unidad_medida else 'kg'}"
-            precio = f"${float(detalle.precio_por_unidad_peso):,.2f}/{detalle.unidad_medida.abreviatura}"
+            precio = f"${float(detalle.precio_por_unidad_peso):,.2f}/{detalle.unidad_medida.abreviatura if detalle.unidad_medida else 'kg'}"
         
         html += f"""
             <div class="item">
