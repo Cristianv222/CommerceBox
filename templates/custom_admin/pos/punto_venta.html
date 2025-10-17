@@ -2182,6 +2182,8 @@ window.onclick = function(event) {
             es_quintal: true,
             quintal_id: quintalId,
             peso_vendido: pesoVenta,
+            codigo: selectedOption.dataset.codigo || "QUINTAL",
+            stock_disponible: parseFloat(selectedOption.dataset.peso) || 100,
             subtotal: precioTotal,
             total: precioTotal,
             descuento: 0,

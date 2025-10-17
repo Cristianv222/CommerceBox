@@ -2272,6 +2272,7 @@ def api_procesar_venta(request):
         descuento_total = Decimal('0')
         
         for item in items:
+            print(f"DEBUG: Item recibido = {item}")
             try:
                 item_subtotal = Decimal(str(item.get('subtotal', '0')))
                 item_descuento = Decimal(str(item.get('descuento', '0')))
@@ -2315,6 +2316,7 @@ def api_procesar_venta(request):
             # Crear detalles
             orden = 1
             for item in items:
+                print(f"DEBUG: Item recibido = {item}")
                 try:
                     producto = Producto.objects.get(id=item['producto_id'])
                     
@@ -2324,8 +2326,7 @@ def api_procesar_venta(request):
                     descuento_porcentaje = Decimal(str(item.get('descuento_porcentaje', '0')))
                     
                     costo_unitario = precio * Decimal('0.7')
-                    costo_total = costo_unitario * cantidad
-                    
+                    costo_total = cantidad * costo_unitario
                     item_subtotal = cantidad * precio
                     item_total = item_subtotal - descuento
                     
@@ -2341,39 +2342,47 @@ def api_procesar_venta(request):
                         'total': item_total,
                     }
                     
-                    if producto.tipo_inventario == 'QUINTAL':
+                    # Manejar quintales si es una venta de quintal
+                    if item.get('es_quintal') and item.get('quintal_id'):
+                        from apps.inventory_management.models import Quintal
+                        try:
+                            quintal = Quintal.objects.get(id=item['quintal_id'])
+                            detalle_data['quintal'] = quintal
+                            detalle_data['peso_vendido'] = Decimal(str(item.get('peso_vendido', 0)))
+                            detalle_data['precio_por_unidad_peso'] = producto.precio_por_unidad_peso
+                            detalle_data['unidad_medida'] = quintal.unidad_medida
+                            print(f"DEBUG: Quintal {quintal.codigo_unico} agregado")
+                        except Quintal.DoesNotExist:
+                            print(f"ERROR: Quintal no encontrado")
+                    elif producto.tipo_inventario == 'QUINTAL':
+                        # Quintal sin datos específicos
                         detalle_data['peso_vendido'] = cantidad
                         detalle_data['precio_por_unidad_peso'] = precio
-                        if producto.unidad_medida_base:
-                            detalle_data['unidad_medida'] = producto.unidad_medida_base
                     else:
+                        # Producto normal
                         detalle_data['cantidad_unidades'] = int(cantidad)
                         detalle_data['precio_unitario'] = precio
                     
-                    DetalleVenta.objects.create(**detalle_data)
+                    print(f"DEBUG: Creando DetalleVenta con data: {detalle_data}")
+                    detalle = DetalleVenta.objects.create(**detalle_data)
+                    print(f"DEBUG: DetalleVenta creado ID={detalle.id}")
+                    
+                    if detalle.quintal:
+                        print(f"DEBUG: quintal={detalle.quintal.codigo_unico}")
+                        print(f"DEBUG: peso_vendido={detalle.peso_vendido}")
                     
                     orden += 1
                     
                 except Producto.DoesNotExist:
+                    print(f"ERROR: Producto {item.get('producto_id')} no encontrado")
                     continue
                 except Exception as e:
-                    print(f"Error en detalle: {e}")
+                    import traceback
+                    print(f"ERROR en detalle: {e}")
+                    print("TRACEBACK COMPLETO:")
+                    traceback.print_exc()
                     continue
             
-            # Crear pago si es contado
-            if tipo_venta == 'CONTADO':
-                Pago.objects.create(
-                    venta=venta,
-                    monto=total,
-                    forma_pago=metodo_pago,
-                    usuario=usuario,
-                )
-                
-                venta.monto_pagado = total
-                venta.cambio = monto_recibido - total if monto_recibido > total else Decimal('0')
-                venta.estado = 'COMPLETADA'
-                venta.save()
-        
         return JsonResponse({
             'success': True,
             'venta_id': str(venta.id),

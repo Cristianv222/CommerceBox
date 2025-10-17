@@ -604,14 +604,12 @@ from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
 from django.db import transaction
 
-@receiver(pre_save, sender=DetalleVenta)
 def detalle_venta_pre_save(sender, instance, **kwargs):
     """Calcular totales antes de guardar"""
     instance.calcular_totales()
 
 
-@receiver(post_save, sender=DetalleVenta)
-def detalle_venta_post_save(sender, instance, created, **kwargs):
+#def detalle_venta_post_save(sender, instance, created, **kwargs):
     """
     Después de guardar un detalle de venta:
     1. Descontar del inventario
@@ -647,7 +645,6 @@ def detalle_venta_post_save(sender, instance, created, **kwargs):
     instance.venta.calcular_totales()
 
 
-@receiver(post_save, sender=Pago)
 def pago_post_save(sender, instance, created, **kwargs):
     """Actualizar monto pagado en la venta"""
     venta = instance.venta
@@ -662,7 +659,6 @@ def pago_post_save(sender, instance, created, **kwargs):
     venta.save()
 
 
-@receiver(post_save, sender=Venta)
 def venta_anulada_revertir_stock(sender, instance, **kwargs):
     """
     Si una venta se anula, revertir el stock
