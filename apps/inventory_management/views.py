@@ -236,7 +236,7 @@ class MarcaDetailView(InventarioAccessMixin, DetailView):
         ).select_related(
             'categoria',
             'proveedor',
-            'unidad_medida_base'
+            'unidad_medida'
         )
         
         # Filtros
@@ -1671,3 +1671,53 @@ class StockStatusAPIView(AjaxInventarioMixin, View):
         
         except Producto.DoesNotExist:
             return JsonResponse({'error': 'Producto no encontrado'}, status=404)
+
+class QuintalesDisponiblesTodosAPIView(View):
+    """API para obtener TODOS los quintales disponibles (para modal de selección)"""
+    
+    def get(self, request):
+        try:
+            quintales = Quintal.objects.filter(
+                estado='DISPONIBLE'
+            ).select_related(
+                'producto',
+                'producto__marca',
+                'proveedor',
+                'unidad_medida'
+            ).order_by('-fecha_recepcion')
+            
+            quintales_data = []
+            for quintal in quintales:
+                # Calcular porcentaje restante
+                if quintal.peso_inicial > 0:
+                    porcentaje = (quintal.peso_actual / quintal.peso_inicial * 100)
+                else:
+                    porcentaje = 0
+                
+                quintales_data.append({
+                    'codigo_unico': quintal.codigo_unico,
+                    'producto_nombre': quintal.producto.nombre,
+                    'marca_nombre': quintal.producto.marca.nombre if quintal.producto.marca else 'Sin marca',
+                    'estado': quintal.estado,
+                    'peso_actual': float(quintal.peso_actual),
+                    'peso_inicial': float(quintal.peso_inicial),
+                    'porcentaje_restante': round(porcentaje, 2),
+                    'unidad_medida': quintal.unidad_medida.abreviatura if quintal.unidad_medida else 'KG',
+                    'proveedor_nombre': quintal.proveedor.nombre_comercial,
+                    'fecha_recepcion': quintal.fecha_recepcion.strftime('%d/%m/%Y') if quintal.fecha_recepcion else ''
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'quintales': quintales_data
+            })
+            
+        except Exception as e:
+            print(f"❌ Error en QuintalesDisponiblesTodosAPIView: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            
+            return JsonResponse({
+                'success': False,
+                'error': f'Error al cargar quintales: {str(e)}'
+            }, status=400)

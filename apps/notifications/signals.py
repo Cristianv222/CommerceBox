@@ -73,7 +73,15 @@ def notificar_quintal_proximo_vencer(sender, instance, created, **kwargs):
     from datetime import timedelta
     from django.utils import timezone
     
-    dias_para_vencer = (instance.fecha_vencimiento - timezone.now().date()).days
+    # Convertir fecha_vencimiento a date si es string
+    fecha_venc = instance.fecha_vencimiento
+    if isinstance(fecha_venc, str):
+        from datetime import datetime
+        fecha_venc = datetime.strptime(fecha_venc, '%Y-%m-%d').date()
+    elif not isinstance(fecha_venc, date):
+        return  # Si no es ni string ni date, salir
+    
+    dias_para_vencer = (fecha_venc - timezone.now().date()).days
     
     # Notificar si vence en 7 días o menos
     if 0 <= dias_para_vencer <= 7 and instance.estado == 'DISPONIBLE':

@@ -1312,20 +1312,40 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- ✅ CAMPOS PARA QUINTAL -->
-                    <div id="camposQuintal" style="display: none;">
-                        <div class="form-group-admin">
-                            <label class="form-label-admin">
-                                <i class="bi bi-cash"></i>Precio de Venta por Peso *
-                            </label>
-                            <input type="number" class="form-control-admin" id="precio_por_unidad_peso" name="precio_por_unidad_peso" step="0.01" min="0" placeholder="0.00">
-                            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
-                                <i class="bi bi-info-circle me-1"></i>
-                                Precio de venta por unidad de peso (ej: por kg o lb)
-                            </div>
-                        </div>
-                    </div>
+<!-- ✅ CAMPOS PARA QUINTAL -->
+<div id="camposQuintal" style="display: none;">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group-admin">
+                <label class="form-label-admin">
+                    <i class="bi bi-rulers"></i>Unidad de Medida *
+                </label>
+                <select class="form-control-admin" id="unidad_medida_base" name="unidad_medida_base">
+                    <option value="">Seleccionar...</option>
+                    {% for unidad in unidades_medida %}
+                    <option value="{{ unidad.id }}">{{ unidad.nombre }} ({{ unidad.abreviatura }})</option>
+                    {% endfor %}
+                </select>
+                <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Unidad en la que se mide el producto (kg, lb, etc.)
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group-admin">
+                <label class="form-label-admin">
+                    <i class="bi bi-cash"></i>Precio de Venta por Peso *
+                </label>
+                <input type="number" class="form-control-admin" id="precio_por_unidad_peso" name="precio_por_unidad_peso" step="0.01" min="0" placeholder="0.00">
+                <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Precio de venta por unidad de peso
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
                     <div class="form-group-admin">
                         <label class="form-label-admin d-flex align-items-center" style="cursor: pointer;">
@@ -1579,7 +1599,7 @@
         const tipo = document.getElementById('tipo_inventario').value;
         const camposNormal = document.getElementById('camposNormal');
         const camposQuintal = document.getElementById('camposQuintal');
-        
+    
         if (tipo === 'QUINTAL') {
             camposNormal.style.display = 'none';
             camposQuintal.style.display = 'block';
@@ -1595,23 +1615,27 @@
 
     function openCreateModal() {
         const form = document.getElementById('productoForm');
-        
+    
         document.getElementById('productoModalTitle').innerHTML = '<i class="bi bi-box-seam-fill me-2"></i>Nuevo Producto';
         form.reset();
         document.getElementById('productoId').value = '';
         document.getElementById('activo').checked = true;
-        
+    
         removeImage();
         document.getElementById('iva').value = IVA_DEFAULT;
         updateIVAInfo();
+    
+        // ✅ AGREGAR ESTA LÍNEA:
+        document.getElementById('unidad_medida_base').value = '';
+    
         toggleTipoInventario();
-        
+    
         form.action = "{% url 'custom_admin:producto_crear' %}";
-        
+    
         const saveBtn = document.getElementById('saveBtn');
         saveBtn.disabled = false;
         saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Guardar';
-        
+    
         const modal = new bootstrap.Modal(document.getElementById('productoModal'));
         modal.show();
     }

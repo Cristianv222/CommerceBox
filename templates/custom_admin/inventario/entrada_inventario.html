@@ -753,9 +753,29 @@
                     <select id="input_unidad" class="form-input" required>
                         <option value="">Seleccione unidad</option>
                         {% for unidad in unidades_medida %}
-                        <option value="{{ unidad.codigo }}">{{ unidad.nombre }} ({{ unidad.abreviatura }})</option>
+                        <option value="{{ unidad.nombre }}">{{ unidad.nombre }} ({{ unidad.abreviatura }})</option>
                         {% endfor %}
                     </select>
+                </div>
+
+                <!-- ✅ PESO INICIAL QUINTAL -->
+                <div class="form-group" id="campo-peso-inicial" style="display: none;">
+                    <label class="form-label-custom">
+                        <span>⚖️ Peso Inicial del Quintal</span>
+                        <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="number" 
+                        id="input_peso_inicial" 
+                        class="form-input" 
+                        step="0.01" 
+                        min="0.01"
+                        placeholder="Ej: 100.00"
+                    >
+                    <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
+                        <i class="bi bi-info-circle"></i>
+                        Peso inicial total del quintal en la unidad seleccionada
+                    </div>
                 </div>
 
                 <!-- CAMPO IVA -->
@@ -1082,7 +1102,7 @@
                         <select id="edit_unidad" class="form-input" required>
                             <option value="">Seleccione unidad</option>
                             {% for unidad in unidades_medida %}
-                            <option value="{{ unidad.codigo }}">{{ unidad.nombre }} ({{ unidad.abreviatura }})</option>
+                            <option value="{{ unidad.nombre }}">{{ unidad.nombre }} ({{ unidad.abreviatura }})</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -1383,18 +1403,37 @@ const categoriasData = {
 // IVA DESDE CONFIGURACIÓN DEL SISTEMA
 const IVA_DEFAULT = parseFloat("{{ iva_default }}");
 
-console.log('Categorías cargadas:', categoriasData);
-console.log('IVA configurado en el sistema:', IVA_DEFAULT + '%');
+console.log('✅ Categorías cargadas:', categoriasData);
+console.log('✅ IVA configurado:', IVA_DEFAULT + '%');
 
 // ========================================
 // GESTIÓN DE QUINTALES
 // ========================================
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Sistema de entrada de inventario iniciado');
+    
+    // Listener para tipo de inventario
     document.getElementById('input_tipo_inventario').addEventListener('change', function() {
         const valor = this.value;
+        const campoPesoInicial = document.getElementById('campo-peso-inicial');
+        const inputPesoInicial = document.getElementById('input_peso_inicial');
+        
+        console.log('📦 Tipo de inventario seleccionado:', valor);
+        
         if (valor === 'QUINTAL') {
+            // Mostrar campo de peso inicial
+            campoPesoInicial.style.display = 'block';
+            inputPesoInicial.setAttribute('required', 'required');
+            
+            // Abrir modal de selección de quintales
             abrirModalSeleccionarQuintal();
         } else {
+            // Ocultar campo de peso inicial
+            campoPesoInicial.style.display = 'none';
+            inputPesoInicial.removeAttribute('required');
+            inputPesoInicial.value = '';
+            
+            // Limpiar selección
             document.getElementById('input_nombre').disabled = false;
             quintalSeleccionado = null;
         }
@@ -1405,16 +1444,26 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function abrirModalSeleccionarQuintal() {
+    console.log('🔍 Cargando quintales disponibles...');
+    
     try {
-        const response = await fetch('/panel/api/inventario/quintales-disponibles/');
+        const response = await fetch('/api/inventario/quintales-disponibles/');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('✅ Quintales recibidos:', data);
         
         quintalesTodosData = data.quintales || [];
         
         if (quintalesTodosData.length === 0) {
+            console.log('⚠️ No hay quintales disponibles');
             document.getElementById('quintales-vacio').style.display = 'block';
             document.getElementById('quintales-lista').innerHTML = '';
         } else {
+            console.log(`✅ Se encontraron ${quintalesTodosData.length} quintales`);
             document.getElementById('quintales-vacio').style.display = 'none';
             renderizarQuintales(quintalesTodosData);
         }
@@ -1422,28 +1471,64 @@ async function abrirModalSeleccionarQuintal() {
         document.getElementById('modal-seleccionar-quintal').classList.add('show');
         
     } catch (error) {
-        console.error('Error cargando quintales:', error);
-        mostrarNotificacion('Error al cargar quintales', 'error');
+        console.error('❌ Error cargando quintales:', error);
+        mostrarNotificacion('Error al cargar quintales: ' + error.message, 'error');
     }
 }
 
 function cerrarModalQuintales() {
     document.getElementById('modal-seleccionar-quintal').classList.remove('show');
     if (!quintalSeleccionado) {
+        // Si no se seleccionó ningún quintal, volver a NORMAL
         document.getElementById('input_tipo_inventario').value = 'NORMAL';
+        document.getElementById('campo-peso-inicial').style.display = 'none';
+        document.getElementById('input_peso_inicial').removeAttribute('required');
     }
 }
 
 function crearNuevoQuintal() {
+    console.log('🆕 Modo: Crear Nuevo Quintal');
+    
+    // Limpiar selección de quintal
     quintalSeleccionado = null;
+    
+    // Habilitar el campo de nombre
     document.getElementById('input_nombre').disabled = false;
-    document.getElementById('modal-seleccionar-quintal').classList.remove('show');
-    mostrarNotificacion('✅ Modo: Crear Nuevo Quintal. Completa los datos del producto.', 'success');
+    
+    // CERRAR EL MODAL CORRECTAMENTE
+    const modal = document.getElementById('modal-seleccionar-quintal');
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+    
+    // Remover el backdrop
+    const backdrop = document.querySelector('.modal-backdrop');
+    if (backdrop) {
+        backdrop.remove();
+    }
+    
+    // Restaurar scroll del body
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+    
+    // MOSTRAR EL CAMPO DE PESO INICIAL
+    const campoPesoInicial = document.getElementById('campo-peso-inicial');
+    if (campoPesoInicial) {
+        campoPesoInicial.style.display = 'block';
+        document.getElementById('input_peso_inicial').setAttribute('required', 'required');
+    }
+    
+    console.log('✅ Modo crear nuevo quintal activado');
+    console.log('✅ Campo peso inicial mostrado');
+    
+    mostrarNotificacion('✅ Modo: Crear Nuevo Quintal. Completa todos los datos incluyendo el peso inicial.', 'success');
 }
 
 function renderizarQuintales(quintales) {
     const lista = document.getElementById('quintales-lista');
     lista.innerHTML = '';
+    
+    console.log('📋 Renderizando', quintales.length, 'quintales');
     
     if (quintales.length === 0) {
         document.getElementById('quintales-vacio').style.display = 'block';
@@ -1570,10 +1655,16 @@ function renderizarQuintales(quintales) {
 }
 
 function seleccionarQuintal(quintal) {
+    console.log('✅ Quintal seleccionado:', quintal);
     quintalSeleccionado = quintal;
     
+    // Llenar el nombre del producto
     document.getElementById('input_nombre').value = quintal.producto_nombre;
     document.getElementById('input_nombre').disabled = true;
+    
+    // Ocultar el campo de peso inicial (ya que es un quintal existente)
+    document.getElementById('campo-peso-inicial').style.display = 'none';
+    document.getElementById('input_peso_inicial').removeAttribute('required');
     
     cerrarModalQuintales();
     mostrarNotificacion(`✅ Quintal ${quintal.codigo_unico} seleccionado para reabastecer`, 'success');
@@ -1630,11 +1721,6 @@ function calcularPrecioVenta() {
             precioInput.placeholder = '⚠️ Primero selecciona una categoría';
             precioInput.style.background = 'linear-gradient(135deg, #fee2e2, #fecaca)';
             precioInput.style.borderColor = '#ef4444';
-            return;
-        }
-        
-        if (typeof categoriasData === 'undefined') {
-            console.error('❌ categoriasData no está definido');
             return;
         }
         
@@ -1779,6 +1865,8 @@ function previsualizarImagenEditar(input) {
 // AGREGAR PRODUCTO
 // ========================================
 function agregarProducto() {
+    console.log('📝 Iniciando agregar producto...');
+    
     const form = document.getElementById('form-producto');
     if (!form.checkValidity()) {
         form.reportValidity();
@@ -1793,8 +1881,31 @@ function agregarProducto() {
     const proveedor_id = document.getElementById('input_proveedor').value;
     const proveedor_nombre = document.getElementById('input_proveedor').selectedOptions[0].text;
     const tipo_inventario = document.getElementById('input_tipo_inventario').value;
-    const unidad_medida = document.getElementById('input_unidad').value;
-    const unidad_medida_texto = document.getElementById('input_unidad').selectedOptions[0].text;
+    
+    // Obtener unidad de medida según el tipo
+    let unidad_medida = '';
+    let unidad_medida_texto = '';
+    
+    if (tipo_inventario === 'QUINTAL') {
+        // Si es quintal, la unidad ya está seleccionada en el campo de unidad de medida
+        const selectUnidad = document.getElementById('input_unidad');
+        console.log('🔍 Tipo inventario:', tipo_inventario);
+        console.log('🔍 Select unidad:', document.getElementById('input_unidad'));
+        console.log('🔍 Valor selectUnidad.value:', selectUnidad ? selectUnidad.value : 'null');
+        if (selectUnidad && selectUnidad.value) {
+            unidad_medida = selectUnidad.value;
+            unidad_medida_texto = selectUnidad.selectedOptions[0].text;
+        } else {
+            mostrarNotificacion('⚠️ Error: Debes seleccionar la unidad de medida', 'error');
+            return;
+        }
+    } else {
+        // Para productos normales
+        unidad_medida = document.getElementById('input_unidad').value;
+        unidad_medida_texto = document.getElementById('input_unidad').selectedOptions[0].text;
+    }
+    
+    console.log('📏 Unidad de medida:', unidad_medida, unidad_medida_texto);
     const cantidad = parseInt(document.getElementById('input_cantidad').value);
     const costo = parseFloat(document.getElementById('input_costo').value);
     const precio = parseFloat(document.getElementById('input_precio').value);
@@ -1807,20 +1918,31 @@ function agregarProducto() {
     const imagenFile = inputImagen.files[0];
     const imagenPreview = document.getElementById('preview-imagen').src;
 
-    // Validar si es quintal y obtener datos
+    // ✅ DATOS DE QUINTAL
     let quintal_codigo_unico = null;
     let es_nuevo_quintal = false;
+    let peso_inicial_quintal = null;
     
     if (tipo_inventario === 'QUINTAL') {
         if (quintalSeleccionado) {
+            // Reabastecer quintal existente
             quintal_codigo_unico = quintalSeleccionado.codigo_unico;
+            console.log('🔄 Reabastecer quintal:', quintal_codigo_unico);
         } else {
+            // Crear nuevo quintal
             es_nuevo_quintal = true;
+            peso_inicial_quintal = parseFloat(document.getElementById('input_peso_inicial').value);
+            
+            if (!peso_inicial_quintal || peso_inicial_quintal <= 0) {
+                mostrarNotificacion('⚠️ Error: Debes ingresar el peso inicial del quintal', 'error');
+                return;
+            }
+            console.log('🆕 Crear nuevo quintal con peso inicial:', peso_inicial_quintal);
         }
     }
 
     if (precio <= costo) {
-        mostrarNotificacion('⚠️ Error: El precio de venta debe ser mayor al costo. Verifica que hayas seleccionado una categoría.', 'error');
+        mostrarNotificacion('⚠️ Error: El precio de venta debe ser mayor al costo.', 'error');
         calcularPrecioVenta();
         return;
     }
@@ -1840,11 +1962,13 @@ function agregarProducto() {
         iva: iva,
         quintal_codigo_unico: quintal_codigo_unico,
         es_nuevo_quintal: es_nuevo_quintal,
+        peso_inicial_quintal: peso_inicial_quintal,
         imagen_file: imagenFile,
         imagen_preview: imagenPreview,
         subtotal: cantidad * costo
     };
 
+    console.log('✅ Producto agregado:', producto);
     productos.push(producto);
     actualizarContador();
     limpiarFormulario();
@@ -1867,6 +1991,8 @@ function actualizarContador() {
 function limpiarFormulario() {
     document.getElementById('form-producto').reset();
     document.getElementById('preview-imagen-container').classList.remove('show');
+    document.getElementById('campo-peso-inicial').style.display = 'none';
+    document.getElementById('input_peso_inicial').removeAttribute('required');
     document.getElementById('input_nombre').focus();
     document.getElementById('input_nombre').disabled = false;
     quintalSeleccionado = null;
@@ -1923,9 +2049,9 @@ function renderizarProductos() {
         let quintalBadge = '';
         if (producto.tipo_inventario === 'QUINTAL') {
             if (producto.es_nuevo_quintal) {
-                quintalBadge = '<span class="badge-custom" style="background: #d1fae5; color: #065f46; margin-left: 0.5rem;">🆕 Nuevo Quintal</span>';
+                quintalBadge = `<span class="badge-custom" style="background: #d1fae5; color: #065f46; margin-left: 0.5rem;">🆕 Nuevo (${producto.peso_inicial_quintal} ${producto.unidad_medida_texto})</span>`;
             } else if (producto.quintal_codigo_unico) {
-                quintalBadge = `<span class="badge-custom" style="background: #fef3c7; color: #92400e; margin-left: 0.5rem;">🔄 Reabastecer ${producto.quintal_codigo_unico}</span>`;
+                quintalBadge = `<span class="badge-custom" style="background: #fef3c7; color: #92400e; margin-left: 0.5rem;">🔄 ${producto.quintal_codigo_unico}</span>`;
             }
         }
         
@@ -2135,23 +2261,34 @@ function cerrarModalConfirmacion() {
 }
 
 async function confirmarProcesamiento() {
+    console.log('🚀 Iniciando procesamiento de inventario...');
     cerrarModalConfirmacion();
     cerrarModalProductos();
 
     const formData = new FormData();
     
     const productosData = productos.map(p => ({
-        nombre: p.nombre, marca_id: p.marca_id, categoria_id: p.categoria_id,
-        proveedor_id: p.proveedor_id, tipo_inventario: p.tipo_inventario,
+        nombre: p.nombre, 
+        marca_id: p.marca_id, 
+        categoria_id: p.categoria_id,
+        proveedor_id: p.proveedor_id, 
+        tipo_inventario: p.tipo_inventario,
         unidad_medida: p.unidad_medida,
-        cantidad: p.cantidad, cantidad_codigos: p.cantidad_codigos,
-        costo_unitario: p.costo_unitario, precio_venta: p.precio_venta,
-        lote: p.lote, fecha_vencimiento: p.fecha_vencimiento,
-        descripcion: p.descripcion, tiene_imagen: p.imagen_file ? true : false,
+        cantidad: p.cantidad, 
+        cantidad_codigos: p.cantidad_codigos,
+        costo_unitario: p.costo_unitario, 
+        precio_venta: p.precio_venta,
+        lote: p.lote, 
+        fecha_vencimiento: p.fecha_vencimiento,
+        descripcion: p.descripcion, 
+        tiene_imagen: p.imagen_file ? true : false,
         iva: p.iva,
         quintal_codigo_unico: p.quintal_codigo_unico,
-        es_nuevo_quintal: p.es_nuevo_quintal
+        es_nuevo_quintal: p.es_nuevo_quintal,
+        peso_inicial_quintal: p.peso_inicial_quintal
     }));
+    
+    console.log('📦 Datos a enviar:', productosData);
     
     formData.append('productos', JSON.stringify(productosData));
     productos.forEach((producto, index) => {
@@ -2161,7 +2298,7 @@ async function confirmarProcesamiento() {
     });
 
     try {
-        const notification = mostrarNotificacion('⏳ Procesando inventario...', 'success');
+        mostrarNotificacion('⏳ Procesando inventario...', 'success');
 
         const response = await fetch('/panel/api/inventario/procesar-entrada-unificada/', {
             method: 'POST',
@@ -2170,6 +2307,7 @@ async function confirmarProcesamiento() {
         });
 
         const result = await response.json();
+        console.log('📩 Respuesta del servidor:', result);
 
         if (result.success) {
             mostrarModalCodigosGenerados(result.codigos_generados);
@@ -2181,11 +2319,12 @@ async function confirmarProcesamiento() {
             
             mostrarNotificacion(`✅ ${result.productos_creados} productos procesados exitosamente`, 'success');
         } else {
+            console.error('❌ Error del servidor:', result.error);
             mostrarNotificacion(result.error || 'Error al procesar', 'error');
         }
     } catch (error) {
-        console.error('Error:', error);
-        mostrarNotificacion('Error de conexión', 'error');
+        console.error('❌ Error de conexión:', error);
+        mostrarNotificacion('Error de conexión: ' + error.message, 'error');
     }
 }
 

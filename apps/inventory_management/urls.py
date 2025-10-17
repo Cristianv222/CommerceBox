@@ -71,6 +71,7 @@ from .views import (
     # APIs JSON
     ProductoBuscarAPIView,
     QuintalesDisponiblesAPIView,
+    QuintalesDisponiblesTodosAPIView,
     StockStatusAPIView,
     MarcaBuscarAPIView,
     MarcaDetalleAPIView,
@@ -172,6 +173,7 @@ urlpatterns = [
     # ========================================================================
     path('api/productos/buscar/', ProductoBuscarAPIView.as_view(), name='api_producto_buscar'),
     path('api/productos/<uuid:producto_id>/quintales/', QuintalesDisponiblesAPIView.as_view(), name='api_quintales_disponibles'),
+    path('quintales-disponibles/', QuintalesDisponiblesTodosAPIView.as_view(), name='api_quintales_todos'),
     path('api/productos/<uuid:producto_id>/stock/', StockStatusAPIView.as_view(), name='api_stock_status'),
     path('api/marcas/buscar/', MarcaBuscarAPIView.as_view(), name='api_marca_buscar'),
     path('api/marcas/<uuid:pk>/', MarcaDetalleAPIView.as_view(), name='api_marca_detalle'),

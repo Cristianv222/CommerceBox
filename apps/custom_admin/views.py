@@ -74,7 +74,7 @@ def inventario_dashboard_view(request):
 @auth_required
 def productos_view(request):
     """Lista de productos con datos reales - VERSIÓN CORREGIDA"""
-    from apps.inventory_management.models import Producto, Categoria, Marca, Quintal
+    from apps.inventory_management.models import Producto, Categoria, Marca, Quintal, UnidadMedida  # ✅ AGREGAR UnidadMedida
     from apps.system_configuration.models import ConfiguracionSistema
     from django.db.models import Q, Prefetch
     from django.core.paginator import Paginator
@@ -86,12 +86,10 @@ def productos_view(request):
         'unidad_medida_base', 
         'marca'
     ).prefetch_related(
-        # ✅ Cargar solo quintales disponibles (optimización)
         Prefetch(
             'quintales',
             queryset=Quintal.objects.filter(estado='DISPONIBLE').order_by('fecha_recepcion')
         ),
-        # ✅ Cargar inventario normal también
         'inventario_normal'
     ).filter(activo=True).order_by('nombre')
     
@@ -113,9 +111,10 @@ def productos_view(request):
     if tipo:
         productos = productos.filter(tipo_inventario=tipo)
     
-    # Obtener todas las categorías y marcas para los filtros
+    # Obtener todas las categorías, marcas y ✅ UNIDADES DE MEDIDA para los filtros
     categorias = Categoria.objects.filter(activa=True).order_by('nombre')
     marcas = Marca.objects.filter(activa=True).order_by('nombre')
+    unidades_medida = UnidadMedida.objects.filter(activa=True).order_by('orden_display')  # ✅ AGREGAR ESTA LÍNEA
     
     # ✅ OBTENER IVA DEFAULT DEL SISTEMA
     config = ConfiguracionSistema.get_config()
@@ -131,6 +130,7 @@ def productos_view(request):
         'page_obj': page_obj,
         'marcas': marcas,
         'categorias': categorias,
+        'unidades_medida': unidades_medida,  # ✅ AGREGAR ESTA LÍNEA AL CONTEXTO
         'search': search,
         'categoria_selected': categoria_id,
         'tipo_selected': tipo,
@@ -138,6 +138,7 @@ def productos_view(request):
     }
     
     return render(request, 'custom_admin/inventario/productos_list.html', context)
+
 @ensure_csrf_cookie
 @auth_required
 def producto_detail_view(request, pk):
@@ -2923,23 +2924,26 @@ def api_quintales_disponibles(request):
             'success': False,
             'error': str(e)
         }, status=500)
+    
 @ensure_csrf_cookie
 def api_procesar_entrada_unificada(request):
-    """API para procesar entrada unificada de inventario - CON IMÁGENES"""
+    """API para procesar entrada unificada de inventario - VERSIÓN CORREGIDA PARA QUINTALES"""
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
     
     import json
     from django.db import transaction
+    from django.db.models import Q  # ✅ IMPORT NECESARIO PARA FILTROS
     from apps.inventory_management.models import (
-        Producto, Categoria, Marca, Proveedor, ProductoNormal, MovimientoInventario
+        Producto, Categoria, Marca, Proveedor, ProductoNormal, MovimientoInventario,
+        Quintal, UnidadMedida  # ✅ AGREGAR QUINTAL Y UNIDADMEDIDA
     )
     from apps.authentication.models import Usuario
     from decimal import Decimal
     from django.utils import timezone
     
     try:
-        # ✅ LEER DATOS DEL FORMDATA
+        # Leer datos del FormData
         productos_json = request.POST.get('productos')
         
         if not productos_json:
@@ -2973,6 +2977,8 @@ def api_procesar_entrada_unificada(request):
         
         productos_creados = 0
         productos_reabastecidos = 0
+        quintales_creados = 0  # ✅ NUEVO CONTADOR
+        quintales_reabastecidos = 0  # ✅ NUEVO CONTADOR
         codigos_generados = []
         errores = []
         
@@ -3039,91 +3045,269 @@ def api_procesar_entrada_unificada(request):
                         errores.append(error_msg)
                         continue
                     
-                    # ✅ BUSCAR SI EL PRODUCTO YA EXISTE (por nombre, marca, categoría)
-                    nombre_producto = prod_data['nombre'].strip()
-                    producto_existente = Producto.objects.filter(
-                        nombre__iexact=nombre_producto,
-                        marca=marca,
-                        categoria=categoria,
-                        activo=True
-                    ).first()
+                    tipo_inventario = prod_data.get('tipo_inventario', 'NORMAL')
                     
-                    cantidad = int(prod_data.get('cantidad', 0))
-                    costo_unitario = Decimal(str(prod_data.get('costo_unitario', '0')))
-                    precio_venta = Decimal(str(prod_data.get('precio_venta', '0')))
-                    
-                    # ✅ OBTENER IMAGEN SI EXISTE
-                    imagen_file = None
-                    if prod_data.get('tiene_imagen'):
-                        imagen_key = f'imagen_{idx}'
-                        if imagen_key in request.FILES:
-                            imagen_file = request.FILES[imagen_key]
-                            print(f"📷 Imagen recibida: {imagen_file.name}")
-                    
-                    if producto_existente:
-                        # ✅ PRODUCTO EXISTE - REABASTECER
-                        print(f"🔄 PRODUCTO EXISTENTE ENCONTRADO: {producto_existente.nombre}")
+                    # ========================================
+                    # 🌾 PROCESAR QUINTAL
+                    # ========================================
+                    if tipo_inventario == 'QUINTAL':
+                        print(f"🌾 PROCESANDO QUINTAL")
                         
-                        producto = producto_existente
+                        # Obtener unidad de medida
+                        unidad_codigo = prod_data.get('unidad_medida')
+                        if not unidad_codigo:
+                            error_msg = f"Producto {idx + 1}: Falta la unidad de medida"
+                            print(f"❌ {error_msg}")
+                            errores.append(error_msg)
+                            continue
                         
-                        # Actualizar precio si es diferente
-                        if producto.precio_unitario != precio_venta:
-                            print(f"   💰 Actualizando precio: ${producto.precio_unitario} → ${precio_venta}")
-                            producto.precio_unitario = precio_venta
-                        
-                        # Actualizar imagen si se subió una nueva
-                        if imagen_file:
-                            print(f"   📷 Actualizando imagen")
-                            if producto.imagen:
-                                producto.imagen.delete(save=False)
-                            producto.imagen = imagen_file
-                        
-                        producto.save()
-                        
-                        # Reabastecer inventario
                         try:
-                            producto_normal = producto.inventario_normal
-                            stock_antes = producto_normal.stock_actual
+                            # Buscar por abreviatura o nombre
+                            unidad_medida = UnidadMedida.objects.filter(
+                                Q(abreviatura=unidad_codigo) | Q(nombre__icontains=unidad_codigo)
+                            ).first()
                             
-                            print(f"   📦 Stock antes: {stock_antes}")
-                            print(f"   ➕ Agregando: {cantidad}")
+                            if not unidad_medida:
+                                error_msg = f"Producto {idx + 1}: Unidad de medida no encontrada: {unidad_codigo}"
+                                print(f"❌ {error_msg}")
+                                errores.append(error_msg)
+                                continue
                             
-                            producto_normal.stock_actual += cantidad
+                            print(f"✅ Unidad de medida: {unidad_medida.nombre}")
+                        except Exception as e:
+                            error_msg = f"Producto {idx + 1}: Error buscando unidad: {str(e)}"
+                            print(f"❌ {error_msg}")
+                            errores.append(error_msg)
+                            continue
+                        
+                        peso_inicial = Decimal(str(prod_data.get('cantidad', 0)))
+                        costo_total = Decimal(str(prod_data.get('costo_unitario', 0))) * peso_inicial
+                        precio_por_unidad_peso = Decimal(str(prod_data.get('precio_venta', 0)))
+                        
+                        # ✅ BUSCAR SI EL PRODUCTO YA EXISTE
+                        nombre_producto = prod_data['nombre'].strip()
+                        producto_existente = Producto.objects.filter(
+                            nombre__iexact=nombre_producto,
+                            marca=marca,
+                            categoria=categoria,
+                            tipo_inventario='QUINTAL',
+                            activo=True
+                        ).first()
+                        
+                        # ✅ OBTENER IMAGEN SI EXISTE
+                        imagen_file = None
+                        if prod_data.get('tiene_imagen'):
+                            imagen_key = f'imagen_{idx}'
+                            if imagen_key in request.FILES:
+                                imagen_file = request.FILES[imagen_key]
+                                print(f"📷 Imagen recibida: {imagen_file.name}")
+                        
+                        if not producto_existente:
+                            # ✅ CREAR PRODUCTO NUEVO
+                            from apps.inventory_management.utils.barcode_generator import BarcodeGenerator
+                            codigo_barras = BarcodeGenerator.generar_codigo_producto()
                             
-                            # Actualizar costo promedio ponderado
-                            if stock_antes > 0:
-                                costo_total_anterior = stock_antes * producto_normal.costo_unitario
-                                costo_total_nuevo = cantidad * costo_unitario
-                                stock_total = stock_antes + cantidad
-                                producto_normal.costo_unitario = (costo_total_anterior + costo_total_nuevo) / stock_total
-                            else:
-                                producto_normal.costo_unitario = costo_unitario
+                            producto_data = {
+                                'codigo_barras': codigo_barras,
+                                'nombre': nombre_producto,
+                                'descripcion': prod_data.get('descripcion', ''),
+                                'marca': marca,
+                                'categoria': categoria,
+                                'proveedor': proveedor,
+                                'tipo_inventario': 'QUINTAL',
+                                'unidad_medida_base': unidad_medida,
+                                'precio_por_unidad_peso': precio_por_unidad_peso,
+                                'iva': Decimal(str(prod_data.get('iva', '0.00'))),
+                                'activo': True,
+                                'usuario_registro': usuario
+                            }
                             
-                            producto_normal.fecha_ultima_entrada = timezone.now()
+                            if imagen_file:
+                                producto_data['imagen'] = imagen_file
                             
-                            if prod_data.get('lote'):
-                                producto_normal.lote = prod_data.get('lote')
-                            if prod_data.get('fecha_vencimiento'):
-                                producto_normal.fecha_vencimiento = prod_data.get('fecha_vencimiento')
+                            producto = Producto.objects.create(**producto_data)
+                            print(f"✅ Producto QUINTAL creado: {producto.nombre}")
+                            productos_creados += 1
+                        else:
+                            producto = producto_existente
+                            print(f"✅ Producto QUINTAL existente: {producto.nombre}")
                             
-                            producto_normal.save()
-                            
-                            # Registrar movimiento
-                            MovimientoInventario.objects.create(
-                                producto_normal=producto_normal,
-                                tipo_movimiento='ENTRADA_COMPRA',
-                                cantidad=cantidad,
-                                stock_antes=stock_antes,
-                                stock_despues=producto_normal.stock_actual,
-                                costo_unitario=costo_unitario,
-                                costo_total=cantidad * costo_unitario,
-                                usuario=usuario,
-                                observaciones=f"Reabastecimiento - {prod_data.get('lote', 'Sin lote')}"
-                            )
+                            # Actualizar precio si cambió
+                            if producto.precio_por_unidad_peso != precio_por_unidad_peso:
+                                producto.precio_por_unidad_peso = precio_por_unidad_peso
+                                producto.save()
                             
                             productos_reabastecidos += 1
+                        
+                        # ✅ CREAR QUINTAL
+                        from apps.inventory_management.utils.barcode_generator import BarcodeGenerator
+                        codigo_quintal = BarcodeGenerator.generar_codigo_quintal(producto)
+                        
+                        quintal = Quintal.objects.create(
+                            codigo_unico=codigo_quintal,
+                            producto=producto,
+                            proveedor=proveedor,
+                            peso_inicial=peso_inicial,
+                            peso_actual=peso_inicial,
+                            unidad_medida=unidad_medida,
+                            costo_total=costo_total,
+                            costo_por_unidad=costo_total / peso_inicial if peso_inicial > 0 else Decimal('0'),
+                            fecha_recepcion=timezone.now(),
+                            fecha_vencimiento=prod_data.get('fecha_vencimiento') or None,
+                            lote_proveedor=prod_data.get('lote', ''),
+                            numero_factura_compra='',
+                            usuario_registro=usuario,
+                            estado='DISPONIBLE'
+                        )
+                        
+                        print(f"✅ QUINTAL CREADO: {quintal.codigo_unico}")
+                        print(f"   Peso: {quintal.peso_inicial} {quintal.unidad_medida.abreviatura}")
+                        print(f"   Costo: ${quintal.costo_total}")
+                        quintales_creados += 1
+                        
+                        # ✅ GENERAR CÓDIGOS DE BARRAS
+                        cantidad_etiquetas = int(peso_inicial)  # 1 etiqueta por unidad
+                        
+                        codigos_generados.append({
+                            'tipo': 'QUINTAL',
+                            'codigo_base': quintal.codigo_unico,
+                            'producto_nombre': producto.nombre,
+                            'cantidad_codigos': cantidad_etiquetas,
+                            'cantidad_stock': float(peso_inicial),
+                            'unidad_medida': unidad_medida.abreviatura,
+                            'pdf_url': f'/panel/api/inventario/generar-pdf-codigos/?quintal_id={quintal.id}&cantidad={cantidad_etiquetas}',
+                            'tipo_operacion': 'NUEVO_QUINTAL'
+                        })
+                    
+                    # ========================================
+                    # 📦 PROCESAR PRODUCTO NORMAL
+                    # ========================================
+                    else:
+                        print(f"📦 PROCESANDO PRODUCTO NORMAL")
+                        
+                        nombre_producto = prod_data['nombre'].strip()
+                        producto_existente = Producto.objects.filter(
+                            nombre__iexact=nombre_producto,
+                            marca=marca,
+                            categoria=categoria,
+                            tipo_inventario='NORMAL',
+                            activo=True
+                        ).first()
+                        
+                        cantidad = int(prod_data.get('cantidad', 0))
+                        costo_unitario = Decimal(str(prod_data.get('costo_unitario', '0')))
+                        precio_venta = Decimal(str(prod_data.get('precio_venta', '0')))
+                        
+                        # Obtener imagen
+                        imagen_file = None
+                        if prod_data.get('tiene_imagen'):
+                            imagen_key = f'imagen_{idx}'
+                            if imagen_key in request.FILES:
+                                imagen_file = request.FILES[imagen_key]
+                        
+                        if producto_existente:
+                            # REABASTECER
+                            producto = producto_existente
                             
-                        except ProductoNormal.DoesNotExist:
+                            if producto.precio_unitario != precio_venta:
+                                producto.precio_unitario = precio_venta
+                            
+                            if imagen_file:
+                                if producto.imagen:
+                                    producto.imagen.delete(save=False)
+                                producto.imagen = imagen_file
+                            
+                            producto.save()
+                            
+                            # Reabastecer inventario
+                            try:
+                                producto_normal = producto.inventario_normal
+                                stock_antes = producto_normal.stock_actual
+                                
+                                producto_normal.stock_actual += cantidad
+                                
+                                # Costo promedio ponderado
+                                if stock_antes > 0:
+                                    costo_total_anterior = stock_antes * producto_normal.costo_unitario
+                                    costo_total_nuevo = cantidad * costo_unitario
+                                    stock_total = stock_antes + cantidad
+                                    producto_normal.costo_unitario = (costo_total_anterior + costo_total_nuevo) / stock_total
+                                else:
+                                    producto_normal.costo_unitario = costo_unitario
+                                
+                                producto_normal.fecha_ultima_entrada = timezone.now()
+                                
+                                if prod_data.get('lote'):
+                                    producto_normal.lote = prod_data.get('lote')
+                                if prod_data.get('fecha_vencimiento'):
+                                    producto_normal.fecha_vencimiento = prod_data.get('fecha_vencimiento')
+                                
+                                producto_normal.save()
+                                
+                                # Registrar movimiento
+                                MovimientoInventario.objects.create(
+                                    producto_normal=producto_normal,
+                                    tipo_movimiento='ENTRADA_COMPRA',
+                                    cantidad=cantidad,
+                                    stock_antes=stock_antes,
+                                    stock_despues=producto_normal.stock_actual,
+                                    costo_unitario=costo_unitario,
+                                    costo_total=cantidad * costo_unitario,
+                                    usuario=usuario,
+                                    observaciones=f"Reabastecimiento - {prod_data.get('lote', 'Sin lote')}"
+                                )
+                                
+                                productos_reabastecidos += 1
+                                
+                            except ProductoNormal.DoesNotExist:
+                                producto_normal = ProductoNormal.objects.create(
+                                    producto=producto,
+                                    stock_actual=cantidad,
+                                    stock_minimo=10,
+                                    costo_unitario=costo_unitario,
+                                    lote=prod_data.get('lote', ''),
+                                    fecha_vencimiento=prod_data.get('fecha_vencimiento') or None,
+                                    fecha_ultima_entrada=timezone.now()
+                                )
+                                
+                                MovimientoInventario.objects.create(
+                                    producto_normal=producto_normal,
+                                    tipo_movimiento='ENTRADA_COMPRA',
+                                    cantidad=cantidad,
+                                    stock_antes=0,
+                                    stock_despues=cantidad,
+                                    costo_unitario=costo_unitario,
+                                    costo_total=cantidad * costo_unitario,
+                                    usuario=usuario,
+                                    observaciones=f"Primer inventario - {prod_data.get('lote', 'Sin lote')}"
+                                )
+                                
+                                productos_reabastecidos += 1
+                        
+                        else:
+                            # CREAR NUEVO
+                            from apps.inventory_management.utils.barcode_generator import BarcodeGenerator
+                            codigo_barras = BarcodeGenerator.generar_codigo_producto()
+                            
+                            producto_data = {
+                                'codigo_barras': codigo_barras,
+                                'nombre': nombre_producto,
+                                'descripcion': prod_data.get('descripcion', ''),
+                                'marca': marca,
+                                'categoria': categoria,
+                                'proveedor': proveedor,
+                                'tipo_inventario': 'NORMAL',
+                                'precio_unitario': precio_venta,
+                                'iva': Decimal(str(prod_data.get('iva', '0.00'))),
+                                'activo': True,
+                                'usuario_registro': usuario
+                            }
+                            
+                            if imagen_file:
+                                producto_data['imagen'] = imagen_file
+                            
+                            producto = Producto.objects.create(**producto_data)
+                            
                             producto_normal = ProductoNormal.objects.create(
                                 producto=producto,
                                 stock_actual=cantidad,
@@ -3143,83 +3327,24 @@ def api_procesar_entrada_unificada(request):
                                 costo_unitario=costo_unitario,
                                 costo_total=cantidad * costo_unitario,
                                 usuario=usuario,
-                                observaciones=f"Primer inventario - {prod_data.get('lote', 'Sin lote')}"
+                                observaciones=f"Entrada inicial - {prod_data.get('lote', 'Sin lote')}"
                             )
                             
-                            productos_reabastecidos += 1
+                            productos_creados += 1
                         
-                    else:
-                        # ✅ PRODUCTO NUEVO - CREAR
-                        print(f"🆕 PRODUCTO NUEVO: {nombre_producto}")
+                        # Generar códigos
+                        cantidad_codigos = int(prod_data.get('cantidad_codigos', cantidad))
                         
-                        from apps.inventory_management.utils.barcode_generator import BarcodeGenerator
-                        codigo_barras = BarcodeGenerator.generar_codigo_producto()
-                        print(f"   🏷️ Código generado: {codigo_barras}")
-                        
-                        # Preparar datos del producto
-                        producto_data = {
-                            'codigo_barras': codigo_barras,
-                            'nombre': nombre_producto,
-                            'descripcion': prod_data.get('descripcion', ''),
-                            'marca': marca,
-                            'categoria': categoria,
-                            'proveedor': proveedor,
-                            'tipo_inventario': 'NORMAL',
-                            'precio_unitario': precio_venta,
-                            'iva': Decimal(str(prod_data.get('iva', '0.00'))),
-                            'activo': True,
-                            'usuario_registro': usuario
-                        }
-                        
-                        # Agregar imagen si existe
-                        if imagen_file:
-                            producto_data['imagen'] = imagen_file
-                            print(f"   📷 Imagen agregada al producto")
-                        
-                        # Crear el producto
-                        producto = Producto.objects.create(**producto_data)
-                        print(f"   ✅ Producto creado: {producto.id}")
-                        
-                        # Crear inventario normal
-                        producto_normal = ProductoNormal.objects.create(
-                            producto=producto,
-                            stock_actual=cantidad,
-                            stock_minimo=10,
-                            costo_unitario=costo_unitario,
-                            lote=prod_data.get('lote', ''),
-                            fecha_vencimiento=prod_data.get('fecha_vencimiento') or None,
-                            fecha_ultima_entrada=timezone.now()
-                        )
-                        
-                        # Registrar movimiento
-                        MovimientoInventario.objects.create(
-                            producto_normal=producto_normal,
-                            tipo_movimiento='ENTRADA_COMPRA',
-                            cantidad=cantidad,
-                            stock_antes=0,
-                            stock_despues=cantidad,
-                            costo_unitario=costo_unitario,
-                            costo_total=cantidad * costo_unitario,
-                            usuario=usuario,
-                            observaciones=f"Entrada inicial - {prod_data.get('lote', 'Sin lote')}"
-                        )
-                        
-                        productos_creados += 1
-                    
-                    # ✅ GENERAR CÓDIGOS DE BARRAS
-                    cantidad_codigos = int(prod_data.get('cantidad_codigos', cantidad))
-                    print(f"🏷️ Códigos a generar: {cantidad_codigos}")
-                    
-                    codigo_data = {
-                        'producto_nombre': producto.nombre,
-                        'codigo_base': producto.codigo_barras,
-                        'cantidad_codigos': cantidad_codigos,
-                        'unidad_medida': prod_data.get('unidad_medida_texto', 'UNIDAD'),
-                        'pdf_url': f'/panel/api/inventario/generar-pdf-codigos/?producto_id={producto.id}&cantidad={cantidad_codigos}',
-                        'tipo_operacion': 'REABASTECIMIENTO' if producto_existente else 'NUEVO'
-                    }
-                    
-                    codigos_generados.append(codigo_data)
+                        codigos_generados.append({
+                            'tipo': 'NORMAL',
+                            'codigo_base': producto.codigo_barras,
+                            'producto_nombre': producto.nombre,
+                            'cantidad_codigos': cantidad_codigos,
+                            'cantidad_stock': cantidad,
+                            'unidad_medida': 'UNIDAD',
+                            'pdf_url': f'/panel/api/inventario/generar-pdf-codigos/?producto_id={producto.id}&cantidad={cantidad_codigos}',
+                            'tipo_operacion': 'REABASTECIMIENTO' if producto_existente else 'NUEVO'
+                        })
                     
                 except Exception as e:
                     error_msg = f"Producto {idx + 1} ({prod_data.get('nombre', 'Sin nombre')}): {str(e)}"
@@ -3233,6 +3358,7 @@ def api_procesar_entrada_unificada(request):
         print(f"✅ RESUMEN FINAL:")
         print(f"   - Productos NUEVOS: {productos_creados}")
         print(f"   - Productos REABASTECIDOS: {productos_reabastecidos}")
+        print(f"   - Quintales CREADOS: {quintales_creados}")
         print(f"   - Códigos generados: {len(codigos_generados)}")
         print(f"   - Errores: {len(errores)}")
         print("=" * 80)
@@ -3241,9 +3367,10 @@ def api_procesar_entrada_unificada(request):
             'success': True,
             'productos_creados': productos_creados,
             'productos_reabastecidos': productos_reabastecidos,
+            'quintales_creados': quintales_creados,
             'codigos_generados': codigos_generados,
             'errores': errores,
-            'mensaje': f'{productos_creados} nuevos, {productos_reabastecidos} reabastecidos'
+            'mensaje': f'{productos_creados} nuevos, {productos_reabastecidos} reabastecidos, {quintales_creados} quintales'
         })
         
     except json.JSONDecodeError as e:
