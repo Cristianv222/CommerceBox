@@ -4178,3 +4178,26 @@ def health_check_view(request):
         'status': 'healthy',
         'timestamp': timezone.now().isoformat()
     })
+
+@ensure_csrf_cookie
+def api_alertas_count(request):
+    """API para obtener el conteo de alertas activas"""
+    try:
+        from apps.stock_alert_system.models import Alerta
+        
+        # Contar alertas no leídas
+        count = Alerta.objects.filter(
+            resuelta=False,
+            activa=True
+        ).count()
+        
+        return JsonResponse({
+            'success': True,
+            'count': count
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'count': 0
+        })

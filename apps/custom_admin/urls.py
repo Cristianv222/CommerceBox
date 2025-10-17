@@ -11,6 +11,7 @@ urlpatterns = [
     # ========================================
     path('', views.dashboard_view, name='dashboard'),
     path('api/dashboard/stats/', views.api_dashboard_stats, name='api_dashboard_stats'),
+    path('api/alertas/count/', views.api_alertas_count, name='api_alertas_count'),
     
     # ========================================
     # USUARIOS Y ROLES

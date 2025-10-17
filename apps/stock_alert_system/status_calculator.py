@@ -222,7 +222,7 @@ class StatusCalculator:
             # Determinar tipo de alerta
             if estado_stock.estado_semaforo == 'AGOTADO':
                 tipo_alerta = 'STOCK_AGOTADO'
-                prioridad = 'URGENTE'
+                prioridad = 'CRITICA'
                 titulo = f"⚫ Stock AGOTADO: {producto.nombre}"
                 mensaje = f"El producto {producto.nombre} se ha AGOTADO completamente."
             elif estado_stock.estado_semaforo == 'CRITICO':
