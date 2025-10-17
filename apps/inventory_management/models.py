@@ -615,8 +615,8 @@ class Quintal(models.Model):
     def porcentaje_restante(self):
         """Calcula el porcentaje de peso restante"""
         if self.peso_inicial > 0:
-            return (self.peso_actual / self.peso_inicial) * 100
-        return 0
+            return float((self.peso_actual / self.peso_inicial) * 100)
+        return 0.0
     
     def peso_vendido(self):
         """Calcula cuánto peso se ha vendido"""

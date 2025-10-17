@@ -800,6 +800,45 @@
     .stat-card:nth-child(3) { animation-delay: 0.15s; }
     .stat-card:nth-child(4) { animation-delay: 0.2s; }
     .stat-card:nth-child(5) { animation-delay: 0.25s; }
+
+    /* Barra de progreso para quintales */
+    .progress-bar-quintal {
+        width: 100%;
+        height: 20px;
+        background: #f0f0f0;
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 5px 0;
+        position: relative;
+    }
+    
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4CAF50, #8BC34A);
+        transition: width 0.5s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 11px;
+        font-weight: bold;
+    }
+    
+    .progress-bar-quintal.low .progress-bar-fill {
+        background: linear-gradient(90deg, #ff5252, #ff9800);
+    }
+    
+    .progress-bar-quintal.critical .progress-bar-fill {
+        background: linear-gradient(90deg, #d32f2f, #ff5252);
+    }
+    
+    .quintal-info {
+        text-align: center;
+        font-size: 12px;
+        color: #666;
+        margin-top: 3px;
+    }
+
 </style>
 {% endblock %}
 
@@ -809,21 +848,7 @@
 
 <!-- Mostrar mensajes de Django si existen -->
 {% if messages %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        {% for message in messages %}
-            {% if message.tags == 'success' %}
-                showNotification('success', '{{ message|escapejs }}');
-            {% elif message.tags == 'error' %}
-                showNotification('error', '{{ message|escapejs }}');
-            {% elif message.tags == 'warning' %}
-                showNotification('warning', '{{ message|escapejs }}');
-            {% else %}
-                showNotification('info', '{{ message|escapejs }}');
-            {% endif %}
-        {% endfor %}
-    });
-</script>
+
 {% endif %}
 
 <div class="container-fluid">
@@ -1030,17 +1055,26 @@
                                 {% if producto.tipo_inventario == 'QUINTAL' %}
                                     {% with producto.quintales.all as quintales %}
                                         {% if quintales %}
-                                            <div style="font-weight: 700; color: #3b82f6; font-size: 1.1rem;">
-                                                <i class="bi bi-box-seam-fill me-1"></i>
-                                                {{ quintales.count }} QQ
-                                            </div>
-                                            <div style="font-size: 0.75rem; color: #64748b;">
-                                                Disponibles
-                                            </div>
+                                            {% for quintal in quintales %}
+                                                {% if quintal.estado == 'DISPONIBLE' %}
+                                                    <div style="min-width: 120px;">
+                                                        {% with porcentaje=quintal.porcentaje_restante %}
+                                                            <div class="progress-bar-quintal {% if porcentaje <= 10 %}critical{% elif porcentaje <= 30 %}low{% endif %}">
+                                                                <div class="progress-bar-fill" style="width: {{ porcentaje|floatformat:0 }}%;">
+                                                                    {{ porcentaje|floatformat:0 }}%
+                                                                </div>
+                                                            </div>
+                                                            <div class="quintal-info">
+                                                                {{ quintal.peso_actual|floatformat:1 }}/{{ quintal.peso_inicial|floatformat:0 }} {{ quintal.unidad_medida.abreviatura }}
+                                                            </div>
+                                                        {% endwith %}
+                                                    </div>
+                                                {% endif %}
+                                            {% empty %}
+                                                <span class="badge badge-secondary">Sin quintales</span>
+                                            {% endfor %}
                                         {% else %}
-                                            <span class="badge-admin badge-warning">
-                                                <i class="bi bi-exclamation-triangle me-1"></i>Sin stock
-                                            </span>
+                                            <span class="badge badge-secondary">Sin quintales</span>
                                         {% endif %}
                                     {% endwith %}
                                 {% else %}
@@ -1910,4 +1944,7 @@ function editProducto(productoId) {
         form.submit();
     }
 </script>
+
+
+
 {% endblock %}
