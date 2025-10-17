@@ -338,13 +338,91 @@
         color: #7c3aed;
         border: 1px solid rgba(139, 92, 246, 0.3);
     }
-    /* ✅ NUEVO: Badge para marcas */
     .badge-brand {
         background: rgba(236, 72, 153, 0.15);
         color: #db2777;
         border: 1px solid rgba(236, 72, 153, 0.3);
         font-size: 0.75rem;
         padding: 0.3rem 0.7rem;
+    }
+    .badge-iva {
+        background: rgba(34, 197, 94, 0.15);
+        color: #16a34a;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .badge-no-iva {
+        background: rgba(100, 116, 139, 0.15);
+        color: #64748b;
+        border: 1px solid rgba(100, 116, 139, 0.3);
+    }
+    
+    /* ============================================
+       ✅ ESTILOS PARA MODAL DE DETALLE
+       ============================================ */
+    .detail-image-large {
+        width: 100%;
+        max-width: 250px;
+        height: 250px;
+        border-radius: 16px;
+        object-fit: cover;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        margin: 0 auto;
+        display: block;
+    }
+    .detail-placeholder-large {
+        width: 100%;
+        max-width: 250px;
+        height: 250px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(59, 130, 246, 0.3) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #3b82f6;
+        font-size: 5rem;
+        font-weight: 700;
+        box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+        margin: 0 auto;
+    }
+    .detail-section {
+        background: rgba(248, 250, 252, 0.6);
+        border: 1px solid rgba(203, 213, 225, 0.5);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+    }
+    .detail-section-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .detail-section-title i {
+        color: #3b82f6;
+        font-size: 1.2rem;
+    }
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(203, 213, 225, 0.3);
+    }
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+    .detail-label {
+        font-weight: 600;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+    .detail-value {
+        font-weight: 700;
+        color: #1e293b;
+        font-size: 0.95rem;
+        text-align: right;
     }
     /* ============================================
        BOTONES
@@ -721,6 +799,7 @@
     .stat-card:nth-child(2) { animation-delay: 0.1s; }
     .stat-card:nth-child(3) { animation-delay: 0.15s; }
     .stat-card:nth-child(4) { animation-delay: 0.2s; }
+    .stat-card:nth-child(5) { animation-delay: 0.25s; }
 </style>
 {% endblock %}
 
@@ -774,7 +853,7 @@
                 <div class="stat-label">Total Productos</div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <div class="stat-card">
                 <div class="stat-icon" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">
                     <i class="bi bi-check-circle-fill"></i>
@@ -783,7 +862,7 @@
                 <div class="stat-label">Activos</div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <div class="stat-card">
                 <div class="stat-icon" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">
                     <i class="bi bi-box-seam"></i>
@@ -792,7 +871,7 @@
                 <div class="stat-label">Quintales</div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <div class="stat-card">
                 <div class="stat-icon" style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6;">
                     <i class="bi bi-box"></i>
@@ -801,10 +880,19 @@
                 <div class="stat-label">Normales</div>
             </div>
         </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(34, 197, 94, 0.2); color: #16a34a;">
+                    <i class="bi bi-percent"></i>
+                </div>
+                <div class="stat-value" id="productosConIVA">0</div>
+                <div class="stat-label">Con IVA</div>
+            </div>
+        </div>
     </div>
 
     <!-- Filtros -->
-    <div class="admin-card mb-4" style="animation-delay: 0.25s;">
+    <div class="admin-card mb-4" style="animation-delay: 0.3s;">
         <div class="row g-3">
             <div class="col-md-4">
                 <input type="text" class="form-control-admin" id="searchInput" placeholder="Buscar por nombre, código..." value="{{ search }}" onkeyup="handleSearch()">
@@ -838,7 +926,7 @@
     </div>
 
     <!-- Tabla de Productos -->
-    <div class="admin-card" style="animation-delay: 0.3s;">
+    <div class="admin-card" style="animation-delay: 0.35s;">
         <div class="table-responsive">
             <table class="table-admin">
                 <thead>
@@ -849,6 +937,7 @@
                         <th>Categoría</th>
                         <th>Marca</th>
                         <th>Tipo</th>
+                        <th>IVA</th>
                         <th>Stock</th>
                         <th>Precio</th>
                         <th>Estado</th>
@@ -858,7 +947,22 @@
                 <tbody id="productosTableBody">
                     {% if productos %}
                         {% for producto in productos %}
-                        <tr>
+                        <tr 
+                            data-id="{{ producto.id }}"
+                            data-nombre="{{ producto.nombre }}"
+                            data-codigo="{{ producto.codigo_barras }}"
+                            data-descripcion="{{ producto.descripcion|default:'' }}"
+                            data-categoria="{{ producto.categoria.id|default:'' }}"
+                            data-categoria-nombre="{{ producto.categoria.nombre|default:'Sin categoría' }}"
+                            data-marca="{{ producto.marca.id|default:'' }}"
+                            data-marca-nombre="{{ producto.marca.nombre|default:'Sin marca' }}"
+                            data-tipo="{{ producto.tipo_inventario }}"
+                            data-iva="{{ producto.iva|floatformat:2 }}"
+                            data-precio-unitario="{{ producto.precio_unitario|floatformat:2|default:'0.00' }}"
+                            data-precio-peso="{{ producto.precio_por_unidad_peso|floatformat:2|default:'0.00' }}"
+                            data-activo="{{ producto.activo|yesno:'true,false' }}"
+                            data-imagen-url="{% if producto.imagen %}{{ producto.imagen.url }}{% endif %}"
+                        >
                             <td>
                                 {% if producto.imagen %}
                                     <img src="{{ producto.imagen.url }}" class="product-image" alt="{{ producto.nombre }}">
@@ -912,8 +1016,19 @@
                                 {% endif %}
                             </td>
                             <td>
+                                {% if producto.iva > 0 %}
+                                    <span class="badge-admin badge-iva">
+                                        <i class="bi bi-check-circle-fill me-1"></i>{{ producto.iva }}%
+                                    </span>
+                                {% else %}
+                                    <span class="badge-admin badge-no-iva">
+                                        <i class="bi bi-x-circle me-1"></i>0%
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
                                 {% if producto.tipo_inventario == 'QUINTAL' %}
-                                    {% with producto.quintales.filter as quintales %}
+                                    {% with producto.quintales.all as quintales %}
                                         {% if quintales %}
                                             <div style="font-weight: 700; color: #3b82f6; font-size: 1.1rem;">
                                                 <i class="bi bi-box-seam-fill me-1"></i>
@@ -989,7 +1104,7 @@
                         {% endfor %}
                     {% else %}
                     <tr>
-                        <td colspan="10" class="text-center" style="padding: 3rem;">
+                        <td colspan="11" class="text-center" style="padding: 3rem;">
                             <i class="bi bi-inbox" style="font-size: 3rem; color: #64748b;"></i>
                             <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">No se encontraron productos</p>
                             <button class="btn-primary-admin mt-3" onclick="openCreateModal()">
@@ -1057,7 +1172,6 @@
 <!-- Modal Crear/Editar Producto -->
 <div class="modal fade" id="productoModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-lg">
-        <!-- ✅ Agregar enctype para subir archivos -->
         <form id="productoForm" method="POST" action="" enctype="multipart/form-data">
             <div class="modal-content">
                 <div class="modal-header">
@@ -1070,7 +1184,6 @@
                     {% csrf_token %}
                     <input type="hidden" id="productoId" name="producto_id">
                     
-                    <!-- ✅ SECCIÓN DE IMAGEN -->
                     <div class="form-group-admin">
                         <label class="form-label-admin">
                             <i class="bi bi-image-fill"></i>Imagen del Producto
@@ -1137,7 +1250,6 @@
                                 </select>
                             </div>
                         </div>
-                        <!-- ✅ CAMPO DE MARCA -->
                         <div class="col-md-6">
                             <div class="form-group-admin">
                                 <label class="form-label-admin">
@@ -1157,6 +1269,26 @@
                         <div class="col-md-12">
                             <div class="form-group-admin">
                                 <label class="form-label-admin">
+                                    <i class="bi bi-percent"></i>Impuesto IVA
+                                </label>
+                                <select class="form-control-admin" id="iva" name="iva" onchange="updateIVAInfo()">
+                                    <option value="0">Sin IVA (0%)</option>
+                                    <option value="{{ iva_default }}" selected>Aplicar IVA ({{ iva_default }}%)</option>
+                                </select>
+                                <div id="ivaInfo" style="margin-top: 0.75rem; background: rgba(34, 197, 94, 0.1); border: 2px solid rgba(34, 197, 94, 0.3); border-radius: 10px; padding: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="bi bi-info-circle-fill" style="color: #16a34a; font-size: 1.2rem;"></i>
+                                    <span style="color: #16a34a; font-weight: 600; font-size: 0.9rem;">
+                                        Se aplicará <strong>{{ iva_default }}%</strong> de IVA al precio del producto
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group-admin">
+                                <label class="form-label-admin">
                                     <i class="bi bi-box"></i>Tipo de Inventario *
                                 </label>
                                 <select class="form-control-admin" id="tipo_inventario" name="tipo_inventario" required onchange="toggleTipoInventario()">
@@ -1167,23 +1299,31 @@
                         </div>
                     </div>
 
-                    <!-- Campos para NORMAL -->
+                    <!-- ✅ CAMPOS PARA PRODUCTO NORMAL -->
                     <div id="camposNormal">
                         <div class="form-group-admin">
                             <label class="form-label-admin">
-                                <i class="bi bi-cash"></i>Precio Unitario *
+                                <i class="bi bi-cash"></i>Precio de Venta *
                             </label>
-                            <input type="number" class="form-control-admin" id="precio_unitario" name="precio_unitario" step="0.01" min="0">
+                            <input type="number" class="form-control-admin" id="precio_unitario" name="precio_unitario" step="0.01" min="0" placeholder="0.00">
+                            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Precio de venta por unidad (sin IVA)
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Campos para QUINTAL -->
+                    <!-- ✅ CAMPOS PARA QUINTAL -->
                     <div id="camposQuintal" style="display: none;">
                         <div class="form-group-admin">
                             <label class="form-label-admin">
-                                <i class="bi bi-cash"></i>Precio por Unidad de Peso *
+                                <i class="bi bi-cash"></i>Precio de Venta por Peso *
                             </label>
-                            <input type="number" class="form-control-admin" id="precio_por_unidad_peso" name="precio_por_unidad_peso" step="0.01" min="0">
+                            <input type="number" class="form-control-admin" id="precio_por_unidad_peso" name="precio_por_unidad_peso" step="0.01" min="0" placeholder="0.00">
+                            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Precio de venta por unidad de peso (ej: por kg o lb)
+                            </div>
                         </div>
                     </div>
 
@@ -1223,8 +1363,10 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="viewProductoContent">
-                <div class="spinner-border" role="status">
-                    <span class="visually-hidden">Cargando...</span>
+                <div class="text-center" style="padding: 2rem;">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -1275,6 +1417,7 @@
 {% block extra_js %}
 <script>
     let searchTimeout = null;
+    const IVA_DEFAULT = parseFloat('{{ iva_default }}');
 
     // Sistema de Notificaciones Toast
     function showNotification(type, message, title = null) {
@@ -1318,7 +1461,6 @@
         }, 3000);
     }
 
-    // ✅ Preview de imagen
     function previewImage(input) {
         const preview = document.getElementById('imagePreview');
         const placeholder = document.getElementById('imagePlaceholder');
@@ -1338,7 +1480,6 @@
         }
     }
 
-    // ✅ Quitar imagen
     function removeImage() {
         const input = document.getElementById('imagenInput');
         const preview = document.getElementById('imagePreview');
@@ -1352,18 +1493,46 @@
         btnRemove.style.display = 'none';
     }
 
-    // Cargar estadísticas al iniciar
+    function updateIVAInfo() {
+        const ivaSelect = document.getElementById('iva');
+        const ivaInfo = document.getElementById('ivaInfo');
+        const ivaValue = parseFloat(ivaSelect.value);
+        
+        if (ivaValue > 0) {
+            ivaInfo.style.display = 'flex';
+            ivaInfo.style.background = 'rgba(34, 197, 94, 0.1)';
+            ivaInfo.style.borderColor = 'rgba(34, 197, 94, 0.3)';
+            ivaInfo.innerHTML = `
+                <i class="bi bi-info-circle-fill" style="color: #16a34a; font-size: 1.2rem;"></i>
+                <span style="color: #16a34a; font-weight: 600; font-size: 0.9rem;">
+                    Se aplicará <strong>${ivaValue}%</strong> de IVA al precio del producto
+                </span>
+            `;
+        } else {
+            ivaInfo.style.display = 'flex';
+            ivaInfo.style.background = 'rgba(100, 116, 139, 0.1)';
+            ivaInfo.style.borderColor = 'rgba(100, 116, 139, 0.3)';
+            ivaInfo.innerHTML = `
+                <i class="bi bi-x-circle-fill" style="color: #64748b; font-size: 1.2rem;"></i>
+                <span style="color: #64748b; font-weight: 600; font-size: 0.9rem;">
+                    Este producto <strong>no aplica IVA</strong>
+                </span>
+            `;
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         loadStats();
+        updateIVAInfo();
     });
 
-    // Cargar estadísticas
     function loadStats() {
-        const rows = document.querySelectorAll('#productosTableBody tr:not(:has(td[colspan]))');
+        const rows = document.querySelectorAll('#productosTableBody tr[data-id]');
         const total = rows.length;
         let activos = 0;
         let quintales = 0;
         let normales = 0;
+        let conIVA = 0;
 
         rows.forEach(row => {
             const badgeSuccess = row.querySelector('.badge-success');
@@ -1374,15 +1543,18 @@
             
             if (tipoQuintal) quintales++;
             if (tipoNormal) normales++;
+            
+            const ivaBadge = row.querySelector('.badge-iva');
+            if (ivaBadge) conIVA++;
         });
 
         document.getElementById('totalProductos').textContent = total;
         document.getElementById('productosActivos').textContent = activos;
         document.getElementById('quintalesDisponibles').textContent = quintales;
         document.getElementById('productosNormales').textContent = normales;
+        document.getElementById('productosConIVA').textContent = conIVA;
     }
 
-    // Búsqueda con delay
     function handleSearch() {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
@@ -1390,7 +1562,6 @@
         }, 500);
     }
 
-    // Aplicar filtros
     function applyFilters() {
         const search = document.getElementById('searchInput').value;
         const categoria = document.getElementById('filterCategoria').value;
@@ -1404,7 +1575,6 @@
         window.location.href = url;
     }
 
-    // Toggle entre tipo de inventario
     function toggleTipoInventario() {
         const tipo = document.getElementById('tipo_inventario').value;
         const camposNormal = document.getElementById('camposNormal');
@@ -1423,7 +1593,6 @@
         }
     }
 
-    // Abrir modal crear
     function openCreateModal() {
         const form = document.getElementById('productoForm');
         
@@ -1432,9 +1601,9 @@
         document.getElementById('productoId').value = '';
         document.getElementById('activo').checked = true;
         
-        // ✅ Limpiar preview de imagen
         removeImage();
-        
+        document.getElementById('iva').value = IVA_DEFAULT;
+        updateIVAInfo();
         toggleTipoInventario();
         
         form.action = "{% url 'custom_admin:producto_crear' %}";
@@ -1447,77 +1616,261 @@
         modal.show();
     }
 
-    // Editar producto
-    function editProducto(productoId) {
-        // Buscar la fila del producto
-        const row = document.querySelector(`button[onclick="editProducto('${productoId}')"]`).closest('tr');
-        const form = document.getElementById('productoForm');
+    // ✅✅✅ FUNCIÓN EDITAR - VERSIÓN DEFINITIVA 100% FUNCIONAL ✅✅✅
+    // ✅✅✅ FUNCIÓN EDITAR - VERSIÓN CON CONVERSIÓN DE NÚMERO ✅✅✅
+function editProducto(productoId) {
+    console.log('🔍 Iniciando edición del producto:', productoId);
+    
+    const row = document.querySelector(`tr[data-id="${productoId}"]`);
+    
+    if (!row) {
+        showNotification('error', 'No se pudo encontrar el producto');
+        console.error('❌ No se encontró el row con ID:', productoId);
+        return;
+    }
+    
+    // ✅ Función helper para limpiar y convertir precios
+    const limpiarPrecio = (valor) => {
+        if (!valor) return '0.00';
+        // Remover cualquier carácter que no sea número, punto o coma
+        let limpio = String(valor).replace(/[^\d.,]/g, '');
+        // Reemplazar coma por punto (por si acaso)
+        limpio = limpio.replace(',', '.');
+        // Convertir a número y volver a string con 2 decimales
+        const numero = parseFloat(limpio) || 0;
+        return numero.toFixed(2);
+    };
+    
+    // ✅ Extraer TODOS los datos del row con limpieza de precios
+    const datos = {
+        id: productoId,
+        nombre: row.getAttribute('data-nombre') || '',
+        codigo: row.getAttribute('data-codigo') || '',
+        descripcion: row.getAttribute('data-descripcion') || '',
+        categoriaId: row.getAttribute('data-categoria') || '',
+        marcaId: row.getAttribute('data-marca') || '',
+        iva: row.getAttribute('data-iva') || '0',
+        tipo: row.getAttribute('data-tipo') || 'NORMAL',
+        precioUnitario: limpiarPrecio(row.getAttribute('data-precio-unitario')),
+        precioPeso: limpiarPrecio(row.getAttribute('data-precio-peso')),
+        activo: row.getAttribute('data-activo') === 'true',
+        imagenUrl: row.getAttribute('data-imagen-url') || ''
+    };
+    
+    console.log('📦 Datos extraídos y limpiados:', datos);
+    console.log('💰 Precio unitario limpio:', datos.precioUnitario);
+    console.log('💰 Precio peso limpio:', datos.precioPeso);
+    
+    const form = document.getElementById('productoForm');
+    const modalElement = document.getElementById('productoModal');
+    
+    // Cambiar título
+    document.getElementById('productoModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Producto';
+    document.getElementById('productoId').value = datos.id;
+    
+    // ✅ Cargar campos básicos
+    document.getElementById('nombre').value = datos.nombre;
+    document.getElementById('codigo_barras').value = datos.codigo;
+    document.getElementById('descripcion').value = datos.descripcion;
+    
+    // ✅ Cargar selects
+    if (datos.categoriaId) {
+        document.getElementById('categoria').value = datos.categoriaId;
+    }
+    
+    if (datos.marcaId) {
+        document.getElementById('marca').value = datos.marcaId;
+    } else {
+        document.getElementById('marca').value = '';
+    }
+    
+    // ✅ Cargar IVA
+    document.getElementById('iva').value = datos.iva;
+    updateIVAInfo();
+    
+    // ✅ Cargar activo
+    document.getElementById('activo').checked = datos.activo;
+    
+    // ✅ Cargar imagen
+    if (datos.imagenUrl) {
+        const preview = document.getElementById('imagePreview');
+        const placeholder = document.getElementById('imagePlaceholder');
+        const btnRemove = document.getElementById('btnRemoveImage');
         
-        document.getElementById('productoModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Producto';
-        document.getElementById('productoId').value = productoId;
+        preview.src = datos.imagenUrl;
+        preview.style.display = 'block';
+        placeholder.style.display = 'none';
+        btnRemove.style.display = 'inline-block';
+    } else {
+        removeImage();
+    }
+    
+    // ✅ Configurar tipo de inventario
+    document.getElementById('tipo_inventario').value = datos.tipo;
+    console.log('🔄 Tipo configurado:', datos.tipo);
+    
+    // Hacer toggle inicial
+    toggleTipoInventario();
+    
+    // Configurar formulario
+    form.action = `/panel/inventario/productos/${datos.id}/editar/`;
+    
+    const saveBtn = document.getElementById('saveBtn');
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Actualizar';
+    
+    // 🎯 SOLUCIÓN: Usar el evento 'shown.bs.modal' para cargar precios
+    modalElement.addEventListener('shown.bs.modal', function cargarPreciosHandler() {
+        console.log('🎬 Modal visible, cargando precios...');
         
-        // Extraer datos de la fila
-        const nombreElement = row.querySelector('td:nth-child(2) > div > div:first-child');
-        const nombreTexto = nombreElement.textContent.trim();
-        const nombreLimpio = nombreTexto.replace(/📦/g, '').replace(/📋/g, '').trim();
-        document.getElementById('nombre').value = nombreLimpio;
+        // Remover el listener
+        modalElement.removeEventListener('shown.bs.modal', cargarPreciosHandler);
         
-        const codigoBarras = row.querySelector('td:nth-child(3) .badge-info').textContent.trim();
-        document.getElementById('codigo_barras').value = codigoBarras;
-        
-        const descripcionCell = row.querySelector('td:nth-child(2) > div > div:last-child');
-        document.getElementById('descripcion').value = descripcionCell ? descripcionCell.textContent.trim() : '';
-        
-        const activo = row.querySelector('.badge-success') !== null;
-        document.getElementById('activo').checked = activo;
-        
-        // ✅ Mostrar imagen si existe
-        const imgElement = row.querySelector('.product-image');
-        if (imgElement) {
-            const preview = document.getElementById('imagePreview');
-            const placeholder = document.getElementById('imagePlaceholder');
-            const btnRemove = document.getElementById('btnRemoveImage');
-            
-            preview.src = imgElement.src;
-            preview.style.display = 'block';
-            placeholder.style.display = 'none';
-            btnRemove.style.display = 'inline-block';
+        // ✅ CARGAR PRECIOS CON CONVERSIÓN EXPLÍCITA A STRING
+        if (datos.tipo === 'QUINTAL') {
+            const inputPrecioPeso = document.getElementById('precio_por_unidad_peso');
+            // Asignar directamente el string limpio
+            inputPrecioPeso.value = datos.precioPeso;
+            console.log('✅ Precio por peso cargado:', inputPrecioPeso.value);
+            console.log('🔍 Verificando input:', inputPrecioPeso);
         } else {
-            removeImage();
+            const inputPrecioUnitario = document.getElementById('precio_unitario');
+            // Asignar directamente el string limpio
+            inputPrecioUnitario.value = datos.precioUnitario;
+            console.log('✅ Precio de venta cargado:', inputPrecioUnitario.value);
+            console.log('🔍 Verificando input:', inputPrecioUnitario);
         }
         
-        form.action = `/panel/inventario/productos/${productoId}/editar/`;
-        
-        const saveBtn = document.getElementById('saveBtn');
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Guardar';
-        
-        const modal = new bootstrap.Modal(document.getElementById('productoModal'));
-        modal.show();
-    }
+        console.log('🎉 Todos los datos cargados correctamente');
+    }, { once: true });
+    
+    // Mostrar modal
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+    console.log('📤 Mostrando modal...');
+}
 
-    // Ver detalles
+    // ✅ FUNCIÓN VER DETALLES
     function viewProducto(productoId) {
+        const row = document.querySelector(`tr[data-id="${productoId}"]`);
+        
+        if (!row) {
+            showNotification('error', 'No se pudo encontrar el producto');
+            return;
+        }
+        
         const modal = new bootstrap.Modal(document.getElementById('viewProductoModal'));
         modal.show();
         
-        // Cargar datos del producto
         const content = document.getElementById('viewProductoContent');
-        content.innerHTML = '<div class="text-center" style="padding: 2rem;"><div class="spinner-border" role="status"></div><p style="margin-top: 1rem;">Cargando detalles...</p></div>';
+        content.innerHTML = '<div class="text-center" style="padding: 2rem;"><div class="spinner-border" role="status"></div></div>';
         
-        // Simulación - en producción cargarías desde el servidor
         setTimeout(() => {
+            const nombre = row.getAttribute('data-nombre');
+            const codigo = row.getAttribute('data-codigo');
+            const descripcion = row.getAttribute('data-descripcion') || 'Sin descripción';
+            const categoriaNombre = row.getAttribute('data-categoria-nombre');
+            const marcaNombre = row.getAttribute('data-marca-nombre');
+            const tipo = row.getAttribute('data-tipo');
+            const iva = parseFloat(row.getAttribute('data-iva'));
+            const precioUnitario = row.getAttribute('data-precio-unitario');
+            const precioPeso = row.getAttribute('data-precio-peso');
+            const activo = row.getAttribute('data-activo') === 'true';
+            const imagenUrl = row.getAttribute('data-imagen-url');
+            
+            const tipoNombre = tipo === 'QUINTAL' ? 'Quintal (Por peso)' : 'Normal (Unitario)';
+            const tipoIcon = tipo === 'QUINTAL' ? 'bi-box-seam' : 'bi-box';
+            const tipoColor = tipo === 'QUINTAL' ? '#3b82f6' : '#8b5cf6';
+            
+            const precioMostrar = tipo === 'QUINTAL' ? `$${precioPeso}/kg` : `$${precioUnitario}`;
+            
+            const estadoBadge = activo ? 
+                '<span class="badge-admin badge-success"><i class="bi bi-check-circle-fill me-1"></i>Activo</span>' :
+                '<span class="badge-admin badge-danger"><i class="bi bi-x-circle-fill me-1"></i>Inactivo</span>';
+            
+            const ivaBadge = iva > 0 ?
+                `<span class="badge-admin badge-iva"><i class="bi bi-check-circle-fill me-1"></i>${iva}%</span>` :
+                '<span class="badge-admin badge-no-iva"><i class="bi bi-x-circle me-1"></i>0%</span>';
+            
+            let imagenHTML = '';
+            if (imagenUrl) {
+                imagenHTML = `<img src="${imagenUrl}" class="detail-image-large" alt="${nombre}">`;
+            } else {
+                imagenHTML = `
+                    <div class="detail-placeholder-large">
+                        <i class="bi ${tipoIcon}"></i>
+                    </div>
+                `;
+            }
+            
             content.innerHTML = `
-                <div class="alert-admin alert-info-admin">
-                    <i class="bi bi-info-circle-fill"></i>
-                    Vista detallada del producto en desarrollo
+                <div class="row">
+                    <div class="col-md-4 text-center mb-4">
+                        ${imagenHTML}
+                    </div>
+                    <div class="col-md-8">
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 style="font-weight: 800; color: #0f172a; margin-bottom: 0.5rem;">
+                                <i class="bi ${tipoIcon} me-2" style="color: ${tipoColor};"></i>
+                                ${nombre}
+                            </h3>
+                            <p style="color: #64748b; margin: 0; font-size: 0.95rem;">${descripcion}</p>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <div class="detail-section-title">
+                                <i class="bi bi-info-circle-fill"></i>
+                                Información General
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Código de Barras</span>
+                                <span class="detail-value"><span class="badge-admin badge-info">${codigo}</span></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Categoría</span>
+                                <span class="detail-value">${categoriaNombre}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Marca</span>
+                                <span class="detail-value">${marcaNombre}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Tipo de Inventario</span>
+                                <span class="detail-value">${tipoNombre}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <div class="detail-section-title">
+                                <i class="bi bi-cash-coin"></i>
+                                Precios e Impuestos
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Precio de Venta</span>
+                                <span class="detail-value" style="font-size: 1.2rem; color: #10b981;">${precioMostrar}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">IVA Aplicado</span>
+                                <span class="detail-value">${ivaBadge}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <div class="detail-section-title">
+                                <i class="bi bi-gear-fill"></i>
+                                Estado
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Estado del Producto</span>
+                                <span class="detail-value">${estadoBadge}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <p>ID del producto: ${productoId}</p>
             `;
-        }, 500);
+        }, 300);
     }
 
-    // Eliminar producto
     function deleteProducto(productoId, nombre) {
         document.getElementById('deleteProductoId').value = productoId;
         document.getElementById('deleteProductoInfo').textContent = `Producto: ${nombre}`;
@@ -1528,7 +1881,6 @@
         modal.show();
     }
 
-    // Confirmar eliminación
     function confirmDelete() {
         const form = document.getElementById('deleteForm');
         form.submit();

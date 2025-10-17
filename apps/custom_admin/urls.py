@@ -100,8 +100,9 @@ urlpatterns = [
     # ========================================
     path('inventario/entrada/', views.entrada_inventario_view, name='entrada_inventario'),
     
-    # APIs para Entrada de Inventario
+    # ✅ APIs para Entrada de Inventario (CORREGIDAS)
     path('api/inventario/procesar-entrada-unificada/', views.api_procesar_entrada_unificada, name='api_procesar_entrada_unificada'),
+    path('api/inventario/quintales-disponibles/', views.api_quintales_disponibles, name='api_quintales_disponibles'),
     path('api/inventario/procesar-entrada/', views.api_procesar_entrada_masiva, name='api_procesar_entrada'),
     path('api/inventario/generar-pdf-codigos/', views.api_generar_pdf_codigos, name='api_generar_pdf_codigos'),
     

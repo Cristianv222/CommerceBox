@@ -4,7 +4,7 @@
 
 INFORMACIÓN GENERAL
 -------------------
-Fecha de generación: 2025-10-16 00:18:50
+Fecha de generación: 2025-10-16 16:25:20
 Ubicación: C:\Users\godoy\Desktop\CommerceBox
 Python Version: Python 3.13.7
 Pip Version: pip no disponible
@@ -51,8 +51,8 @@ Usuario: Desconocido
 │   │   ├── apps.py (166.0B)
 │   │   ├── models.py (60.0B)
 │   │   ├── tests.py (63.0B)
-│   │   ├── urls.py (8.8KB)
-│   │   └── views.py (134.2KB)
+│   │   ├── urls.py (10.4KB)
+│   │   └── views.py (150.6KB)
 │   ├── financial_management/ (13 elementos)
 │   │   ├── accounting/ (4 elementos)
 │   │   │   ├── __init__.py (404.0B)
@@ -237,17 +237,26 @@ Usuario: Desconocido
 │   ├── urls.py (1.4KB)
 │   └── wsgi.py (415.0B)
 ├── logs/ (2 elementos)
-│   ├── commercebox.log (4.2MB)
+│   ├── commercebox.log (4.5MB)
 │   └── commercebox_audit.log (0B)
 ├── media/ (5 elementos)
 │   ├── barcodes/ (2 elementos)
 │   │   ├── productos/ (0 elementos)
 │   │   └── quintales/ (0 elementos)
 │   ├── invoices/ (0 elementos)
-│   ├── marcas/ (1 elementos)
-│   │   └── senal-satelital.png (38.5KB)
-│   ├── productos/ (1 elementos)
-│   │   └── lunar.webp (5.1KB)
+│   ├── marcas/ (4 elementos)
+│   │   ├── acer-predator-logo-4k-wallpaper-uhdpaper.com-4633a.jpg (1.9MB)
+│   │   ├── IMG_1862.png (857.8KB)
+│   │   ├── senal-satelital.png (38.5KB)
+│   │   └── WhatsApp_Image_2025-04-01_at_15.16.02.jpeg (41.2KB)
+│   ├── productos/ (7 elementos)
+│   │   ├── acer-predator-logo-4k-wallpaper-uhdpaper.com-4623a.jpg (1.7MB)
+│   │   ├── lunar.webp (5.1KB)
+│   │   ├── Predator_Wallpaper_01_3840x2400.jpg (6.4MB)
+│   │   ├── Predator_Wallpaper_03_3840x2400.jpg (9.3MB)
+│   │   ├── senal-satelital.png (38.5KB)
+│   │   ├── WhatsApp_Image_2025-09-03_at_16.16.06.jpeg (41.7KB)
+│   │   └── WhatsApp_Image_2025-09-03_at_16.16.06_vNlM5Oy.jpeg (41.7KB)
 │   └── reports/ (0 elementos)
 ├── scripts/ (1 elementos)
 │   └── init_db.sql/ (0 elementos)
@@ -257,12 +266,13 @@ Usuario: Desconocido
 │   ├── authentication/ (1 elementos)
 │   │   └── login.html (23.0KB)
 │   ├── custom_admin/ (9 elementos)
-│   │   ├── inventario/ (5 elementos)
+│   │   ├── inventario/ (6 elementos)
 │   │   │   ├── categorias_list.html (51.3KB)
-│   │   │   ├── entrada_inventario.html (41.9KB)
-│   │   │   ├── marcas_list.html (47.3KB)
+│   │   │   ├── entrada_inventario.html (73.4KB)
+│   │   │   ├── marcas_list.html (53.0KB)
 │   │   │   ├── movimientos_list.html (42.9KB)
-│   │   │   └── productos_list.html (53.5KB)
+│   │   │   ├── productos_list.html (61.3KB)
+│   │   │   └── proveedores_list.html (42.9KB)
 │   │   ├── logs/ (1 elementos)
 │   │   │   └── accesos.html (33.8KB)
 │   │   ├── pos/ (1 elementos)
@@ -275,7 +285,7 @@ Usuario: Desconocido
 │   │   │   └── usuarios.html (66.6KB)
 │   │   ├── ventas/ (1 elementos)
 │   │   │   └── list.html (52.0KB)
-│   │   ├── base_admin.html (36.8KB)
+│   │   ├── base_admin.html (36.9KB)
 │   │   └── dashboard.html (28.9KB)
 │   ├── errors/ (0 elementos)
 │   └── base.html (23.9KB)
@@ -312,20 +322,20 @@ setup.cfg                 ❌ Faltante
 
 ESTADÍSTICAS POR EXTENSIÓN
 --------------------------
-.py                   181 archivos ( 85.8%)
-.html                  15 archivos (  7.1%)
-(sin extensión)         4 archivos (  1.9%)
+.py                   181 archivos ( 81.9%)
+.html                  16 archivos (  7.2%)
+.jpg                    4 archivos (  1.8%)
+(sin extensión)         4 archivos (  1.8%)
+.png                    3 archivos (  1.4%)
+.jpeg                   3 archivos (  1.4%)
 .log                    2 archivos (  0.9%)
 .md                     2 archivos (  0.9%)
-.png                    1 archivos (  0.5%)
 .webp                   1 archivos (  0.5%)
 .ps1                    1 archivos (  0.5%)
-.yml                    1 archivos (  0.5%)
-.sh                     1 archivos (  0.5%)
 
 TOTALES
 -------
-Total de archivos: 211
+Total de archivos: 221
 Total de directorios: 63
 
 ================================================================================
@@ -470,7 +480,7 @@ storage/invoices/pdf/               ❌ Facturas PDF generadas
 storage/invoices/sent/              ❌ Facturas enviadas al SRI 
 storage/logs/                       ❌ Logs del sistema 
 storage/backups/                    ❌ Respaldos de BD 
-media/                              ✅ Archivos de media (9 archivos)
+media/                              ✅ Archivos de media (18 archivos)
 static/                             ✅ Archivos estáticos (1 archivos)
 uploads/                            ❌ Archivos subidos 
 
@@ -522,12 +532,12 @@ Documentación:           ⚠️  Iniciada (60%)
 ESTADÍSTICAS GENERALES
 ---------------------
 Total directorios:       63
-Total archivos:          211
+Total archivos:          221
 Apps Django:             10
 Archivos Python:         181
 Paquetes instalados:     0
 
 ================================================================================
-Reporte generado automáticamente el 2025-10-16 00:18:50
+Reporte generado automáticamente el 2025-10-16 16:25:20
 Para actualizar, ejecuta: python documenter.py
 ================================================================================

@@ -73,12 +73,27 @@ def inventario_dashboard_view(request):
 @ensure_csrf_cookie
 @auth_required
 def productos_view(request):
-    """Lista de productos con datos reales"""
-    from apps.inventory_management.models import Producto, Categoria, Marca
-    from django.db.models import Q
+    """Lista de productos con datos reales - VERSIÓN CORREGIDA"""
+    from apps.inventory_management.models import Producto, Categoria, Marca, Quintal
+    from apps.system_configuration.models import ConfiguracionSistema
+    from django.db.models import Q, Prefetch
     from django.core.paginator import Paginator
     
-    productos = Producto.objects.select_related('categoria', 'proveedor', 'unidad_medida_base').filter(activo=True).order_by('nombre')
+    # ✅ SOLUCIÓN: Usar prefetch_related para cargar quintales e inventario normal
+    productos = Producto.objects.select_related(
+        'categoria', 
+        'proveedor', 
+        'unidad_medida_base', 
+        'marca'
+    ).prefetch_related(
+        # ✅ Cargar solo quintales disponibles (optimización)
+        Prefetch(
+            'quintales',
+            queryset=Quintal.objects.filter(estado='DISPONIBLE').order_by('fecha_recepcion')
+        ),
+        # ✅ Cargar inventario normal también
+        'inventario_normal'
+    ).filter(activo=True).order_by('nombre')
     
     # Filtros
     search = request.GET.get('search', '')
@@ -102,6 +117,10 @@ def productos_view(request):
     categorias = Categoria.objects.filter(activa=True).order_by('nombre')
     marcas = Marca.objects.filter(activa=True).order_by('nombre')
     
+    # ✅ OBTENER IVA DEFAULT DEL SISTEMA
+    config = ConfiguracionSistema.get_config()
+    iva_default = config.iva_default
+    
     # Paginación
     paginator = Paginator(productos, 20)
     page_number = request.GET.get('page', 1)
@@ -115,10 +134,10 @@ def productos_view(request):
         'search': search,
         'categoria_selected': categoria_id,
         'tipo_selected': tipo,
+        'iva_default': iva_default,
     }
     
     return render(request, 'custom_admin/inventario/productos_list.html', context)
-
 @ensure_csrf_cookie
 @auth_required
 def producto_detail_view(request, pk):
@@ -132,6 +151,7 @@ def producto_crear(request):
     """Crear nuevo producto"""
     from apps.inventory_management.models import Producto
     from apps.authentication.models import Usuario
+    from decimal import Decimal
     
     if request.method == 'POST':
         try:
@@ -147,8 +167,10 @@ def producto_crear(request):
             nombre = request.POST.get('nombre', '').strip()
             descripcion = request.POST.get('descripcion', '').strip()
             categoria_id = request.POST.get('categoria', '').strip()
+            marca_id = request.POST.get('marca', '').strip()  # ✅ AGREGAR MARCA
             tipo_inventario = request.POST.get('tipo_inventario', 'NORMAL')
             activo = request.POST.get('activo') == 'on'
+            iva_value = request.POST.get('iva', '0').strip()  # ✅ OBTENER IVA
             
             if not nombre:
                 messages.error(request, 'El nombre del producto es obligatorio')
@@ -160,17 +182,26 @@ def producto_crear(request):
                 'tipo_inventario': tipo_inventario,
                 'activo': activo,
                 'usuario_registro': usuario,
+                'iva': Decimal(iva_value) if iva_value else Decimal('0.00'),  # ✅ AGREGAR IVA
             }
             
             if categoria_id:
                 producto_data['categoria_id'] = categoria_id
             
+            # ✅ AGREGAR MARCA SI EXISTE
+            if marca_id:
+                producto_data['marca_id'] = marca_id
+            
+            # ✅ MANEJAR IMAGEN
+            if 'imagen' in request.FILES:
+                producto_data['imagen'] = request.FILES['imagen']
+            
             if tipo_inventario == 'QUINTAL':
                 precio_peso = request.POST.get('precio_por_unidad_peso', '0').strip()
-                producto_data['precio_por_unidad_peso'] = float(precio_peso) if precio_peso else 0.0
+                producto_data['precio_por_unidad_peso'] = Decimal(precio_peso) if precio_peso else Decimal('0.00')
             else:
                 precio_unit = request.POST.get('precio_unitario', '0').strip()
-                producto_data['precio_unitario'] = float(precio_unit) if precio_unit else 0.0
+                producto_data['precio_unitario'] = Decimal(precio_unit) if precio_unit else Decimal('0.00')
             
             producto = Producto.objects.create(**producto_data)
             
@@ -190,6 +221,7 @@ def producto_editar(request, producto_id):
     """Editar producto existente"""
     from apps.inventory_management.models import Producto
     from apps.authentication.models import Usuario
+    from decimal import Decimal
     
     try:
         producto = Producto.objects.get(id=producto_id)
@@ -215,16 +247,28 @@ def producto_editar(request, producto_id):
             categoria_id = request.POST.get('categoria', '').strip()
             producto.categoria_id = categoria_id if categoria_id else None
             
+            # ✅ ACTUALIZAR MARCA
+            marca_id = request.POST.get('marca', '').strip()
+            producto.marca_id = marca_id if marca_id else None
+            
+            # ✅ ACTUALIZAR IVA
+            iva_value = request.POST.get('iva', '0').strip()
+            producto.iva = Decimal(iva_value) if iva_value else Decimal('0.00')
+            
+            # ✅ ACTUALIZAR IMAGEN SI SE SUBE UNA NUEVA
+            if 'imagen' in request.FILES:
+                producto.imagen = request.FILES['imagen']
+            
             tipo_inventario = request.POST.get('tipo_inventario', 'NORMAL')
             producto.tipo_inventario = tipo_inventario
             
             if tipo_inventario == 'QUINTAL':
                 precio_peso = request.POST.get('precio_por_unidad_peso', '0').strip()
-                producto.precio_por_unidad_peso = float(precio_peso) if precio_peso else 0.0
+                producto.precio_por_unidad_peso = Decimal(precio_peso) if precio_peso else Decimal('0.00')
                 producto.precio_unitario = None
             else:
                 precio_unit = request.POST.get('precio_unitario', '0').strip()
-                producto.precio_unitario = float(precio_unit) if precio_unit else 0.0
+                producto.precio_unitario = Decimal(precio_unit) if precio_unit else Decimal('0.00')
                 producto.precio_por_unidad_peso = None
             
             producto.activo = request.POST.get('activo') == 'on'
@@ -2412,27 +2456,31 @@ def api_venta_detalle(request, venta_id):
 # ENTRADA DE INVENTARIO UNIFICADA
 # ========================================
 
+from apps.system_configuration.models import ConfiguracionSistema
+
 @ensure_csrf_cookie
 @auth_required
 def entrada_inventario_view(request):
-    """Pantalla unificada de entrada de inventario"""
     from apps.inventory_management.models import Proveedor, UnidadMedida, Categoria, Marca
     
-    # ✅ CARGAR TODOS LOS DATOS NECESARIOS
     categorias = Categoria.objects.filter(activa=True).order_by('orden', 'nombre')
     proveedores = Proveedor.objects.filter(activo=True).order_by('nombre_comercial')
-    marcas = Marca.objects.filter(activa=True).order_by('nombre')  # ✅ AGREGADO
+    marcas = Marca.objects.filter(activa=True).order_by('nombre')
     unidades_medida = UnidadMedida.objects.filter(activa=True).order_by('orden_display')
+    
+    # ✅ OBTENER IVA DESDE CONFIGURACIÓN
+    config = ConfiguracionSistema.get_config()
+    iva_default = float(config.iva_default)
     
     context = {
         'categorias': categorias,
         'proveedores': proveedores,
-        'marcas': marcas,  # ✅ AGREGADO
+        'marcas': marcas,
         'unidades_medida': unidades_medida,
+        'iva_default': iva_default,  # ✅ PASAR IVA AL TEMPLATE
     }
     
     return render(request, 'custom_admin/inventario/entrada_inventario.html', context)
-@ensure_csrf_cookie
 def api_buscar_producto_codigo(request):
     """API para buscar producto por código de barras"""
     from apps.inventory_management.models import Producto
@@ -2809,7 +2857,72 @@ def api_generar_pdf_codigos(request):
             'error': f'Error generando PDF: {str(e)}',
             'detalle': traceback.format_exc()
         }, status=500)
-
+@ensure_csrf_cookie
+def api_quintales_disponibles(request):
+    """
+    API para obtener quintales disponibles de un producto
+    
+    Parámetros GET:
+        - producto_id (UUID): ID del producto del cual obtener quintales
+    
+    Retorna:
+        JSON con lista de quintales disponibles y sus detalles
+    
+    Uso:
+        GET /panel/api/inventario/quintales-disponibles/?producto_id=<uuid>
+    """
+    from apps.inventory_management.models import Quintal
+    from django.http import JsonResponse
+    
+    # Obtener producto_id del request
+    producto_id = request.GET.get('producto_id')
+    
+    # Validar que se envió el producto_id
+    if not producto_id:
+        return JsonResponse({
+            'success': False,
+            'error': 'Se requiere producto_id'
+        }, status=400)
+    
+    try:
+        # Obtener quintales disponibles del producto
+        quintales = Quintal.objects.filter(
+            producto_id=producto_id,
+            estado='DISPONIBLE'
+        ).select_related(
+            'producto',
+            'proveedor',
+            'unidad_medida'
+        ).order_by('fecha_recepcion')  # FIFO: primero los más antiguos
+        
+        # Construir lista de quintales para respuesta
+        quintales_data = []
+        for quintal in quintales:
+            quintales_data.append({
+                'id': str(quintal.id),
+                'codigo_unico': quintal.codigo_unico,
+                'peso_inicial': float(quintal.peso_inicial),
+                'peso_actual': float(quintal.peso_actual),
+                'unidad_medida': quintal.unidad_medida.abreviatura if quintal.unidad_medida else 'lb',
+                'costo_por_unidad': float(quintal.costo_por_unidad),
+                'fecha_recepcion': quintal.fecha_recepcion.strftime('%d/%m/%Y'),
+                'proveedor': quintal.proveedor.nombre_comercial if quintal.proveedor else 'Sin proveedor',
+                'lote': quintal.lote_proveedor or 'Sin lote',
+            })
+        
+        # Retornar respuesta exitosa
+        return JsonResponse({
+            'success': True,
+            'quintales': quintales_data,
+            'total': len(quintales_data)
+        })
+        
+    except Exception as e:
+        # Manejar errores
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 @ensure_csrf_cookie
 def api_procesar_entrada_unificada(request):
     """API para procesar entrada unificada de inventario - CON IMÁGENES"""
