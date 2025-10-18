@@ -6,15 +6,12 @@ from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView, View
 )
 from django.contrib import messages
-from django.db.models import Sum, Count, Q, F, DecimalField, ExpressionWrapper
+from django.db.models import Sum, Count, Q, F
 from django.http import JsonResponse
 from django.utils import timezone
 from django.db import transaction
 from decimal import Decimal
 from datetime import timedelta, datetime
-from django.db.models.functions import Coalesce, TruncDate
-from apps.sales_management.models import DetalleVenta
-import json
 
 from .models import (
     Caja, MovimientoCaja, ArqueoCaja,
@@ -36,71 +33,67 @@ from .mixins import (
 # ============================================================================
 
 class FinancialDashboardView(FinancialAccessMixin, TemplateView):
-    """Dashboard principal del módulo financiero con utilidades"""
-    template_name = 'custom_admin/financial/dashboard.html'
-
+    """Dashboard principal del módulo financiero"""
+    template_name = 'financial/dashboard.html'
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        hoy = timezone.now().date()
-        hoy_inicio = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
         
-        cajas_abiertas = Caja.objects.filter(estado='ABIERTA', activa=True).select_related('cajero_actual')
+        # Cajas abiertas
+        cajas_abiertas = Caja.objects.filter(
+            estado='ABIERTA',
+            activa=True
+        )
         context['cajas_abiertas'] = cajas_abiertas
         context['total_cajas_abiertas'] = cajas_abiertas.count()
-        context['total_efectivo_cajas'] = cajas_abiertas.aggregate(total=Sum('monto_actual'))['total'] or Decimal('0')
         
-        ventas_hoy = MovimientoCaja.objects.filter(tipo_movimiento='VENTA', fecha_movimiento__gte=hoy_inicio).aggregate(total=Sum('monto'), cantidad=Count('id'))
+        # Total en cajas abiertas
+        context['total_efectivo_cajas'] = cajas_abiertas.aggregate(
+            total=Sum('monto_actual')
+        )['total'] or Decimal('0')
+        
+        # Ventas del día
+        hoy_inicio = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        ventas_hoy = MovimientoCaja.objects.filter(
+            tipo_movimiento='VENTA',
+            fecha_movimiento__gte=hoy_inicio
+        ).aggregate(
+            total=Sum('monto'),
+            cantidad=Count('id')
+        )
         context['ventas_hoy'] = ventas_hoy['total'] or Decimal('0')
         context['cantidad_ventas_hoy'] = ventas_hoy['cantidad'] or 0
         
-        detalles_hoy = DetalleVenta.objects.filter(venta__fecha_venta__date=hoy, venta__estado='COMPLETADA').aggregate(ventas=Coalesce(Sum('total'), Decimal('0')), costos=Coalesce(Sum('costo_total'), Decimal('0')))
-        utilidad_hoy = detalles_hoy['ventas'] - detalles_hoy['costos']
-        margen_hoy = (utilidad_hoy / detalles_hoy['ventas'] * 100) if detalles_hoy['ventas'] > 0 else Decimal('0')
-        context['utilidad_dia'] = utilidad_hoy.quantize(Decimal('0.01'))
-        context['margen_dia'] = margen_hoy.quantize(Decimal('0.01'))
-        
-        inicio_semana = hoy - timedelta(days=hoy.weekday())
-        detalles_semana = DetalleVenta.objects.filter(venta__fecha_venta__date__gte=inicio_semana, venta__fecha_venta__date__lte=hoy, venta__estado='COMPLETADA').aggregate(ventas=Coalesce(Sum('total'), Decimal('0')), costos=Coalesce(Sum('costo_total'), Decimal('0')))
-        utilidad_semana = detalles_semana['ventas'] - detalles_semana['costos']
-        margen_semana = (utilidad_semana / detalles_semana['ventas'] * 100) if detalles_semana['ventas'] > 0 else Decimal('0')
-        context['ventas_semana'] = detalles_semana['ventas'].quantize(Decimal('0.01'))
-        context['costos_semana'] = detalles_semana['costos'].quantize(Decimal('0.01'))
-        context['utilidad_semana'] = utilidad_semana.quantize(Decimal('0.01'))
-        context['margen_semana'] = margen_semana.quantize(Decimal('0.01'))
-        
-        inicio_mes = hoy.replace(day=1)
-        detalles_mes = DetalleVenta.objects.filter(venta__fecha_venta__date__gte=inicio_mes, venta__fecha_venta__date__lte=hoy, venta__estado='COMPLETADA').aggregate(ventas=Coalesce(Sum('total'), Decimal('0')), costos=Coalesce(Sum('costo_total'), Decimal('0')))
-        utilidad_mes = detalles_mes['ventas'] - detalles_mes['costos']
-        margen_mes = (utilidad_mes / detalles_mes['ventas'] * 100) if detalles_mes['ventas'] > 0 else Decimal('0')
-        context['ventas_mes'] = detalles_mes['ventas'].quantize(Decimal('0.01'))
-        context['costos_mes'] = detalles_mes['costos'].quantize(Decimal('0.01'))
-        context['utilidad_mes'] = utilidad_mes.quantize(Decimal('0.01'))
-        context['margen_mes'] = margen_mes.quantize(Decimal('0.01'))
-        
-        hace_7_dias = hoy - timedelta(days=6)
-        ventas_diarias = DetalleVenta.objects.filter(venta__fecha_venta__date__gte=hace_7_dias, venta__fecha_venta__date__lte=hoy, venta__estado='COMPLETADA').annotate(dia=TruncDate('venta__fecha_venta')).values('dia').annotate(ventas=Coalesce(Sum('total'), Decimal('0')), costos=Coalesce(Sum('costo_total'), Decimal('0'))).order_by('dia')
-        
-        tendencia_labels = []
-        tendencia_data = []
-        for i in range(7):
-            dia = hace_7_dias + timedelta(days=i)
-            dia_data = next((item for item in ventas_diarias if item['dia'] == dia), {'ventas': Decimal('0'), 'costos': Decimal('0')})
-            utilidad = dia_data['ventas'] - dia_data['costos']
-            tendencia_labels.append(dia.strftime('%d/%m'))
-            tendencia_data.append(float(utilidad))
-        
-        context['tendencia_labels'] = json.dumps(tendencia_labels)
-        context['tendencia_data'] = json.dumps(tendencia_data)
-        
-        cajas_chicas = CajaChica.objects.filter(estado='ACTIVA').select_related('responsable')
+        # Cajas chicas
+        cajas_chicas = CajaChica.objects.filter(estado='ACTIVA')
         context['cajas_chicas'] = cajas_chicas
-        context['cajas_chicas_criticas'] = cajas_chicas.filter(monto_actual__lte=F('umbral_reposicion')).count()
-        context['gastos_caja_chica_hoy'] = MovimientoCajaChica.objects.filter(tipo_movimiento='GASTO', fecha_movimiento__date=hoy).aggregate(total=Sum('monto'))['total'] or Decimal('0')
+        context['cajas_chicas_criticas'] = cajas_chicas.filter(
+            monto_actual__lte=F('umbral_reposicion')
+        ).count()
         
-        context['ultimos_movimientos'] = MovimientoCaja.objects.filter(fecha_movimiento__gte=hoy_inicio).select_related('caja', 'usuario', 'venta').order_by('-fecha_movimiento')[:10]
+        # Últimos movimientos
+        context['ultimos_movimientos'] = MovimientoCaja.objects.select_related(
+            'caja', 'usuario'
+        ).order_by('-fecha_movimiento')[:10]
         
-        for caja in cajas_abiertas:
-            caja.ventas_dia = MovimientoCaja.objects.filter(caja=caja, tipo_movimiento='VENTA', fecha_movimiento__gte=hoy_inicio).count()
+        # Arqueos recientes
+        context['arqueos_recientes'] = ArqueoCaja.objects.select_related(
+            'caja', 'usuario_cierre'
+        ).order_by('-fecha_cierre')[:5]
+        
+        # Estadísticas de la semana
+        hace_7_dias = timezone.now() - timedelta(days=7)
+        movimientos_semana = MovimientoCaja.objects.filter(
+            fecha_movimiento__gte=hace_7_dias
+        )
+        
+        context['ingresos_semana'] = movimientos_semana.filter(
+            tipo_movimiento__in=['VENTA', 'INGRESO']
+        ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
+        
+        context['retiros_semana'] = movimientos_semana.filter(
+            tipo_movimiento='RETIRO'
+        ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
         
         return context
 

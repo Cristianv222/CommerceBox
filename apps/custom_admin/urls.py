@@ -144,7 +144,17 @@ urlpatterns = [
     # VENTAS - Clientes y Devoluciones
     # ========================================
     path('ventas/clientes/', views.clientes_view, name='clientes'),
+    path('ventas/clientes/crear/', views.cliente_crear, name='cliente_crear'),
+    path('ventas/clientes/<uuid:pk>/editar/', views.cliente_editar, name='cliente_editar'),
+    path('ventas/clientes/<uuid:pk>/eliminar/', views.cliente_eliminar, name='cliente_eliminar'),
+    path('api/clientes/', views.api_clientes_list, name='api_clientes_list'),
+    path('api/clientes/<uuid:pk>/', views.api_cliente_detail, name='api_cliente_detail'),
     path('ventas/devoluciones/', views.devoluciones_view, name='devoluciones'),
+    path('ventas/devoluciones/crear/', views.devolucion_crear, name='devolucion_crear'),
+    path('ventas/devoluciones/<uuid:devolucion_id>/aprobar/', views.devolucion_aprobar, name='devolucion_aprobar'),
+    path('api/devoluciones/<uuid:devolucion_id>/', views.devolucion_detalle, name='devolucion_detalle'),
+    path('api/ventas/buscar/<str:numero>/', views.api_buscar_venta, name='api_buscar_venta'),
+    path('api/devoluciones/', views.api_devoluciones_list, name='api_devoluciones_list'),
     
     # ========================================
     # FINANZAS

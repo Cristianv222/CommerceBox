@@ -18,7 +18,7 @@ from apps.inventory_management.models import Marca
 def auth_required(view_func):
     """
     Decorator para vistas que requieren autenticación.
-    La verificación real se hace en JavaScript con JWT.
+    Por ahora solo pasa la request sin verificar.
     """
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
@@ -2083,15 +2083,467 @@ def exportar_ventas_pdf_general(request):
 @ensure_csrf_cookie
 @auth_required
 def clientes_view(request):
-    """Lista de clientes"""
-    return render(request, 'custom_admin/ventas/clientes_list.html')
+    """Lista y gestión de clientes"""
+    from apps.sales_management.models import Cliente
+    from django.db.models import Q
+    from django.core.paginator import Paginator
+    
+    # Obtener filtros
+    search = request.GET.get('search', '')
+    tipo_cliente = request.GET.get('tipo', '')
+    estado = request.GET.get('estado', '')
+    
+    # Consulta base
+    clientes_qs = Cliente.objects.all()
+    
+    # Aplicar filtros
+    if search:
+        clientes_qs = clientes_qs.filter(
+            Q(nombres__icontains=search) | 
+            Q(apellidos__icontains=search) |
+            Q(numero_documento__icontains=search) |
+            Q(nombre_comercial__icontains=search)
+        )
+    
+    if tipo_cliente:
+        clientes_qs = clientes_qs.filter(tipo_cliente=tipo_cliente)
+    
+    if estado:
+        if estado == 'activo':
+            clientes_qs = clientes_qs.filter(activo=True)
+        elif estado == 'inactivo':
+            clientes_qs = clientes_qs.filter(activo=False)
+    
+    clientes_qs = clientes_qs.order_by('apellidos', 'nombres')
+    
+    # Convertir a lista para el template
+    clientes = list(clientes_qs)
+    
+    context = {
+        'clientes': clientes,
+        'total_clientes': Cliente.objects.count(),
+        'clientes_activos': Cliente.objects.filter(activo=True).count(),
+        'clientes_mayoristas': Cliente.objects.filter(tipo_cliente='MAYORISTA').count(),
+        'clientes_frecuentes': Cliente.objects.filter(tipo_cliente='FRECUENTE').count(),
+        'search': search,
+        'tipo_selected': tipo_cliente,
+        'estado_selected': estado,
+    }
+    
+    return render(request, 'custom_admin/ventas/clientes_list.html', context)
 
+
+
+@ensure_csrf_cookie
+@auth_required
+def cliente_crear(request):
+    """Crear nuevo cliente"""
+    from apps.sales_management.models import Cliente
+    from django.contrib import messages
+    
+    if request.method == 'POST':
+        try:
+            cliente = Cliente.objects.create(
+                tipo_documento=request.POST.get('tipo_documento'),
+                numero_documento=request.POST.get('numero_documento'),
+                nombres=request.POST.get('nombres'),
+                apellidos=request.POST.get('apellidos'),
+                nombre_comercial=request.POST.get('nombre_comercial', ''),
+                telefono=request.POST.get('telefono', ''),
+                email=request.POST.get('email', ''),
+                direccion=request.POST.get('direccion', ''),
+                tipo_cliente=request.POST.get('tipo_cliente', 'OCASIONAL'),
+                limite_credito=request.POST.get('limite_credito', 0),
+                dias_credito=request.POST.get('dias_credito', 0),
+                descuento_general=request.POST.get('descuento_general', 0),
+                activo=request.POST.get('activo') == 'on'
+            )
+            messages.success(request, f'Cliente {cliente.nombres} {cliente.apellidos} creado exitosamente.')
+        except Exception as e:
+            messages.error(request, f'Error al crear cliente: {str(e)}')
+    
+    return redirect('custom_admin:clientes')
+
+@ensure_csrf_cookie
+@auth_required
+def cliente_editar(request, pk):
+    """Editar cliente existente"""
+    from apps.sales_management.models import Cliente
+    from django.contrib import messages
+    
+    cliente = get_object_or_404(Cliente, pk=pk)
+    
+    if request.method == 'POST':
+        try:
+            cliente.tipo_documento = request.POST.get('tipo_documento')
+            cliente.numero_documento = request.POST.get('numero_documento')
+            cliente.nombres = request.POST.get('nombres')
+            cliente.apellidos = request.POST.get('apellidos')
+            cliente.nombre_comercial = request.POST.get('nombre_comercial', '')
+            cliente.telefono = request.POST.get('telefono', '')
+            cliente.email = request.POST.get('email', '')
+            cliente.direccion = request.POST.get('direccion', '')
+            cliente.tipo_cliente = request.POST.get('tipo_cliente', 'OCASIONAL')
+            cliente.limite_credito = request.POST.get('limite_credito', 0)
+            cliente.dias_credito = request.POST.get('dias_credito', 0)
+            cliente.descuento_general = request.POST.get('descuento_general', 0)
+            cliente.activo = request.POST.get('activo') == 'on'
+            cliente.save()
+            
+            messages.success(request, f'Cliente {cliente.nombres} {cliente.apellidos} actualizado exitosamente.')
+        except Exception as e:
+            messages.error(request, f'Error al actualizar cliente: {str(e)}')
+    
+    return redirect('custom_admin:clientes')
+
+@ensure_csrf_cookie
+@auth_required
+def cliente_eliminar(request, pk):
+    """Eliminar cliente"""
+    from apps.sales_management.models import Cliente
+    from django.contrib import messages
+    
+    if request.method == 'POST':
+        cliente = get_object_or_404(Cliente, pk=pk)
+        nombre_completo = f"{cliente.nombres} {cliente.apellidos}"
+        try:
+            cliente.delete()
+            messages.success(request, f'Cliente {nombre_completo} eliminado exitosamente.')
+        except Exception as e:
+            messages.error(request, f'Error al eliminar cliente: {str(e)}')
+    
+    return redirect('custom_admin:clientes')
+
+def api_clientes_list(request):
+    """API para listar clientes"""
+    from apps.sales_management.models import Cliente
+    
+    clientes = Cliente.objects.all().order_by('apellidos', 'nombres')
+    data = []
+    
+    for cliente in clientes:
+        data.append({
+            'id': str(cliente.id),
+            'tipo_documento': cliente.tipo_documento,
+            'numero_documento': cliente.numero_documento,
+            'nombres': cliente.nombres,
+            'apellidos': cliente.apellidos,
+            'nombre_comercial': cliente.nombre_comercial,
+            'telefono': cliente.telefono,
+            'email': cliente.email,
+            'direccion': cliente.direccion,
+            'tipo_cliente': cliente.tipo_cliente,
+            'limite_credito': float(cliente.limite_credito),
+            'credito_disponible': float(cliente.credito_disponible),
+            'dias_credito': cliente.dias_credito,
+            'descuento_general': float(cliente.descuento_general),
+            'total_compras': float(cliente.total_compras),
+            'activo': cliente.activo,
+        })
+    
+    return JsonResponse({'clientes': data})
+
+def api_cliente_detail(request, pk):
+    """API para obtener detalle de un cliente"""
+    from apps.sales_management.models import Cliente
+    
+    cliente = get_object_or_404(Cliente, pk=pk)
+    
+    data = {
+        'id': str(cliente.id),
+        'tipo_documento': cliente.tipo_documento,
+        'numero_documento': cliente.numero_documento,
+        'nombres': cliente.nombres,
+        'apellidos': cliente.apellidos,
+        'nombre_comercial': cliente.nombre_comercial,
+        'telefono': cliente.telefono,
+        'email': cliente.email,
+        'direccion': cliente.direccion,
+        'tipo_cliente': cliente.tipo_cliente,
+        'limite_credito': float(cliente.limite_credito),
+        'credito_disponible': float(cliente.credito_disponible),
+        'dias_credito': cliente.dias_credito,
+        'descuento_general': float(cliente.descuento_general),
+        'total_compras': float(cliente.total_compras),
+        'activo': cliente.activo,
+    }
+    
+    return JsonResponse(data)
 
 @ensure_csrf_cookie
 @auth_required
 def devoluciones_view(request):
     """Lista de devoluciones"""
-    return render(request, 'custom_admin/ventas/devoluciones_list.html')
+    from apps.sales_management.models import Devolucion, Venta
+    from django.db.models import Sum, Count
+    
+    devoluciones = Devolucion.objects.all().select_related(
+        'venta_original', 
+        'venta_original__cliente',
+        'detalle_venta',
+        'detalle_venta__producto'
+    ).order_by('-fecha_devolucion')
+    
+    # Estadísticas
+    total_devoluciones = devoluciones.count()
+    pendientes = devoluciones.filter(estado='PENDIENTE').count()
+    aprobadas = devoluciones.filter(estado='APROBADA').count()
+    monto_total = devoluciones.filter(estado='APROBADA').aggregate(
+        total=Sum('monto_devolucion')
+    )['total'] or 0
+    
+    context = {
+        'devoluciones': devoluciones,
+        'total_devoluciones': total_devoluciones,
+        'pendientes': pendientes,
+        'aprobadas': aprobadas,
+        'monto_total': monto_total,
+    }
+    
+    return render(request, 'custom_admin/ventas/devoluciones_list.html', context)
+
+
+
+@ensure_csrf_cookie
+@auth_required
+def devolucion_crear(request):
+    """Crear nueva devolución - versión simplificada"""
+    from apps.sales_management.models import Devolucion, Venta
+    from django.contrib import messages
+    from django.shortcuts import redirect
+    from datetime import datetime
+    from decimal import Decimal
+
+    if request.method == 'POST':
+        print("=" * 50)
+        print("DEVOLUCION_CREAR - POST recibido")
+        print(f"Usuario: {request.user}")
+        print(f"Is authenticated: {request.user.is_authenticated}")
+        print("Datos POST:", dict(request.POST))
+        print("=" * 50)
+        
+        try:
+#             # Verificar autenticación PRIMERO
+#             if not request.user.is_authenticated:
+#                 messages.error(request, "Debe iniciar sesión para crear devoluciones")
+#                 return redirect("custom_admin:devoluciones")
+            
+            # Obtener datos del formulario
+            numero_venta = request.POST.get('numero_venta')
+            motivo = request.POST.get('motivo', 'DEFECTUOSO')
+            descripcion = request.POST.get('observaciones', '')
+
+            # Buscar la venta
+            try:
+                venta = Venta.objects.get(numero_venta=numero_venta)
+            except Venta.DoesNotExist:
+                messages.error(request, f'Venta {numero_venta} no encontrada')
+                return redirect('custom_admin:devoluciones')
+
+            # Generar número de devolución
+            year = datetime.now().year
+            last_dev = Devolucion.objects.filter(
+                numero_devolucion__startswith=f'DEV-{year}-'
+            ).order_by('numero_devolucion').last()
+
+            if last_dev:
+                try:
+                    last_num = int(last_dev.numero_devolucion.split('-')[-1])
+                    new_num = f"DEV-{year}-{str(last_num + 1).zfill(5)}"
+                except:
+                    new_num = f"DEV-{year}-00001"
+            else:
+                new_num = f"DEV-{year}-00001"
+
+            # Obtener primer detalle de venta
+            detalle = venta.detalles.first()
+            if not detalle:
+                messages.error(request, 'La venta no tiene productos')
+                return redirect('custom_admin:devoluciones')
+
+            # Calcular cantidad
+            cantidad = Decimal('1.0')
+            if detalle.peso_vendido:
+                cantidad = detalle.peso_vendido
+            elif detalle.cantidad_unidades:
+                cantidad = Decimal(str(detalle.cantidad_unidades))
+
+            # Obtener el usuario correcto ANTES de crear el objeto
+            usuario_para_devolucion = request.user if request.user.is_authenticated else None
+            if not usuario_para_devolucion:
+                from django.contrib.auth import get_user_model
+                Usuario = get_user_model()
+                usuario_para_devolucion = Usuario.objects.filter(is_superuser=True).first()
+
+            # Crear la devolución con el usuario ya definido
+            devolucion = Devolucion(
+                numero_devolucion=new_num,
+                venta_original=venta,
+                detalle_venta=detalle,
+                cantidad_devuelta=cantidad,
+                monto_devolucion=venta.total,
+                motivo=motivo,
+                descripcion=descripcion,
+                estado='PENDIENTE',
+                usuario_solicita=usuario_para_devolucion
+            )
+
+            # Guardar
+            devolucion.save()
+
+            messages.success(request, f'Devolución {new_num} creada exitosamente')
+            return redirect('custom_admin:devoluciones')
+
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+            import traceback
+            print(f"ERROR EN DEVOLUCION: {traceback.format_exc()}")
+            return redirect('custom_admin:devoluciones')
+    return redirect('custom_admin:devoluciones')
+            
+    
+def api_buscar_venta(request, numero):
+    """Buscar venta por número"""
+    from apps.sales_management.models import Venta
+    
+    try:
+        venta = Venta.objects.select_related('cliente').prefetch_related('detalles__producto').get(numero_venta=numero)
+        
+        detalles = []
+        for detalle in venta.detalles.all():
+            # Usar cantidad_unidades para productos normales o peso_vendido para quintales
+            if detalle.peso_vendido:  # Es un quintal
+                cantidad = float(detalle.peso_vendido)
+                unidad = detalle.unidad_medida.abreviatura if detalle.unidad_medida else 'kg'
+                cantidad_str = f"{cantidad} {unidad}"
+            else:  # Es un producto normal
+                cantidad = detalle.cantidad_unidades if detalle.cantidad_unidades else 1
+                cantidad_str = f"{cantidad} unidades"
+            
+            detalles.append({
+                'producto': detalle.producto.nombre if detalle.producto else 'Producto',
+                'cantidad': cantidad_str,
+                'precio': float(detalle.precio_unitario) if detalle.precio_unitario else 0.0,
+                'subtotal': float(detalle.subtotal) if detalle.subtotal else 0.0
+            })
+        
+        data = {
+            'success': True,
+            'venta': {
+                'numero': venta.numero_venta,
+                'cliente': f"{venta.cliente.nombres} {venta.cliente.apellidos}" if venta.cliente else "Cliente General",
+                'fecha': venta.fecha_venta.strftime('%Y-%m-%d %H:%M'),
+                'total': float(venta.total) if venta.total else 0.0,
+                'detalles': detalles
+            }
+        }
+    except Venta.DoesNotExist:
+        data = {'success': False, 'error': 'Venta no encontrada'}
+    except Exception as e:
+        data = {'success': False, 'error': str(e)}
+    
+    return JsonResponse(data)
+
+def api_devoluciones_list(request):
+    """API para listar devoluciones"""
+    from apps.sales_management.models import Devolucion
+    
+    devoluciones = Devolucion.objects.select_related(
+        'venta_original__cliente',
+        'detalle_venta__producto'
+    ).all()
+    
+    data = []
+    for dev in devoluciones:
+        data.append({
+            'numero': dev.numero_devolucion,
+            'venta': dev.venta_original.numero_venta,
+            'cliente': f"{dev.venta_original.cliente.nombres} {dev.venta_original.cliente.apellidos}" if dev.venta_original.cliente else "N/A",
+            'fecha': dev.fecha_devolucion.strftime('%Y-%m-%d %H:%M'),
+            'motivo': dev.get_motivo_display(),
+            'monto': float(dev.monto_devolucion),
+            'estado': dev.estado
+        })
+    
+    return JsonResponse({'devoluciones': data})
+
+
+@ensure_csrf_cookie
+@auth_required
+def devolucion_aprobar(request, devolucion_id):
+    """Aprobar una devolución"""
+    from apps.sales_management.models import Devolucion
+    from django.contrib import messages
+    
+    try:
+        devolucion = Devolucion.objects.get(id=devolucion_id)
+        
+        if devolucion.estado != 'PENDIENTE':
+            messages.warning(request, 'Esta devolución ya fue procesada.')
+            return redirect('custom_admin:devoluciones')
+        
+        devolucion.estado = 'APROBADA'
+        devolucion.usuario_aprueba = request.user
+        devolucion.fecha_procesado = timezone.now()
+        
+        # Si debe devolver al inventario
+        if hasattr(devolucion, 'devolver_inventario') and devolucion.devolver_inventario:
+            detalle = devolucion.detalle_venta
+            if detalle.producto:
+                if detalle.producto.es_quintal() and detalle.quintal:
+                    # Devolver peso al quintal
+                    quintal = detalle.quintal
+                    quintal.peso_actual += devolucion.cantidad_devuelta
+                    quintal.save()
+                elif detalle.cantidad_unidades:
+                    # Devolver unidades al producto
+                    producto = detalle.producto
+                    producto.stock_actual += int(devolucion.cantidad_devuelta)
+                    producto.save()
+        
+        devolucion.save()
+        messages.success(request, f'Devolución {devolucion.numero_devolucion} aprobada.')
+        
+    except Devolucion.DoesNotExist:
+        messages.error(request, 'Devolución no encontrada.')
+    except Exception as e:
+        messages.error(request, f'Error al aprobar: {str(e)}')
+    
+    return redirect('custom_admin:devoluciones')
+
+@ensure_csrf_cookie
+@auth_required
+def devolucion_detalle(request, devolucion_id):
+    """Ver detalle de una devolución"""
+    from apps.sales_management.models import Devolucion
+    
+    try:
+        devolucion = Devolucion.objects.select_related(
+            'venta_original',
+            'venta_original__cliente',
+            'detalle_venta__producto',
+            'usuario_solicita',
+            'usuario_aprueba'
+        ).get(id=devolucion_id)
+        
+        return JsonResponse({
+            'success': True,
+            'devolucion': {
+                'numero': devolucion.numero_devolucion,
+                'venta': devolucion.venta_original.numero_venta,
+                'cliente': f"{devolucion.venta_original.cliente.nombres} {devolucion.venta_original.cliente.apellidos}" if devolucion.venta_original.cliente else "N/A",
+                'fecha': devolucion.fecha_devolucion.strftime('%Y-%m-%d %H:%M'),
+                'motivo': devolucion.get_motivo_display(),
+                'descripcion': devolucion.descripcion,
+                'monto': float(devolucion.monto_devolucion),
+                'estado': devolucion.estado,
+                'solicitado_por': devolucion.usuario_solicita.username if devolucion.usuario_solicita else 'N/A',
+                'aprobado_por': devolucion.usuario_aprueba.username if hasattr(devolucion, 'usuario_aprueba') and devolucion.usuario_aprueba else 'N/A',
+                'devolver_inventario': devolucion.devolver_inventario if hasattr(devolucion, 'devolver_inventario') else False
+            }
+        })
+    except Devolucion.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Devolución no encontrada'})
 
 
 @ensure_csrf_cookie

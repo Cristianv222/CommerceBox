@@ -385,10 +385,18 @@ class DetalleVenta(models.Model):
         ]
     
     def __str__(self):
-        if self.producto.es_quintal():
-            return f"{self.peso_vendido} {self.unidad_medida.abreviatura} de {self.producto.nombre}"
-        return f"{self.cantidad_unidades} x {self.producto.nombre}"
-    
+        try:
+            if self.producto and self.producto.es_quintal():
+                if self.peso_vendido and self.unidad_medida:
+                    return f"{self.peso_vendido} {self.unidad_medida.abreviatura} de {self.producto.nombre}"
+                else:
+                    return f"Quintal de {self.producto.nombre if self.producto else 'producto'}"
+            elif self.cantidad_unidades:
+                return f"{self.cantidad_unidades} x {self.producto.nombre if self.producto else 'producto'}"
+            else:
+                return f"Detalle de venta"
+        except:
+            return f"Detalle de venta"
     def save(self, *args, **kwargs):
         """Validar stock antes de guardar"""
         if not self.pk:  # Solo validar al crear (no al editar)
@@ -563,7 +571,7 @@ class Devolucion(models.Model):
     
     # Motivo y estado
     motivo = models.CharField(max_length=20, choices=MOTIVO_CHOICES)
-    descripcion = models.TextField()
+    descripcion = models.TextField(help_text="Descripción detallada del motivo de devolución")
     estado = models.CharField(
         max_length=20,
         choices=ESTADO_CHOICES,
