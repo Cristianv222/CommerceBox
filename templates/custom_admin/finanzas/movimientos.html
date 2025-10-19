@@ -1,0 +1,39 @@
+{% if movimientos %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Monto</th>
+                <th>Saldo Anterior</th>
+                <th>Saldo Nuevo</th>
+                <th>Usuario</th>
+                <th>Observaciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mov in movimientos %}
+            <tr>
+                <td>{{ mov.fecha_movimiento|date:"d/m/Y H:i" }}</td>
+                <td>
+                    <span class="badge bg-primary">
+                        {{ mov.get_tipo_movimiento_display }}
+                    </span>
+                </td>
+                <td class="{% if mov.es_entrada %}text-success{% elif mov.es_salida %}text-danger{% endif %}">
+                    {% if mov.es_entrada %}+{% elif mov.es_salida %}-{% endif %}
+                    ${{ mov.monto|floatformat:2 }}
+                </td>
+                <td>${{ mov.saldo_anterior|floatformat:2 }}</td>
+                <td class="fw-bold">${{ mov.saldo_nuevo|floatformat:2 }}</td>
+                <td>{{ mov.usuario.get_full_name }}</td>
+                <td>{{ mov.observaciones|truncatewords:10 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">No hay movimientos</div>
+{% endif %}

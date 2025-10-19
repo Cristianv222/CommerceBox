@@ -160,10 +160,6 @@ urlpatterns = [
     # FINANZAS
     # ========================================
     path('finanzas/', views.finanzas_dashboard_view, name='finanzas'),
-    path('finanzas/cajas/', views.cajas_view, name='cajas'),
-    path('finanzas/cajas/<uuid:pk>/', views.caja_detail_view, name='caja_detail'),
-    path('finanzas/arqueos/', views.arqueos_view, name='arqueos'),
-    path('finanzas/caja-chica/', views.caja_chica_view, name='caja_chica'),
     
     # ========================================
     # REPORTES
@@ -218,4 +214,21 @@ urlpatterns = [
     # ========================================
     path('api/productos/<uuid:producto_id>/quintales/', views.api_quintales_por_producto, name='api_quintales_por_producto'),
     path('api/quintales/calcular/', views.api_calcular_quintal, name='api_calcular_quintal'),
+    # Cajas (ya las tienes)
+    path('finanzas/cajas/', views.cajas_list, name='cajas_list'),
+    path('finanzas/cajas/crear/', views.crear_caja, name='crear_caja'),
+    path('finanzas/cajas/<uuid:caja_id>/abrir/', views.abrir_caja, name='abrir_caja'),
+    path('finanzas/cajas/<uuid:caja_id>/cerrar/', views.cerrar_caja, name='cerrar_caja'),
+    path('finanzas/cajas/<uuid:caja_id>/movimientos/', views.movimientos_caja, name='movimientos_caja'),
+    path('finanzas/cajas/<uuid:caja_id>/movimiento/', views.crear_movimiento, name='crear_movimiento'),
+    
+    # Arqueos
+    path('finanzas/arqueos/', views.arqueos_list, name='arqueos_list'),
+    path('finanzas/arqueos/<uuid:arqueo_id>/', views.arqueo_detalle, name='arqueo_detalle'),
+    
+    # Caja Chica
+    path('finanzas/caja-chica/', views.caja_chica_list, name='caja_chica_list'),
+    path('finanzas/caja-chica/crear/', views.crear_caja_chica, name='crear_caja_chica'),
+    path('finanzas/caja-chica/<uuid:caja_chica_id>/gasto/', views.registrar_gasto_caja_chica, name='registrar_gasto_caja_chica'),
+    path('finanzas/caja-chica/<uuid:caja_chica_id>/reponer/', views.reponer_caja_chica, name='reponer_caja_chica'),
 ]

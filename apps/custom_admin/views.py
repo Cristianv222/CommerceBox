@@ -15,6 +15,15 @@ from apps.inventory_management.models import Marca
 # DECORATOR DE AUTENTICACIÓN
 # ========================================
 
+
+def get_authenticated_user(request):
+    """Helper temporal para obtener usuario autenticado"""
+    if request.user.is_authenticated:
+        return request.user
+    # Temporal: usar usuario edison
+    from apps.authentication.models import Usuario
+    return Usuario.objects.filter(username='edison').first()
+
 def auth_required(view_func):
     """
     Decorator para vistas que requieren autenticación.
@@ -4734,3 +4743,624 @@ def api_calcular_quintal(request):
             })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+# ============================================================================
+# VISTAS DE FINANZAS - CAJAS
+# ============================================================================
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from apps.authentication.decorators import role_required_html
+from django.contrib import messages
+from django.core.paginator import Paginator
+from django.db.models import Q, Sum, Count
+from django.http import JsonResponse
+from django.utils import timezone
+from django.db import transaction
+from decimal import Decimal
+from datetime import datetime, timedelta
+
+from apps.financial_management.models import (
+    Caja, MovimientoCaja, ArqueoCaja,
+    CajaChica, MovimientoCajaChica
+)
+from apps.authentication.decorators import role_required_html, role_required
+
+
+@auth_required
+def cajas_list(request):
+    """Lista de cajas con filtros y estadísticas"""
+    
+    # Obtener todas las cajas
+    cajas = Caja.objects.all().select_related('usuario_apertura', 'usuario_cierre')
+    
+    # Filtros
+    estado = request.GET.get('estado', '')
+    tipo = request.GET.get('tipo', '')
+    search = request.GET.get('search', '')
+    
+    if estado:
+        cajas = cajas.filter(estado=estado)
+    
+    if tipo:
+        cajas = cajas.filter(tipo=tipo)
+    
+    if search:
+        cajas = cajas.filter(
+            Q(nombre__icontains=search) |
+            Q(codigo__icontains=search)
+        )
+    
+    # Estadísticas
+    cajas_abiertas = Caja.objects.filter(estado='ABIERTA').count()
+    cajas_cerradas = Caja.objects.filter(estado='CERRADA').count()
+    total_efectivo = Caja.objects.filter(estado='ABIERTA').aggregate(
+        total=Sum('monto_actual')
+    )['total'] or 0
+    
+    # Movimientos de hoy
+    hoy = timezone.now().date()
+    movimientos_hoy = MovimientoCaja.objects.filter(
+        fecha_movimiento__date=hoy
+    ).count()
+    
+    # Paginación
+    paginator = Paginator(cajas, 12)  # 12 cajas por página
+    page_number = request.GET.get('page')
+    cajas_page = paginator.get_page(page_number)
+    
+    context = {
+        'cajas': cajas_page,
+        'cajas_abiertas': cajas_abiertas,
+        'cajas_cerradas': cajas_cerradas,
+        'total_efectivo': total_efectivo,
+        'movimientos_hoy': movimientos_hoy,
+    }
+    
+    return render(request, 'custom_admin/finanzas/cajas_list.html', context)
+
+
+@auth_required
+def crear_caja(request):
+    """Crear nueva caja"""
+    
+    if request.method == 'POST':
+        try:
+            nombre = request.POST.get('nombre')
+            codigo = request.POST.get('codigo')
+            tipo = request.POST.get('tipo')
+            monto_apertura = Decimal(request.POST.get('monto_apertura', '0'))
+            requiere_autorizacion = request.POST.get('requiere_autorizacion_cierre') == 'on'
+            
+            # Validar que el código no exista
+            if Caja.objects.filter(codigo=codigo).exists():
+                messages.error(request, f'Ya existe una caja con el código {codigo}')
+                return redirect('custom_admin:cajas_list')
+            
+            # Crear la caja
+            caja = Caja.objects.create(
+                nombre=nombre,
+                codigo=codigo,
+                tipo=tipo,
+                monto_apertura=monto_apertura,
+                requiere_autorizacion_cierre=requiere_autorizacion,
+                estado='CERRADA',
+                monto_actual=Decimal('0'),
+                activa=True
+            )
+            
+            messages.success(request, f'Caja {nombre} creada exitosamente')
+            
+        except Exception as e:
+            messages.error(request, f'Error al crear caja: {str(e)}')
+    
+    return redirect('custom_admin:cajas_list')
+
+
+@auth_required
+def abrir_caja(request, caja_id):
+    """Abrir una caja"""
+    
+    caja = get_object_or_404(Caja, id=caja_id)
+    
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                # Validar que la caja esté cerrada
+                if caja.estado == 'ABIERTA':
+                    messages.warning(request, f'La caja {caja.nombre} ya está abierta')
+                    return redirect('custom_admin:cajas_list')
+                
+                monto_apertura = Decimal(request.POST.get('monto_apertura', '0'))
+                observaciones = request.POST.get('observaciones', '')
+                
+                # Abrir la caja
+                caja.estado = 'ABIERTA'
+                caja.monto_apertura = monto_apertura
+                caja.monto_actual = monto_apertura
+                caja.fecha_apertura = timezone.now()
+                caja.usuario_apertura = request.user
+                caja.fecha_cierre = None
+                caja.usuario_cierre = None
+                caja.save()
+                
+                # Registrar movimiento de apertura
+                MovimientoCaja.objects.create(
+                    caja=caja,
+                    tipo_movimiento='APERTURA',
+                    monto=monto_apertura,
+                    saldo_anterior=Decimal('0'),
+                    saldo_nuevo=monto_apertura,
+                    usuario=get_authenticated_user(request),
+                    observaciones=observaciones or f'Apertura de caja - {caja.nombre}'
+                )
+                
+                messages.success(request, f'Caja {caja.nombre} abierta exitosamente')
+                
+        except Exception as e:
+            messages.error(request, f'Error al abrir caja: {str(e)}')
+    
+    return redirect('custom_admin:cajas_list')
+
+
+@auth_required
+def cerrar_caja(request, caja_id):
+    """Cerrar una caja con arqueo"""
+    
+    caja = get_object_or_404(Caja, id=caja_id)
+    
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                # Validar que la caja esté abierta
+                if caja.estado == 'CERRADA':
+                    messages.warning(request, f'La caja {caja.nombre} ya está cerrada')
+                    return redirect('custom_admin:cajas_list')
+                
+                # Obtener datos del formulario
+                billetes_100 = int(request.POST.get('billetes_100', 0))
+                billetes_50 = int(request.POST.get('billetes_50', 0))
+                billetes_20 = int(request.POST.get('billetes_20', 0))
+                billetes_10 = int(request.POST.get('billetes_10', 0))
+                billetes_5 = int(request.POST.get('billetes_5', 0))
+                billetes_1 = int(request.POST.get('billetes_1', 0))
+                monedas = Decimal(request.POST.get('monedas', '0'))
+                observaciones = request.POST.get('observaciones', '')
+                
+                # Calcular monto contado
+                monto_contado = (
+                    (billetes_100 * 100) +
+                    (billetes_50 * 50) +
+                    (billetes_20 * 20) +
+                    (billetes_10 * 10) +
+                    (billetes_5 * 5) +
+                    billetes_1 +
+                    monedas
+                )
+                
+                # Calcular totales del período
+                # Validar que la caja tenga fecha de apertura
+                if not caja.fecha_apertura:
+                    messages.error(request, 'No se puede cerrar una caja que no ha sido abierta')
+                    return redirect('custom_admin:cajas_list')
+                
+                movimientos = MovimientoCaja.objects.filter(
+                    caja=caja,
+                    fecha_movimiento__gte=caja.fecha_apertura
+                )
+                
+                total_ventas = movimientos.filter(tipo_movimiento='VENTA').aggregate(
+                    total=Sum('monto')
+                )['total'] or Decimal('0')
+                
+                total_ingresos = movimientos.filter(
+                    tipo_movimiento__in=['INGRESO', 'AJUSTE_POSITIVO', 'TRANSFERENCIA_ENTRADA']
+                ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
+                
+                total_retiros = movimientos.filter(
+                    tipo_movimiento__in=['RETIRO', 'AJUSTE_NEGATIVO', 'TRANSFERENCIA_SALIDA']
+                ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
+                
+                monto_esperado = caja.monto_apertura + total_ventas + total_ingresos - total_retiros
+                
+                # Crear arqueo
+                arqueo = ArqueoCaja.objects.create(
+                    caja=caja,
+                    fecha_apertura=caja.fecha_apertura,
+                    fecha_cierre=timezone.now(),
+                    monto_apertura=caja.monto_apertura,
+                    total_ventas=total_ventas,
+                    total_ingresos=total_ingresos,
+                    total_retiros=total_retiros,
+                    monto_esperado=monto_esperado,
+                    billetes_100=billetes_100,
+                    billetes_50=billetes_50,
+                    billetes_20=billetes_20,
+                    billetes_10=billetes_10,
+                    billetes_5=billetes_5,
+                    billetes_1=billetes_1,
+                    monedas=monedas,
+                    monto_contado=monto_contado,
+                    observaciones=observaciones,
+                    usuario_apertura=caja.usuario_apertura,
+                    usuario_cierre=get_authenticated_user(request)
+                )
+                
+                # El método save() del modelo ArqueoCaja calculará automáticamente:
+                # - diferencia
+                # - estado (CUADRADO, SOBRANTE, FALTANTE)
+                # - numero_arqueo
+                
+                # Registrar movimiento de cierre
+                MovimientoCaja.objects.create(
+                    caja=caja,
+                    tipo_movimiento='CIERRE',
+                    monto=monto_contado,
+                    saldo_anterior=caja.monto_actual,
+                    saldo_nuevo=Decimal('0'),
+                    usuario=get_authenticated_user(request),
+                    observaciones=f'Cierre de caja - Arqueo: {arqueo.numero_arqueo}'
+                )
+                
+                # Cerrar la caja
+                caja.estado = 'CERRADA'
+                caja.fecha_cierre = timezone.now()
+                caja.usuario_cierre = request.user
+                caja.monto_actual = Decimal('0')
+                caja.save()
+                
+                # Mensaje según el estado del arqueo
+                if arqueo.estado == 'CUADRADO':
+                    messages.success(request, f'Caja cerrada exitosamente. Arqueo cuadrado ✅')
+                elif arqueo.estado == 'SOBRANTE':
+                    messages.warning(
+                        request, 
+                        f'Caja cerrada. Sobrante de ${arqueo.diferencia:.2f} 💰'
+                    )
+                else:
+                    messages.error(
+                        request, 
+                        f'Caja cerrada. Faltante de ${abs(arqueo.diferencia):.2f} ⚠️'
+                    )
+                
+        except Exception as e:
+            messages.error(request, f'Error al cerrar caja: {str(e)}')
+    
+    return redirect('custom_admin:cajas_list')
+
+
+@auth_required
+def movimientos_caja(request, caja_id):
+    """Ver movimientos de una caja"""
+    
+    caja = get_object_or_404(Caja, id=caja_id)
+    
+    # Obtener movimientos
+    movimientos = MovimientoCaja.objects.filter(caja=caja).select_related('usuario')
+    
+    # Filtro por fecha
+    fecha_desde = request.GET.get('desde')
+    fecha_hasta = request.GET.get('hasta')
+    
+    if fecha_desde:
+        movimientos = movimientos.filter(fecha_movimiento__date__gte=fecha_desde)
+    
+    if fecha_hasta:
+        movimientos = movimientos.filter(fecha_movimiento__date__lte=fecha_hasta)
+    
+    # Ordenar por fecha descendente
+    movimientos = movimientos.order_by('-fecha_movimiento')[:50]  # Últimos 50
+    
+    # Si es AJAX, devolver solo el contenido de la tabla
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'custom_admin/finanzas/movimientos_partial.html', {
+            'movimientos': movimientos,
+            'caja': caja
+        })
+    
+    return render(request, 'custom_admin/finanzas/movimientos.html', {
+        'movimientos': movimientos,
+        'caja': caja
+    })
+
+
+@auth_required
+def crear_movimiento(request, caja_id):
+    """Crear un nuevo movimiento en la caja"""
+    
+    caja = get_object_or_404(Caja, id=caja_id)
+    
+    if request.method == 'POST':
+        try:
+            # Validar que la caja esté abierta
+            if caja.estado != 'ABIERTA':
+                messages.error(request, 'No se pueden registrar movimientos en una caja cerrada')
+                return redirect('custom_admin:cajas_list')
+            
+            tipo_movimiento = request.POST.get('tipo_movimiento')
+            monto = Decimal(request.POST.get('monto'))
+            observaciones = request.POST.get('observaciones')
+            
+            # Crear el movimiento (el método save() calculará los saldos automáticamente)
+            MovimientoCaja.objects.create(
+                caja=caja,
+                tipo_movimiento=tipo_movimiento,
+                monto=monto,
+                usuario=get_authenticated_user(request),
+                observaciones=observaciones
+            )
+            
+            messages.success(request, 'Movimiento registrado exitosamente')
+            
+        except Exception as e:
+            messages.error(request, f'Error al registrar movimiento: {str(e)}')
+    
+    return redirect('custom_admin:cajas_list')
+# ============================================================================
+# VISTAS DE FINANZAS - ARQUEOS
+# ============================================================================
+
+@auth_required
+def arqueos_list(request):
+    """Lista de arqueos de caja"""
+    
+    # Obtener todos los arqueos
+    arqueos = ArqueoCaja.objects.all().select_related(
+        'caja', 'usuario_apertura', 'usuario_cierre'
+    )
+    
+    # Filtros
+    estado = request.GET.get('estado', '')
+    caja_id = request.GET.get('caja', '')
+    fecha_desde = request.GET.get('desde', '')
+    fecha_hasta = request.GET.get('hasta', '')
+    
+    if estado:
+        arqueos = arqueos.filter(estado=estado)
+    
+    if caja_id:
+        arqueos = arqueos.filter(caja_id=caja_id)
+    
+    if fecha_desde:
+        arqueos = arqueos.filter(fecha_cierre__date__gte=fecha_desde)
+    
+    if fecha_hasta:
+        arqueos = arqueos.filter(fecha_cierre__date__lte=fecha_hasta)
+    
+    # Ordenar por fecha de cierre descendente
+    arqueos = arqueos.order_by('-fecha_cierre')
+    
+    # Estadísticas
+    total_arqueos = arqueos.count()
+    cuadrados = arqueos.filter(estado='CUADRADO').count()
+    sobrantes = arqueos.filter(estado='SOBRANTE').count()
+    faltantes = arqueos.filter(estado='FALTANTE').count()
+    
+    # Diferencia total
+    diferencia_total = arqueos.aggregate(
+        total=Sum('diferencia')
+    )['total'] or Decimal('0')
+    
+    # Paginación
+    paginator = Paginator(arqueos, 20)
+    page_number = request.GET.get('page')
+    arqueos_page = paginator.get_page(page_number)
+    
+    # Cajas para el filtro
+    cajas = Caja.objects.all()
+    
+    context = {
+        'arqueos': arqueos_page,
+        'cajas': cajas,
+        'total_arqueos': total_arqueos,
+        'cuadrados': cuadrados,
+        'sobrantes': sobrantes,
+        'faltantes': faltantes,
+        'diferencia_total': diferencia_total,
+    }
+    
+    return render(request, 'custom_admin/finanzas/arqueos_list.html', context)
+
+
+@auth_required
+def arqueo_detalle(request, arqueo_id):
+    """Detalle de un arqueo"""
+    
+    arqueo = get_object_or_404(ArqueoCaja, id=arqueo_id)
+    
+    # Obtener movimientos del período
+    movimientos = MovimientoCaja.objects.filter(
+        caja=arqueo.caja,
+        fecha_movimiento__gte=arqueo.fecha_apertura,
+        fecha_movimiento__lte=arqueo.fecha_cierre
+    ).select_related('usuario').order_by('fecha_movimiento')
+    
+    context = {
+        'arqueo': arqueo,
+        'movimientos': movimientos,
+    }
+    
+    return render(request, 'custom_admin/finanzas/arqueo_detalle.html', context)
+
+
+# ============================================================================
+# VISTAS DE FINANZAS - CAJA CHICA
+# ============================================================================
+
+@auth_required
+def caja_chica_list(request):
+    """Lista de cajas chicas"""
+    
+    # Obtener todas las cajas chicas
+    cajas_chicas = CajaChica.objects.all().select_related('responsable')
+    
+    # Filtros
+    estado = request.GET.get('estado', '')
+    search = request.GET.get('search', '')
+    
+    if estado:
+        cajas_chicas = cajas_chicas.filter(estado=estado)
+    
+    if search:
+        cajas_chicas = cajas_chicas.filter(
+            Q(nombre__icontains=search) |
+            Q(codigo__icontains=search)
+        )
+    
+    # Estadísticas
+    total_fondos = cajas_chicas.filter(estado='ACTIVA').aggregate(
+        total=Sum('monto_fondo')
+    )['total'] or Decimal('0')
+    
+    total_disponible = cajas_chicas.filter(estado='ACTIVA').aggregate(
+        total=Sum('monto_actual')
+    )['total'] or Decimal('0')
+    
+    requieren_reposicion = sum(1 for cc in cajas_chicas if cc.necesita_reposicion())
+    
+    # Paginación
+    paginator = Paginator(cajas_chicas, 12)
+    page_number = request.GET.get('page')
+    cajas_page = paginator.get_page(page_number)
+    
+    context = {
+        'cajas_chicas': cajas_page,
+        'total_fondos': total_fondos,
+        'total_disponible': total_disponible,
+        'requieren_reposicion': requieren_reposicion,
+    }
+    
+    return render(request, 'custom_admin/finanzas/caja_chica_list.html', context)
+
+
+@auth_required
+def crear_caja_chica(request):
+    """Crear nueva caja chica"""
+    
+    if request.method == 'POST':
+        try:
+            from apps.authentication.models import Usuario
+            
+            nombre = request.POST.get('nombre')
+            codigo = request.POST.get('codigo')
+            responsable_id = request.POST.get('responsable')
+            monto_fondo = Decimal(request.POST.get('monto_fondo'))
+            umbral_reposicion = Decimal(request.POST.get('umbral_reposicion'))
+            limite_gasto = Decimal(request.POST.get('limite_gasto_individual', '0'))
+            
+            # Validar código único
+            if CajaChica.objects.filter(codigo=codigo).exists():
+                messages.error(request, f'Ya existe una caja chica con el código {codigo}')
+                return redirect('custom_admin:caja_chica_list')
+            
+            responsable = Usuario.objects.get(id=responsable_id)
+            
+            # Crear caja chica
+            caja_chica = CajaChica.objects.create(
+                nombre=nombre,
+                codigo=codigo,
+                responsable=responsable,
+                monto_fondo=monto_fondo,
+                monto_actual=monto_fondo,
+                umbral_reposicion=umbral_reposicion,
+                limite_gasto_individual=limite_gasto,
+                estado='ACTIVA'
+            )
+            
+            # Registrar movimiento inicial
+            MovimientoCajaChica.objects.create(
+                caja_chica=caja_chica,
+                tipo_movimiento='APERTURA',
+                monto=monto_fondo,
+                saldo_anterior=Decimal('0'),
+                saldo_nuevo=monto_fondo,
+                descripcion=f'Apertura de caja chica - {nombre}',
+                usuario=get_authenticated_user(request)
+            )
+            
+            messages.success(request, f'Caja chica {nombre} creada exitosamente')
+            
+        except Exception as e:
+            messages.error(request, f'Error al crear caja chica: {str(e)}')
+    
+    return redirect('custom_admin:caja_chica_list')
+
+
+@auth_required
+def registrar_gasto_caja_chica(request, caja_chica_id):
+    """Registrar un gasto en caja chica"""
+    
+    caja_chica = get_object_or_404(CajaChica, id=caja_chica_id)
+    
+    if request.method == 'POST':
+        try:
+            tipo_movimiento = request.POST.get('tipo_movimiento')
+            monto = Decimal(request.POST.get('monto'))
+            categoria = request.POST.get('categoria_gasto', '')
+            descripcion = request.POST.get('descripcion')
+            numero_comprobante = request.POST.get('numero_comprobante', '')
+            comprobante = request.FILES.get('comprobante_adjunto')
+            
+            # Validar estado de la caja
+            if caja_chica.estado != 'ACTIVA':
+                messages.error(request, 'La caja chica no está activa')
+                return redirect('custom_admin:caja_chica_list')
+            
+            # Validar saldo suficiente para gastos
+            if tipo_movimiento == 'GASTO' and monto > caja_chica.monto_actual:
+                messages.error(request, 'Saldo insuficiente en caja chica')
+                return redirect('custom_admin:caja_chica_list')
+            
+            # Crear movimiento
+            movimiento = MovimientoCajaChica.objects.create(
+                caja_chica=caja_chica,
+                tipo_movimiento=tipo_movimiento,
+                categoria_gasto=categoria if tipo_movimiento == 'GASTO' else None,
+                monto=monto,
+                descripcion=descripcion,
+                numero_comprobante=numero_comprobante,
+                comprobante_adjunto=comprobante,
+                usuario=get_authenticated_user(request)
+            )
+            
+            messages.success(request, 'Movimiento registrado exitosamente')
+            
+        except Exception as e:
+            messages.error(request, f'Error al registrar movimiento: {str(e)}')
+    
+    return redirect('custom_admin:caja_chica_list')
+
+
+@auth_required
+def reponer_caja_chica(request, caja_chica_id):
+    """Reponer fondo de caja chica"""
+    
+    caja_chica = get_object_or_404(CajaChica, id=caja_chica_id)
+    
+    if request.method == 'POST':
+        try:
+            # El monto a reponer ya viene calculado
+            monto = caja_chica.monto_a_reponer()
+            
+            if monto <= 0:
+                messages.warning(request, 'No se requiere reposición')
+                return redirect('custom_admin:caja_chica_list')
+            
+            # Registrar movimiento de reposición
+            MovimientoCajaChica.objects.create(
+                caja_chica=caja_chica,
+                tipo_movimiento='REPOSICION',
+                monto=monto,
+                descripcion=f'Reposición de fondo - Llevar a ${caja_chica.monto_fondo}',
+                usuario=get_authenticated_user(request)
+            )
+            
+            # Actualizar fecha de última reposición
+            caja_chica.fecha_ultima_reposicion = timezone.now()
+            caja_chica.save()
+            
+            messages.success(request, f'Reposición de ${monto:.2f} registrada exitosamente')
+            
+        except Exception as e:
+            messages.error(request, f'Error al reponer caja chica: {str(e)}')
+    
+    return redirect('custom_admin:caja_chica_list')

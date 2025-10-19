@@ -365,3 +365,35 @@ def validate_session_token(user, session_token):
         token_session=session_token,
         activa=True
     ).exists()
+
+# ============================================================================
+# DECORADORES PARA VISTAS HTML (Django Session Auth)
+# ============================================================================
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect
+from django.contrib import messages
+
+def role_required_html(allowed_roles):
+    """Decorador que requiere roles específicos para vistas HTML"""
+    def decorator(view_func):
+        @wraps(view_func)
+        @login_required(login_url='/login/')
+        def wrapped_view(request, *args, **kwargs):
+            user = request.user
+            
+            # Obtener el nombre del rol del usuario
+            user_role_name = user.rol.nombre if user.rol else None
+            
+            # Verificar si el rol del usuario está en los permitidos
+            if user_role_name not in allowed_roles:
+                messages.error(
+                    request, 
+                    f'No tiene permisos para acceder a este recurso. Se requiere uno de los siguientes roles: {", ".join(allowed_roles)}'
+                )
+                return redirect('custom_admin:dashboard')
+            
+            return view_func(request, *args, **kwargs)
+        return wrapped_view
+    return decorator
+

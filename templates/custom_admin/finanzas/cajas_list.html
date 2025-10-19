@@ -1,0 +1,725 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Gestión de Cajas{% endblock %}
+
+{% block alerts %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ============================================
+       MODALES - Centrado vertical mejorado
+       ============================================ */
+    .modal-dialog {
+        margin-top: 3rem !important;
+        margin-bottom: 3rem !important;
+    }
+
+    .modal-dialog-centered {
+        min-height: calc(100% - 6rem);
+    }
+    /* ============================================
+       FIX CRÍTICO: Permitir que los modales estén por encima de todo
+       ============================================ */
+    body.modal-open {
+        position: static !important;
+    }
+
+    /* ============================================
+       MODALES - Centrado vertical
+       ============================================ */
+    .modal-dialog {
+        margin-top: 10vh !important;
+        margin-bottom: 10vh !important;
+    }
+
+    .modal-body {
+        max-height: calc(90vh - 200px);
+        overflow-y: auto;
+    }
+
+    /* ============================================
+       HEADER
+       ============================================ */
+    .card-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+    }
+
+    /* ============================================
+       STAT CARDS CON GLASSMORPHISM
+       ============================================ */
+    .stat-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow:
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background:
+            radial-gradient(ellipse 300px 200px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow:
+            0 12px 40px rgba(59, 130, 246, 0.15),
+            0 4px 12px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        border-color: rgba(96, 165, 250, 0.6);
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 2;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .stat-label {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* ============================================
+       ADMIN CARD (Filtros y Contenido)
+       ============================================ */
+    .admin-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow:
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    /* ============================================
+       CAJA CARDS
+       ============================================ */
+    .caja-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        height: 100%;
+        box-shadow:
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .caja-card:hover {
+        transform: translateY(-4px);
+        box-shadow:
+            0 12px 40px rgba(59, 130, 246, 0.15),
+            0 4px 12px rgba(96, 165, 250, 0.2);
+    }
+
+    .caja-card.caja-abierta {
+        border-left: 4px solid #10b981;
+    }
+
+    .caja-card.caja-cerrada {
+        border-left: 4px solid #ef4444;
+    }
+
+    .badge-estado {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .badge-abierta {
+        background: rgba(16, 185, 129, 0.1);
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-cerrada {
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .monto-display {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 10px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h1 class="card-title">
+                <i class="fas fa-cash-register me-2"></i>Gestión de Cajas
+            </h1>
+            <p class="text-muted mb-0">Administra las cajas de tu negocio</p>
+        </div>
+        <div class="col-md-6 text-end">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevaCajaModal">
+                <i class="fas fa-plus me-2"></i>Nueva Caja
+            </button>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                    <i class="fas fa-unlock"></i>
+                </div>
+                <div class="stat-value">{{ cajas_abiertas }}</div>
+                <div class="stat-label">Cajas Abiertas</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <div class="stat-value">{{ cajas_cerradas }}</div>
+                <div class="stat-label">Cajas Cerradas</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+                <div class="stat-value">${{ total_efectivo|floatformat:2 }}</div>
+                <div class="stat-label">Efectivo Total</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white;">
+                    <i class="fas fa-exchange-alt"></i>
+                </div>
+                <div class="stat-value">{{ movimientos_hoy }}</div>
+                <div class="stat-label">Movimientos Hoy</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="admin-card mb-4">
+        <form method="GET" id="filterForm">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-filter me-2"></i>Estado
+                    </label>
+                    <select name="estado" class="form-select" onchange="this.form.submit()">
+                        <option value="">Todas</option>
+                        <option value="ABIERTA" {% if request.GET.estado == 'ABIERTA' %}selected{% endif %}>Abiertas</option>
+                        <option value="CERRADA" {% if request.GET.estado == 'CERRADA' %}selected{% endif %}>Cerradas</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-tag me-2"></i>Tipo
+                    </label>
+                    <select name="tipo" class="form-select" onchange="this.form.submit()">
+                        <option value="">Todos</option>
+                        <option value="PRINCIPAL" {% if request.GET.tipo == 'PRINCIPAL' %}selected{% endif %}>Principal</option>
+                        <option value="SECUNDARIA" {% if request.GET.tipo == 'SECUNDARIA' %}selected{% endif %}>Secundaria</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-search me-2"></i>Buscar
+                    </label>
+                    <input type="text" name="search" class="form-control" 
+                           placeholder="Código o nombre..." value="{{ request.GET.search }}">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-2"></i>Buscar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Lista de Cajas -->
+    <div class="row g-3">
+        {% for caja in cajas %}
+        <div class="col-md-6 col-lg-4">
+            <div class="caja-card {% if caja.estado == 'ABIERTA' %}caja-abierta{% else %}caja-cerrada{% endif %}">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h5 class="mb-1 fw-bold">{{ caja.nombre }}</h5>
+                        <span class="text-muted small">
+                            <i class="fas fa-barcode me-1"></i>{{ caja.codigo }}
+                        </span>
+                    </div>
+                    <span class="badge-estado {% if caja.estado == 'ABIERTA' %}badge-abierta{% else %}badge-cerrada{% endif %}">
+                        <i class="fas fa-{% if caja.estado == 'ABIERTA' %}unlock{% else %}lock{% endif %} me-1"></i>
+                        {{ caja.get_estado_display }}
+                    </span>
+                </div>
+
+                <!-- Tipo -->
+                <div class="mb-3">
+                    <span class="badge bg-secondary">
+                        <i class="fas fa-tag me-1"></i>{{ caja.get_tipo_display }}
+                    </span>
+                </div>
+
+                <!-- Monto -->
+                <div class="text-center mb-3 py-2" style="background: rgba(59, 130, 246, 0.05); border-radius: 12px;">
+                    <small class="text-muted d-block mb-1">Saldo Actual</small>
+                    <div class="monto-display">${{ caja.monto_actual|floatformat:2 }}</div>
+                </div>
+
+                <!-- Info -->
+                <div class="row text-center mb-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Apertura</small>
+                        <strong>${{ caja.monto_apertura|floatformat:2 }}</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Usuario</small>
+                        <strong class="small">
+                            {% if caja.usuario_apertura %}
+                                {{ caja.usuario_apertura.get_full_name|truncatechars:15 }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </strong>
+                    </div>
+                </div>
+
+                <!-- Fechas -->
+                {% if caja.fecha_apertura %}
+                <div class="mb-2">
+                    <small class="text-muted">
+                        <i class="fas fa-calendar-alt me-1"></i>
+                        Apertura: {{ caja.fecha_apertura|date:"d/m/Y H:i" }}
+                    </small>
+                </div>
+                {% endif %}
+
+                <!-- Acciones -->
+                <div class="d-grid gap-2 mt-3">
+                    {% if caja.estado == 'CERRADA' %}
+                        <button class="btn btn-success" onclick="abrirCaja('{{ caja.id }}', '{{ caja.nombre }}')">
+                            <i class="fas fa-unlock me-2"></i>Abrir Caja
+                        </button>
+                    {% else %}
+                        <button class="btn btn-warning" onclick="cerrarCaja('{{ caja.id }}', '{{ caja.nombre }}')">
+                            <i class="fas fa-lock me-2"></i>Cerrar Caja
+                        </button>
+                    {% endif %}
+
+                    <button class="btn btn-info text-white" onclick="verMovimientos('{{ caja.id }}', '{{ caja.nombre }}')">
+                        <i class="fas fa-list me-2"></i>Ver Movimientos
+                    </button>
+
+                    <button class="btn btn-primary" onclick="registrarMovimiento('{{ caja.id }}', '{{ caja.nombre }}')">
+                        <i class="fas fa-plus-circle me-2"></i>Nuevo Movimiento
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="admin-card text-center py-5">
+                <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                <h5>No hay cajas registradas</h5>
+                <p class="text-muted">Crea tu primera caja para comenzar</p>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevaCajaModal">
+                    <i class="fas fa-plus me-2"></i>Nueva Caja
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal: Nueva Caja -->
+<div class="modal fade" id="nuevaCajaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle me-2"></i>Nueva Caja
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'custom_admin:crear_caja' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nombre *</label>
+                        <input type="text" name="nombre" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Código *</label>
+                        <input type="text" name="codigo" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tipo *</label>
+                        <select name="tipo" class="form-select" required>
+                            <option value="PRINCIPAL">Principal</option>
+                            <option value="SECUNDARIA">Secundaria</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Monto de Apertura *</label>
+                        <input type="number" name="monto_apertura" class="form-control" 
+                               step="0.01" min="0" value="0" required>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" 
+                               name="requiere_autorizacion_cierre" id="autorizacion">
+                        <label class="form-check-label" for="autorizacion">
+                            Requiere autorización para cerrar
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Abrir Caja -->
+<div class="modal fade" id="abrirCajaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-unlock me-2"></i>Abrir Caja
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="abrirCajaForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="abrir">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Estás por abrir la caja: <strong id="nombreCajaAbrir"></strong>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Monto de Apertura *</label>
+                        <input type="number" name="monto_apertura" class="form-control" 
+                               step="0.01" min="0" value="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Observaciones</label>
+                        <textarea name="observaciones" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-unlock me-2"></i>Abrir Caja
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Cerrar Caja -->
+<div class="modal fade" id="cerrarCajaModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-lock me-2"></i>Cerrar Caja
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="cerrarCajaForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="cerrar">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Estás por cerrar la caja: <strong id="nombreCajaCerrar"></strong>
+                    </div>
+
+                    <h6 class="mb-3 fw-bold">Conteo de Efectivo</h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Billetes de $100</label>
+                            <input type="number" name="billetes_100" class="form-control conteo" min="0" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Billetes de $50</label>
+                            <input type="number" name="billetes_50" class="form-control conteo" min="0" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Billetes de $20</label>
+                            <input type="number" name="billetes_20" class="form-control conteo" min="0" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Billetes de $10</label>
+                            <input type="number" name="billetes_10" class="form-control conteo" min="0" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Billetes de $5</label>
+                            <input type="number" name="billetes_5" class="form-control conteo" min="0" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Billetes de $1</label>
+                            <input type="number" name="billetes_1" class="form-control conteo" min="0" value="0">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Monedas</label>
+                            <input type="number" name="monedas" class="form-control" step="0.01" min="0" value="0">
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <div class="row">
+                            <div class="col-6">
+                                <strong>Total Contado:</strong>
+                                <h4 id="totalContado">$0.00</h4>
+                            </div>
+                            <div class="col-6">
+                                <strong>Diferencia:</strong>
+                                <h4 id="diferencia">$0.00</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Observaciones</label>
+                        <textarea name="observaciones" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-lock me-2"></i>Cerrar Caja
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Movimientos -->
+<div class="modal fade" id="movimientosModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-exchange-alt me-2"></i>Movimientos - <span id="nombreCajaMovimientos"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="min-height: 400px;">
+                <div id="movimientosContent">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Cargando movimientos...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Nuevo Movimiento -->
+<div class="modal fade" id="nuevoMovimientoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle me-2"></i>Nuevo Movimiento
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="nuevoMovimientoForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="movimiento">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Caja: <strong id="nombreCajaMovimiento"></strong>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tipo de Movimiento *</label>
+                        <select name="tipo_movimiento" class="form-select" required>
+                            <option value="INGRESO">➕ Ingreso adicional</option>
+                            <option value="RETIRO">➖ Retiro de efectivo</option>
+                            <option value="AJUSTE_POSITIVO">➕ Ajuste positivo</option>
+                            <option value="AJUSTE_NEGATIVO">➖ Ajuste negativo</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Monto *</label>
+                        <input type="number" name="monto" class="form-control" 
+                               step="0.01" min="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Observaciones *</label>
+                        <textarea name="observaciones" class="form-control" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Registrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+let cajaActual = null;
+
+// Abrir Caja
+function abrirCaja(cajaId, cajaNombre) {
+    cajaActual = cajaId;
+    document.getElementById('nombreCajaAbrir').textContent = cajaNombre;
+    document.getElementById('abrirCajaForm').action = `/panel/finanzas/cajas/${cajaId}/abrir/`;
+    new bootstrap.Modal(document.getElementById('abrirCajaModal')).show();
+}
+
+// Cerrar Caja
+function cerrarCaja(cajaId, cajaNombre) {
+    cajaActual = cajaId;
+    document.getElementById('nombreCajaCerrar').textContent = cajaNombre;
+    document.getElementById('cerrarCajaForm').action = `/panel/finanzas/cajas/${cajaId}/cerrar/`;
+    new bootstrap.Modal(document.getElementById('cerrarCajaModal')).show();
+}
+
+// Calcular total contado
+document.querySelectorAll('.conteo').forEach(input => {
+    input.addEventListener('input', calcularTotal);
+});
+
+function calcularTotal() {
+    const b100 = parseInt(document.querySelector('[name="billetes_100"]').value) || 0;
+    const b50 = parseInt(document.querySelector('[name="billetes_50"]').value) || 0;
+    const b20 = parseInt(document.querySelector('[name="billetes_20"]').value) || 0;
+    const b10 = parseInt(document.querySelector('[name="billetes_10"]').value) || 0;
+    const b5 = parseInt(document.querySelector('[name="billetes_5"]').value) || 0;
+    const b1 = parseInt(document.querySelector('[name="billetes_1"]').value) || 0;
+    const monedas = parseFloat(document.querySelector('[name="monedas"]').value) || 0;
+
+    const total = (b100 * 100) + (b50 * 50) + (b20 * 20) + (b10 * 10) + (b5 * 5) + b1 + monedas;
+
+    document.getElementById('totalContado').textContent = `$${total.toFixed(2)}`;
+}
+
+// Ver Movimientos
+function verMovimientos(cajaId, cajaNombre) {
+    document.getElementById('nombreCajaMovimientos').textContent = cajaNombre;
+    const modal = new bootstrap.Modal(document.getElementById('movimientosModal'));
+    modal.show();
+
+    // Cargar movimientos via AJAX
+    fetch(`/panel/finanzas/cajas/${cajaId}/movimientos/`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('movimientosContent').innerHTML = html;
+        })
+        .catch(error => {
+            document.getElementById('movimientosContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i> Error al cargar movimientos
+                </div>
+            `;
+        });
+}
+
+// Nuevo Movimiento
+function registrarMovimiento(cajaId, cajaNombre) {
+    cajaActual = cajaId;
+    document.getElementById('nombreCajaMovimiento').textContent = cajaNombre;
+    document.getElementById('nuevoMovimientoForm').action = `/panel/finanzas/cajas/${cajaId}/movimiento/`;
+    new bootstrap.Modal(document.getElementById('nuevoMovimientoModal')).show();
+}
+
+// Mostrar mensajes con SweetAlert2
+{% if messages %}
+    {% for message in messages %}
+        Swal.fire({
+            icon: '{% if message.tags == "success" %}success{% elif message.tags == "error" %}error{% elif message.tags == "warning" %}warning{% else %}info{% endif %}',
+            title: '{% if message.tags == "success" %}¡Éxito!{% elif message.tags == "error" %}Error{% elif message.tags == "warning" %}Advertencia{% else %}Información{% endif %}',
+            text: '{{ message }}',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+    {% endfor %}
+{% endif %}
+</script>
+{% endblock %}

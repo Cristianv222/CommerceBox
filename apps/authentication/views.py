@@ -48,8 +48,47 @@ class StandardResultsSetPagination(PageNumberPagination):
 # ========================================
 
 class CustomTokenObtainPairView(TokenObtainPairView):
-    """Vista personalizada para obtener tokens JWT"""
+    """Vista personalizada para obtener tokens JWT con sesión Django"""
     serializer_class = CustomTokenObtainPairSerializer
+    
+    def post(self, request, *args, **kwargs):
+        # Obtener respuesta original con tokens
+        response = super().post(request, *args, **kwargs)
+        
+        if response.status_code == 200:
+            # Obtener el usuario autenticado
+            from django.contrib.auth import login as django_login
+            
+            # El serializer ya validó las credenciales y tiene el usuario
+            serializer = self.get_serializer(data=request.data)
+            if serializer.is_valid():
+                # Crear sesión de Django
+                user = serializer.user
+                django_login(request, user)
+                
+                # Agregar cookies JWT
+                tokens = response.data
+                response.set_cookie(
+                    key='access_token',
+                    value=tokens.get('access'),
+                    httponly=True,
+                    secure=not settings.DEBUG,
+                    samesite='Lax',
+                    max_age=3600,
+                    path='/'
+                )
+                
+                response.set_cookie(
+                    key='refresh_token',
+                    value=tokens.get('refresh'),
+                    httponly=True,
+                    secure=not settings.DEBUG,
+                    samesite='Lax',
+                    max_age=86400 * 7,
+                    path='/'
+                )
+        
+        return response
 
 
 class CustomTokenRefreshView(TokenRefreshView):
@@ -108,6 +147,7 @@ class CustomTokenRefreshView(TokenRefreshView):
 @rate_limit(max_requests=5, window_minutes=15)
 def login_view(request):
     """Vista de login con validaciones adicionales"""
+    from django.contrib.auth import login as django_login
     serializer = CustomTokenObtainPairSerializer(data=request.data, context={'request': request})
     
     if serializer.is_valid():
@@ -123,6 +163,9 @@ def login_view(request):
             'rol_nombre': user.rol.nombre if user.rol else None,
             'codigo_empleado': user.codigo_empleado,
         }
+        
+        # IMPORTANTE: Crear sesión de Django además de JWT
+        django_login(request, user)
         
         # Crear respuesta con cookies HttpOnly
         response = Response({

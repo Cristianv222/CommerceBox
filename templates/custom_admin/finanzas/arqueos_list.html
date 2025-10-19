@@ -1,0 +1,468 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Arqueos de Caja{% endblock %}
+
+{% block alerts %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ============================================
+       FIX CRÍTICO: Permitir que los modales estén por encima de todo
+       ============================================ */
+    body.modal-open {
+        position: static !important;
+    }
+
+    /* ============================================
+       MODALES - Centrado vertical
+       ============================================ */
+    .modal-dialog {
+        margin-top: 10vh !important;
+        margin-bottom: 10vh !important;
+    }
+
+    .modal-body {
+        max-height: calc(90vh - 200px);
+        overflow-y: auto;
+    }
+
+    /* ============================================
+       HEADER
+       ============================================ */
+    .card-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+    }
+
+    /* ============================================
+       STAT CARDS CON GLASSMORPHISM
+       ============================================ */
+    .stat-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow:
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background:
+            radial-gradient(ellipse 300px 200px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow:
+            0 12px 40px rgba(59, 130, 246, 0.15),
+            0 4px 12px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        border-color: rgba(96, 165, 250, 0.6);
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 2;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .stat-label {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* ============================================
+       ADMIN CARD (Filtros y Contenido)
+       ============================================ */
+    .admin-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow:
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    /* ============================================
+       TABLA CON GLASSMORPHISM
+       ============================================ */
+    .table-container {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow:
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .custom-table {
+        width: 100%;
+        margin: 0;
+    }
+
+    .custom-table thead th {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 197, 253, 0.1) 100%);
+        color: #0f172a;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 1rem;
+        border-bottom: 2px solid rgba(219, 234, 254, 0.5);
+    }
+
+    .custom-table tbody tr {
+        transition: all 0.2s ease;
+        border-bottom: 1px solid rgba(219, 234, 254, 0.3);
+    }
+
+    .custom-table tbody tr:hover {
+        background: rgba(59, 130, 246, 0.05);
+    }
+
+    .custom-table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        color: #334155;
+    }
+
+    /* Badges de estado */
+    .badge-cuadrado {
+        background: rgba(16, 185, 129, 0.1);
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        padding: 6px 12px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .badge-sobrante {
+        background: rgba(59, 130, 246, 0.1);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        padding: 6px 12px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .badge-faltante {
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        padding: 6px 12px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    /* Montos con colores */
+    .monto-positivo {
+        color: #059669;
+        font-weight: 700;
+    }
+
+    .monto-negativo {
+        color: #dc2626;
+        font-weight: 700;
+    }
+
+    .monto-neutral {
+        color: #64748b;
+        font-weight: 700;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h1 class="card-title">
+                <i class="fas fa-calculator me-2"></i>Arqueos de Caja
+            </h1>
+            <p class="text-muted mb-0">Historial de cierres y conciliaciones</p>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white;">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <div class="stat-value">{{ total_arqueos }}</div>
+                <div class="stat-label">Total Arqueos</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-value">{{ cuadrados }}</div>
+                <div class="stat-label">Cuadrados</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                    <i class="fas fa-plus-circle"></i>
+                </div>
+                <div class="stat-value">{{ sobrantes }}</div>
+                <div class="stat-label">Sobrantes</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
+                    <i class="fas fa-minus-circle"></i>
+                </div>
+                <div class="stat-value">{{ faltantes }}</div>
+                <div class="stat-label">Faltantes</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Diferencia Total -->
+    {% if diferencia_total != 0 %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="admin-card text-center">
+                <h5 class="mb-2">Diferencia Total Acumulada</h5>
+                <h2 class="{% if diferencia_total > 0 %}monto-positivo{% elif diferencia_total < 0 %}monto-negativo{% else %}monto-neutral{% endif %}">
+                    {% if diferencia_total > 0 %}+{% endif %}${{ diferencia_total|floatformat:2 }}
+                </h2>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filtros -->
+    <div class="admin-card mb-4">
+        <form method="GET" id="filterForm">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-filter me-2"></i>Estado
+                    </label>
+                    <select name="estado" class="form-select" onchange="this.form.submit()">
+                        <option value="">Todos</option>
+                        <option value="CUADRADO" {% if request.GET.estado == 'CUADRADO' %}selected{% endif %}>Cuadrados</option>
+                        <option value="SOBRANTE" {% if request.GET.estado == 'SOBRANTE' %}selected{% endif %}>Sobrantes</option>
+                        <option value="FALTANTE" {% if request.GET.estado == 'FALTANTE' %}selected{% endif %}>Faltantes</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-cash-register me-2"></i>Caja
+                    </label>
+                    <select name="caja" class="form-select" onchange="this.form.submit()">
+                        <option value="">Todas</option>
+                        {% for caja in cajas %}
+                        <option value="{{ caja.id }}" {% if request.GET.caja == caja.id|stringformat:"s" %}selected{% endif %}>
+                            {{ caja.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-calendar me-2"></i>Desde
+                    </label>
+                    <input type="date" name="desde" class="form-control" value="{{ request.GET.desde }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-calendar me-2"></i>Hasta
+                    </label>
+                    <input type="date" name="hasta" class="form-control" value="{{ request.GET.hasta }}">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-2"></i>Buscar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabla de Arqueos -->
+    <div class="table-container">
+        <table class="custom-table table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Número</th>
+                    <th>Caja</th>
+                    <th>Fecha Cierre</th>
+                    <th>Esperado</th>
+                    <th>Contado</th>
+                    <th>Diferencia</th>
+                    <th>Estado</th>
+                    <th>Usuario</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for arqueo in arqueos %}
+                <tr>
+                    <td>
+                        <strong>{{ arqueo.numero_arqueo }}</strong>
+                    </td>
+                    <td>
+                        <i class="fas fa-cash-register me-1 text-muted"></i>
+                        {{ arqueo.caja.nombre }}
+                    </td>
+                    <td>
+                        <i class="fas fa-calendar me-1 text-muted"></i>
+                        {{ arqueo.fecha_cierre|date:"d/m/Y H:i" }}
+                    </td>
+                    <td class="monto-neutral">
+                        ${{ arqueo.monto_esperado|floatformat:2 }}
+                    </td>
+                    <td class="monto-neutral">
+                        ${{ arqueo.monto_contado|floatformat:2 }}
+                    </td>
+                    <td>
+                        <span class="{% if arqueo.diferencia > 0 %}monto-positivo{% elif arqueo.diferencia < 0 %}monto-negativo{% else %}monto-neutral{% endif %}">
+                            {% if arqueo.diferencia > 0 %}+{% endif %}${{ arqueo.diferencia|floatformat:2 }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge-{{ arqueo.estado|lower }}">
+                            {% if arqueo.estado == 'CUADRADO' %}
+                                <i class="fas fa-check-circle me-1"></i>Cuadrado
+                            {% elif arqueo.estado == 'SOBRANTE' %}
+                                <i class="fas fa-plus-circle me-1"></i>Sobrante
+                            {% else %}
+                                <i class="fas fa-minus-circle me-1"></i>Faltante
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <small class="text-muted">
+                            {{ arqueo.usuario_cierre.get_full_name|default:"-" }}
+                        </small>
+                    </td>
+                    <td>
+                        <a href="{% url 'custom_admin:arqueo_detalle' arqueo.id %}" 
+                           class="btn btn-sm btn-info text-white">
+                            <i class="fas fa-eye me-1"></i>Ver Detalle
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3 d-block"></i>
+                        <h5 class="text-muted">No hay arqueos registrados</h5>
+                        <p class="text-muted">Los arqueos se generan automáticamente al cerrar cajas</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Paginación -->
+    {% if arqueos.has_other_pages %}
+    <nav aria-label="Paginación" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if arqueos.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ arqueos.previous_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}{% if request.GET.caja %}&caja={{ request.GET.caja }}{% endif %}{% if request.GET.desde %}&desde={{ request.GET.desde }}{% endif %}{% if request.GET.hasta %}&hasta={{ request.GET.hasta }}{% endif %}">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            </li>
+            {% endif %}
+
+            {% for num in arqueos.paginator.page_range %}
+            <li class="page-item {% if arqueos.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}{% if request.GET.caja %}&caja={{ request.GET.caja }}{% endif %}{% if request.GET.desde %}&desde={{ request.GET.desde }}{% endif %}{% if request.GET.hasta %}&hasta={{ request.GET.hasta }}{% endif %}">
+                    {{ num }}
+                </a>
+            </li>
+            {% endfor %}
+
+            {% if arqueos.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ arqueos.next_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}{% if request.GET.caja %}&caja={{ request.GET.caja }}{% endif %}{% if request.GET.desde %}&desde={{ request.GET.desde }}{% endif %}{% if request.GET.hasta %}&hasta={{ request.GET.hasta }}{% endif %}">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+// Mostrar mensajes con SweetAlert2
+{% if messages %}
+    {% for message in messages %}
+        Swal.fire({
+            icon: '{% if message.tags == "success" %}success{% elif message.tags == "error" %}error{% elif message.tags == "warning" %}warning{% else %}info{% endif %}',
+            title: '{% if message.tags == "success" %}¡Éxito!{% elif message.tags == "error" %}Error{% elif message.tags == "warning" %}Advertencia{% else %}Información{% endif %}',
+            text: '{{ message }}',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+    {% endfor %}
+{% endif %}
+</script>
+{% endblock %}
