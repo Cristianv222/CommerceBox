@@ -75,6 +75,9 @@ class MovimientoCajaAdmin(admin.ModelAdmin):
         ('Información del Movimiento', {
             'fields': ('caja', 'tipo_movimiento', 'monto')
         }),
+        ('Saldos', {
+            'fields': ('saldo_anterior', 'saldo_nuevo')
+        }),
         ('Referencias', {
             'fields': ('venta',)
         }),
@@ -82,17 +85,6 @@ class MovimientoCajaAdmin(admin.ModelAdmin):
             'fields': ('usuario', 'fecha_movimiento', 'observaciones')
         }),
     )
-    
-    def get_fieldsets(self, request, obj=None):
-        """Mostrar saldos solo al editar (no al crear)"""
-        fieldsets = super().get_fieldsets(request, obj)
-        if obj:  # Si está editando
-            # Insertar la sección de Saldos después de Información del Movimiento
-            fieldsets = list(fieldsets)
-            fieldsets.insert(1, ('Saldos (Calculados Automáticamente)', {
-                'fields': ('saldo_anterior', 'saldo_nuevo')
-            }))
-        return fieldsets
     
     def monto_formatted(self, obj):
         return f"${obj.monto:,.2f}"
@@ -218,12 +210,9 @@ class CajaChicaAdmin(admin.ModelAdmin):
             color = 'orange'
         else:
             color = 'green'
-        # Formatear antes de pasar a format_html
-        monto_formateado = f'{obj.monto_actual:,.2f}'
-        porcentaje_formateado = f'{porcentaje:.0f}'
         return format_html(
-            '<span style="color: {};">${} ({}%)</span>',
-            color, monto_formateado, porcentaje_formateado
+            '<span style="color: {};">${:,.2f} ({:.0f}%)</span>',
+            color, obj.monto_actual, porcentaje
         )
     monto_actual_formatted.short_description = 'Saldo Actual'
     
@@ -236,7 +225,6 @@ class CajaChicaAdmin(admin.ModelAdmin):
             )
         return format_html('<span style="color: green;">✅ No</span>')
     necesita_reposicion_badge.short_description = 'Necesita Reposición'
-
 
 @admin.register(MovimientoCajaChica)
 class MovimientoCajaChicaAdmin(admin.ModelAdmin):
@@ -259,6 +247,9 @@ class MovimientoCajaChicaAdmin(admin.ModelAdmin):
                 'categoria_gasto', 'monto'
             )
         }),
+        ('Saldos', {
+            'fields': ('saldo_anterior', 'saldo_nuevo')
+        }),
         ('Detalles', {
             'fields': (
                 'descripcion', 'numero_comprobante',
@@ -270,27 +261,14 @@ class MovimientoCajaChicaAdmin(admin.ModelAdmin):
         }),
     )
     
-    def get_fieldsets(self, request, obj=None):
-        """Mostrar saldos solo al editar (no al crear)"""
-        fieldsets = super().get_fieldsets(request, obj)
-        if obj:  # Si está editando
-            # Insertar la sección de Saldos después de Información del Movimiento
-            fieldsets = list(fieldsets)
-            fieldsets.insert(1, ('Saldos (Calculados Automáticamente)', {
-                'fields': ('saldo_anterior', 'saldo_nuevo')
-            }))
-        return fieldsets
-    
     def monto_formatted(self, obj):
-        # Formatear el número antes de pasarlo a format_html
-        monto_formateado = f'{obj.monto:,.2f}'
         if obj.tipo_movimiento == 'GASTO':
             return format_html(
-                '<span style="color: red;">-${}</span>',
-                monto_formateado
+                '<span style="color: red;">-${:,.2f}</span>',
+                obj.monto
             )
         return format_html(
-            '<span style="color: green;">+${}</span>',
-            monto_formateado
+            '<span style="color: green;">+${:,.2f}</span>',
+            obj.monto
         )
     monto_formatted.short_description = 'Monto'

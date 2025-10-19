@@ -307,6 +307,43 @@ class MovimientoCaja(models.Model):
             'RETIRO', 'DEVOLUCION', 
             'AJUSTE_NEGATIVO', 'TRANSFERENCIA_SALIDA'
         ]
+    
+    def save(self, *args, **kwargs):
+        """
+        Calcula saldo_anterior y saldo_nuevo automáticamente
+        y actualiza el saldo de la caja
+        """
+        from decimal import Decimal
+        from django.db import transaction
+        
+        # Calcular saldos si están vacíos (nuevo registro)
+        if self.saldo_anterior is None or self.saldo_nuevo is None:
+            with transaction.atomic():
+                # Obtener saldo actual de la caja (con lock)
+                Caja = self.caja.__class__
+                caja = Caja.objects.select_for_update().get(pk=self.caja.pk)
+                
+                # Establecer saldo anterior
+                self.saldo_anterior = caja.monto_actual
+                
+                # Calcular nuevo saldo según tipo de movimiento
+                if self.es_entrada():
+                    self.saldo_nuevo = self.saldo_anterior + self.monto
+                elif self.es_salida():
+                    self.saldo_nuevo = self.saldo_anterior - self.monto
+                else:
+                    # Para CIERRE, mantener el saldo
+                    self.saldo_nuevo = self.saldo_anterior
+                
+                # Guardar el movimiento
+                super().save(*args, **kwargs)
+                
+                # Actualizar el monto actual de la caja
+                caja.monto_actual = self.saldo_nuevo
+                caja.save(update_fields=['monto_actual'])
+        else:
+            # Si ya existen los saldos, solo guardar
+            super().save(*args, **kwargs)
 
 
 # ============================================================================
@@ -457,6 +494,28 @@ class ArqueoCaja(models.Model):
             self.estado = 'FALTANTE'
     
     def save(self, *args, **kwargs):
+        # Generar número de arqueo si no existe
+        if not self.numero_arqueo:
+            from django.utils import timezone
+            año = timezone.now().year
+            # Obtener el último arqueo del año
+            ultimo = ArqueoCaja.objects.filter(
+                numero_arqueo__startswith=f'ARQ-{año}-'
+            ).order_by('numero_arqueo').last()
+            
+            if ultimo and ultimo.numero_arqueo:
+                # Extraer el número secuencial del último arqueo
+                try:
+                    ultimo_num = int(ultimo.numero_arqueo.split('-')[-1])
+                    siguiente_num = ultimo_num + 1
+                except (ValueError, IndexError):
+                    siguiente_num = 1
+            else:
+                siguiente_num = 1
+            
+            # Generar el número con formato ARQ-2025-00001
+            self.numero_arqueo = f'ARQ-{año}-{siguiente_num:05d}'
+        
         # Calcular diferencia antes de guardar
         self.calcular_diferencia()
         super().save(*args, **kwargs)
@@ -695,7 +754,45 @@ class MovimientoCajaChica(models.Model):
     
     def __str__(self):
         return f"{self.get_tipo_movimiento_display()} - ${self.monto}"
-
+    
+    def save(self, *args, **kwargs):
+        """
+        Calcula saldo_anterior y saldo_nuevo automáticamente
+        y actualiza el saldo de la caja chica
+        """
+        from decimal import Decimal
+        from django.db import transaction
+        
+        # Calcular saldos si están vacíos (nuevo registro)
+        if self.saldo_anterior is None or self.saldo_nuevo is None:
+            with transaction.atomic():
+                # Obtener saldo actual de la caja chica (con lock)
+                CajaChica = self.caja_chica.__class__
+                caja_chica = CajaChica.objects.select_for_update().get(pk=self.caja_chica.pk)
+                
+                # Establecer saldo anterior
+                self.saldo_anterior = caja_chica.monto_actual
+                
+                # Calcular nuevo saldo según tipo de movimiento
+                if self.tipo_movimiento in ['APERTURA', 'REPOSICION']:
+                    # Entrada de dinero
+                    self.saldo_nuevo = self.saldo_anterior + self.monto
+                elif self.tipo_movimiento == 'GASTO':
+                    # Salida de dinero
+                    self.saldo_nuevo = self.saldo_anterior - self.monto
+                else:
+                    # AJUSTE - mantener
+                    self.saldo_nuevo = self.saldo_anterior
+                
+                # Guardar el movimiento
+                super().save(*args, **kwargs)
+                
+                # Actualizar el monto actual de la caja chica
+                caja_chica.monto_actual = self.saldo_nuevo
+                caja_chica.save(update_fields=['monto_actual'])
+        else:
+            # Si ya existen los saldos, solo guardar
+            super().save(*args, **kwargs)
 
 # ============================================================================
 # SIGNALS
