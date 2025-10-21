@@ -1,0 +1,302 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Detalle de Arqueo{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Estado del Arqueo -->
+    <div class="text-center mb-4 p-4" style="background: rgba(59, 130, 246, 0.05); border-radius: 12px;">
+        <h4 class="mb-3">{{ arqueo.numero_arqueo }} - {{ arqueo.caja.nombre }}</h4>
+        <span class="badge-{{ arqueo.estado|lower }}" style="font-size: 1.1rem; padding: 10px 20px;">
+            {% if arqueo.estado == 'CUADRADO' %}
+                <i class="fas fa-check-circle me-2"></i>Cuadrado - Sin diferencias
+            {% elif arqueo.estado == 'SOBRANTE' %}
+                <i class="fas fa-plus-circle me-2"></i>Sobrante
+            {% else %}
+                <i class="fas fa-minus-circle me-2"></i>Faltante
+            {% endif %}
+        </span>
+        
+        {% if arqueo.diferencia != 0 %}
+        <h2 class="mt-3 {% if arqueo.diferencia > 0 %}text-success{% else %}text-danger{% endif %}" style="font-weight: 800;">
+            {% if arqueo.diferencia > 0 %}+{% endif %}${{ arqueo.diferencia|floatformat:2 }}
+        </h2>
+        <p class="text-muted mb-0">Diferencia</p>
+        {% endif %}
+    </div>
+
+    <!-- Resumen Financiero -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="mini-stat">
+                <div class="mini-stat-value">${{ arqueo.monto_apertura|floatformat:2 }}</div>
+                <div class="mini-stat-label">Monto Apertura</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mini-stat">
+                <div class="mini-stat-value">${{ arqueo.total_ventas|floatformat:2 }}</div>
+                <div class="mini-stat-label">Total Ventas</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mini-stat">
+                <div class="mini-stat-value">${{ arqueo.monto_esperado|floatformat:2 }}</div>
+                <div class="mini-stat-label">Monto Esperado</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mini-stat">
+                <div class="mini-stat-value">${{ arqueo.monto_contado|floatformat:2 }}</div>
+                <div class="mini-stat-label">Monto Contado</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información General y Desglose -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="info-box">
+                <h6 class="section-title-modal">
+                    <i class="fas fa-info-circle text-primary"></i>
+                    Información General
+                </h6>
+                
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="fas fa-calendar-check me-1"></i>Fecha Apertura
+                    </span>
+                    <span class="info-value">{{ arqueo.fecha_apertura|date:"d/m/Y H:i" }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="fas fa-calendar-times me-1"></i>Fecha Cierre
+                    </span>
+                    <span class="info-value">{{ arqueo.fecha_cierre|date:"d/m/Y H:i" }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="fas fa-user me-1"></i>Usuario Apertura
+                    </span>
+                    <span class="info-value">{{ arqueo.usuario_apertura.get_full_name }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="fas fa-user-check me-1"></i>Usuario Cierre
+                    </span>
+                    <span class="info-value">{{ arqueo.usuario_cierre.get_full_name }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="info-box">
+                <h6 class="section-title-modal">
+                    <i class="fas fa-money-bill-wave text-success"></i>
+                    Desglose de Efectivo
+                </h6>
+                
+                <div class="info-row">
+                    <span class="info-label">Billetes de $100</span>
+                    <span class="info-value">{{ arqueo.billetes_100 }} × $100 = ${{ arqueo.billetes_100|floatformat:0 }}00</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Billetes de $50</span>
+                    <span class="info-value">{{ arqueo.billetes_50 }} × $50 = ${{ arqueo.billetes_50|floatformat:0 }}0</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Billetes de $20</span>
+                    <span class="info-value">{{ arqueo.billetes_20 }} × $20 = ${{ arqueo.billetes_20|floatformat:0 }}0</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Billetes de $10</span>
+                    <span class="info-value">{{ arqueo.billetes_10 }} × $10 = ${{ arqueo.billetes_10|floatformat:0 }}0</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Billetes de $5</span>
+                    <span class="info-value">{{ arqueo.billetes_5 }} × $5 = ${{ arqueo.billetes_5|floatformat:0 }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Billetes de $1</span>
+                    <span class="info-value">{{ arqueo.billetes_1 }} × $1 = ${{ arqueo.billetes_1|floatformat:0 }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Monedas</span>
+                    <span class="info-value">${{ arqueo.monedas|floatformat:2 }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Totales del Período -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="info-box">
+                <h6 class="section-title-modal">
+                    <i class="fas fa-plus-circle text-success"></i>
+                    Ingresos
+                </h6>
+                
+                <div class="info-row">
+                    <span class="info-label">Ventas</span>
+                    <span class="info-value text-success">${{ arqueo.total_ventas|floatformat:2 }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Otros Ingresos</span>
+                    <span class="info-value text-success">${{ arqueo.total_ingresos|floatformat:2 }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="info-box">
+                <h6 class="section-title-modal">
+                    <i class="fas fa-minus-circle text-danger"></i>
+                    Egresos
+                </h6>
+                
+                <div class="info-row">
+                    <span class="info-label">Retiros</span>
+                    <span class="info-value text-danger">${{ arqueo.total_retiros|floatformat:2 }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="info-box">
+                <h6 class="section-title-modal">
+                    <i class="fas fa-balance-scale text-primary"></i>
+                    Balance
+                </h6>
+                
+                <div class="info-row">
+                    <span class="info-label">Esperado</span>
+                    <span class="info-value">${{ arqueo.monto_esperado|floatformat:2 }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Contado</span>
+                    <span class="info-value">${{ arqueo.monto_contado|floatformat:2 }}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Diferencia</span>
+                    <span class="info-value {% if arqueo.diferencia > 0 %}text-success{% elif arqueo.diferencia < 0 %}text-danger{% endif %}">
+                        {% if arqueo.diferencia > 0 %}+{% endif %}${{ arqueo.diferencia|floatformat:2 }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Observaciones -->
+    {% if arqueo.observaciones %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="info-box">
+                <h6 class="section-title-modal">
+                    <i class="fas fa-comment-alt text-info"></i>
+                    Observaciones
+                </h6>
+                <p class="mb-0" style="color: #334155;">{{ arqueo.observaciones }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Movimientos del Período -->
+    <div class="row">
+        <div class="col-12">
+            <div class="info-box">
+                <h6 class="section-title-modal mb-3">
+                    <i class="fas fa-exchange-alt text-primary"></i>
+                    Movimientos del Período ({{ movimientos.count }})
+                </h6>
+
+                <div class="table-responsive">
+                    <table class="table table-hover modal-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Monto</th>
+                                <th>Saldo Ant.</th>
+                                <th>Saldo Nuevo</th>
+                                <th>Usuario</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mov in movimientos %}
+                            <tr>
+                                <td style="font-size: 0.75rem;">
+                                    {{ mov.fecha_movimiento|date:"d/m/Y H:i" }}
+                                </td>
+                                <td>
+                                    {% if 'VENTA' in mov.tipo_movimiento %}
+                                        <span class="badge-tipo badge-venta">
+                                            <i class="fas fa-shopping-cart me-1"></i>Venta
+                                        </span>
+                                    {% elif 'INGRESO' in mov.tipo_movimiento or 'POSITIVO' in mov.tipo_movimiento %}
+                                        <span class="badge-tipo badge-ingreso">
+                                            <i class="fas fa-plus me-1"></i>Ingreso
+                                        </span>
+                                    {% elif 'RETIRO' in mov.tipo_movimiento or 'NEGATIVO' in mov.tipo_movimiento %}
+                                        <span class="badge-tipo badge-retiro">
+                                            <i class="fas fa-minus me-1"></i>Retiro
+                                        </span>
+                                    {% elif 'APERTURA' in mov.tipo_movimiento %}
+                                        <span class="badge-tipo badge-apertura">
+                                            <i class="fas fa-unlock me-1"></i>Apertura
+                                        </span>
+                                    {% elif 'CIERRE' in mov.tipo_movimiento %}
+                                        <span class="badge-tipo badge-cierre">
+                                            <i class="fas fa-lock me-1"></i>Cierre
+                                        </span>
+                                    {% else %}
+                                        <span class="badge-tipo" style="background: rgba(100, 116, 139, 0.1); color: #475569;">
+                                            {{ mov.get_tipo_movimiento_display }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong class="{% if mov.es_entrada %}text-success{% elif mov.es_salida %}text-danger{% endif %}" style="font-size: 0.85rem;">
+                                        {% if mov.es_entrada %}+{% elif mov.es_salida %}-{% endif %}${{ mov.monto|floatformat:2 }}
+                                    </strong>
+                                </td>
+                                <td style="color: #64748b; font-size: 0.8rem;">
+                                    ${{ mov.saldo_anterior|floatformat:2 }}
+                                </td>
+                                <td style="font-weight: 600; font-size: 0.85rem;">
+                                    ${{ mov.saldo_nuevo|floatformat:2 }}
+                                </td>
+                                <td style="font-size: 0.75rem; color: #64748b;">
+                                    {{ mov.usuario.get_full_name|default:"-" }}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4" style="color: #94a3b8;">
+                                    <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                                    No hay movimientos en este período
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

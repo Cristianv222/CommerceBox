@@ -1,10 +1,10 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils.decorators import method_decorator
 from django.utils import timezone
-from django.contrib.auth import logout
+from django.contrib.auth import logout as django_logout, login as django_login
 from django.core.mail import send_mail
 from django.conf import settings
 from rest_framework import status, generics, permissions
@@ -16,11 +16,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q, Count
 from datetime import timedelta, datetime
-from .models import Rol
 import uuid
 import json
 
-from .models import Usuario, PermisoPersonalizado, SesionUsuario, LogAcceso
+from .models import Usuario, PermisoPersonalizado, SesionUsuario, LogAcceso, Rol
 from .serializers import (
     CustomTokenObtainPairSerializer, UsuarioSerializer, UsuarioListSerializer,
     CambiarPasswordSerializer, RecuperarPasswordSerializer, RestablecerPasswordSerializer,
@@ -56,17 +55,12 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         response = super().post(request, *args, **kwargs)
         
         if response.status_code == 200:
-            # Obtener el usuario autenticado
-            from django.contrib.auth import login as django_login
-            
-            # El serializer ya validó las credenciales y tiene el usuario
+            # El serializer ya validó credenciales; creamos sesión y seteamos cookies
             serializer = self.get_serializer(data=request.data)
             if serializer.is_valid():
-                # Crear sesión de Django
                 user = serializer.user
                 django_login(request, user)
-                
-                # Agregar cookies JWT
+
                 tokens = response.data
                 response.set_cookie(
                     key='access_token',
@@ -77,7 +71,6 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                     max_age=3600,
                     path='/'
                 )
-                
                 response.set_cookie(
                     key='refresh_token',
                     value=tokens.get('refresh'),
@@ -93,25 +86,18 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 class CustomTokenRefreshView(TokenRefreshView):
     """Vista personalizada para refrescar tokens JWT"""
-    
     def post(self, request, *args, **kwargs):
         # Buscar refresh token en cookies si no viene en el body
-        refresh_token = request.data.get('refresh')
+        refresh_token = request.data.get('refresh') or request.COOKIES.get('refresh_token')
         if not refresh_token:
-            refresh_token = request.COOKIES.get('refresh_token')
-        
-        if not refresh_token:
-            return Response({
-                'error': 'Refresh token requerido'
-            }, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'error': 'Refresh token requerido'}, status=status.HTTP_401_UNAUTHORIZED)
         
         # Agregar el token al request.data si vino de cookies
         if 'refresh' not in request.data:
-            # Crear una copia mutable del QueryDict
             mutable_data = request.data.copy()
             mutable_data['refresh'] = refresh_token
-            request._full_data = mutable_data
-        
+            request._full_data = mutable_data  # hack seguro en DRF para inyectar datos
+
         response = super().post(request, *args, **kwargs)
         
         if response.status_code == 200:
@@ -127,15 +113,12 @@ class CustomTokenRefreshView(TokenRefreshView):
                     max_age=3600,
                     path='/'
                 )
-            
             # Actualizar último acceso del usuario
             try:
                 token = RefreshToken(refresh_token)
                 user_id = token.payload.get('user_id')
                 if user_id:
-                    Usuario.objects.filter(id=user_id).update(
-                        fecha_ultimo_acceso=timezone.now()
-                    )
+                    Usuario.objects.filter(id=user_id).update(fecha_ultimo_acceso=timezone.now())
             except Exception:
                 pass
         
@@ -146,15 +129,14 @@ class CustomTokenRefreshView(TokenRefreshView):
 @permission_classes([permissions.AllowAny])
 @rate_limit(max_requests=5, window_minutes=15)
 def login_view(request):
-    """Vista de login con validaciones adicionales"""
-    from django.contrib.auth import login as django_login
+    """Login API con sesión Django + cookies JWT HttpOnly"""
     serializer = CustomTokenObtainPairSerializer(data=request.data, context={'request': request})
     
     if serializer.is_valid():
         tokens = serializer.validated_data
-        user = request.user
-        
-        # Manejar rol como ForeignKey
+        user = serializer.user  # usar el user del serializer
+
+        # Datos del usuario
         user_data = {
             'id': str(user.id),
             'email': user.email,
@@ -164,17 +146,16 @@ def login_view(request):
             'codigo_empleado': user.codigo_empleado,
         }
         
-        # IMPORTANTE: Crear sesión de Django además de JWT
+        # Crear sesión Django
         django_login(request, user)
         
-        # Crear respuesta con cookies HttpOnly
+        # Respuesta con cookies HttpOnly
         response = Response({
             'message': 'Login exitoso',
             'tokens': tokens,
             'user': user_data
         }, status=status.HTTP_200_OK)
         
-        # Establecer cookies HttpOnly para los tokens
         response.set_cookie(
             key='access_token',
             value=tokens['access'],
@@ -184,7 +165,6 @@ def login_view(request):
             max_age=3600,
             path='/'
         )
-        
         response.set_cookie(
             key='refresh_token',
             value=tokens['refresh'],
@@ -194,54 +174,104 @@ def login_view(request):
             max_age=86400 * 7,
             path='/'
         )
-        
         return response
     
-    return Response({
-        'error': 'Credenciales inválidas',
-        'details': serializer.errors
-    }, status=status.HTTP_401_UNAUTHORIZED)
+    return Response({'error': 'Credenciales inválidas', 'details': serializer.errors}, status=status.HTTP_401_UNAUTHORIZED)
 
 
+# ============================
+# LOGOUT "WEB" (redirige al login)
+# ============================
+def logout_view(request):
+    """
+    Cierra sesión de Django, pone en blacklist el refresh (si existe),
+    limpia cookies (access/refresh/sessionid/csrftoken) y REDIRIGE al login.
+    """
+    # Intentar leer refresh token de cookie, header o POST
+    refresh = (
+        request.COOKIES.get('refresh_token') or
+        request.POST.get('refresh') or
+        request.headers.get('X-Refresh-Token')
+    )
+    if refresh:
+        try:
+            RefreshToken(refresh).blacklist()  # requiere token_blacklist en INSTALLED_APPS
+        except Exception:
+            pass
+
+    # Registrar logout (si el usuario estaba autenticado)
+    try:
+        if request.user.is_authenticated:
+            LogAcceso.objects.create(
+                usuario=request.user,
+                tipo_evento='LOGOUT',
+                ip_address=get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                detalles='Logout manual (web)',
+                exitoso=True
+            )
+    except Exception:
+        pass
+
+    # Cerrar sesión Django
+    django_logout(request)
+
+    # Redirección y borrado de cookies
+    response = redirect('login')
+    # cookies que podrías estar usando en distintos contextos
+    for name in ['access_token', 'refresh_token', 'access', 'refresh', 'sessionid', 'csrftoken']:
+        response.delete_cookie(name, path='/', samesite='Lax')
+    return response
+
+
+# ========================================
+# LOGOUT API (JSON) — mantiene compatibilidad con tu endpoint previo
+# ========================================
 @api_view(['POST'])
 @jwt_required
-def logout_view(request):
-    """Vista de logout que invalida el token"""
+def api_logout_view(request):
+    """Logout API: invalida refresh, cierra sesión y borra cookies (responde JSON)."""
     try:
-        # Marcar sesión como inactiva
         token_session = request.headers.get('Session-Token')
         if token_session:
             SesionUsuario.objects.filter(
                 usuario=request.user,
                 token_session=token_session
             ).update(activa=False)
-        
+
         # Registrar logout
         LogAcceso.objects.create(
             usuario=request.user,
             tipo_evento='LOGOUT',
             ip_address=get_client_ip(request),
             user_agent=request.META.get('HTTP_USER_AGENT', ''),
-            detalles='Logout manual',
+            detalles='Logout manual (API)',
             exitoso=True
         )
-        
-        # Crear respuesta y eliminar cookies
-        response = Response({
-            'message': 'Logout exitoso'
-        }, status=status.HTTP_200_OK)
-        
-        # Eliminar cookies de tokens
-        response.delete_cookie('access_token', path='/')
-        response.delete_cookie('refresh_token', path='/')
-        
+
+        # Blacklist del refresh si vino en cookie/header/body
+        refresh = (
+            request.COOKIES.get('refresh_token') or
+            request.data.get('refresh') or
+            request.headers.get('X-Refresh-Token')
+        )
+        if refresh:
+            try:
+                RefreshToken(refresh).blacklist()
+            except Exception:
+                pass
+
+        # Cerrar sesión Django
+        django_logout(request)
+
+        # Responder y eliminar cookies
+        response = Response({'message': 'Logout exitoso'}, status=status.HTTP_200_OK)
+        for name in ['access_token', 'refresh_token', 'access', 'refresh', 'sessionid', 'csrftoken']:
+            response.delete_cookie(name, path='/', samesite='Lax')
         return response
-        
+
     except Exception as e:
-        return Response({
-            'error': 'Error al cerrar sesión',
-            'details': str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'error': 'Error al cerrar sesión', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # ========================================
@@ -260,22 +290,15 @@ def perfil_usuario_view(request):
 @jwt_required
 def actualizar_perfil_view(request):
     """Actualizar perfil del usuario autenticado"""
-    # Solo permitir actualizar ciertos campos
     allowed_fields = ['nombres', 'apellidos', 'telefono', 'username']
     data = {k: v for k, v in request.data.items() if k in allowed_fields}
     
     serializer = PerfilUsuarioSerializer(request.user, data=data, partial=True)
     if serializer.is_valid():
         serializer.save()
-        return Response({
-            'message': 'Perfil actualizado exitosamente',
-            'data': serializer.data
-        })
+        return Response({'message': 'Perfil actualizado exitosamente', 'data': serializer.data})
     
-    return Response({
-        'error': 'Error al actualizar perfil',
-        'details': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
+    return Response({'error': 'Error al actualizar perfil', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ========================================
@@ -297,7 +320,6 @@ def cambiar_password_view(request):
         # Cerrar todas las sesiones del usuario
         logout_user_sessions(user)
         
-        # Registrar cambio de contraseña
         LogAcceso.objects.create(
             usuario=user,
             tipo_evento='PASSWORD_CHANGE',
@@ -306,15 +328,9 @@ def cambiar_password_view(request):
             detalles='Cambio de contraseña exitoso',
             exitoso=True
         )
-        
-        return Response({
-            'message': 'Contraseña cambiada exitosamente. Debe iniciar sesión nuevamente.'
-        })
+        return Response({'message': 'Contraseña cambiada exitosamente. Debe iniciar sesión nuevamente.'})
     
-    return Response({
-        'error': 'Error al cambiar contraseña',
-        'details': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
+    return Response({'error': 'Error al cambiar contraseña', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
@@ -328,13 +344,11 @@ def recuperar_password_view(request):
         email = serializer.validated_data['email']
         user = Usuario.objects.get(email=email)
         
-        # Generar token de recuperación
         token = str(uuid.uuid4())
         user.token_recuperacion = token
         user.fecha_expiracion_token = timezone.now() + timedelta(hours=24)
         user.save()
         
-        # Enviar email (configurar según tus necesidades)
         try:
             send_mail(
                 'Recuperación de contraseña - CommerceBox',
@@ -343,21 +357,11 @@ def recuperar_password_view(request):
                 [email],
                 fail_silently=False,
             )
-            
-            return Response({
-                'message': 'Se ha enviado un token de recuperación a su email'
-            })
-            
+            return Response({'message': 'Se ha enviado un token de recuperación a su email'})
         except Exception as e:
-            return Response({
-                'error': 'Error al enviar email de recuperación',
-                'details': str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': 'Error al enviar email de recuperación', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    return Response({
-        'error': 'Email inválido',
-        'details': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
+    return Response({'error': 'Email inválido', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
@@ -377,17 +381,10 @@ def restablecer_password_view(request):
         user.fecha_cambio_password = timezone.now()
         user.save()
         
-        # Cerrar todas las sesiones
         logout_user_sessions(user)
-        
-        return Response({
-            'message': 'Contraseña restablecida exitosamente'
-        })
+        return Response({'message': 'Contraseña restablecida exitosamente'})
     
-    return Response({
-        'error': 'Token inválido o datos incorrectos',
-        'details': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
+    return Response({'error': 'Token inválido o datos incorrectos', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ========================================
@@ -411,10 +408,8 @@ def usuarios_list_view(request):
             Q(email__icontains=search) |
             Q(codigo_empleado__icontains=search)
         )
-    
     if rol_id:
         queryset = queryset.filter(rol__id=rol_id)
-    
     if estado:
         queryset = queryset.filter(estado=estado)
     
@@ -422,7 +417,6 @@ def usuarios_list_view(request):
     
     paginator = StandardResultsSetPagination()
     page = paginator.paginate_queryset(queryset, request)
-    
     if page is not None:
         serializer = UsuarioListSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
@@ -436,11 +430,8 @@ def usuarios_list_view(request):
 def usuario_create_view(request):
     """Crear nuevo usuario - Solo administradores"""
     serializer = UsuarioSerializer(data=request.data)
-    
     if serializer.is_valid():
         usuario = serializer.save()
-        
-        # Registrar creación de usuario
         LogAcceso.objects.create(
             usuario=request.user,
             tipo_evento='USER_CREATED',
@@ -449,16 +440,8 @@ def usuario_create_view(request):
             detalles=f'Usuario creado: {usuario.get_full_name()} ({usuario.codigo_empleado})',
             exitoso=True
         )
-        
-        return Response({
-            'message': 'Usuario creado exitosamente',
-            'data': UsuarioSerializer(usuario).data
-        }, status=status.HTTP_201_CREATED)
-    
-    return Response({
-        'error': 'Error al crear usuario',
-        'details': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'message': 'Usuario creado exitosamente', 'data': UsuarioSerializer(usuario).data}, status=status.HTTP_201_CREATED)
+    return Response({'error': 'Error al crear usuario', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
@@ -476,11 +459,8 @@ def usuario_update_view(request, user_id):
     """Actualizar usuario - Solo administradores"""
     usuario = get_object_or_404(Usuario, id=user_id)
     serializer = UsuarioSerializer(usuario, data=request.data, partial=True)
-    
     if serializer.is_valid():
         usuario_updated = serializer.save()
-        
-        # Registrar actualización
         LogAcceso.objects.create(
             usuario=request.user,
             tipo_evento='USER_UPDATED',
@@ -489,16 +469,8 @@ def usuario_update_view(request, user_id):
             detalles=f'Usuario actualizado: {usuario_updated.get_full_name()}',
             exitoso=True
         )
-        
-        return Response({
-            'message': 'Usuario actualizado exitosamente',
-            'data': serializer.data
-        })
-    
-    return Response({
-        'error': 'Error al actualizar usuario',
-        'details': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'message': 'Usuario actualizado exitosamente', 'data': serializer.data})
+    return Response({'error': 'Error al actualizar usuario', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['DELETE'])
@@ -506,16 +478,10 @@ def usuario_update_view(request, user_id):
 def usuario_delete_view(request, user_id):
     """Eliminar usuario - Solo administradores"""
     usuario = get_object_or_404(Usuario, id=user_id)
-    
     if usuario.id == request.user.id:
-        return Response({
-            'error': 'No puede eliminar su propia cuenta'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
+        return Response({'error': 'No puede eliminar su propia cuenta'}, status=status.HTTP_400_BAD_REQUEST)
     usuario_info = f"{usuario.get_full_name()} ({usuario.codigo_empleado})"
     usuario.delete()
-    
-    # Registrar eliminación
     LogAcceso.objects.create(
         usuario=request.user,
         tipo_evento='USER_DELETED',
@@ -524,10 +490,7 @@ def usuario_delete_view(request, user_id):
         detalles=f'Usuario eliminado: {usuario_info}',
         exitoso=True
     )
-    
-    return Response({
-        'message': 'Usuario eliminado exitosamente'
-    })
+    return Response({'message': 'Usuario eliminado exitosamente'})
 
 
 @api_view(['POST'])
@@ -535,11 +498,8 @@ def usuario_delete_view(request, user_id):
 def bloquear_usuario_view(request, user_id):
     """Bloquear/desbloquear usuario - Solo administradores"""
     usuario = get_object_or_404(Usuario, id=user_id)
-    
     if usuario.id == request.user.id:
-        return Response({
-            'error': 'No puede bloquear su propia cuenta'
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'No puede bloquear su propia cuenta'}, status=status.HTTP_400_BAD_REQUEST)
     
     if usuario.estado == 'BLOQUEADO':
         usuario.estado = 'ACTIVO'
@@ -550,13 +510,9 @@ def bloquear_usuario_view(request, user_id):
         usuario.estado = 'BLOQUEADO'
         usuario.fecha_bloqueo = timezone.now()
         accion = 'bloqueado'
-        
-        # Cerrar todas las sesiones del usuario
         logout_user_sessions(usuario)
     
     usuario.save()
-    
-    # Registrar acción
     LogAcceso.objects.create(
         usuario=request.user,
         tipo_evento='USER_BLOCKED' if accion == 'bloqueado' else 'USER_UNBLOCKED',
@@ -565,11 +521,7 @@ def bloquear_usuario_view(request, user_id):
         detalles=f'Usuario {accion}: {usuario.get_full_name()}',
         exitoso=True
     )
-    
-    return Response({
-        'message': f'Usuario {accion} exitosamente',
-        'estado': usuario.estado
-    })
+    return Response({'message': f'Usuario {accion} exitosamente', 'estado': usuario.estado})
 
 
 # ========================================
@@ -592,15 +544,12 @@ def permisos_list_view(request):
     modulo = request.GET.get('modulo', '')
     
     queryset = PermisoPersonalizado.objects.select_related('usuario')
-    
     if usuario_id:
         queryset = queryset.filter(usuario__id=usuario_id)
-    
     if modulo:
         queryset = queryset.filter(modulo=modulo)
     
     queryset = queryset.filter(activo=True).order_by('usuario__apellidos', 'modulo', 'accion')
-    
     serializer = PermisoPersonalizadoSerializer(queryset, many=True)
     return Response(serializer.data)
 
@@ -610,11 +559,8 @@ def permisos_list_view(request):
 def permiso_create_view(request):
     """Crear permiso personalizado"""
     serializer = PermisoPersonalizadoSerializer(data=request.data)
-    
     if serializer.is_valid():
         permiso = serializer.save()
-        
-        # Registrar creación de permiso
         LogAcceso.objects.create(
             usuario=request.user,
             tipo_evento='PERMISSION_CREATED',
@@ -623,16 +569,8 @@ def permiso_create_view(request):
             detalles=f'Permiso creado: {permiso.usuario.get_full_name()} - {permiso.modulo}.{permiso.accion}',
             exitoso=True
         )
-        
-        return Response({
-            'message': 'Permiso creado exitosamente',
-            'data': serializer.data
-        }, status=status.HTTP_201_CREATED)
-    
-    return Response({
-        'error': 'Error al crear permiso',
-        'details': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'message': 'Permiso creado exitosamente', 'data': serializer.data}, status=status.HTTP_201_CREATED)
+    return Response({'error': 'Error al crear permiso', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['DELETE'])
@@ -643,8 +581,6 @@ def permiso_delete_view(request, permiso_id):
         permiso = PermisoPersonalizado.objects.get(id=permiso_id)
         permiso_info = f"{permiso.usuario.get_full_name()} - {permiso.modulo}.{permiso.accion}"
         permiso.delete()
-        
-        # Registrar eliminación
         LogAcceso.objects.create(
             usuario=request.user,
             tipo_evento='PERMISSION_DELETED',
@@ -653,15 +589,9 @@ def permiso_delete_view(request, permiso_id):
             detalles=f'Permiso eliminado: {permiso_info}',
             exitoso=True
         )
-        
-        return Response({
-            'message': 'Permiso eliminado exitosamente'
-        })
-        
+        return Response({'message': 'Permiso eliminado exitosamente'})
     except PermisoPersonalizado.DoesNotExist:
-        return Response({
-            'error': 'Permiso no encontrado'
-        }, status=status.HTTP_404_NOT_FOUND)
+        return Response({'error': 'Permiso no encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
 
 # ========================================
@@ -684,7 +614,6 @@ def cerrar_sesion_usuario_view(request, session_id):
     sesion = get_object_or_404(SesionUsuario, id=session_id)
     sesion.activa = False
     sesion.save()
-    
     LogAcceso.objects.create(
         usuario=request.user,
         tipo_evento='SESSION_CLOSED',
@@ -693,10 +622,7 @@ def cerrar_sesion_usuario_view(request, session_id):
         detalles=f'Sesión cerrada forzadamente para: {sesion.usuario.get_full_name()}',
         exitoso=True
     )
-    
-    return Response({
-        'message': 'Sesión cerrada exitosamente'
-    })
+    return Response({'message': 'Sesión cerrada exitosamente'})
 
 
 # ========================================
@@ -713,16 +639,12 @@ def logs_acceso_view(request):
     fecha_hasta = request.GET.get('fecha_hasta', '')
     
     queryset = LogAcceso.objects.select_related('usuario')
-    
     if usuario_id:
         queryset = queryset.filter(usuario__id=usuario_id)
-    
     if tipo_evento:
         queryset = queryset.filter(tipo_evento=tipo_evento)
-    
     if fecha_desde:
         queryset = queryset.filter(fecha_evento__date__gte=fecha_desde)
-    
     if fecha_hasta:
         queryset = queryset.filter(fecha_evento__date__lte=fecha_hasta)
     
@@ -730,7 +652,6 @@ def logs_acceso_view(request):
     
     paginator = StandardResultsSetPagination()
     page = paginator.paginate_queryset(queryset, request)
-    
     if page is not None:
         serializer = LogAccesoSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
@@ -750,7 +671,6 @@ def reporte_usuarios_activos_view(request):
     fecha_desde = request.GET.get('fecha_desde', '')
     fecha_hasta = request.GET.get('fecha_hasta', '')
     
-    # Si no se proporcionan fechas, usar últimos 30 días
     if not fecha_desde or not fecha_hasta:
         fecha_hasta = timezone.now().date()
         fecha_desde = fecha_hasta - timedelta(days=30)
@@ -758,25 +678,17 @@ def reporte_usuarios_activos_view(request):
         fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
         fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
     
-    # Usuarios activos por día
     usuarios_por_dia = []
     current_date = fecha_desde
-    
     while current_date <= fecha_hasta:
         usuarios_activos = LogAcceso.objects.filter(
             tipo_evento='LOGIN',
             fecha_evento__date=current_date,
             exitoso=True
         ).values('usuario').distinct().count()
-        
-        usuarios_por_dia.append({
-            'fecha': current_date.strftime('%Y-%m-%d'),
-            'usuarios_activos': usuarios_activos
-        })
-        
+        usuarios_por_dia.append({'fecha': current_date.strftime('%Y-%m-%d'), 'usuarios_activos': usuarios_activos})
         current_date += timedelta(days=1)
     
-    # Estadísticas generales
     total_usuarios = Usuario.objects.filter(is_active=True).count()
     usuarios_logueados_periodo = LogAcceso.objects.filter(
         tipo_evento='LOGIN',
@@ -784,18 +696,12 @@ def reporte_usuarios_activos_view(request):
         exitoso=True
     ).values('usuario').distinct().count()
     
-    # Usuarios por rol
     usuarios_por_rol = Usuario.objects.filter(is_active=True).values(
         'rol__nombre', 'rol__codigo'
-    ).annotate(
-        total=Count('id')
-    ).order_by('rol__nombre')
+    ).annotate(total=Count('id')).order_by('rol__nombre')
     
     return Response({
-        'periodo': {
-            'fecha_desde': fecha_desde,
-            'fecha_hasta': fecha_hasta
-        },
+        'periodo': {'fecha_desde': fecha_desde, 'fecha_hasta': fecha_hasta},
         'resumen': {
             'total_usuarios': total_usuarios,
             'usuarios_logueados_periodo': usuarios_logueados_periodo,
@@ -813,7 +719,6 @@ def reporte_intentos_fallidos_view(request):
     fecha_desde = request.GET.get('fecha_desde', '')
     fecha_hasta = request.GET.get('fecha_hasta', '')
     
-    # Si no se proporcionan fechas, usar últimos 7 días
     if not fecha_desde or not fecha_hasta:
         fecha_hasta = timezone.now().date()
         fecha_desde = fecha_hasta - timedelta(days=7)
@@ -821,59 +726,37 @@ def reporte_intentos_fallidos_view(request):
         fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
         fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
     
-    # Intentos fallidos por día
     intentos_por_dia = []
     current_date = fecha_desde
-    
     while current_date <= fecha_hasta:
         intentos_fallidos = LogAcceso.objects.filter(
             tipo_evento='LOGIN_FAILED',
             fecha_evento__date=current_date
         ).count()
-        
-        intentos_por_dia.append({
-            'fecha': current_date.strftime('%Y-%m-%d'),
-            'intentos_fallidos': intentos_fallidos
-        })
-        
+        intentos_por_dia.append({'fecha': current_date.strftime('%Y-%m-%d'), 'intentos_fallidos': intentos_fallidos})
         current_date += timedelta(days=1)
     
-    # Top IPs con más intentos fallidos
     top_ips = LogAcceso.objects.filter(
         tipo_evento='LOGIN_FAILED',
         fecha_evento__date__range=[fecha_desde, fecha_hasta]
-    ).values('ip_address').annotate(
-        total_intentos=Count('id')
-    ).order_by('-total_intentos')[:10]
+    ).values('ip_address').annotate(total_intentos=Count('id')).order_by('-total_intentos')[:10]
     
-    # Usuarios con intentos fallidos
     usuarios_intentos = LogAcceso.objects.filter(
         tipo_evento='LOGIN_FAILED',
         fecha_evento__date__range=[fecha_desde, fecha_hasta],
         usuario__isnull=False
-    ).values(
-        'usuario__id',
-        'usuario__email',
-        'usuario__nombres',
-        'usuario__apellidos'
-    ).annotate(
+    ).values('usuario__id', 'usuario__email', 'usuario__nombres', 'usuario__apellidos').annotate(
         total_intentos=Count('id')
     ).order_by('-total_intentos')[:10]
     
-    # Total de intentos en el período
     total_intentos = LogAcceso.objects.filter(
         tipo_evento='LOGIN_FAILED',
         fecha_evento__date__range=[fecha_desde, fecha_hasta]
     ).count()
     
     return Response({
-        'periodo': {
-            'fecha_desde': fecha_desde,
-            'fecha_hasta': fecha_hasta
-        },
-        'resumen': {
-            'total_intentos_fallidos': total_intentos
-        },
+        'periodo': {'fecha_desde': fecha_desde, 'fecha_hasta': fecha_hasta},
+        'resumen': {'total_intentos_fallidos': total_intentos},
         'intentos_por_dia': intentos_por_dia,
         'top_ips': list(top_ips),
         'usuarios_con_intentos': list(usuarios_intentos)
@@ -887,14 +770,11 @@ def reporte_actividad_usuario_view(request, user_id):
     try:
         usuario = Usuario.objects.get(id=user_id)
     except Usuario.DoesNotExist:
-        return Response({
-            'error': 'Usuario no encontrado'
-        }, status=status.HTTP_404_NOT_FOUND)
+        return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
     
     fecha_desde = request.GET.get('fecha_desde', '')
     fecha_hasta = request.GET.get('fecha_hasta', '')
     
-    # Si no se proporcionan fechas, usar últimos 30 días
     if not fecha_desde or not fecha_hasta:
         fecha_hasta = timezone.now().date()
         fecha_desde = fecha_hasta - timedelta(days=30)
@@ -902,18 +782,13 @@ def reporte_actividad_usuario_view(request, user_id):
         fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
         fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
     
-    # Actividad por tipo de evento
     actividad_por_tipo = LogAcceso.objects.filter(
         usuario=usuario,
         fecha_evento__date__range=[fecha_desde, fecha_hasta]
-    ).values('tipo_evento').annotate(
-        total=Count('id')
-    ).order_by('-total')
+    ).values('tipo_evento').annotate(total=Count('id')).order_by('-total')
     
-    # Logins por día
     logins_por_dia = []
     current_date = fecha_desde
-    
     while current_date <= fecha_hasta:
         logins = LogAcceso.objects.filter(
             usuario=usuario,
@@ -921,30 +796,18 @@ def reporte_actividad_usuario_view(request, user_id):
             fecha_evento__date=current_date,
             exitoso=True
         ).count()
-        
-        logins_por_dia.append({
-            'fecha': current_date.strftime('%Y-%m-%d'),
-            'logins': logins
-        })
-        
+        logins_por_dia.append({'fecha': current_date.strftime('%Y-%m-%d'), 'logins': logins})
         current_date += timedelta(days=1)
     
-    # IPs utilizadas
     ips_utilizadas = LogAcceso.objects.filter(
         usuario=usuario,
         fecha_evento__date__range=[fecha_desde, fecha_hasta]
-    ).values('ip_address').annotate(
-        total_accesos=Count('id')
-    ).order_by('-total_accesos')
+    ).values('ip_address').annotate(total_accesos=Count('id')).order_by('-total_accesos')
     
-    # Último acceso
     ultimo_acceso = LogAcceso.objects.filter(
-        usuario=usuario,
-        tipo_evento='LOGIN',
-        exitoso=True
+        usuario=usuario, tipo_evento='LOGIN', exitoso=True
     ).order_by('-fecha_evento').first()
     
-    # Sesiones activas
     sesiones_activas = usuario.sesiones.filter(activa=True).count()
     
     return Response({
@@ -957,10 +820,7 @@ def reporte_actividad_usuario_view(request, user_id):
             'estado': usuario.estado,
             'codigo_empleado': usuario.codigo_empleado
         },
-        'periodo': {
-            'fecha_desde': fecha_desde,
-            'fecha_hasta': fecha_hasta
-        },
+        'periodo': {'fecha_desde': fecha_desde, 'fecha_hasta': fecha_hasta},
         'resumen': {
             'ultimo_acceso': ultimo_acceso.fecha_evento if ultimo_acceso else None,
             'sesiones_activas': sesiones_activas,
@@ -980,38 +840,20 @@ def dashboard_seguridad_view(request):
     hoy = now.date()
     semana_pasada = now - timedelta(days=7)
     
-    # Estadísticas generales
     stats = {
         'usuarios_activos': Usuario.objects.filter(is_active=True, estado='ACTIVO').count(),
         'usuarios_bloqueados': Usuario.objects.filter(estado='BLOQUEADO').count(),
         'sesiones_activas': SesionUsuario.objects.filter(activa=True).count(),
-        'intentos_fallidos_hoy': LogAcceso.objects.filter(
-            tipo_evento='LOGIN_FAILED',
-            fecha_evento__date=hoy
-        ).count(),
-        'logins_exitosos_hoy': LogAcceso.objects.filter(
-            tipo_evento='LOGIN',
-            fecha_evento__date=hoy
-        ).count(),
-        'accesos_denegados_semana': LogAcceso.objects.filter(
-            tipo_evento='PERMISSION_DENIED',
-            fecha_evento__gte=semana_pasada
-        ).count(),
+        'intentos_fallidos_hoy': LogAcceso.objects.filter(tipo_evento='LOGIN_FAILED', fecha_evento__date=hoy).count(),
+        'logins_exitosos_hoy': LogAcceso.objects.filter(tipo_evento='LOGIN', fecha_evento__date=hoy).count(),
+        'accesos_denegados_semana': LogAcceso.objects.filter(tipo_evento='PERMISSION_DENIED', fecha_evento__gte=semana_pasada).count(),
     }
     
-    # Top IPs con más intentos fallidos
     top_ips_fallidos = LogAcceso.objects.filter(
-        tipo_evento='LOGIN_FAILED',
-        fecha_evento__gte=semana_pasada
-    ).values('ip_address').annotate(
-        total=Count('id')
-    ).order_by('-total')[:10]
+        tipo_evento='LOGIN_FAILED', fecha_evento__gte=semana_pasada
+    ).values('ip_address').annotate(total=Count('id')).order_by('-total')[:10]
     
-    # Usuarios con más intentos fallidos
-    usuarios_intentos_fallidos = Usuario.objects.filter(
-        intentos_fallidos__gt=0
-    ).order_by('-intentos_fallidos')[:10]
-    
+    usuarios_intentos_fallidos = Usuario.objects.filter(intentos_fallidos__gt=0).order_by('-intentos_fallidos')[:10]
     serializer_usuarios = UsuarioListSerializer(usuarios_intentos_fallidos, many=True)
     
     return Response({
@@ -1045,11 +887,7 @@ def verificar_token_view(request):
 @api_view(['GET'])
 def health_check_view(request):
     """Health check del sistema de autenticación"""
-    return Response({
-        'status': 'healthy',
-        'timestamp': timezone.now(),
-        'auth_system': 'operational'
-    })
+    return Response({'status': 'healthy', 'timestamp': timezone.now(), 'auth_system': 'operational'})
 
 
 # ========================================
@@ -1064,22 +902,18 @@ def roles_list_api_view(request):
     is_active = request.GET.get('is_active', '')
     
     queryset = Rol.objects.all()
-    
     if search:
         queryset = queryset.filter(
             Q(nombre__icontains=search) |
             Q(codigo__icontains=search) |
             Q(descripcion__icontains=search)
         )
-    
     if is_active:
         queryset = queryset.filter(is_active=(is_active.lower() == 'true'))
     
     queryset = queryset.order_by('-created_at')
-    
     paginator = StandardResultsSetPagination()
     page = paginator.paginate_queryset(queryset, request)
-    
     if page is not None:
         serializer = RolSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
@@ -1093,10 +927,8 @@ def roles_list_api_view(request):
 def rol_create_api_view(request):
     """Crear nuevo rol"""
     serializer = RolSerializer(data=request.data)
-    
     if serializer.is_valid():
         rol = serializer.save()
-        
         LogAcceso.objects.create(
             usuario=request.user,
             tipo_evento='ROL_CREATED',
@@ -1105,16 +937,8 @@ def rol_create_api_view(request):
             detalles=f'Rol creado: {rol.nombre} ({rol.codigo})',
             exitoso=True
         )
-        
-        return Response({
-            'message': 'Rol creado exitosamente',
-            'data': serializer.data
-        }, status=status.HTTP_201_CREATED)
-    
-    return Response({
-        'error': 'Error al crear rol',
-        'details': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'message': 'Rol creado exitosamente', 'data': serializer.data}, status=status.HTTP_201_CREATED)
+    return Response({'error': 'Error al crear rol', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
@@ -1132,10 +956,8 @@ def rol_update_api_view(request, rol_id):
     """Actualizar rol"""
     rol = get_object_or_404(Rol, id=rol_id)
     serializer = RolSerializer(rol, data=request.data, partial=True)
-    
     if serializer.is_valid():
         rol_updated = serializer.save()
-        
         LogAcceso.objects.create(
             usuario=request.user,
             tipo_evento='ROL_UPDATED',
@@ -1144,16 +966,8 @@ def rol_update_api_view(request, rol_id):
             detalles=f'Rol actualizado: {rol_updated.nombre}',
             exitoso=True
         )
-        
-        return Response({
-            'message': 'Rol actualizado exitosamente',
-            'data': serializer.data
-        })
-    
-    return Response({
-        'error': 'Error al actualizar rol',
-        'details': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'message': 'Rol actualizado exitosamente', 'data': serializer.data})
+    return Response({'error': 'Error al actualizar rol', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['DELETE'])
@@ -1161,17 +975,12 @@ def rol_update_api_view(request, rol_id):
 def rol_delete_api_view(request, rol_id):
     """Eliminar rol"""
     rol = get_object_or_404(Rol, id=rol_id)
-    
-    # Verificar que no haya usuarios con este rol
     usuarios_con_rol = Usuario.objects.filter(rol=rol).count()
     if usuarios_con_rol > 0:
-        return Response({
-            'error': f'No se puede eliminar el rol porque tiene {usuarios_con_rol} usuario(s) asignado(s)'
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': f'No se puede eliminar el rol porque tiene {usuarios_con_rol} usuario(s) asignado(s)'}, status=status.HTTP_400_BAD_REQUEST)
     
     rol_info = f"{rol.nombre} ({rol.codigo})"
     rol.delete()
-    
     LogAcceso.objects.create(
         usuario=request.user,
         tipo_evento='ROL_DELETED',
@@ -1180,7 +989,4 @@ def rol_delete_api_view(request, rol_id):
         detalles=f'Rol eliminado: {rol_info}',
         exitoso=True
     )
-    
-    return Response({
-        'message': 'Rol eliminado exitosamente'
-    })
+    return Response({'message': 'Rol eliminado exitosamente'})

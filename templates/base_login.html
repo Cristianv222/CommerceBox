@@ -35,131 +35,239 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
-        // API Base URL
-        const API_BASE_URL = window.location.origin;
+    // API Base URL
+    const API_BASE_URL = window.location.origin;
+    
+    // ========================================
+    // OBJETO DE AUTENTICACIÓN - VERSIÓN CON LOGOUT
+    // ========================================
+    const auth = {
+        // Verificar si está autenticado
+        isAuthenticated() {
+            return !!this.getToken();
+        },
         
-        // Objeto de autenticación
-        const auth = {
-            // Verificar si está autenticado
-            isAuthenticated() {
-                return !!this.getToken();
-            },
+        // Guardar tokens
+        setTokens(access, refresh) {
+            localStorage.setItem('access_token', access);
+            localStorage.setItem('refresh_token', refresh);
+        },
+        
+        // Limpiar tokens
+        clearTokens() {
+            console.log('🧹 Limpiando tokens...');
+            localStorage.clear();
+            sessionStorage.clear();
             
-            // Guardar tokens
-            setTokens(access, refresh) {
-                localStorage.setItem('access_token', access);
-                localStorage.setItem('refresh_token', refresh);
-            },
-            
-            // Limpiar tokens
-            clearTokens() {
-                localStorage.clear();
-            },
-            
-            // Obtener token de acceso
-            getToken() {
-                return localStorage.getItem('access_token');
-            },
-            
-            // Obtener token de refresh
-            getRefreshToken() {
-                return localStorage.getItem('refresh_token');
-            },
-            
-            // Login
-            async login(username, password) {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/api/auth/login/`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username, password })
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        this.setTokens(data.access, data.refresh);
-                        
-                        // Obtener datos del usuario
-                        await this.getUserData();
-                        
-                        return { success: true };
-                    }
-                    
-                    const error = await response.json();
-                    return { success: false, error: error.detail || 'Credenciales inválidas' };
-                } catch (error) {
-                    console.error('Error en login:', error);
-                    return { success: false, error: 'Error de conexión' };
+            // Limpiar cookies de autenticación
+            document.cookie.split(";").forEach(function(c) {
+                if (c.includes('access_token') || c.includes('refresh_token') || c.includes('sessionid')) {
+                    document.cookie = c.replace(/^ +/, "")
+                        .replace(/=.*/, "=;expires=" + new Date(0).toUTCString() + ";path=/");
                 }
-            },
-            
-            // Obtener datos del usuario
-            async getUserData() {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/auth/perfil/`, {
-                        headers: {
-                            'Authorization': `Bearer ${this.getToken()}`
-                        }
-                    });
+            });
+        },
+        
+        // Obtener token de acceso
+        getToken() {
+            return localStorage.getItem('access_token');
+        },
+        
+        // Obtener token de refresh
+        getRefreshToken() {
+            return localStorage.getItem('refresh_token');
+        },
+        
+        // ✅ LOGIN
+        async login(username, password) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/login/`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': this.getCookie('csrftoken')
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ username, password })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    this.setTokens(data.access, data.refresh);
+                    await this.getUserData();
                     
-                    if (response.ok) {
-                        const userData = await response.json();
-                        localStorage.setItem('user_data', JSON.stringify(userData));
-                        return userData;
-                    }
-                } catch (error) {
-                    console.error('Error al obtener datos del usuario:', error);
+                    console.log('✅ Login exitoso, redirigiendo...');
+                    
+                    setTimeout(() => {
+                        window.location.replace('/panel/');
+                    }, 500);
+                    
+                    return { success: true };
                 }
-                return null;
-            },
-            
-            // Obtener usuario del localStorage
-            getUser() {
-                const userData = localStorage.getItem('user_data');
-                return userData ? JSON.parse(userData) : null;
+                
+                const error = await response.json();
+                return { 
+                    success: false, 
+                    error: error.detail || error.error || 'Credenciales inválidas' 
+                };
+                
+            } catch (error) {
+                console.error('Error en login:', error);
+                return { 
+                    success: false, 
+                    error: 'Error de conexión. Verifica tu red.' 
+                };
             }
+        },
+        
+        // ✅ LOGOUT - VERSIÓN CORREGIDA
+        async logout() {
+            try {
+                console.log('🚪 Cerrando sesión...');
+                
+                // 1. Llamar al endpoint de logout del servidor
+                await fetch(`${API_BASE_URL}/api/auth/logout/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.getToken()}`,
+                        'X-CSRFToken': this.getCookie('csrftoken')
+                    },
+                    credentials: 'include'
+                });
+                
+                // 2. Limpiar TODOS los tokens y datos
+                this.clearTokens();
+                
+                // 3. Marcar que es un logout exitoso
+                sessionStorage.setItem('logout_success', 'true');
+                
+                // 4. Redirigir al login SIN recargar (para evitar bucle)
+                console.log('✅ Logout exitoso, redirigiendo...');
+                window.location.replace('/login/');
+                
+                return { success: true };
+                
+            } catch (error) {
+                console.error('Error en logout:', error);
+                
+                // Aunque falle el servidor, limpiar tokens localmente
+                this.clearTokens();
+                sessionStorage.setItem('logout_success', 'true');
+                window.location.replace('/login/');
+                
+                return { success: false, error: error.message };
+            }
+        },
+        
+        // Obtener datos del usuario
+        async getUserData() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/perfil/`, {
+                    headers: {
+                        'Authorization': `Bearer ${this.getToken()}`
+                    },
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const userData = await response.json();
+                    localStorage.setItem('user_data', JSON.stringify(userData));
+                    return userData;
+                }
+            } catch (error) {
+                console.error('Error al obtener datos del usuario:', error);
+            }
+            return null;
+        },
+        
+        // Obtener usuario del localStorage
+        getUser() {
+            const userData = localStorage.getItem('user_data');
+            return userData ? JSON.parse(userData) : null;
+        },
+        
+        // Obtener cookie CSRF
+        getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    };
+    
+    // ========================================
+    // FUNCIÓN PARA MOSTRAR ALERTAS
+    // ========================================
+    function showAlert(message, type = 'info') {
+        const alertContainer = document.getElementById('alertContainer');
+        if (!alertContainer) return;
+        
+        const iconMap = {
+            success: 'bi-check-circle-fill',
+            danger: 'bi-x-circle-fill',
+            warning: 'bi-exclamation-triangle-fill',
+            info: 'bi-info-circle-fill'
         };
         
-        // Mostrar alerta mejorada
-        function showAlert(message, type = 'info') {
-            const alertContainer = document.getElementById('alertContainer');
-            if (!alertContainer) return;
-            
-            const iconMap = {
-                success: 'bi-check-circle-fill',
-                danger: 'bi-x-circle-fill',
-                warning: 'bi-exclamation-triangle-fill',
-                info: 'bi-info-circle-fill'
-            };
-            
-            const alert = document.createElement('div');
-            alert.className = `alert alert-${type} alert-dismissible fade show`;
-            alert.innerHTML = `
-                <i class="bi ${iconMap[type]} me-2"></i>
-                ${message}
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
-            `;
-            alertContainer.appendChild(alert);
-            
-            setTimeout(() => {
-                alert.classList.remove('show');
-                setTimeout(() => alert.remove(), 300);
-            }, 5000);
-        }
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `
+            <i class="bi ${iconMap[type]} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        alertContainer.appendChild(alert);
         
-        // ⚠️ IMPORTANTE: Esta página NO redirige automáticamente
-        // Solo si ya está autenticado y intenta acceder al login
-        document.addEventListener('DOMContentLoaded', () => {
-            const token = auth.getToken();
-            const currentPath = window.location.pathname;
+        setTimeout(() => {
+            alert.classList.remove('show');
+            setTimeout(() => alert.remove(), 300);
+        }, 5000);
+    }
+    
+    // ========================================
+    // ✅ MANEJO DE PÁGINA DE LOGIN - CORREGIDO
+    // ========================================
+    document.addEventListener('DOMContentLoaded', () => {
+        const currentPath = window.location.pathname;
+        
+        // Solo ejecutar en la página de login
+        if (currentPath.includes('/login')) {
+            console.log('📄 Página de login cargada');
             
-            // Solo redirigir si YA está autenticado y está en la página de login
-            if (token && currentPath.includes('/login')) {
-                console.log('Usuario ya autenticado, redirigiendo al panel...');
-                window.location.replace('/panel/');
+            // Verificar si venimos de un logout exitoso
+            const isLogout = sessionStorage.getItem('logout_success');
+            
+            if (isLogout) {
+                console.log('✅ Logout detectado - Limpiando estado...');
+                
+                // Limpiar TODO
+                auth.clearTokens();
+                sessionStorage.removeItem('logout_success');
+                
+                // Mostrar mensaje de logout exitoso
+                showAlert('Sesión cerrada exitosamente', 'success');
+                
+            } else {
+                // No es un logout, verificar si hay tokens antiguos
+                const token = auth.getToken();
+                
+                if (token) {
+                    console.log('⚠️ Token antiguo encontrado - Limpiando...');
+                    auth.clearTokens();
+                }
             }
-        });
-    </script>
+        }
+    });
+</script>
     
     {% block extra_js %}{% endblock %}
 </body>

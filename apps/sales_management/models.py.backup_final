@@ -250,27 +250,7 @@ class Venta(models.Model):
         return f"{self.numero_venta} - ${self.total} - {self.get_estado_display()}"
     
     def save(self, *args, **kwargs):
-        """Genera numero_venta automáticamente si no existe"""
-        if not self.numero_venta:
-            from django.utils import timezone
-            año = timezone.now().year
-            
-            # Obtener último número del año
-            ultimo = Venta.objects.filter(
-                numero_venta__startswith=f'VNT-{año}-'
-            ).order_by('-numero_venta').first()
-            
-            if ultimo and ultimo.numero_venta:
-                try:
-                    ultimo_num = int(ultimo.numero_venta.split('-')[-1])
-                    siguiente_num = ultimo_num + 1
-                except (ValueError, IndexError):
-                    siguiente_num = 1
-            else:
-                siguiente_num = 1
-            
-            self.numero_venta = f'VNT-{año}-{siguiente_num:05d}'
-        
+        """Genera numero_venta automáticamente si no existe"""  
         super().save(*args, **kwargs)
     
     def calcular_totales(self):

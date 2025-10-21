@@ -647,7 +647,9 @@
 
 {% block extra_js %}
 <script>
-// Toggle para mostrar/ocultar contraseña
+// ========================================
+// TOGGLE CONTRASEÑA
+// ========================================
 const togglePassword = document.getElementById('togglePassword');
 const passwordInput = document.getElementById('password');
 
@@ -655,14 +657,14 @@ if (togglePassword && passwordInput) {
     togglePassword.addEventListener('click', function() {
         const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
         passwordInput.setAttribute('type', type);
-        
-        // Cambiar el icono
         this.classList.toggle('bi-eye-slash');
         this.classList.toggle('bi-eye');
     });
 }
 
-// ✅ MANEJO DEL FORMULARIO CORREGIDO - USA auth.login()
+// ========================================
+// MANEJO DEL FORMULARIO - VERSIÓN CORREGIDA
+// ========================================
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -680,7 +682,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     submitBtn.innerHTML = '<span class="spinner-border"></span> <span class="btn-text">Iniciando sesión...</span>';
     
     try {
-        // ✅ USAR auth.login() QUE VIENE DEL base_login.html
+        // ✅ USAR auth.login() - ESTE MÉTODO YA MANEJA LA REDIRECCIÓN
         const result = await auth.login(username, password);
         
         if (result.success) {
@@ -693,10 +695,9 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
                 localStorage.removeItem('rememberUser');
             }
             
-            // Redirigir al panel después de 1 segundo
-            setTimeout(() => {
-                window.location.replace('/panel/');
-            }, 1000);
+            // ✅ NO REDIRIGIR AQUÍ - auth.login() ya lo hace automáticamente
+            // La redirección se maneja en base_login.html
+            
         } else {
             // Error en el login
             showAlert(result.error || 'Credenciales inválidas', 'danger');
@@ -711,7 +712,9 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     }
 });
 
-// Función para mostrar alertas
+// ========================================
+// FUNCIÓN PARA MOSTRAR ALERTAS
+// ========================================
 function showAlert(message, type = 'info') {
     const alertContainer = document.getElementById('alertContainer');
     
@@ -748,7 +751,9 @@ function showAlert(message, type = 'info') {
     }, 5000);
 }
 
-// Cargar usuario recordado
+// ========================================
+// CARGAR USUARIO RECORDADO
+// ========================================
 window.addEventListener('DOMContentLoaded', () => {
     const rememberedUser = localStorage.getItem('rememberUser');
     if (rememberedUser) {

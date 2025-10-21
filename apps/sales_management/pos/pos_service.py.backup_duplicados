@@ -413,9 +413,6 @@ class POSService:
         
         logger.info(f"✅ Venta finalizada: {venta.numero_venta} - Total: ${venta.total}")
         
-        # NOTA: El registro en caja se hace automáticamente vía signal
-        # No es necesario registrarlo aquí para evitar duplicados
-        
         # 🖨️ IMPRIMIR TICKET AUTOMÁTICAMENTE
         try:
             from apps.hardware_integration.models import Impresora

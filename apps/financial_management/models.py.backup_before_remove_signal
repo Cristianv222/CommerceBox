@@ -801,9 +801,18 @@ class MovimientoCajaChica(models.Model):
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
-# SIGNAL ELIMINADO: registrar_venta_en_caja
-# Ahora se usa el signal en apps/financial_management/signals.py
-# para evitar duplicados y tener mejor control
+@receiver(post_save, sender='sales_management.Venta')
+def registrar_venta_en_caja(sender, instance, created, **kwargs):
+    """
+    Cuando se crea una venta, registrarla automáticamente en la caja
+    """
+    if created and instance.caja and instance.estado == 'COMPLETADA':
+        try:
+            instance.caja.registrar_venta(instance)
+        except Exception as e:
+            # Log error pero no interrumpir el flujo
+            print(f"Error al registrar venta en caja: {e}")
+
 
 @receiver(pre_save, sender=ArqueoCaja)
 def arqueo_pre_save(sender, instance, **kwargs):

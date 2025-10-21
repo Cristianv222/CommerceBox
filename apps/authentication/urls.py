@@ -21,8 +21,11 @@ urlpatterns = [
     # Refrescar token
     path('login/refresh/', views.CustomTokenRefreshView.as_view(), name='token_refresh'),
     
-    # Logout (invalidar token)
-    path('logout/', TokenBlacklistView.as_view(), name='token_blacklist'),
+    # ✅ LOGOUT API (para llamadas AJAX desde JavaScript)
+    path('logout/', views.api_logout_view, name='api_logout'),
+    
+    # Logout blacklist (mantener por compatibilidad)
+    path('logout/blacklist/', TokenBlacklistView.as_view(), name='token_blacklist'),
     
     # Verificar token
     path('verify/', views.verificar_token_view, name='token_verify'),

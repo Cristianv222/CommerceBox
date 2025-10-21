@@ -327,19 +327,24 @@ class CashService:
         """Genera número único de arqueo"""
         from django.db.models import Max
         
-        ultimo = ArqueoCaja.objects.aggregate(
-            max_num=Max('numero_arqueo')
-        )['max_num']
+        año = timezone.now().year
         
-        if ultimo:
+        # Obtener el último arqueo del año
+        ultimo = ArqueoCaja.objects.filter(
+            numero_arqueo__startswith=f'ARQ-{año}-'
+        ).order_by('-numero_arqueo').first()
+        
+        if ultimo and ultimo.numero_arqueo:
             try:
-                numero = int(ultimo.split('-')[-1]) + 1
-            except:
-                numero = 1
+                # Extraer el número del formato ARQ-2025-00001
+                ultimo_num = int(ultimo.numero_arqueo.split('-')[-1])
+                siguiente_num = ultimo_num + 1
+            except (ValueError, IndexError):
+                siguiente_num = 1
         else:
-            numero = 1
+            siguiente_num = 1
         
-        return f"ARQ-{timezone.now().year}-{numero:05d}"
+        return f"ARQ-{año}-{siguiente_num:05d}"
     
     @staticmethod
     def validar_desglose_efectivo(

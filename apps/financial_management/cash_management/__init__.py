@@ -13,3 +13,9 @@ __all__ = [
     'ReconciliationService',
     'CashCalculator',
 ]
+# Servicio de auto-gestión de cajas
+from .auto_cash_service import AutoCashService
+
+__all__ = [
+    'AutoCashService',
+]

@@ -35,10 +35,32 @@ def auth_required(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper_function
 
+from django.views.decorators.cache import never_cache
+from django.shortcuts import redirect
+
 @ensure_csrf_cookie
+@never_cache
 def login_page_view(request):
     """Renderiza la página HTML de login - SIN autenticación requerida"""
-    return render(request, 'authentication/login.html')
+    
+    # ✅ Si ya está autenticado (sesión Django), redirigir
+    if request.user.is_authenticated:
+        return redirect('/panel/')
+    
+    # ✅ Limpiar cualquier sesión parcial/corrupta
+    if request.method == 'GET':
+        # Solo limpiar si no hay usuario autenticado
+        if not request.user.is_authenticated:
+            request.session.flush()
+    
+    response = render(request, 'authentication/login.html')
+    
+    # ✅ Headers anti-cache
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    
+    return response
 # ========================================
 # DASHBOARD
 # ========================================
