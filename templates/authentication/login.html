@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'base_login.html' %}
 
 {% block title %}Login - CommerceBox Agro{% endblock %}
 
@@ -662,55 +662,46 @@ if (togglePassword && passwordInput) {
     });
 }
 
-// Manejo del formulario
+// ✅ MANEJO DEL FORMULARIO CORREGIDO - USA auth.login()
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
-    const rememberMe = document.getElementById('rememberMe').checked;
     const submitBtn = e.target.querySelector('button[type="submit"]');
     
-    // Validación básica
     if (!username || !password) {
         showAlert('Por favor completa todos los campos', 'danger');
         return;
     }
     
-    // Deshabilitar botón y mostrar loading
     submitBtn.disabled = true;
     const originalHTML = submitBtn.innerHTML;
     submitBtn.innerHTML = '<span class="spinner-border"></span> <span class="btn-text">Iniciando sesión...</span>';
     
     try {
-        // Si existe el objeto auth (tu sistema personalizado)
-        if (typeof auth !== 'undefined' && auth.login) {
-            const result = await auth.login(username, password, rememberMe);
+        // ✅ USAR auth.login() QUE VIENE DEL base_login.html
+        const result = await auth.login(username, password);
+        
+        if (result.success) {
+            showAlert('¡Inicio de sesión exitoso!', 'success');
             
-            if (result.success) {
-                showAlert('¡Bienvenido! Redirigiendo...', 'success');
-                
-                if (rememberMe) {
-                    localStorage.setItem('rememberUser', username);
-                }
-                
-                setTimeout(() => {
-                    window.location.href = result.redirect || '/panel/';
-                }, 1000);
+            // Recordar usuario si está marcado
+            if (document.getElementById('rememberMe').checked) {
+                localStorage.setItem('rememberUser', username);
             } else {
-                showAlert(result.error || 'Usuario o contraseña incorrectos', 'danger');
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalHTML;
-                
-                // Animación de error
-                document.querySelector('.login-card').classList.add('shake');
-                setTimeout(() => {
-                    document.querySelector('.login-card').classList.remove('shake');
-                }, 500);
+                localStorage.removeItem('rememberUser');
             }
+            
+            // Redirigir al panel después de 1 segundo
+            setTimeout(() => {
+                window.location.replace('/panel/');
+            }, 1000);
         } else {
-            // Si no existe auth, enviar el formulario normalmente
-            e.target.submit();
+            // Error en el login
+            showAlert(result.error || 'Credenciales inválidas', 'danger');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalHTML;
         }
     } catch (error) {
         console.error('Error en login:', error);
@@ -766,10 +757,5 @@ window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('password').focus();
     }
 });
-
-// Si ya está autenticado, redirigir
-if (typeof auth !== 'undefined' && auth.isAuthenticated && auth.isAuthenticated()) {
-    window.location.href = '/panel/';
-}
 </script>
 {% endblock %}

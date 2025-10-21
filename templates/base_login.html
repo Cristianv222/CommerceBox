@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Login - CommerceBox{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navbar (vacío en login, pero el bloque existe) -->
+    {% block navbar %}{% endblock %}
+
+    <!-- Contenedor de alertas -->
+    {% block alert_container %}
+    <div id="alertContainer"></div>
+    {% endblock %}
+
+    <!-- Main wrapper -->
+    {% block main_wrapper %}
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+    {% endblock %}
+
+    <!-- Footer (vacío en login, pero el bloque existe) -->
+    {% block footer %}{% endblock %}
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // API Base URL
+        const API_BASE_URL = window.location.origin;
+        
+        // Objeto de autenticación
+        const auth = {
+            // Verificar si está autenticado
+            isAuthenticated() {
+                return !!this.getToken();
+            },
+            
+            // Guardar tokens
+            setTokens(access, refresh) {
+                localStorage.setItem('access_token', access);
+                localStorage.setItem('refresh_token', refresh);
+            },
+            
+            // Limpiar tokens
+            clearTokens() {
+                localStorage.clear();
+            },
+            
+            // Obtener token de acceso
+            getToken() {
+                return localStorage.getItem('access_token');
+            },
+            
+            // Obtener token de refresh
+            getRefreshToken() {
+                return localStorage.getItem('refresh_token');
+            },
+            
+            // Login
+            async login(username, password) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/auth/login/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.setTokens(data.access, data.refresh);
+                        
+                        // Obtener datos del usuario
+                        await this.getUserData();
+                        
+                        return { success: true };
+                    }
+                    
+                    const error = await response.json();
+                    return { success: false, error: error.detail || 'Credenciales inválidas' };
+                } catch (error) {
+                    console.error('Error en login:', error);
+                    return { success: false, error: 'Error de conexión' };
+                }
+            },
+            
+            // Obtener datos del usuario
+            async getUserData() {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/auth/perfil/`, {
+                        headers: {
+                            'Authorization': `Bearer ${this.getToken()}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const userData = await response.json();
+                        localStorage.setItem('user_data', JSON.stringify(userData));
+                        return userData;
+                    }
+                } catch (error) {
+                    console.error('Error al obtener datos del usuario:', error);
+                }
+                return null;
+            },
+            
+            // Obtener usuario del localStorage
+            getUser() {
+                const userData = localStorage.getItem('user_data');
+                return userData ? JSON.parse(userData) : null;
+            }
+        };
+        
+        // Mostrar alerta mejorada
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            if (!alertContainer) return;
+            
+            const iconMap = {
+                success: 'bi-check-circle-fill',
+                danger: 'bi-x-circle-fill',
+                warning: 'bi-exclamation-triangle-fill',
+                info: 'bi-info-circle-fill'
+            };
+            
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show`;
+            alert.innerHTML = `
+                <i class="bi ${iconMap[type]} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+            `;
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 300);
+            }, 5000);
+        }
+        
+        // ⚠️ IMPORTANTE: Esta página NO redirige automáticamente
+        // Solo si ya está autenticado y intenta acceder al login
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = auth.getToken();
+            const currentPath = window.location.pathname;
+            
+            // Solo redirigir si YA está autenticado y está en la página de login
+            if (token && currentPath.includes('/login')) {
+                console.log('Usuario ya autenticado, redirigiendo al panel...');
+                window.location.replace('/panel/');
+            }
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

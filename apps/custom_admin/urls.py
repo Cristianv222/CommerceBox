@@ -30,6 +30,9 @@ urlpatterns = [
     path('api/ventas/procesar/', views.api_procesar_venta, name='api_procesar_venta'),
     path('api/ventas/<uuid:venta_id>/detalle/', views.api_venta_detalle, name='api_venta_detalle'),
     
+    # ✅ NUEVO: API para reimpresión de tickets
+    path('api/ventas/<uuid:venta_id>/reimprimir-ticket/', views.api_reimprimir_ticket, name='api_reimprimir_ticket'),
+    
     # ========================================
     # INVENTARIO - Dashboard
     # ========================================
@@ -52,6 +55,10 @@ urlpatterns = [
     # ========================================
     path('inventario/quintales/', views.quintales_view, name='quintales'),
     path('inventario/quintales/<uuid:pk>/', views.quintal_detail_view, name='quintal_detail'),
+    
+    # APIs para quintales
+    path('api/productos/<uuid:producto_id>/quintales/', views.api_quintales_por_producto, name='api_quintales_por_producto'),
+    path('api/quintales/calcular/', views.api_calcular_quintal, name='api_calcular_quintal'),
     
     # ========================================
     # INVENTARIO - Categorías
@@ -92,16 +99,16 @@ urlpatterns = [
     path('inventario/movimientos/<uuid:pk>/export/excel/', views.exportar_movimiento_excel, name='exportar_movimiento_excel'),
     path('inventario/movimientos/<uuid:pk>/export/pdf/', views.exportar_movimiento_pdf, name='exportar_movimiento_pdf'),
     
-    # Exportación general (CORREGIDO: usar singular)
-    path('inventario/movimientos/export-all/excel/', views.exportar_movimiento_excel, name='exportar_movimientos_excel'),
-    path('inventario/movimientos/export-all/pdf/', views.exportar_movimiento_pdf, name='exportar_movimientos_pdf'),
+    # ✅ CORREGIDO: Exportación general de movimientos
+    path('inventario/movimientos/export-all/excel/', views.exportar_movimientos_excel_general, name='exportar_movimientos_excel_general'),
+    path('inventario/movimientos/export-all/pdf/', views.exportar_movimientos_pdf_general, name='exportar_movimientos_pdf_general'),
     
     # ========================================
     # INVENTARIO - Entrada de Inventario
     # ========================================
     path('inventario/entrada/', views.entrada_inventario_view, name='entrada_inventario'),
     
-    # ✅ APIs para Entrada de Inventario (CORREGIDAS)
+    # APIs para Entrada de Inventario
     path('api/inventario/procesar-entrada-unificada/', views.api_procesar_entrada_unificada, name='api_procesar_entrada_unificada'),
     path('api/inventario/quintales-disponibles/', views.api_quintales_disponibles, name='api_quintales_disponibles'),
     path('api/inventario/procesar-entrada/', views.api_procesar_entrada_masiva, name='api_procesar_entrada'),
@@ -141,25 +148,57 @@ urlpatterns = [
     path('ventas/export/pdf/', views.ventas_export_pdf, name='ventas_export_pdf'),
     
     # ========================================
-    # VENTAS - Clientes y Devoluciones
+    # VENTAS - Clientes
     # ========================================
     path('ventas/clientes/', views.clientes_view, name='clientes'),
     path('ventas/clientes/crear/', views.cliente_crear, name='cliente_crear'),
     path('ventas/clientes/<uuid:pk>/editar/', views.cliente_editar, name='cliente_editar'),
     path('ventas/clientes/<uuid:pk>/eliminar/', views.cliente_eliminar, name='cliente_eliminar'),
+    
+    # APIs de clientes
     path('api/clientes/', views.api_clientes_list, name='api_clientes_list'),
     path('api/clientes/<uuid:pk>/', views.api_cliente_detail, name='api_cliente_detail'),
+    
+    # ========================================
+    # VENTAS - Devoluciones
+    # ========================================
     path('ventas/devoluciones/', views.devoluciones_view, name='devoluciones'),
     path('ventas/devoluciones/crear/', views.devolucion_crear, name='devolucion_crear'),
     path('ventas/devoluciones/<uuid:devolucion_id>/aprobar/', views.devolucion_aprobar, name='devolucion_aprobar'),
+    
+    # APIs de devoluciones
+    path('api/devoluciones/', views.api_devoluciones_list, name='api_devoluciones_list'),
     path('api/devoluciones/<uuid:devolucion_id>/', views.devolucion_detalle, name='devolucion_detalle'),
     path('api/ventas/buscar/<str:numero>/', views.api_buscar_venta, name='api_buscar_venta'),
-    path('api/devoluciones/', views.api_devoluciones_list, name='api_devoluciones_list'),
     
     # ========================================
-    # FINANZAS
+    # FINANZAS - Dashboard
     # ========================================
     path('finanzas/', views.finanzas_dashboard_view, name='finanzas'),
+    
+    # ========================================
+    # FINANZAS - Cajas
+    # ========================================
+    path('finanzas/cajas/', views.cajas_list, name='cajas_list'),
+    path('finanzas/cajas/crear/', views.crear_caja, name='crear_caja'),
+    path('finanzas/cajas/<uuid:caja_id>/abrir/', views.abrir_caja, name='abrir_caja'),
+    path('finanzas/cajas/<uuid:caja_id>/cerrar/', views.cerrar_caja, name='cerrar_caja'),
+    path('finanzas/cajas/<uuid:caja_id>/movimientos/', views.movimientos_caja, name='movimientos_caja'),
+    path('finanzas/cajas/<uuid:caja_id>/movimiento/', views.crear_movimiento, name='crear_movimiento'),
+    
+    # ========================================
+    # FINANZAS - Arqueos
+    # ========================================
+    path('finanzas/arqueos/', views.arqueos_list, name='arqueos_list'),
+    path('finanzas/arqueos/<uuid:arqueo_id>/', views.arqueo_detalle, name='arqueo_detalle'),
+    
+    # ========================================
+    # FINANZAS - Caja Chica
+    # ========================================
+    path('finanzas/caja-chica/', views.caja_chica_list, name='caja_chica_list'),
+    path('finanzas/caja-chica/crear/', views.crear_caja_chica, name='crear_caja_chica'),
+    path('finanzas/caja-chica/<uuid:caja_chica_id>/gasto/', views.registrar_gasto_caja_chica, name='registrar_gasto_caja_chica'),
+    path('finanzas/caja-chica/<uuid:caja_chica_id>/reponer/', views.reponer_caja_chica, name='reponer_caja_chica'),
     
     # ========================================
     # REPORTES
@@ -209,26 +248,4 @@ urlpatterns = [
     # HEALTH CHECK
     # ========================================
     path('health/', views.health_check_view, name='health_check'),
-    # ========================================
-    # APIs PARA QUINTALES
-    # ========================================
-    path('api/productos/<uuid:producto_id>/quintales/', views.api_quintales_por_producto, name='api_quintales_por_producto'),
-    path('api/quintales/calcular/', views.api_calcular_quintal, name='api_calcular_quintal'),
-    # Cajas (ya las tienes)
-    path('finanzas/cajas/', views.cajas_list, name='cajas_list'),
-    path('finanzas/cajas/crear/', views.crear_caja, name='crear_caja'),
-    path('finanzas/cajas/<uuid:caja_id>/abrir/', views.abrir_caja, name='abrir_caja'),
-    path('finanzas/cajas/<uuid:caja_id>/cerrar/', views.cerrar_caja, name='cerrar_caja'),
-    path('finanzas/cajas/<uuid:caja_id>/movimientos/', views.movimientos_caja, name='movimientos_caja'),
-    path('finanzas/cajas/<uuid:caja_id>/movimiento/', views.crear_movimiento, name='crear_movimiento'),
-    
-    # Arqueos
-    path('finanzas/arqueos/', views.arqueos_list, name='arqueos_list'),
-    path('finanzas/arqueos/<uuid:arqueo_id>/', views.arqueo_detalle, name='arqueo_detalle'),
-    
-    # Caja Chica
-    path('finanzas/caja-chica/', views.caja_chica_list, name='caja_chica_list'),
-    path('finanzas/caja-chica/crear/', views.crear_caja_chica, name='crear_caja_chica'),
-    path('finanzas/caja-chica/<uuid:caja_chica_id>/gasto/', views.registrar_gasto_caja_chica, name='registrar_gasto_caja_chica'),
-    path('finanzas/caja-chica/<uuid:caja_chica_id>/reponer/', views.reponer_caja_chica, name='reponer_caja_chica'),
 ]

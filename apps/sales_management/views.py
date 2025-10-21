@@ -10,8 +10,12 @@ from django.db.models import Q, Sum, Count, F, Avg
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.db import transaction
+from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from decimal import Decimal
 from datetime import timedelta, datetime
+import logging
+import json
 
 from .models import Cliente, Venta, DetalleVenta, Pago, Devolucion
 from .forms import (
@@ -26,13 +30,14 @@ from apps.inventory_management.services.barcode_service import BarcodeService
 from apps.inventory_management.mixins import (
     InventarioAccessMixin, FormMessagesMixin, DeleteMessageMixin
 )
+from django.contrib.auth.mixins import LoginRequiredMixin
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
 # MIXINS PARA SALES
 # ============================================================================
 
-# Busca esta clase (alrededor de la línea 30-40)
 class VentasAccessMixin(InventarioAccessMixin):
     """Mixin para verificar acceso al módulo de ventas"""
     
@@ -49,6 +54,26 @@ class VentasAccessMixin(InventarioAccessMixin):
         
         return super(InventarioAccessMixin, self).dispatch(request, *args, **kwargs)
 
+class VentasAPIAccessMixin:
+    """Mixin para verificar acceso a APIs de ventas (devuelve JSON en lugar de redirect)"""
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Verificar autenticación
+        if not request.user.is_authenticated:
+            return JsonResponse({
+                'success': False,
+                'error': 'No autenticado. Por favor inicia sesión.',
+                'redirect': '/login/'
+            }, status=401)
+        
+        # Verificar permisos del módulo
+        if not request.user.puede_acceder_modulo('sales'):
+            return JsonResponse({
+                'success': False,
+                'error': 'No tienes permisos para acceder a ventas.'
+            }, status=403)
+        
+        return super().dispatch(request, *args, **kwargs)
 # ============================================================================
 # DASHBOARD DE VENTAS
 # ============================================================================
@@ -320,8 +345,6 @@ class AgregarProductoCarritoView(VentasAccessMixin, View):
     """Agregar producto al carrito de compras"""
     
     def post(self, request):
-        from django.core.exceptions import ValidationError
-        
         try:
             producto_id = request.POST.get('producto_id')
             producto = get_object_or_404(Producto, pk=producto_id)
@@ -471,8 +494,6 @@ class ProcesarVentaPOSView(VentasAccessMixin, View):
     
     @transaction.atomic
     def post(self, request):
-        from django.core.exceptions import ValidationError
-        
         try:
             carrito = request.session.get('carrito', [])
             
@@ -545,7 +566,7 @@ class ProcesarVentaPOSView(VentasAccessMixin, View):
                         usuario=request.user
                     )
             
-            # Finalizar venta
+            # Finalizar venta (🖨️ IMPRIME AUTOMÁTICAMENTE)
             POSService.finalizar_venta(venta)
             
             # Limpiar carrito
@@ -642,6 +663,8 @@ class VentaDetailView(VentasAccessMixin, DetailView):
         context['devoluciones'] = venta.devoluciones.all().order_by('-fecha_devolucion')
         
         return context
+
+
 class AnularVentaView(VentasAccessMixin, View):
     """Anular una venta"""
     
@@ -662,7 +685,7 @@ class AnularVentaView(VentasAccessMixin, View):
         from .pos.pos_service import POSService
         
         try:
-            POSService.anular_venta(venta, request.user)
+            POSService.anular_venta(venta, usuario=request.user)
             messages.success(request, f'Venta {venta.numero_venta} anulada exitosamente.')
         except Exception as e:
             messages.error(request, f'Error al anular venta: {str(e)}')
@@ -1037,3 +1060,337 @@ class ImprimirFacturaView(VentasAccessMixin, View):
         except Exception as e:
             messages.error(request, f'Error al generar factura: {str(e)}')
             return redirect('sales_management:venta_detail', pk=pk)
+
+
+# ============================================================================
+# 🆕 NUEVAS API ENDPOINTS - IMPRESIÓN Y PROCESAMIENTO
+# ============================================================================
+
+class VerificarEstadoImpresionView(VentasAccessMixin, View):
+    """
+    Verifica el estado de impresión de una venta
+    
+    GET /panel/ventas/verificar-impresion/<venta_id>/
+    
+    Response:
+    {
+        "impreso": true/false,
+        "error": true/false,
+        "mensaje": "Mensaje descriptivo"
+    }
+    """
+    
+    def get(self, request, venta_id):
+        try:
+            # Verificar que la venta existe
+            venta = get_object_or_404(Venta, pk=venta_id)
+            
+            # Buscar trabajos de impresión en cache para este usuario
+            trabajos_key = f"trabajos_pendientes_{request.user.id}"
+            trabajos_ids = cache.get(trabajos_key, [])
+            
+            # Buscar si hay algún trabajo de impresión tipo 'ticket' reciente
+            impreso = False
+            error = False
+            mensaje = "Verificando estado..."
+            
+            # Buscar trabajos completados en los últimos 5 minutos
+            for trabajo_id in trabajos_ids[:]:  # Copia de la lista
+                trabajo = cache.get(f"trabajo_{trabajo_id}")
+                
+                if trabajo and trabajo.get('tipo') == 'ticket':
+                    estado = trabajo.get('estado', 'PENDIENTE')
+                    
+                    if estado == 'COMPLETADO':
+                        impreso = True
+                        mensaje = "Ticket impreso correctamente"
+                        break
+                    elif estado == 'ERROR':
+                        error = True
+                        mensaje = trabajo.get('mensaje_resultado', 'Error al imprimir')
+                        break
+            
+            # Si no encontramos trabajos pero han pasado más de 10 segundos, 
+            # asumir que está impreso (por si el trabajo ya expiró del cache)
+            tiempo_transcurrido = (timezone.now() - venta.fecha_venta).total_seconds()
+            
+            if not impreso and not error and tiempo_transcurrido > 10:
+                # Buscar si hay registro de impresión en la BD
+                try:
+                    from apps.hardware_integration.models import RegistroImpresion
+                    registro = RegistroImpresion.objects.filter(
+                        venta=venta,
+                        estado='EXITOSO'
+                    ).first()
+                    
+                    if registro:
+                        impreso = True
+                        mensaje = "Ticket impreso correctamente"
+                    elif tiempo_transcurrido > 30:
+                        # Si han pasado más de 30 segundos sin confirmación, asumir timeout
+                        error = False
+                        impreso = False
+                        mensaje = "No se pudo verificar el estado de impresión"
+                except ImportError:
+                    logger.warning("Módulo de hardware_integration no disponible")
+                    impreso = True  # Asumir que se imprimió si no hay módulo
+                    mensaje = "Módulo de verificación no disponible"
+            
+            return JsonResponse({
+                'impreso': impreso,
+                'error': error,
+                'mensaje': mensaje
+            })
+            
+        except Exception as e:
+            logger.error(f"Error verificando estado de impresión: {e}", exc_info=True)
+            return JsonResponse({
+                'impreso': False,
+                'error': True,
+                'mensaje': f"Error del servidor: {str(e)}"
+            }, status=500)
+
+
+class ProcesarVentaAPIView(LoginRequiredMixin, View):
+    login_url = '/login/'
+    """
+    Procesa una venta desde el POS (API AJAX)
+    
+    POST /panel/ventas/api/procesar/
+    
+    Body:
+    {
+        "items": [
+            {
+                "producto_id": "uuid",
+                "cantidad": 5,
+                "precio": 100.00,
+                "descuento_porcentaje": 0,
+                "es_quintal": false
+            },
+            {
+                "producto_id": "uuid",
+                "quintal_id": "uuid",
+                "peso_vendido": 2.5,
+                "precio": 50.00,
+                "descuento_porcentaje": 10,
+                "es_quintal": true
+            }
+        ],
+        "cliente_id": "uuid" (opcional),
+        "tipo_venta": "CONTADO",
+        "metodo_pago": "EFECTIVO",
+        "monto_recibido": 500.00,
+        "observaciones": "Venta de mostrador"
+    }
+    
+    Response:
+    {
+        "success": true,
+        "venta_id": "uuid",
+        "numero_venta": "VNT-2025-00001",
+        "total": 500.00,
+        "cambio": 0.00,
+        "mensaje": "Venta procesada correctamente"
+    }
+    """
+    
+    def post(self, request):
+        try:
+            # Parsear datos del request
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+            else:
+                data = request.POST.dict()
+                # Convertir items si viene como string
+                if isinstance(data.get('items'), str):
+                    data['items'] = json.loads(data['items'])
+            
+            items = data.get('items', [])
+            cliente_id = data.get('cliente_id')
+            tipo_venta = data.get('tipo_venta', 'CONTADO')
+            metodo_pago = data.get('metodo_pago', 'EFECTIVO')
+            monto_recibido = Decimal(str(data.get('monto_recibido', 0)))
+            observaciones = data.get('observaciones', '')
+            
+            # Validar que haya items
+            if not items:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'El carrito está vacío'
+                }, status=400)
+            
+            # Procesar venta dentro de transacción
+            with transaction.atomic():
+                from .pos.pos_service import POSService
+                
+                # Obtener cliente si existe
+                cliente = None
+                if cliente_id:
+                    try:
+                        cliente = Cliente.objects.get(pk=cliente_id)
+                    except Cliente.DoesNotExist:
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'Cliente no encontrado'
+                        }, status=404)
+                
+                # Crear venta
+                venta = POSService.crear_venta(
+                    vendedor=request.user,
+                    cliente=cliente,
+                    tipo_venta=tipo_venta,
+                    observaciones=observaciones
+                )
+                
+                logger.info(f"🛒 Procesando venta {venta.numero_venta} con {len(items)} items")
+                
+                # Agregar items
+                for item in items:
+                    try:
+                        producto = Producto.objects.get(pk=item['producto_id'])
+                        
+                        if item.get('es_quintal'):
+                            # Item de quintal
+                            quintal = Quintal.objects.get(pk=item['quintal_id'])
+                            POSService.agregar_item_quintal(
+                                venta=venta,
+                                producto=producto,
+                                quintal=quintal,
+                                peso_vendido=Decimal(str(item['peso_vendido'])),
+                                precio_por_unidad=Decimal(str(item['precio'])),
+                                descuento_porcentaje=Decimal(str(item.get('descuento_porcentaje', 0)))
+                            )
+                        else:
+                            # Item normal
+                            POSService.agregar_item_normal(
+                                venta=venta,
+                                producto=producto,
+                                cantidad_unidades=int(item['cantidad']),
+                                precio_unitario=Decimal(str(item['precio'])),
+                                descuento_porcentaje=Decimal(str(item.get('descuento_porcentaje', 0)))
+                            )
+                    except (Producto.DoesNotExist, Quintal.DoesNotExist) as e:
+                        logger.error(f"Error agregando item: {e}")
+                        return JsonResponse({
+                            'success': False,
+                            'error': f'Producto o quintal no encontrado: {str(e)}'
+                        }, status=404)
+                
+                # Mapear método de pago
+                if metodo_pago == 'EFECTIVO':
+                    forma_pago = 'EFECTIVO'
+                elif metodo_pago == 'TARJETA':
+                    forma_pago = 'TARJETA_DEBITO'
+                elif metodo_pago == 'TRANSFERENCIA':
+                    forma_pago = 'TRANSFERENCIA'
+                else:
+                    forma_pago = 'EFECTIVO'
+                
+                # Procesar pago (usar el monto total si no se especificó monto recibido)
+                monto_a_pagar = venta.total
+                
+                POSService.procesar_pago(
+                    venta=venta,
+                    forma_pago=forma_pago,
+                    monto=monto_a_pagar,
+                    usuario=request.user
+                )
+                
+                # Finalizar venta (🖨️ ESTO TAMBIÉN IMPRIME AUTOMÁTICAMENTE EL TICKET)
+                venta = POSService.finalizar_venta(venta)
+                
+                logger.info(f"✅ Venta {venta.numero_venta} procesada exitosamente - Total: ${venta.total}")
+                
+                return JsonResponse({
+                    'success': True,
+                    'venta_id': str(venta.id),
+                    'numero_venta': venta.numero_venta,
+                    'total': float(venta.total),
+                    'cambio': float(venta.cambio),
+                    'mensaje': 'Venta procesada correctamente'
+                })
+        
+        except ValidationError as e:
+            logger.warning(f"Validación fallida al procesar venta: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+        
+        except Exception as e:
+            logger.error(f"Error procesando venta: {e}", exc_info=True)
+            return JsonResponse({
+                'success': False,
+                'error': f'Error del servidor: {str(e)}'
+            }, status=500)
+
+
+class ReimprimirTicketView(VentasAPIAccessMixin, View):
+    """
+    Reimprimir ticket de una venta ya procesada
+    
+    POST /panel/ventas/<venta_id>/reimprimir-ticket/
+    """
+    
+    def post(self, request, venta_id):
+        try:
+            venta = get_object_or_404(Venta, pk=venta_id)
+            
+            # Verificar que la venta esté completada
+            if venta.estado != 'COMPLETADA':
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Solo se pueden reimprimir tickets de ventas completadas'
+                }, status=400)
+            
+            # Intentar imprimir
+            try:
+                from apps.hardware_integration.models import Impresora
+                from apps.hardware_integration.printers.ticket_printer import TicketPrinter
+                from apps.hardware_integration.api.agente_views import crear_trabajo_impresion
+                
+                # Obtener impresora activa
+                impresora = Impresora.objects.filter(
+                    activa=True,
+                    tipo_impresora__in=['TERMICA_FACTURA', 'TERMICA_TICKET']
+                ).first()
+                
+                if not impresora:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'No hay impresora activa configurada'
+                    }, status=400)
+                
+                # Generar comandos ESC/POS
+                comandos_hex = TicketPrinter.generar_comandos_ticket(venta, impresora)
+                
+                # Encolar trabajo de impresión
+                trabajo_id = crear_trabajo_impresion(
+                    usuario=request.user,
+                    impresora_nombre=impresora.nombre_driver or impresora.nombre,
+                    comandos_hex=comandos_hex,
+                    tipo='ticket',
+                    prioridad=3  # Prioridad normal para reimpresiones
+                )
+                
+                logger.info(f"🔄 Ticket de venta {venta.numero_venta} reencolado con ID: {trabajo_id}")
+                
+                return JsonResponse({
+                    'success': True,
+                    'mensaje': 'Ticket enviado a impresora',
+                    'trabajo_id': trabajo_id
+                })
+                
+            except ImportError:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Módulo de impresión no disponible'
+                }, status=500)
+            
+        except Exception as e:
+            logger.error(f"Error reimprimiendo ticket: {e}", exc_info=True)
+            return JsonResponse({
+                'success': False,
+                'error': f'Error del servidor: {str(e)}'
+            }, status=500)

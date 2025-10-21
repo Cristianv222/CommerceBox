@@ -10,6 +10,8 @@ from django.utils import timezone
 from django.contrib import messages
 from functools import wraps
 from apps.inventory_management.models import Marca
+from functools import wraps
+
 
 # ========================================
 # DECORATOR DE AUTENTICACIÓN
@@ -25,16 +27,18 @@ def get_authenticated_user(request):
     return Usuario.objects.filter(username='edison').first()
 
 def auth_required(view_func):
-    """
-    Decorator para vistas que requieren autenticación.
-    Por ahora solo pasa la request sin verificar.
-    """
+    """Decorator para vistas que requieren autenticación."""
     @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
+    def wrapper_function(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('/login/')
         return view_func(request, *args, **kwargs)
-    return wrapper
+    return wrapper_function
 
-
+@ensure_csrf_cookie
+def login_page_view(request):
+    """Renderiza la página HTML de login - SIN autenticación requerida"""
+    return render(request, 'authentication/login.html')
 # ========================================
 # DASHBOARD
 # ========================================
@@ -2686,7 +2690,10 @@ def api_obtener_producto(request, producto_id):
 
 @ensure_csrf_cookie
 def api_procesar_venta(request):
-    """API para procesar y guardar la venta"""
+    """
+    API para procesar y guardar la venta con impresión térmica
+    VERSIÓN CORREGIDA - Error de Pago solucionado
+    """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
     
@@ -2695,9 +2702,13 @@ def api_procesar_venta(request):
     from apps.sales_management.models import Venta, DetalleVenta, Cliente, Pago
     from apps.inventory_management.models import Producto
     from apps.authentication.models import Usuario
+    from apps.hardware_integration.models import TrabajoImpresion, Impresora
     from decimal import Decimal
     from django.utils import timezone
     from django.db import transaction
+    import logging
+    
+    logger = logging.getLogger(__name__)
     
     try:
         data = json.loads(request.body)
@@ -2715,7 +2726,10 @@ def api_procesar_venta(request):
         except:
             monto_recibido = Decimal('0')
         
-        usuario = Usuario.objects.filter(rol__codigo__in=['VENDEDOR', 'ADMIN', 'CAJERO']).first()
+        # Obtener usuario
+        usuario = request.user if request.user.is_authenticated else None
+        if not usuario:
+            usuario = Usuario.objects.filter(rol__codigo__in=['VENDEDOR', 'ADMIN', 'CAJERO']).first()
         if not usuario:
             usuario = Usuario.objects.first()
         
@@ -2733,7 +2747,6 @@ def api_procesar_venta(request):
         descuento_total = Decimal('0')
         
         for item in items:
-            print(f"DEBUG: Item recibido = {item}")
             try:
                 item_subtotal = Decimal(str(item.get('subtotal', '0')))
                 item_descuento = Decimal(str(item.get('descuento', '0')))
@@ -2743,25 +2756,20 @@ def api_procesar_venta(request):
                 continue
         
         total = subtotal - descuento_total
+        cambio = monto_recibido - total if monto_recibido >= total else Decimal('0')
         
         with transaction.atomic():
-            # ✅ GENERAR NÚMERO DE VENTA AQUÍ - MÉTODO ULTRA ROBUSTO
+            # Generar número de venta
             año = timezone.now().year
-            
-            # Método 1: Contar ventas del año
             ventas_año = Venta.objects.filter(
                 numero_venta__startswith=f'VNT-{año}-'
             ).count()
-            
-            # Siguiente número
             siguiente = ventas_año + 1
-            
-            # Generar con formato
             numero_venta_generado = 'VNT-{}-{:05d}'.format(año, siguiente)
             
-            # ✅ CREAR VENTA CON NÚMERO EXPLÍCITO
+            # Crear venta
             venta = Venta.objects.create(
-                numero_venta=numero_venta_generado,  # ✅ Pasamos el número YA generado
+                numero_venta=numero_venta_generado,
                 cliente=cliente,
                 vendedor=usuario,
                 tipo_venta=tipo_venta,
@@ -2769,15 +2777,16 @@ def api_procesar_venta(request):
                 descuento=descuento_total,
                 impuestos=Decimal('0'),
                 total=total,
-                estado='PENDIENTE',
-                monto_pagado=Decimal('0'),
-                cambio=Decimal('0'),
+                estado='COMPLETADA',
+                monto_pagado=monto_recibido,
+                cambio=cambio,
             )
+            
+            logger.info(f"✅ Venta creada: {venta.numero_venta} - Total: ${total}")
             
             # Crear detalles
             orden = 1
             for item in items:
-                print(f"DEBUG: Item recibido = {item}")
                 try:
                     producto = Producto.objects.get(id=item['producto_id'])
                     
@@ -2803,7 +2812,7 @@ def api_procesar_venta(request):
                         'total': item_total,
                     }
                     
-                    # Manejar quintales si es una venta de quintal
+                    # Manejar quintales o productos normales
                     if item.get('es_quintal') and item.get('quintal_id'):
                         from apps.inventory_management.models import Quintal
                         try:
@@ -2812,57 +2821,345 @@ def api_procesar_venta(request):
                             detalle_data['peso_vendido'] = Decimal(str(item.get('peso_vendido', 0)))
                             detalle_data['precio_por_unidad_peso'] = producto.precio_por_unidad_peso
                             detalle_data['unidad_medida'] = quintal.unidad_medida
-                            print(f"DEBUG: Quintal {quintal.codigo_unico} agregado")
                         except Quintal.DoesNotExist:
-                            print(f"ERROR: Quintal no encontrado")
+                            logger.error(f"Quintal no encontrado: {item['quintal_id']}")
                     elif producto.tipo_inventario == 'QUINTAL':
-                        # Quintal sin datos específicos
                         detalle_data['peso_vendido'] = cantidad
                         detalle_data['precio_por_unidad_peso'] = precio
                     else:
-                        # Producto normal
                         detalle_data['cantidad_unidades'] = int(cantidad)
                         detalle_data['precio_unitario'] = precio
                     
-                    print(f"DEBUG: Creando DetalleVenta con data: {detalle_data}")
                     detalle = DetalleVenta.objects.create(**detalle_data)
-                    print(f"DEBUG: DetalleVenta creado ID={detalle.id}")
-                    
-                    if detalle.quintal:
-                        print(f"DEBUG: quintal={detalle.quintal.codigo_unico}")
-                        print(f"DEBUG: peso_vendido={detalle.peso_vendido}")
-                    
                     orden += 1
                     
                 except Producto.DoesNotExist:
-                    print(f"ERROR: Producto {item.get('producto_id')} no encontrado")
+                    logger.error(f"Producto no encontrado: {item.get('producto_id')}")
                     continue
                 except Exception as e:
-                    import traceback
-                    print(f"ERROR en detalle: {e}")
-                    print("TRACEBACK COMPLETO:")
-                    traceback.print_exc()
+                    logger.error(f"Error en detalle: {e}", exc_info=True)
                     continue
             
+            # ============================================================================
+            # ✅ REGISTRAR PAGO - VERSIÓN CORREGIDA
+            # ============================================================================
+            if monto_recibido > 0:
+                Pago.objects.create(
+                    venta=venta,
+                    forma_pago=metodo_pago,  # ✅ CORRECTO
+                    monto=monto_recibido,
+                    numero_referencia=f"Pago {metodo_pago} - {venta.numero_venta}",  # ✅ CORRECTO
+                    banco='',  # Campo opcional
+                    usuario=usuario  # ✅ AGREGAR USUARIO
+                )
+                logger.info(f"✅ Pago registrado: {metodo_pago} - ${monto_recibido}")
+            
+            # ============================================================================
+            # CREAR TRABAJO DE IMPRESIÓN
+            # ============================================================================
+            try:
+                impresora = Impresora.objects.filter(
+                    es_principal_tickets=True,
+                    estado='ACTIVA'
+                ).first()
+                
+                if not impresora:
+                    impresora = Impresora.objects.filter(
+                        tipo_impresora__in=['TERMICA_TICKET', 'TERMICA_FACTURA'],
+                        estado='ACTIVA'
+                    ).first()
+                
+                if impresora:
+                    # Generar comandos ESC/POS
+                    comandos_bytes = generar_comandos_ticket_bytes(venta)
+                    comandos_hex = comandos_bytes.hex()
+                    
+                    logger.info(f"📄 Comandos generados: {len(comandos_bytes)} bytes → {len(comandos_hex)} chars hex")
+                    
+                    # Crear trabajo de impresión
+                    trabajo = TrabajoImpresion.objects.create(
+                        tipo='TICKET',
+                        prioridad=1,
+                        estado='PENDIENTE',
+                        impresora=impresora,
+                        venta=venta,
+                        datos_impresion=comandos_hex,
+                        formato='ESC_POS',
+                        abrir_gaveta=True if metodo_pago == 'EFECTIVO' else False,
+                        copias=1,
+                        creado_por=usuario,
+                        max_intentos=3
+                    )
+                    
+                    logger.info(f"✅ Trabajo de impresión creado: {trabajo.id}")
+                    logger.info(f"   Impresora: {impresora.nombre}")
+                    logger.info(f"   Abrir gaveta: {trabajo.abrir_gaveta}")
+                else:
+                    logger.warning("⚠️ No hay impresora configurada para tickets")
+                    
+            except Exception as e:
+                logger.error(f"❌ Error creando trabajo de impresión: {e}", exc_info=True)
+        
         return JsonResponse({
             'success': True,
             'venta_id': str(venta.id),
             'numero_venta': venta.numero_venta,
             'total': float(total),
-            'cambio': float(venta.cambio),
+            'cambio': float(cambio),
+            'monto_recibido': float(monto_recibido),
         })
         
     except Exception as e:
-        import traceback
-        error_completo = traceback.format_exc()
-        print("=" * 80)
-        print("ERROR COMPLETO:")
-        print(error_completo)
-        print("=" * 80)
+        logger.error("❌ Error procesando venta:", exc_info=True)
         return JsonResponse({
             'success': False,
             'error': f'Error: {str(e)}'
         }, status=500)
+@ensure_csrf_cookie
+def api_reimprimir_ticket(request, venta_id):
+    """
+    API para reimprimir un ticket de venta
+    Crea un nuevo trabajo de impresión para el agente
+    
+    POST /panel/api/ventas/<venta_id>/reimprimir-ticket/
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
+    
+    import logging
+    from django.http import JsonResponse
+    from django.shortcuts import get_object_or_404
+    from apps.sales_management.models import Venta
+    from apps.hardware_integration.models import Impresora, TrabajoImpresion
+    from apps.authentication.models import Usuario
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Obtener la venta
+        venta = get_object_or_404(Venta, pk=venta_id)
+        
+        # Obtener usuario
+        usuario = request.user if request.user.is_authenticated else None
+        if not usuario:
+            usuario = Usuario.objects.filter(rol__codigo__in=['VENDEDOR', 'ADMIN', 'CAJERO']).first()
+        if not usuario:
+            usuario = Usuario.objects.first()
+        
+        # Obtener impresora principal de tickets
+        impresora = Impresora.objects.filter(
+            es_principal_tickets=True,
+            estado='ACTIVA'
+        ).first()
+        
+        if not impresora:
+            impresora = Impresora.objects.filter(
+                tipo_impresora__in=['TERMICA_TICKET', 'TERMICA_FACTURA'],
+                estado='ACTIVA'
+            ).first()
+        
+        if not impresora:
+            logger.warning("⚠️ No hay impresora configurada")
+            return JsonResponse({
+                'success': False,
+                'error': 'No hay impresora configurada. Configure una impresora en Hardware Integration.'
+            })
+        
+        # ✅ GENERAR COMANDOS ESC/POS
+        comandos_bytes = generar_comandos_ticket_bytes(venta)
+        comandos_hex = comandos_bytes.hex()
+        
+        logger.info(f"📄 Reimpresión - Comandos: {len(comandos_bytes)} bytes")
+        
+        # Verificar si quiere abrir gaveta (opcional en reimpresión)
+        abrir_gaveta = request.POST.get('abrir_gaveta', 'false') == 'true'
+        
+        # Crear trabajo de impresión
+        trabajo = TrabajoImpresion.objects.create(
+            tipo='TICKET',
+            prioridad=1,  # Alta prioridad
+            estado='PENDIENTE',
+            impresora=impresora,
+            venta=venta,
+            datos_impresion=comandos_hex,
+            formato='ESC_POS',
+            abrir_gaveta=abrir_gaveta,
+            copias=1,
+            creado_por=usuario,
+            max_intentos=3
+        )
+        
+        logger.info(f"✅ Trabajo de reimpresión creado: {trabajo.id}")
+        logger.info(f"   Venta: {venta.numero_venta}")
+        logger.info(f"   Impresora: {impresora.nombre}")
+        
+        return JsonResponse({
+            'success': True,
+            'trabajo_id': str(trabajo.id),
+            'mensaje': f'Ticket de venta {venta.numero_venta} enviado a la impresora {impresora.nombre}'
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Error en reimpresión: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al reimprimir: {str(e)}'
+        }, status=500)
+
+# ============================================================================
+# ✅ FUNCIÓN NUEVA: GENERAR COMANDOS TICKET EN BYTES
+# ============================================================================
+
+def generar_comandos_ticket_bytes(venta):
+    """
+    Genera comandos ESC/POS en formato BYTES para impresora térmica
+    VERSIÓN CORREGIDA - Error de get_metodo_pago_display solucionado
+    
+    Args:
+        venta: Instancia del modelo Venta
+    
+    Returns:
+        bytes: Comandos ESC/POS listos para enviar a la impresora
+    """
+    from django.conf import settings
+    
+    # Comandos ESC/POS (BYTES, no strings)
+    ESC = b'\x1b'
+    GS = b'\x1d'
+    
+    INIT = ESC + b'@'  # Inicializar
+    CENTER = ESC + b'a\x01'  # Centrar
+    LEFT = ESC + b'a\x00'  # Izquierda
+    BOLD_ON = ESC + b'E\x01'  # Negrita ON
+    BOLD_OFF = ESC + b'E\x00'  # Negrita OFF
+    DOUBLE_HEIGHT = ESC + b'!\x10'  # Doble altura
+    NORMAL = ESC + b'!\x00'  # Normal
+    CUT = GS + b'V\x00'  # Cortar papel
+    
+    # Construir ticket
+    ticket = b''
+    
+    # Inicializar
+    ticket += INIT
+    
+    # ========================================
+    # ENCABEZADO
+    # ========================================
+    ticket += CENTER
+    ticket += BOLD_ON + DOUBLE_HEIGHT + b"COMMERCEBOX\n" + NORMAL + BOLD_OFF
+    ticket += b"RUC: 1234567890001\n"
+    ticket += b"Av. Principal #123\n"
+    ticket += b"Quito, Ecuador\n"
+    ticket += b"Tel: (02) 123-4567\n"
+    ticket += b"\n"
+    
+    # ========================================
+    # INFORMACIÓN DE VENTA
+    # ========================================
+    ticket += LEFT
+    ticket += b"=" * 42 + b"\n"
+    ticket += BOLD_ON + f"TICKET: {venta.numero_venta}\n".encode('utf-8') + BOLD_OFF
+    ticket += f"Fecha: {venta.fecha_creacion.strftime('%d/%m/%Y %H:%M')}\n".encode('utf-8')
+    ticket += f"Cajero: {venta.vendedor.get_full_name()}\n".encode('utf-8')
+    
+    if venta.cliente:
+        ticket += f"Cliente: {venta.cliente.nombres} {venta.cliente.apellidos}\n".encode('utf-8')
+        if hasattr(venta.cliente, 'numero_documento'):
+            ticket += f"CI/RUC: {venta.cliente.numero_documento}\n".encode('utf-8')
+    
+    ticket += b"=" * 42 + b"\n"
+    ticket += b"\n"
+    
+    # ========================================
+    # PRODUCTOS
+    # ========================================
+    ticket += b"CANT  PRODUCTO           PRECIO    TOTAL\n"
+    ticket += b"-" * 42 + b"\n"
+    
+    for detalle in venta.detalles.all():
+        producto = detalle.producto
+        nombre = producto.nombre[:20]  # Máximo 20 caracteres
+        
+        if hasattr(detalle, 'quintal') and detalle.quintal:
+            cant_str = f"{detalle.peso_vendido:.2f}kg"
+            precio_str = f"${detalle.precio_por_unidad_peso:.2f}"
+        else:
+            cant_str = f"{detalle.cantidad_unidades}"
+            precio_str = f"${detalle.precio_unitario:.2f}"
+        
+        total_str = f"${detalle.total:.2f}"
+        
+        linea = f"{cant_str:<5} {nombre:<20} {precio_str:>7} {total_str:>7}\n"
+        ticket += linea.encode('utf-8')
+        
+        if detalle.descuento_monto and detalle.descuento_monto > 0:
+            desc_linea = f"      Descuento: -${detalle.descuento_monto:.2f}\n"
+            ticket += desc_linea.encode('utf-8')
+    
+    ticket += b"\n"
+    ticket += b"=" * 42 + b"\n"
+    
+    # ========================================
+    # TOTALES
+    # ========================================
+    ticket += LEFT
+    ticket += f"{'SUBTOTAL:':<32}${venta.subtotal:>9.2f}\n".encode('utf-8')
+    
+    if venta.descuento and venta.descuento > 0:
+        ticket += f"{'DESCUENTO:':<32}-${venta.descuento:>8.2f}\n".encode('utf-8')
+    
+    if venta.impuestos and venta.impuestos > 0:
+        ticket += f"{'IVA (15%):':<32}${venta.impuestos:>9.2f}\n".encode('utf-8')
+    
+    ticket += b"\n"
+    ticket += BOLD_ON + DOUBLE_HEIGHT
+    ticket += f"{'TOTAL:':<16}${venta.total:>9.2f}\n".encode('utf-8')
+    ticket += NORMAL + BOLD_OFF
+    
+    # ========================================
+    # INFORMACIÓN DE PAGO - ✅ CORREGIDO
+    # ========================================
+    if venta.monto_pagado and venta.monto_pagado > 0:
+        ticket += b"\n"
+        ticket += LEFT
+        
+        pago = venta.pagos.first()
+        
+        # ✅ CORRECCIÓN: usar get_forma_pago_display() en lugar de get_metodo_pago_display()
+        if pago:
+            metodo = pago.get_forma_pago_display()  # ✅ CORRECTO
+        else:
+            metodo = "EFECTIVO"
+        
+        ticket += f"Forma de pago: {metodo}\n".encode('utf-8')
+        ticket += f"{'Recibido:':<32}${venta.monto_pagado:>9.2f}\n".encode('utf-8')
+        
+        if venta.cambio and venta.cambio > 0:
+            ticket += BOLD_ON
+            ticket += f"{'Cambio:':<32}${venta.cambio:>9.2f}\n".encode('utf-8')
+            ticket += BOLD_OFF
+    
+    # ========================================
+    # PIE DE PÁGINA
+    # ========================================
+    ticket += b"\n"
+    ticket += CENTER
+    ticket += b"=" * 42 + b"\n"
+    ticket += b"GRACIAS POR SU COMPRA!\n"
+    ticket += b"\n"
+    ticket += b"Este documento no tiene\n"
+    ticket += b"validez tributaria\n"
+    ticket += b"\n"
+    ticket += b"Conserve este ticket para\n"
+    ticket += b"cambios y devoluciones\n"
+    ticket += b"\n"
+    ticket += b"\n"
+    ticket += b"\n"
+    
+    # Cortar papel
+    ticket += CUT
+    
+    return ticket
 
 
 @ensure_csrf_cookie

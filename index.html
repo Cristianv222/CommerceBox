@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickGo • Delivery</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    :root {
+      --bs-body-bg: #121826;
+      --bs-body-color: #f1f5f9;
+      --surface: #1e293b;
+      --accent: #38bdf8;
+      --success: #34d399;
+      --danger: #f87171;
+    }
+
+    body {
+      background-color: var(--bs-body-bg);
+      color: var(--bs-body-color);
+      padding-bottom: 0;
+    }
+
+    .auth-container {
+      max-width: 400px;
+      margin: 60px auto;
+    }
+
+    .auth-card {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .brand h2 {
+      font-weight: 800;
+      background: linear-gradient(to right, var(--accent), #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .google-btn {
+      background: white;
+      color: #333;
+      border: 1px solid #ddd;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+
+    .google-btn:hover {
+      background: #f5f5f5;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: "";
+      flex: 1;
+      border-bottom: 1px solid #444;
+    }
+
+    .divider span {
+      padding: 0 10px;
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    /* === App principal === */
+    .app-container {
+      display: none;
+    }
+
+    .hero {
+      background: var(--surface);
+      padding: 40px 20px;
+      text-align: center;
+      border-radius: 16px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .hero h1 {
+      font-size: 2.3rem;
+      font-weight: 800;
+      background: linear-gradient(to right, var(--accent), #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .product-card {
+      background: var(--surface);
+      border: none;
+      border-radius: 16px;
+      overflow: hidden;
+      transition: transform 0.25s;
+      height: 100%;
+    }
+
+    .product-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(56, 189, 248, 0.25);
+    }
+
+    .cart-badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: var(--danger);
+      color: white;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+
+    .map-container {
+      height: 280px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+    }
+
+    .nav-item {
+      color: #94a3b8;
+      font-size: 0.82rem;
+    }
+
+    .nav-item.active {
+      color: var(--accent);
+    }
+
+    .nav-icon {
+      font-size: 1.5rem;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .completed-check {
+      font-size: 4.2rem;
+      color: var(--success);
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- === PANTALLA DE AUTENTICACIÓN === -->
+<div id="auth-screen" class="auth-container">
+  <div class="auth-card">
+    <div class="brand">
+      <i class="bi bi-bag-check-fill" style="font-size: 2.4rem; color: var(--accent);"></i>
+      <h2>QuickGo</h2>
+      <p class="text-muted">Inicia sesión para hacer tu pedido</p>
+    </div>
+
+    <!-- Login -->
+    <div id="login-form">
+      <div class="mb-3">
+        <label class="form-label">Correo electrónico</label>
+        <input type="email" class="form-control bg-secondary border-0" id="login-email" placeholder="tu@email.com">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Contraseña</label>
+        <input type="password" class="form-control bg-secondary border-0" id="login-password" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary w-100 mb-3" onclick="login()">Iniciar Sesión</button>
+
+      <div class="divider">
+        <span>O</span>
+      </div>
+
+      <button class="google-btn" onclick="loginWithGoogle()">
+        <i class="bi bi-google"></i>
+        Continuar con Google
+      </button>
+
+      <div class="text-center mt-3">
+        <small>
+          ¿No tienes cuenta? 
+          <a href="#" class="text-accent" onclick="showRegister()">Regístrate</a>
+        </small>
+      </div>
+    </div>
+
+    <!-- Registro -->
+    <div id="register-form" class="d-none">
+      <div class="mb-3">
+        <label class="form-label">Nombre completo</label>
+        <input type="text" class="form-control bg-secondary border-0" id="register-name" placeholder="Juan Pérez">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Correo electrónico</label>
+        <input type="email" class="form-control bg-secondary border-0" id="register-email" placeholder="tu@email.com">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Contraseña</label>
+        <input type="password" class="form-control bg-secondary border-0" id="register-password" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary w-100 mb-3" onclick="register()">Crear Cuenta</button>
+
+      <div class="text-center mt-3">
+        <small>
+          ¿Ya tienes cuenta? 
+          <a href="#" class="text-accent" onclick="showLogin()">Inicia sesión</a>
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- === APP PRINCIPAL === -->
+<div id="app-screen" class="app-container">
+  <!-- Navbar inferior -->
+  <nav class="navbar fixed-bottom bg-dark border-top border-secondary-subtle">
+    <div class="container d-flex justify-content-around">
+      <a href="#home" class="nav-item text-center text-decoration-none active" data-tab="home">
+        <i class="bi bi-house nav-icon"></i>
+        <span>Inicio</span>
+      </a>
+      <a href="#cart" class="nav-item text-center text-decoration-none position-relative" data-tab="cart">
+        <i class="bi bi-cart nav-icon"></i>
+        <span>Carrito</span>
+        <span class="cart-badge d-none" id="cart-count">0</span>
+      </a>
+      <a href="#track" class="nav-item text-center text-decoration-none" data-tab="track">
+        <i class="bi bi-geo-alt nav-icon"></i>
+        <span>Rastrear</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="container mt-3">
+    <!-- Inicio -->
+    <div id="home" class="tab-content">
+      <div class="hero">
+        <i class="bi bi-bag-check-fill"></i>
+        <h1>QuickGo</h1>
+        <p class="text-muted">¡Hola, <span id="user-name">usuario</span>! ¿Listo para hacer tu pedido?</p>
+        <button class="btn btn-outline-danger btn-sm mt-2" onclick="logout()">
+          <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+        </button>
+      </div>
+      <h3 class="mb-3"><i class="bi bi-list-ul"></i> Menú del Día</h3>
+      <div class="row g-4" id="product-list"></div>
+    </div>
+
+    <!-- Carrito -->
+    <div id="cart" class="tab-content d-none">
+      <h2 class="mb-4"><i class="bi bi-cart"></i> Tu Carrito</h2>
+      <div id="cart-items"></div>
+      <div id="cart-empty" class="text-center py-5 text-secondary">
+        <i class="bi bi-cart-x" style="font-size: 3.2rem; margin-bottom: 16px;"></i>
+        <h4>Carrito vacío</h4>
+        <p>Agrega productos desde el menú</p>
+      </div>
+      <div id="cart-total-section" class="d-none mt-4 p-3 rounded-3 bg-dark-subtle border border-secondary">
+        <div class="d-flex justify-content-between fs-5">
+          <strong>Total:</strong>
+          <span class="text-accent fw-bold" id="cart-total">$0.00</span>
+        </div>
+        <button class="btn btn-primary w-100 mt-3" id="confirm-btn">
+          Confirmar Pedido
+        </button>
+      </div>
+    </div>
+
+    <!-- Rastrear -->
+    <div id="track" class="tab-content d-none">
+      <h2 class="mb-4"><i class="bi bi-geo-alt"></i> Rastrear Pedido</h2>
+      <div class="alert alert-info bg-info-subtle border-info-subtle text-info-emphasis">
+        Tu pedido está en camino. Llegará en ~25 minutos.
+      </div>
+      <div class="map-container">
+        <iframe
+          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3153.069583865209!2d-122.4194155!3d37.7749295!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8085809c6c8f4459%3A0xb10ed6d9b5050fa5!2sSan%20Francisco%2C%20CA!5e0!3m2!1sen!2sus!4v1712345678901!5m2!1sen!2sus"
+          width="100%"
+          height="100%"
+          style="border:0;"
+          allowfullscreen
+          loading="lazy">
+        </iframe>
+      </div>
+      <div class="mt-3 p-3 rounded-3 bg-dark-subtle border border-secondary">
+        <p class="mb-1"><strong>Pedido #1024</strong></p>
+        <p class="text-success mb-0"><i class="bi bi-bicycle"></i> Repartidor en camino</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modales -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title"><i class="bi bi-check-circle-fill text-success"></i> Confirmar Pedido</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-0">
+        <p>¿Deseas confirmar tu pedido por un total de:</p>
+        <h3 class="text-center text-accent fw-bold" id="modal-total">$0.00</h3>
+        <p class="text-muted small mt-2">Se enviará a: <strong>Calle Falsa 123</strong></p>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-success" id="modal-confirm-btn">Aceptar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="completedModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content text-center">
+      <div class="modal-body py-5">
+        <i class="bi bi-check-circle-fill completed-check"></i>
+        <h4 class="text-success">¡Pedido completado!</h4>
+        <p class="text-muted">Tu orden está en camino. Gracias por usar <strong>QuickGo</strong>.</p>
+      </div>
+      <div class="modal-footer justify-content-center border-0">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="resetApp()">Aceptar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  // === AUTENTICACIÓN ===
+  function showRegister() {
+    document.getElementById('login-form').classList.add('d-none');
+    document.getElementById('register-form').classList.remove('d-none');
+  }
+
+  function showLogin() {
+    document.getElementById('register-form').classList.add('d-none');
+    document.getElementById('login-form').classList.remove('d-none');
+  }
+
+  function loginWithGoogle() {
+    localStorage.setItem('quickgo_user', 'Usuario Google');
+    showApp('Usuario Google');
+  }
+
+  function login() {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) {
+      alert('Por favor, completa todos los campos.');
+      return;
+    }
+    const name = email.split('@')[0];
+    localStorage.setItem('quickgo_user', name);
+    showApp(name);
+  }
+
+  function register() {
+    const name = document.getElementById('register-name').value;
+    const email = document.getElementById('register-email').value;
+    const password = document.getElementById('register-password').value;
+    if (!name || !email || !password) {
+      alert('Por favor, completa todos los campos.');
+      return;
+    }
+    localStorage.setItem('quickgo_user', name);
+    showApp(name);
+  }
+
+  function logout() {
+    // Eliminar sesión
+    localStorage.removeItem('quickgo_user');
+    
+    // Ocultar app y mostrar login
+    document.getElementById('app-screen').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'block';
+    
+    // Limpiar estado
+    cart = [];
+    
+    // Limpiar formularios
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-password').value = '';
+    document.getElementById('register-name').value = '';
+    document.getElementById('register-email').value = '';
+    document.getElementById('register-password').value = '';
+    
+    // Asegurar que se muestre login
+    showLogin();
+  }
+
+  function showApp(userName) {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    document.getElementById('user-name').textContent = userName;
+    loadAppContent();
+  }
+
+  // === APP PRINCIPAL ===
+  let cart = [];
+  const products = [
+    { id: 1, name: "Hamburguesa Gourmet", price: 12.99, img: "https://images.pexels.com/photos/1633578/pexels-photo-1633578.jpeg?auto=compress&cs=tinysrgb&w=600" },
+    { id: 2, name: "Papas Fritas Premium", price: 5.50, img: "https://images.pexels.com/photos/262959/pexels-photo-262959.jpeg?auto=compress&cs=tinysrgb&w=600" },
+    { id: 3, name: "Refresco Natural", price: 2.20, img: "https://images.pexels.com/photos/1065084/pexels-photo-1065084.jpeg?auto=compress&cs=tinysrgb&w=600" },
+    { id: 4, name: "Combo Familiar", price: 24.99, img: "https://images.pexels.com/photos/1603356/pexels-photo-1603356.jpeg?auto=compress&cs=tinysrgb&w=600" }
+  ];
+
+  function loadAppContent() {
+    const productList = document.getElementById('product-list');
+    productList.innerHTML = '';
+    products.forEach(p => {
+      const col = document.createElement('div');
+      col.className = 'col-6 col-md-3';
+      col.innerHTML = `
+        <div class="card product-card h-100">
+          <img src="${p.img}" class="card-img-top" alt="${p.name}">
+          <div class="card-body p-2">
+            <h6 class="card-title fw-bold">${p.name}</h6>
+            <p class="card-text text-accent fw-bold">$${p.price.toFixed(2)}</p>
+            <button class="btn btn-sm btn-outline-light w-100" onclick="addToCart(${p.id})">
+              <i class="bi bi-plus"></i> Agregar
+            </button>
+          </div>
+        </div>
+      `;
+      productList.appendChild(col);
+    });
+    updateCart();
+  }
+
+  function addToCart(id) {
+    const product = products.find(p => p.id === id);
+    if (product) {
+      cart.push(product);
+      updateCart();
+      const btn = event.target;
+      const original = btn.innerHTML;
+      btn.innerHTML = '<i class="bi bi-check"></i> Agregado';
+      btn.disabled = true;
+      btn.classList.remove('btn-outline-light');
+      btn.classList.add('btn-success');
+      setTimeout(() => {
+        btn.innerHTML = original;
+        btn.disabled = false;
+        btn.classList.add('btn-outline-light');
+        btn.classList.remove('btn-success');
+      }, 1200);
+    }
+  }
+
+  function updateCart() {
+    const count = cart.length;
+    document.getElementById('cart-count').textContent = count;
+    document.getElementById('cart-count').classList.toggle('d-none', count === 0);
+
+    const cartItemsEl = document.getElementById('cart-items');
+    const cartEmptyEl = document.getElementById('cart-empty');
+    const cartTotalSection = document.getElementById('cart-total-section');
+    const cartTotalEl = document.getElementById('cart-total');
+    const modalTotalEl = document.getElementById('modal-total');
+
+    if (count === 0) {
+      cartEmptyEl.classList.remove('d-none');
+      cartTotalSection.classList.add('d-none');
+      return;
+    }
+
+    cartEmptyEl.classList.add('d-none');
+    let html = '';
+    let total = 0;
+
+    cart.forEach(item => {
+      total += item.price;
+      html += `
+        <div class="card mb-2 border-secondary-subtle">
+          <div class="row g-0">
+            <div class="col-3">
+              <img src="${item.img}" class="img-fluid rounded-start" alt="${item.name}" style="height: 70px; object-fit: cover;">
+            </div>
+            <div class="col-9">
+              <div class="card-body py-2">
+                <h6 class="card-title mb-1">${item.name}</h6>
+                <p class="card-text text-accent mb-0 fw-bold">$${item.price.toFixed(2)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    cartItemsEl.innerHTML = html;
+    cartTotalEl.textContent = `$${total.toFixed(2)}`;
+    modalTotalEl.textContent = `$${total.toFixed(2)}`;
+    cartTotalSection.classList.remove('d-none');
+  }
+
+  // Confirmar pedido
+  document.getElementById('confirm-btn')?.addEventListener('click', () => {
+    if (cart.length > 0) {
+      const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+      modal.show();
+    }
+  });
+
+  document.getElementById('modal-confirm-btn')?.addEventListener('click', () => {
+    bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+    const completedModal = new bootstrap.Modal(document.getElementById('completedModal'));
+    completedModal.show();
+  });
+
+  function resetApp() {
+    cart = [];
+    updateCart();
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('d-none'));
+    document.getElementById('home').classList.remove('d-none');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelector('[data-tab="home"]').classList.add('active');
+  }
+
+  // Navegación
+  document.querySelectorAll('[data-tab]').forEach(link => {
+    link.addEventListener('click', function() {
+      const target = this.dataset.tab;
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('d-none'));
+      document.getElementById(target).classList.remove('d-none');
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+
+  // Cargar app si ya hay sesión
+  window.onload = () => {
+    const savedUser = localStorage.getItem('quickgo_user');
+    if (savedUser) {
+      showApp(savedUser);
+    }
+  };
+</script>
+
+</body>
+</html>

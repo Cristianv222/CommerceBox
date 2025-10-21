@@ -44,4 +44,29 @@ urlpatterns = [
     
     # API
     path('api/estadisticas/', views.VentaEstadisticasAPIView.as_view(), name='api_estadisticas'),
+    
+    # ============================================================================
+    # 🆕 NUEVAS API - IMPRESIÓN Y PROCESAMIENTO DE VENTAS
+    # ============================================================================
+    
+    # Verificar estado de impresión de un ticket
+    path(
+        'verificar-impresion/<uuid:venta_id>/',
+        views.VerificarEstadoImpresionView.as_view(),
+        name='verificar_impresion'
+    ),
+    
+    # Procesar venta completa vía API (AJAX)
+    path(
+        'api/procesar/',
+        views.ProcesarVentaAPIView.as_view(),
+        name='procesar_venta_api'
+    ),
+    
+    # Reimprimir ticket de una venta
+    path(
+        'ventas/<uuid:venta_id>/reimprimir-ticket/',
+        views.ReimprimirTicketView.as_view(),
+        name='reimprimir_ticket'
+    ),
 ]

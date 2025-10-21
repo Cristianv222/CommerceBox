@@ -1495,8 +1495,10 @@ window.cargarTodosLosProductos = function() {
             <p style="font-size: 0.75rem; margin-top: 0.5rem;">Cargando...</p>
         </div>
     `;
-    
-    fetch(`/panel/api/productos/buscar/?all=true`)
+
+    fetch(`/panel/api/productos/buscar/?all=true`, {
+        credentials: "include",
+    })
         .then(response => response.json())
         .then(data => {
             mostrarProductos(data.productos);
@@ -1540,8 +1542,10 @@ function buscarProductos() {
     const params = new URLSearchParams();
     if (query) params.append('q', query);
     if (categoria) params.append('categoria', categoria);
-    
-    fetch(`/panel/api/productos/buscar/?${params.toString()}`)
+
+    fetch(`/panel/api/productos/buscar/?${params.toString()}`, {
+        credentials: "include",
+    })
         .then(response => response.json())
         .then(data => {
             mostrarProductos(data.productos);
@@ -1886,6 +1890,7 @@ function procesarVenta() {
     
     fetch('/panel/api/ventas/procesar/', {
         method: 'POST',
+        credentials: "include",
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': '{{ csrf_token }}',
@@ -1981,11 +1986,74 @@ function cerrarModalVenta() {
     calcularCambio();
 }
 
+
+// ============================================
+// 🖨️ FUNCIÓN: IMPRIMIR TICKET - VERSIÓN CORREGIDA
+// ============================================
 function imprimirTicket() {
-    if (ventaIdActual) {
-        window.open(`/panel/ventas/${ventaIdActual}/ticket/`, '_blank');
+    if (!ventaIdActual) {
+        mostrarAlerta('error', 'Error', 'No hay venta para imprimir');
+        return;
     }
+    
+    // Obtener el botón
+    const btnImprimir = document.querySelector('#modalVentaExitosa .btn-modal-primary');
+    let textoOriginal = '';
+    
+    if (btnImprimir) {
+        textoOriginal = btnImprimir.innerHTML;
+        btnImprimir.disabled = true;
+        btnImprimir.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando a impresora...';
+    }
+    
+    // ✅ ENDPOINT CORREGIDO
+    fetch(`/panel/api/ventas/${ventaIdActual}/reimprimir-ticket/`, {
+        method: 'POST',
+        credentials: "include",
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}',
+        },
+        body: JSON.stringify({
+            abrir_gaveta: false  // En reimpresión normalmente NO se abre gaveta
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta('success', '🖨️ Ticket Enviado', 
+                data.mensaje || 'Ticket enviado a la impresora. El agente lo procesará automáticamente.');
+            
+            console.log('✅ Trabajo de impresión creado:', data.trabajo_id);
+            
+            // Cerrar modal después de 2 segundos
+            setTimeout(() => {
+                cerrarModalVenta();
+            }, 2000);
+        } else {
+            mostrarAlerta('error', '❌ Error al Imprimir', 
+                data.error || 'No se pudo crear el trabajo de impresión');
+        }
+    })
+    .catch(error => {
+        console.error('❌ Error imprimiendo ticket:', error);
+        mostrarAlerta('error', '❌ Error de Conexión', 
+            'No se pudo conectar con el servidor. Verifica que Django esté ejecutándose.');
+    })
+    .finally(() => {
+        if (btnImprimir) {
+            btnImprimir.disabled = false;
+            btnImprimir.innerHTML = textoOriginal || '<i class="fas fa-print"></i> Imprimir Ticket';
+        }
+    });
 }
+
+
 
 function debounce(func, wait) {
     let timeout;

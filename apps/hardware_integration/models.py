@@ -875,3 +875,237 @@ class EscanerCodigoBarras(models.Model):
     
     def __str__(self):
         return f"{self.nombre} - {self.ubicacion}"
+# ============================================================================
+# COLA DE TRABAJOS DE IMPRESIÓN
+# ============================================================================
+
+class TrabajoImpresion(models.Model):
+    """
+    Cola de trabajos de impresión pendientes para el agente
+    """
+    
+    TIPO_TRABAJO_CHOICES = [
+        ('TICKET', 'Ticket de Venta'),
+        ('FACTURA', 'Factura'),
+        ('ETIQUETA', 'Etiqueta de Producto'),
+        ('CODIGO_BARRAS', 'Código de Barras'),
+        ('REPORTE', 'Reporte'),
+        ('PRUEBA', 'Página de Prueba'),
+    ]
+    
+    ESTADO_CHOICES = [
+        ('PENDIENTE', '⏳ Pendiente'),
+        ('PROCESANDO', '⚙️ Procesando'),
+        ('COMPLETADO', '✅ Completado'),
+        ('ERROR', '❌ Error'),
+        ('CANCELADO', '🚫 Cancelado'),
+    ]
+    
+    PRIORIDAD_CHOICES = [
+        (1, '🔴 Alta'),
+        (2, '🟡 Media'),
+        (3, '🟢 Baja'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Tipo y prioridad
+    tipo = models.CharField(
+        max_length=20,
+        choices=TIPO_TRABAJO_CHOICES,
+        default='TICKET'
+    )
+    prioridad = models.IntegerField(
+        choices=PRIORIDAD_CHOICES,
+        default=2,
+        help_text="Prioridad del trabajo (1=Alta, 3=Baja)"
+    )
+    
+    # Estado
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default='PENDIENTE'
+    )
+    
+    # Impresora a utilizar
+    impresora = models.ForeignKey(
+        Impresora,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='trabajos_pendientes',
+        help_text="Impresora específica (null = usar predeterminada)"
+    )
+    
+    # Referencias
+    venta = models.ForeignKey(
+        'sales_management.Venta',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='trabajos_impresion'
+    )
+    producto = models.ForeignKey(
+        'inventory_management.Producto',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='trabajos_impresion'
+    )
+    
+    # Datos de impresión
+    datos_impresion = models.TextField(
+        help_text="Contenido a imprimir (comandos ESC/POS, ZPL, etc)"
+    )
+    formato = models.CharField(
+        max_length=20,
+        default='ESC_POS',
+        help_text="Formato de los datos (ESC_POS, ZPL, PDF, etc)"
+    )
+    
+    # Control de reintentos
+    intentos = models.IntegerField(
+        default=0,
+        help_text="Número de intentos realizados"
+    )
+    max_intentos = models.IntegerField(
+        default=3,
+        help_text="Máximo número de intentos"
+    )
+    
+    # Errores
+    mensaje_error = models.TextField(
+        blank=True,
+        help_text="Último mensaje de error"
+    )
+    historial_errores = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Historial de todos los errores"
+    )
+    
+    # Configuración adicional
+    abrir_gaveta = models.BooleanField(
+        default=False,
+        help_text="Abrir gaveta después de imprimir"
+    )
+    copias = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(1), MaxValueValidator(10)],
+        help_text="Número de copias a imprimir"
+    )
+    
+    # Metadatos
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Información adicional del trabajo"
+    )
+    
+    # Auditoría
+    creado_por = models.ForeignKey(
+        'authentication.Usuario',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='trabajos_impresion_creados'
+    )
+    fecha_creacion = models.DateTimeField(default=timezone.now)
+    fecha_asignacion = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Cuando el agente tomó el trabajo"
+    )
+    fecha_completado = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Cuando se completó exitosamente"
+    )
+    
+    # Tiempos
+    tiempo_procesamiento = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Tiempo de procesamiento en ms"
+    )
+    
+    class Meta:
+        verbose_name = 'Trabajo de Impresión'
+        verbose_name_plural = 'Trabajos de Impresión'
+        ordering = ['prioridad', 'fecha_creacion']
+        db_table = 'hw_trabajo_impresion'
+        indexes = [
+            models.Index(fields=['estado', 'prioridad', 'fecha_creacion']),
+            models.Index(fields=['impresora', 'estado']),
+            models.Index(fields=['venta']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.estado} - {self.fecha_creacion}"
+    
+    def marcar_procesando(self):
+        """Marca el trabajo como en proceso"""
+        self.estado = 'PROCESANDO'
+        self.fecha_asignacion = timezone.now()
+        self.intentos += 1
+        self.save(update_fields=['estado', 'fecha_asignacion', 'intentos'])
+    
+    def marcar_completado(self, tiempo_ms=None):
+        """Marca el trabajo como completado"""
+        self.estado = 'COMPLETADO'
+        self.fecha_completado = timezone.now()
+        if tiempo_ms:
+            self.tiempo_procesamiento = tiempo_ms
+        self.save(update_fields=['estado', 'fecha_completado', 'tiempo_procesamiento'])
+        
+        # Crear registro en el log
+        RegistroImpresion.objects.create(
+            impresora=self.impresora,
+            tipo_documento=self.tipo,
+            venta=self.venta,
+            producto=self.producto,
+            estado='EXITOSO',
+            tiempo_procesamiento=tiempo_ms,
+            usuario=self.creado_por
+        )
+    
+    def marcar_error(self, mensaje_error):
+        """Marca el trabajo con error"""
+        self.mensaje_error = mensaje_error
+        
+        # Agregar al historial
+        if not isinstance(self.historial_errores, list):
+            self.historial_errores = []
+        
+        self.historial_errores.append({
+            'intento': self.intentos,
+            'fecha': timezone.now().isoformat(),
+            'error': mensaje_error
+        })
+        
+        # Si ya se alcanzó el máximo de intentos, marcar como ERROR
+        if self.intentos >= self.max_intentos:
+            self.estado = 'ERROR'
+        else:
+            self.estado = 'PENDIENTE'  # Volver a pendiente para reintento
+        
+        self.save(update_fields=['estado', 'mensaje_error', 'historial_errores'])
+        
+        # Si ya no se reintentará, crear registro de error
+        if self.estado == 'ERROR':
+            RegistroImpresion.objects.create(
+                impresora=self.impresora,
+                tipo_documento=self.tipo,
+                venta=self.venta,
+                producto=self.producto,
+                estado='ERROR',
+                mensaje_error=mensaje_error,
+                intentos=self.intentos,
+                usuario=self.creado_por
+            )
+    
+    def cancelar(self):
+        """Cancela el trabajo"""
+        self.estado = 'CANCELADO'
+        self.save(update_fields=['estado'])

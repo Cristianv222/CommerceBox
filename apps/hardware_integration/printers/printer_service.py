@@ -4,15 +4,27 @@ import socket
 import serial
 import usb.core
 import usb.util
-#import cups
 import subprocess
 import time
 import logging
 import os
-from typing import Optional
+import platform
+from typing import Optional, Tuple, Dict
 from django.conf import settings
 from django.utils import timezone
 from escpos import printer as escpos_printer
+
+# Intentar importar win32print solo si estamos en Windows
+if platform.system() == 'Windows':
+    try:
+        import win32print
+        import win32api
+        WINDOWS_PRINTING_AVAILABLE = True
+    except ImportError:
+        WINDOWS_PRINTING_AVAILABLE = False
+        logging.warning("pywin32 no está instalado. Algunas funciones no estarán disponibles.")
+else:
+    WINDOWS_PRINTING_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -21,855 +33,785 @@ class PrinterService:
     """
     Servicio unificado para manejo de impresoras
     Soporta múltiples tipos de conexión y protocolos
+    
+    SOLUCIONES IMPLEMENTADAS:
+    1. Impresión directa con comandos ESC/POS optimizados
+    2. Detección de impresoras en Windows
+    3. API para agente local
     """
     
     # TIMEOUTS para operaciones
     CONNECTION_TIMEOUT = 5
     OPERATION_TIMEOUT = 10
     
+    # ========================================================================
+    # DETECCIÓN DE IMPRESORAS (WINDOWS)
+    # ========================================================================
+    
     @staticmethod
-    def get_printer_connection(impresora):
+    def detectar_impresoras_sistema() -> list:
         """
-        Obtiene la conexión a la impresora según su tipo
+        Detecta todas las impresoras instaladas en el sistema
+        Solo funciona si se ejecuta en Windows
+        
+        Returns:
+            list: Lista de diccionarios con info de impresoras
+        """
+        impresoras = []
+        
+        try:
+            if platform.system() == 'Windows' and WINDOWS_PRINTING_AVAILABLE:
+                # Listar impresoras en Windows
+                flags = win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS
+                printers = win32print.EnumPrinters(flags)
+                
+                for printer in printers:
+                    nombre = printer[2]  # Nombre de la impresora
+                    
+                    try:
+                        # Obtener información del puerto
+                        handle = win32print.OpenPrinter(nombre)
+                        info = win32print.GetPrinter(handle, 2)
+                        puerto = info.get('pPortName', '')
+                        driver = info.get('pDriverName', '')
+                        win32print.ClosePrinter(handle)
+                        
+                        impresoras.append({
+                            'nombre': nombre,
+                            'puerto': puerto,
+                            'driver': driver,
+                            'estado': 'Disponible'
+                        })
+                    except Exception as e:
+                        logger.error(f"Error obteniendo info de {nombre}: {e}")
+                        impresoras.append({
+                            'nombre': nombre,
+                            'puerto': 'Desconocido',
+                            'driver': '',
+                            'estado': 'Error'
+                        })
+            
+            elif platform.system() == 'Linux':
+                # Listar impresoras en Linux usando CUPS
+                try:
+                    import cups
+                    conn = cups.Connection()
+                    printers_dict = conn.getPrinters()
+                    
+                    for nombre, info in printers_dict.items():
+                        impresoras.append({
+                            'nombre': nombre,
+                            'puerto': info.get('device-uri', ''),
+                            'driver': info.get('printer-make-and-model', ''),
+                            'estado': info.get('printer-state-message', 'Disponible')
+                        })
+                except Exception as e:
+                    logger.error(f"Error en CUPS: {e}")
+            else:
+                logger.info("Detección de impresoras no disponible en este sistema")
+        
+        except Exception as e:
+            logger.error(f"Error detectando impresoras: {e}")
+        
+        return impresoras
+    
+    @staticmethod
+    def probar_puerto_usb_windows(nombre_impresora: str) -> Tuple[bool, str, Dict]:
+        """
+        Prueba si una impresora USB en Windows está accesible
+        Solo funciona si se ejecuta en Windows con pywin32
+        
+        Args:
+            nombre_impresora: Nombre del driver de Windows (ej: 'PrinterPOS-80')
+        
+        Returns:
+            tuple: (success: bool, message: str, info: dict)
+        """
+        if platform.system() != 'Windows':
+            return False, "Esta función solo funciona en Windows", {}
+        
+        if not WINDOWS_PRINTING_AVAILABLE:
+            return False, "pywin32 no está instalado", {}
+        
+        try:
+            # Intentar abrir la impresora
+            handle = win32print.OpenPrinter(nombre_impresora)
+            
+            # Obtener información de la impresora
+            info = win32print.GetPrinter(handle, 2)
+            
+            puerto = info.get('pPortName', 'Desconocido')
+            driver = info.get('pDriverName', 'Desconocido')
+            estado = info.get('Status', 0)
+            
+            # Cerrar el handle
+            win32print.ClosePrinter(handle)
+            
+            info_dict = {
+                'puerto': puerto,
+                'driver': driver,
+                'estado_codigo': estado,
+                'estado_texto': 'Activa' if estado == 0 else 'Con problemas'
+            }
+            
+            return True, f"✅ Impresora accesible en puerto {puerto}", info_dict
+            
+        except Exception as e:
+            return False, f"❌ Error: {str(e)}", {}
+    
+    # ========================================================================
+    # GENERACIÓN DE COMANDOS ESC/POS OPTIMIZADOS
+    # ========================================================================
+    
+    @staticmethod
+    def generar_comando_raw_test(impresora) -> bytes:
+        """
+        Genera comandos ESC/POS raw optimizados para papel térmico
+        INCLUYE comando para abrir gaveta si está configurada
         
         Args:
             impresora: Modelo Impresora
         
         Returns:
-            Objeto de conexión o None si falla
+            bytes: Comandos ESC/POS listos para enviar
         """
-        try:
-            if impresora.tipo_conexion == 'USB':
-                return PrinterService._conectar_usb(impresora)
-            elif impresora.tipo_conexion in ['LAN', 'WIFI']:
-                return PrinterService._conectar_red(impresora)
-            elif impresora.tipo_conexion == 'SERIAL':
-                return PrinterService._conectar_serial(impresora)
-            elif impresora.tipo_conexion == 'DRIVER':
-                return PrinterService._conectar_driver(impresora)
-            elif impresora.tipo_conexion == 'RAW':
-                return PrinterService._conectar_raw_socket(impresora)
+        empresa_nombre = getattr(settings, 'EMPRESA_NOMBRE', 'COMMERCEBOX')
+        empresa_ruc = getattr(settings, 'EMPRESA_RUC', 'RUC: 1234567890001')
+        
+        comandos = b''
+        
+        # ESC @ - Inicializar impresora
+        comandos += b'\x1B\x40'
+        
+        # ============================================
+        # ENCABEZADO
+        # ============================================
+        
+        # ESC a 1 - Centrar
+        comandos += b'\x1B\x61\x01'
+        
+        # ESC ! - Texto doble tamaño (ancho y alto)
+        comandos += b'\x1B\x21\x30'
+        comandos += empresa_nombre.encode('utf-8') + b'\n'
+        
+        # ESC ! - Texto normal
+        comandos += b'\x1B\x21\x00'
+        comandos += empresa_ruc.encode('utf-8') + b'\n'
+        
+        # ESC ! - Negrita
+        comandos += b'\x1B\x21\x08'
+        comandos += b'PAGINA DE PRUEBA\n'
+        
+        # ESC ! - Texto normal
+        comandos += b'\x1B\x21\x00'
+        
+        # Línea separadora
+        comandos += b'================================\n'
+        
+        # ============================================
+        # INFORMACIÓN DE IMPRESORA
+        # ============================================
+        
+        # ESC a 0 - Alinear izquierda
+        comandos += b'\x1B\x61\x00'
+        
+        # Título de sección centrado
+        comandos += b'\x1B\x61\x01'
+        comandos += b'\x1B\x21\x08'  # Negrita
+        comandos += b'INFORMACION DE IMPRESORA\n'
+        comandos += b'\x1B\x21\x00'  # Normal
+        
+        # Línea sólida
+        comandos += b'================================\n'
+        
+        # ESC a 0 - Alinear izquierda
+        comandos += b'\x1B\x61\x00'
+        
+        # Información (formato: label: valor)
+        def agregar_linea(label, valor):
+            ancho_total = 48
+            label_con_espacios = f"{label}:"
+            espacios_necesarios = ancho_total - len(label_con_espacios) - len(str(valor))
+            if espacios_necesarios < 1:
+                espacios_necesarios = 1
+            return f"{label_con_espacios}{' ' * espacios_necesarios}{valor}\n".encode('utf-8')
+        
+        comandos += agregar_linea("Nombre", impresora.nombre)
+        comandos += agregar_linea("Marca", impresora.marca)
+        comandos += agregar_linea("Modelo", impresora.modelo)
+        comandos += agregar_linea("Conexion", impresora.get_tipo_conexion_display())
+        comandos += agregar_linea("Protocolo", impresora.get_protocolo_display())
+        
+        if impresora.puerto_usb:
+            comandos += agregar_linea("Puerto", impresora.puerto_usb)
+        
+        if impresora.nombre_driver:
+            comandos += agregar_linea("Driver", impresora.nombre_driver)
+        
+        if impresora.direccion_ip:
+            comandos += agregar_linea("IP", f"{impresora.direccion_ip}:{impresora.puerto_red}")
+        
+        # 🔥 MOSTRAR ESTADO DE GAVETA
+        if impresora.tiene_gaveta:
+            comandos += agregar_linea("Gaveta", "SI - Se abrira")
+        else:
+            comandos += agregar_linea("Gaveta", "NO configurada")
+        
+        # Línea separadora
+        comandos += b'--------------------------------\n'
+        
+        # Fecha y hora
+        fecha_actual = timezone.now()
+        comandos += agregar_linea("Fecha", fecha_actual.strftime('%d/%m/%Y'))
+        comandos += agregar_linea("Hora", fecha_actual.strftime('%H:%M:%S'))
+        
+        # Línea separadora
+        comandos += b'================================\n'
+        
+        # ============================================
+        # CÓDIGO DE BARRAS (si soporta)
+        # ============================================
+        
+        if impresora.soporta_codigo_barras:
+            # Centrar
+            comandos += b'\x1B\x61\x01'
+            comandos += b'CODIGO DE BARRAS:\n'
+            
+            # GS k - Imprimir código de barras
+            codigo = f"TEST{impresora.codigo}"
+            comandos += b'\x1D\x6B\x49'  # GS k 73 (CODE128)
+            comandos += bytes([len(codigo)])  # Longitud
+            comandos += codigo.encode('utf-8')
+            comandos += b'\x00'  # NUL
+            comandos += b'\n'
+        
+        # ============================================
+        # TEXTO GRANDE
+        # ============================================
+        
+        # Centrar
+        comandos += b'\x1B\x61\x01'
+        comandos += b'\n'
+        
+        # ESC ! - Texto doble tamaño + negrita
+        comandos += b'\x1B\x21\x38'
+        comandos += b'PRUEBA EXITOSA\n'
+        
+        # ESC ! - Texto normal
+        comandos += b'\x1B\x21\x00'
+        
+        # Línea separadora
+        comandos += b'================================\n'
+        
+        # ============================================
+        # PIE DE PÁGINA
+        # ============================================
+        
+        # Centrar
+        comandos += b'\x1B\x61\x01'
+        comandos += b'\n'
+        comandos += b'CommerceBox - Sistema POS\n'
+        comandos += b'www.commercebox.com\n'
+        
+        # Espacios antes del corte
+        comandos += b'\n\n\n\n'
+        
+        # ============================================
+        # CORTAR PAPEL
+        # ============================================
+        
+        if impresora.soporta_corte_automatico:
+            if impresora.soporta_corte_parcial:
+                # GS V - Corte parcial
+                comandos += b'\x1D\x56\x01'
             else:
-                logger.error(f"Tipo de conexión no soportado: {impresora.tipo_conexion}")
-                return None
-        except Exception as e:
-            logger.error(f"Error al conectar con impresora {impresora.nombre}: {str(e)}")
-            return None
+                # GS V - Corte completo
+                comandos += b'\x1D\x56\x00'
+        else:
+            # Si no tiene corte, agregar más líneas en blanco
+            comandos += b'\n\n\n\n\n\n'
+        
+        # ============================================
+        # 🔥🔥🔥 ABRIR GAVETA (SIEMPRE AL FINAL) 🔥🔥🔥
+        # ============================================
+        
+        if impresora.tiene_gaveta:
+            logger.info("🔓 AGREGANDO COMANDO PARA ABRIR GAVETA")
+            
+            # ESC p - Pulso a gaveta
+            # Formato: ESC p m t1 t2
+            # m = pin (0 o 1)
+            # t1 = tiempo ON en unidades de 2ms
+            # t2 = tiempo OFF en unidades de 2ms
+            
+            pin = impresora.pin_gaveta if impresora.pin_gaveta is not None else 0
+            
+            # Comando: ESC p pin 50 50
+            # 50 * 2ms = 100ms ON, 100ms OFF
+            comandos += b'\x1B\x70'  # ESC p
+            comandos += bytes([pin])  # Pin (0 o 1)
+            comandos += b'\x32'  # 50 decimal = 0x32
+            comandos += b'\x32'  # 50 decimal = 0x32
+            
+            logger.info(f"   Pin: {pin}")
+            logger.info(f"   Comando: ESC p {pin} 50 50 (hex: 1B 70 {pin:02X} 32 32)")
+        else:
+            logger.info("⚠️ Gaveta NO configurada - no se agregará comando")
+        
+        return comandos
+    
+    # ========================================================================
+    # IMPRESIÓN DIRECTA EN WINDOWS
+    # ========================================================================
     
     @staticmethod
-    def _conectar_usb(impresora):
-        """Conexión USB directa o usando librería escpos"""
-        try:
-            if impresora.protocolo == 'ESC_POS':
-                if impresora.vid_usb and impresora.pid_usb:
-                    p = escpos_printer.Usb(
-                        int(impresora.vid_usb, 16),
-                        int(impresora.pid_usb, 16),
-                        timeout=PrinterService.CONNECTION_TIMEOUT
-                    )
-                else:
-                    p = escpos_printer.File(impresora.puerto_usb)
-                return p
-            else:
-                if impresora.vid_usb and impresora.pid_usb:
-                    dev = usb.core.find(
-                        idVendor=int(impresora.vid_usb, 16),
-                        idProduct=int(impresora.pid_usb, 16)
-                    )
-                    if dev is None:
-                        raise ValueError('Dispositivo USB no encontrado')
-                    dev.set_configuration()
-                    return dev
-                else:
-                    return open(impresora.puerto_usb, 'wb')
-        except Exception as e:
-            logger.error(f"Error en conexión USB: {str(e)}")
-            raise
-    
-    @staticmethod
-    def _conectar_red(impresora):
-        """Conexión de red (LAN/WiFi)"""
-        try:
-            if impresora.protocolo == 'ESC_POS':
-                p = escpos_printer.Network(
-                    impresora.direccion_ip,
-                    port=impresora.puerto_red or 9100,
-                    timeout=PrinterService.CONNECTION_TIMEOUT
-                )
-                return p
-            else:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(PrinterService.CONNECTION_TIMEOUT)
-                s.connect((impresora.direccion_ip, impresora.puerto_red or 9100))
-                return s
-        except Exception as e:
-            logger.error(f"Error en conexión de red: {str(e)}")
-            raise
-    
-    @staticmethod
-    def _conectar_serial(impresora):
-        """Conexión serial (COM/ttyS)"""
-        try:
-            if impresora.protocolo == 'ESC_POS':
-                return escpos_printer.Serial(
-                    devfile=impresora.puerto_serial,
-                    baudrate=impresora.baudrate or 9600,
-                    timeout=PrinterService.CONNECTION_TIMEOUT
-                )
-            else:
-                ser = serial.Serial(
-                    port=impresora.puerto_serial,
-                    baudrate=impresora.baudrate or 9600,
-                    bytesize=serial.EIGHTBITS,
-                    parity=serial.PARITY_NONE,
-                    stopbits=serial.STOPBITS_ONE,
-                    timeout=PrinterService.CONNECTION_TIMEOUT
-                )
-                return ser
-        except Exception as e:
-            logger.error(f"Error en conexión serial: {str(e)}")
-            raise
-    
-    @staticmethod
-    def _conectar_driver(impresora):
-        """Conexión usando driver del sistema (Windows/CUPS)"""
-        try:
-            if hasattr(cups, 'Connection'):
-                conn = cups.Connection()
-                printers = conn.getPrinters()
-                if impresora.nombre_driver in printers:
-                    return {'type': 'cups', 'connection': conn, 'printer': impresora.nombre_driver}
-            return {'type': 'windows', 'printer': impresora.nombre_driver}
-        except Exception as e:
-            logger.error(f"Error en conexión por driver: {str(e)}")
-            raise
-    
-    @staticmethod
-    def _conectar_raw_socket(impresora):
-        """Conexión Raw Socket TCP/IP"""
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(PrinterService.CONNECTION_TIMEOUT)
-            s.connect((impresora.direccion_ip, impresora.puerto_red or 9100))
-            return s
-        except Exception as e:
-            logger.error(f"Error en conexión raw socket: {str(e)}")
-            raise
-    
-    @staticmethod
-    def test_connection(impresora):
+    def imprimir_raw_windows(nombre_impresora: str, comandos: bytes) -> Tuple[bool, str]:
         """
-        Prueba la conexión con la impresora
+        Envía comandos raw directamente a impresora en Windows
+        
+        Args:
+            nombre_impresora: Nombre del driver (ej: 'PrinterPOS-80')
+            comandos: Bytes con comandos ESC/POS
         
         Returns:
             tuple: (success: bool, message: str)
         """
+        if platform.system() != 'Windows':
+            return False, "Esta función solo funciona en Windows"
+        
+        if not WINDOWS_PRINTING_AVAILABLE:
+            return False, "pywin32 no está instalado"
+        
         try:
-            conn = PrinterService.get_printer_connection(impresora)
-            if conn is None:
-                return False, "No se pudo establecer conexión"
+            logger.info(f"🖨️ Enviando {len(comandos)} bytes a {nombre_impresora}")
             
-            # Probar según tipo de protocolo
-            if impresora.protocolo == 'ESC_POS' and hasattr(conn, 'device'):
-                conn.text("Prueba\\n")
-                if impresora.soporta_corte_automatico:
-                    conn.cut()
-                return True, "Conexión ESC/POS exitosa"
+            # Abrir impresora
+            handle = win32print.OpenPrinter(nombre_impresora)
             
-            # Para otros protocolos
-            if isinstance(conn, socket.socket):
-                conn.send(b"TEST\\n")
-                conn.close()
-                return True, "Conexión de red exitosa"
-            
-            if isinstance(conn, serial.Serial):
-                conn.write(b"TEST\\n")
-                conn.close()
-                return True, "Conexión serial exitosa"
-            
-            return True, "Conexión establecida"
-            
-        except Exception as e:
-            return False, f"Error: {str(e)}"
-        finally:
             try:
-                if hasattr(conn, 'close') and callable(getattr(conn, 'close')):
-                    conn.close()
-            except:
-                pass
+                # Iniciar trabajo de impresión RAW
+                job_info = ("CommerceBox Print", None, "RAW")
+                job_id = win32print.StartDocPrinter(handle, 1, job_info)
+                
+                # Iniciar página
+                win32print.StartPagePrinter(handle)
+                
+                # Enviar comandos
+                bytes_written = win32print.WritePrinter(handle, comandos)
+                
+                # Finalizar
+                win32print.EndPagePrinter(handle)
+                win32print.EndDocPrinter(handle)
+                
+                logger.info(f"✅ Enviados {bytes_written} bytes correctamente")
+                
+                return True, f"✅ Impresión exitosa ({bytes_written} bytes)"
+                
+            finally:
+                win32print.ClosePrinter(handle)
+                
+        except Exception as e:
+            error_msg = f"Error al imprimir: {str(e)}"
+            logger.error(f"❌ {error_msg}")
+            return False, f"❌ {error_msg}"
+    
+    # ========================================================================
+    # VALIDACIÓN DE CONFIGURACIÓN (CLOUD)
+    # ========================================================================
     
     @staticmethod
-    def print_test_page(impresora):
+    def test_connection_cloud(impresora) -> Tuple[bool, str]:
         """
-        Imprime una página de prueba
+        Prueba de conexión que funciona desde Docker/Cloud
+        Solo valida la configuración, no la conexión física
+        
+        Args:
+            impresora: Modelo Impresora
         
         Returns:
-            bool: True si fue exitoso
+            tuple: (success: bool, message: str)
+        """
+        errores = []
+        warnings = []
+        
+        # Validar configuración según tipo de conexión
+        if impresora.tipo_conexion == 'USB':
+            if not impresora.puerto_usb and not impresora.nombre_driver:
+                errores.append("Falta configurar puerto USB o nombre del driver")
+            else:
+                warnings.append(f"Puerto USB configurado: {impresora.puerto_usb or impresora.nombre_driver}")
+        
+        elif impresora.tipo_conexion in ['LAN', 'WIFI']:
+            if not impresora.direccion_ip:
+                errores.append("Falta configurar dirección IP")
+            if not impresora.puerto_red:
+                errores.append("Falta configurar puerto de red")
+            else:
+                # Intentar hacer ping a la IP
+                try:
+                    cmd = ['ping', '-c', '1', '-W', '2', impresora.direccion_ip] if platform.system() != 'Windows' else ['ping', '-n', '1', '-w', '2000', impresora.direccion_ip]
+                    resultado = subprocess.run(
+                        cmd,
+                        capture_output=True,
+                        timeout=3
+                    )
+                    if resultado.returncode == 0:
+                        return True, f"✅ Configuración correcta. IP {impresora.direccion_ip} responde a ping"
+                    else:
+                        warnings.append(f"IP {impresora.direccion_ip} no responde a ping")
+                except Exception as e:
+                    warnings.append(f"No se pudo verificar conectividad: {str(e)}")
+        
+        elif impresora.tipo_conexion == 'SERIAL':
+            if not impresora.puerto_serial:
+                errores.append("Falta configurar puerto serial")
+            if not impresora.baudrate:
+                errores.append("Falta configurar baudrate")
+        
+        elif impresora.tipo_conexion == 'DRIVER':
+            if not impresora.nombre_driver:
+                errores.append("Falta configurar nombre del driver")
+        
+        # Validaciones generales
+        if not impresora.nombre:
+            errores.append("Falta el nombre de la impresora")
+        
+        if not impresora.protocolo:
+            errores.append("Falta seleccionar el protocolo")
+        
+        if errores:
+            return False, "❌ Errores de configuración:\n" + "\n".join(f"• {e}" for e in errores)
+        
+        mensaje = "✅ Configuración correcta"
+        if warnings:
+            mensaje += "\n\n⚠️ Advertencias:\n" + "\n".join(f"• {w}" for w in warnings)
+        
+        mensaje += "\n\n💡 Para imprimir, use el botón 'Imprimir Directo' o configure el agente local"
+        
+        return True, mensaje
+    
+    # ========================================================================
+    # PRUEBA DE CONEXIÓN UNIFICADA
+    # ========================================================================
+    
+    @staticmethod
+    def test_connection(impresora) -> Tuple[bool, str]:
+        """
+        Prueba la conexión con la impresora
+        Usa el método apropiado según el entorno de ejecución
+        
+        Returns:
+            tuple: (success: bool, message: str)
+        """
+        # Si estamos en cloud/docker, usar validación de configuración
+        if not WINDOWS_PRINTING_AVAILABLE and impresora.tipo_conexion in ['USB', 'DRIVER']:
+            return PrinterService.test_connection_cloud(impresora)
+        
+        # Si tenemos acceso a Windows y es impresora con driver
+        if WINDOWS_PRINTING_AVAILABLE and impresora.nombre_driver and impresora.tipo_conexion in ['USB', 'DRIVER']:
+            success, msg, info = PrinterService.probar_puerto_usb_windows(impresora.nombre_driver)
+            return success, msg
+        
+        # Para impresoras de red, intentar conexión directa
+        if impresora.tipo_conexion in ['LAN', 'WIFI', 'RAW']:
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(PrinterService.CONNECTION_TIMEOUT)
+                s.connect((impresora.direccion_ip, impresora.puerto_red or 9100))
+                s.close()
+                return True, "✅ Conexión de red exitosa"
+            except Exception as e:
+                return False, f"❌ Error: {str(e)}"
+        
+        # Fallback a validación de configuración
+        return PrinterService.test_connection_cloud(impresora)
+    
+    # ========================================================================
+    # IMPRESIÓN DE PÁGINA DE PRUEBA
+    # ========================================================================
+    
+    @staticmethod
+    def print_test_page(impresora, usar_agente=True) -> bool:
+        """
+        Imprime una página de prueba usando el método más apropiado
+        
+        PARA DOCKER: Por defecto usa el agente local (usar_agente=True)
+        ya que Docker no puede acceder directamente a impresoras Windows
+        
+        Args:
+            impresora: Instancia del modelo Impresora
+            usar_agente: Si True, crea trabajo para el agente local (recomendado para Docker)
+        
+        Returns:
+            bool: True si el trabajo fue creado/enviado exitosamente, False en caso contrario
         """
         from ..models import RegistroImpresion
+        from ..api.agente_views import crear_trabajo_impresion, obtener_usuario_para_impresion
+        from django.conf import settings
         
         inicio = time.time()
         
         try:
-            conn = PrinterService.get_printer_connection(impresora)
-            if conn is None:
-                raise Exception("No se pudo conectar a la impresora")
+            # ===========================================================
+            # PASO 1: GENERAR COMANDOS ESC/POS
+            # ===========================================================
             
-            if impresora.protocolo == 'ESC_POS' and hasattr(conn, 'text'):
-                PrinterService._imprimir_test_escpos(conn, impresora)
+            logger.info(f"🖨️ Iniciando impresión de prueba para: {impresora.nombre}")
+            logger.info(f"   Gaveta configurada: {'✅ Sí' if impresora.tiene_gaveta else '❌ No'}")
+            
+            # Generar comandos ESC/POS para la página de prueba
+            # Los comandos YA incluyen el pulso de gaveta si está configurada
+            comandos = PrinterService.generar_comando_raw_test(impresora)
+            
+            # Convertir bytes a hexadecimal para transmisión
+            comandos_hex = comandos.hex()
+            
+            logger.debug(f"   Comandos generados: {len(comandos)} bytes ({len(comandos_hex)} chars hex)")
+            
+            # ===========================================================
+            # PASO 2: MÉTODO PREFERIDO - USAR AGENTE LOCAL
+            # ===========================================================
+            
+            if usar_agente:
+                try:
+                    logger.info(f"📍 Método seleccionado: Agente Local")
+                    
+                    # Verificar que la impresora tenga nombre de driver configurado
+                    if not impresora.nombre_driver:
+                        raise Exception(
+                            "⚠️ La impresora no tiene configurado el 'Nombre del Driver'.\n\n"
+                            "SOLUCIÓN:\n"
+                            "1. Ve a la configuración de la impresora en Django Admin\n"
+                            "2. En el agente de Windows, ve a la pestaña 'Impresoras'\n"
+                            "3. Copia el nombre EXACTO de la impresora\n"
+                            "4. Pégalo en el campo 'Nombre del Driver' en Django\n"
+                            "5. Guarda los cambios\n\n"
+                            "Ejemplo: 'PrinterPOS-80' o 'POS-80 Printer'"
+                        )
+                    
+                    # Obtener usuario para crear el trabajo
+                    try:
+                        usuario = obtener_usuario_para_impresion()
+                        logger.debug(f"   Usuario asignado: {usuario.username} (ID:{usuario.id})")
+                    except Exception as e:
+                        raise Exception(f"No se pudo obtener un usuario válido: {str(e)}")
+                    
+                    # Crear trabajo de impresión
+                    trabajo_id = crear_trabajo_impresion(
+                        usuario=usuario,
+                        impresora_nombre=impresora.nombre_driver,
+                        comandos_hex=comandos_hex,
+                        tipo='PRUEBA'
+                    )
+                    
+                    logger.info(f"✅ Trabajo #{trabajo_id} creado exitosamente")
+                    logger.info(f"   El agente lo procesará automáticamente en los próximos 3 segundos")
+                    
+                    # Registrar en base de datos como trabajo enviado
+                    tiempo_ms = int((time.time() - inicio) * 1000)
+                    RegistroImpresion.objects.create(
+                        impresora=impresora,
+                        tipo_documento='OTRO',
+                        numero_documento=trabajo_id[:100],
+                        contenido_resumen=f'Página de prueba enviada al agente (ID: {trabajo_id})',
+                        estado='EXITOSO',
+                        tiempo_procesamiento=tiempo_ms,
+                        usuario=usuario
+                    )
+                    
+                    # Actualizar fecha de última prueba
+                    impresora.fecha_ultima_prueba = timezone.now()
+                    impresora.save(update_fields=['fecha_ultima_prueba'])
+                    
+                    logger.info(
+                        f"📋 INSTRUCCIONES:\n"
+                        f"   1. Abre el agente en Windows\n"
+                        f"   2. Ve a la pestaña 'Log'\n"
+                        f"   3. En 3-5 segundos verás el trabajo procesándose\n"
+                        f"   4. La impresora imprimirá automáticamente\n"
+                        f"   5. {'✅ La gaveta se abrirá automáticamente' if impresora.tiene_gaveta else '⚠️ La gaveta NO se abrirá (no configurada)'}"
+                    )
+                    
+                    return True
+                    
+                except Exception as e:
+                    error_msg = str(e)
+                    logger.warning(f"⚠️ No se pudo usar el agente: {error_msg}")
+                    
+                    # Si explícitamente se pidió usar agente, no continuar con métodos directos
+                    if usar_agente:
+                        logger.info("💡 SOLUCIONES:")
+                        logger.info("   1. ✅ RECOMENDADO: Verifica que el agente esté ejecutándose:")
+                        logger.info("      - Abre CommerceBox-Agente.exe en Windows")
+                        logger.info("      - Verifica estado: '🟢 Ejecutando'")
+                        logger.info("      - Verifica configuración (URL y Token correctos)")
+                        logger.info("   2. Configura el 'Nombre del Driver' en la impresora")
+                        logger.info("   3. O usa una impresora de red (configura IP y puerto)")
+                        
+                        # Re-lanzar la excepción para que el admin vea el error
+                        raise Exception(
+                            f"{error_msg}\n\n"
+                            "RECOMENDACIÓN: Asegúrate de que el agente local esté ejecutándose en Windows.\n"
+                            "Si el agente está corriendo, verifica que el 'Nombre del Driver' esté configurado correctamente."
+                        )
+            
+            # ===========================================================
+            # PASO 3: MÉTODOS ALTERNATIVOS (FALLBACK)
+            # ===========================================================
+            
+            success = False
+            mensaje = ""
+            
+            logger.info("📍 Intentando métodos de impresión directa...")
+            
+            # MÉTODO ALTERNATIVO 1: Impresión directa Windows (si disponible)
+            if WINDOWS_PRINTING_AVAILABLE and impresora.nombre_driver:
+                logger.info(f"   Probando: Impresión directa Windows")
+                logger.info(f"   Driver: {impresora.nombre_driver}")
+                
+                try:
+                    success, mensaje = PrinterService.imprimir_raw_windows(
+                        impresora.nombre_driver, 
+                        comandos
+                    )
+                    if success:
+                        logger.info(f"   ✅ Impresión Windows exitosa")
+                except Exception as e:
+                    logger.warning(f"   ❌ Falló impresión Windows: {e}")
+                    mensaje = str(e)
+            
+            # MÉTODO ALTERNATIVO 2: Impresora de Red
+            elif impresora.tipo_conexion in ['LAN', 'WIFI', 'RAW'] and impresora.direccion_ip:
+                logger.info(f"   Probando: Impresión por red")
+                logger.info(f"   IP: {impresora.direccion_ip}:{impresora.puerto_red or 9100}")
+                
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                        s.settimeout(5)
+                        s.connect((impresora.direccion_ip, impresora.puerto_red or 9100))
+                        s.sendall(comandos)
+                        success = True
+                        mensaje = "Impresión por red exitosa"
+                        logger.info(f"   ✅ {mensaje}")
+                except Exception as e:
+                    success = False
+                    mensaje = f"Error de red: {str(e)}"
+                    logger.warning(f"   ❌ {mensaje}")
+            
             else:
-                texto = PrinterService._generar_texto_test(impresora)
-                PrinterService._enviar_texto_generico(conn, texto)
+                # No hay métodos disponibles
+                raise Exception(
+                    "⚠️ No se pudo imprimir con ningún método disponible.\n\n"
+                    "TU SITUACIÓN:\n"
+                    f"- Sistema: {'Docker/Linux' if not WINDOWS_PRINTING_AVAILABLE else 'Windows'}\n"
+                    f"- Nombre driver configurado: {'✅ Sí' if impresora.nombre_driver else '❌ No'}\n"
+                    f"- Tipo conexión: {impresora.tipo_conexion}\n"
+                    f"- IP configurada: {'✅ ' + impresora.direccion_ip if impresora.direccion_ip else '❌ No'}\n\n"
+                    "SOLUCIONES:\n"
+                    "1. ✅ RECOMENDADO (especialmente para Docker):\n"
+                    "   - Asegúrate de que el agente local esté ejecutándose en Windows\n"
+                    "   - Verifica: Estado '🟢 Ejecutando' en el agente\n"
+                    "   - Configura el 'Nombre del Driver' de la impresora\n"
+                    "   - URL del agente debe apuntar a este servidor\n\n"
+                    "2. O configura una impresora de red:\n"
+                    "   - Tipo conexión: LAN/WIFI/RAW\n"
+                    "   - Dirección IP y puerto de la impresora\n\n"
+                    "3. O ejecuta Django directamente en Windows (no en Docker)"
+                )
             
-            # Registrar impresión
+            # Verificar resultado
+            if not success:
+                raise Exception(mensaje or "Impresión fallida sin mensaje de error")
+            
+            # ===========================================================
+            # PASO 4: REGISTRAR RESULTADO EXITOSO
+            # ===========================================================
+            
             tiempo_ms = int((time.time() - inicio) * 1000)
+            
+            # Obtener usuario para el registro (si es método directo)
+            try:
+                usuario_registro = obtener_usuario_para_impresion()
+            except:
+                usuario_registro = None
+            
             RegistroImpresion.objects.create(
                 impresora=impresora,
                 tipo_documento='OTRO',
-                numero_documento='TEST-PAGE',
-                contenido_resumen='Página de prueba',
+                numero_documento='TEST-PAGE-DIRECT',
+                contenido_resumen='Página de prueba (impresión directa)',
                 estado='EXITOSO',
-                tiempo_procesamiento=tiempo_ms
+                tiempo_procesamiento=tiempo_ms,
+                usuario=usuario_registro
             )
             
             impresora.fecha_ultima_prueba = timezone.now()
             impresora.save(update_fields=['fecha_ultima_prueba'])
+            
+            logger.info(f"✅ {mensaje} (tiempo: {tiempo_ms}ms)")
             return True
             
         except Exception as e:
-            logger.error(f"Error al imprimir página de prueba: {str(e)}")
+            # ===========================================================
+            # MANEJO DE ERRORES
+            # ===========================================================
+            
+            error_msg = str(e)
+            logger.error(f"❌ Error al imprimir página de prueba: {error_msg}")
+            
+            # Obtener usuario para el registro de error
+            try:
+                usuario_registro = obtener_usuario_para_impresion()
+            except:
+                usuario_registro = None
+            
+            # Registrar error en base de datos
             RegistroImpresion.objects.create(
                 impresora=impresora,
                 tipo_documento='OTRO',
-                numero_documento='TEST-PAGE',
-                contenido_resumen='Página de prueba',
+                numero_documento='TEST-PAGE-ERROR',
+                contenido_resumen='Intento de página de prueba',
                 estado='ERROR',
-                mensaje_error=str(e)
+                mensaje_error=error_msg[:500],
+                usuario=usuario_registro
             )
+            
+            # Mostrar información útil para debugging
+            logger.error("🔍 INFORMACIÓN DE DEBUGGING:")
+            logger.error(f"   Impresora: {impresora.nombre}")
+            logger.error(f"   Nombre driver: {impresora.nombre_driver or '(no configurado)'}")
+            logger.error(f"   Tipo conexión: {impresora.tipo_conexion}")
+            logger.error(f"   En Windows: {WINDOWS_PRINTING_AVAILABLE}")
+            logger.error(f"   Usar agente: {usar_agente}")
+            
             return False
-        finally:
-            try:
-                if hasattr(conn, 'close') and callable(getattr(conn, 'close')):
-                    conn.close()
-            except:
-                pass
     
-    @staticmethod
-    def _imprimir_test_escpos(conn, impresora):
-        """Imprime página de prueba ESC/POS"""
-        from django.conf import settings
-        
-        # Usar valores por defecto si no existen en settings
-        empresa_nombre = getattr(settings, 'EMPRESA_NOMBRE', 'COMMERCEBOX')
-        empresa_ruc = getattr(settings, 'EMPRESA_RUC', 'RUC: 1234567890001')
-        empresa_direccion = getattr(settings, 'EMPRESA_DIRECCION', 'Dirección de la empresa')
-        empresa_telefono = getattr(settings, 'EMPRESA_TELEFONO', 'Teléfono')
-        
-        conn.set(align='center', text_type='B', width=2, height=2)
-        conn.text(f"{empresa_nombre}\\n")
-        conn.text("=" * 42 + "\\n\\n")
-        
-        conn.set(align='left', text_type='NORMAL')
-        conn.text(f"Impresora: {impresora.nombre}\\n")
-        conn.text(f"Modelo: {impresora.marca} {impresora.modelo}\\n")
-        conn.text(f"Conexión: {impresora.get_connection_info()}\\n")
-        conn.text(f"Fecha: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}\\n\\n")
-        
-        if impresora.soporta_codigo_barras:
-            conn.text("Código de Barras:\\n")
-            conn.barcode('1234567890128', 'EAN13', 64, 2, '', '')
-            conn.text("\\n")
-        
-        if impresora.soporta_qr:
-            conn.text("Código QR:\\n")
-            conn.qr("https://commercebox.com", size=4)
-            conn.text("\\n")
-        
-        conn.text("=" * 42 + "\\n")
-        conn.text("PRUEBA EXITOSA\\n")
-        conn.text("=" * 42 + "\\n")
-        
-        if impresora.soporta_corte_automatico:
-            conn.cut()
-        
-        if impresora.tiene_gaveta:
-            conn.cashdraw(impresora.pin_gaveta or 0)
-    
-    @staticmethod
-    def _generar_texto_test(impresora):
-        """Genera texto de prueba genérico"""
-        return f"""
-COMMERCEBOX - PÁGINA DE PRUEBA
-================================
-Impresora: {impresora.nombre}
-Modelo: {impresora.marca} {impresora.modelo}
-Conexión: {impresora.get_connection_info()}
-Fecha: {timezone.now()}
-================================
-PRUEBA EXITOSA
-================================
-        """
-    
-    @staticmethod
-    def _enviar_texto_generico(conn, texto):
-        """Envía texto a conexiones genéricas"""
-        if isinstance(conn, socket.socket):
-            conn.send(texto.encode())
-        elif isinstance(conn, serial.Serial):
-            conn.write(texto.encode())
-        elif isinstance(conn, dict) and conn['type'] == 'cups':
-            import tempfile
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-                f.write(texto)
-                temp_file = f.name
-            try:
-                conn['connection'].printFile(conn['printer'], temp_file, "Prueba CommerceBox", {})
-            finally:
-                os.unlink(temp_file)
-    
-    @staticmethod
-    def enviar_comando_raw(impresora, comando: bytes):
-        """Envía comando raw a la impresora"""
-        conn = PrinterService.get_printer_connection(impresora)
-        if conn is None:
-            raise Exception("No se pudo conectar a la impresora")
-        
-        try:
-            if isinstance(conn, socket.socket):
-                conn.send(comando)
-            elif isinstance(conn, serial.Serial):
-                conn.write(comando)
-            elif hasattr(conn, 'device'):  # ESC/POS
-                conn._raw(comando)
-            else:
-                raise Exception("Tipo de conexión no soportado para comandos raw")
-        finally:
-            try:
-                if hasattr(conn, 'close') and callable(getattr(conn, 'close')):
-                    conn.close()
-            except:
-                pass
+    # ========================================================================
+    # ENVÍO DE COMANDOS RAW CON TIMEOUT
+    # ========================================================================
     
     @staticmethod
     def enviar_comando_raw_con_timeout(impresora, comando: bytes, timeout: int = 5) -> bool:
-        """Envía comando raw con timeout"""
+        """
+        Envía comando raw con timeout
+        Usado principalmente para abrir gavetas
+        """
         try:
-            # Crear socket con timeout si es red
-            if impresora.tipo_conexion in ['LAN', 'WIFI', 'RAW']:
+            # Si es Windows con driver
+            if WINDOWS_PRINTING_AVAILABLE and impresora.nombre_driver:
+                success, msg = PrinterService.imprimir_raw_windows(impresora.nombre_driver, comando)
+                return success
+            
+            # Si es red
+            elif impresora.tipo_conexion in ['LAN', 'WIFI', 'RAW']:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     s.settimeout(timeout)
                     s.connect((impresora.direccion_ip, impresora.puerto_red or 9100))
                     s.send(comando)
                 return True
-            else:
-                # Para otros tipos, usar método normal
-                PrinterService.enviar_comando_raw(impresora, comando)
-                return True
+            
+            return False
+            
         except Exception as e:
             logger.error(f"Error con timeout: {e}")
             return False
-
-
-class TicketPrinter:
-    """
-    Servicio específico para impresión de tickets de venta
-    """
-    
-    @staticmethod
-    def imprimir_ticket(venta, impresora=None):
-        """
-        Imprime ticket de venta
-        
-        Args:
-            venta: Modelo Venta
-            impresora: Modelo Impresora (opcional, usa la principal si no se especifica)
-        
-        Returns:
-            bool: True si fue exitoso
-        """
-        from ..models import Impresora, RegistroImpresion
-        
-        # Si no se especifica impresora, usar la principal
-        if impresora is None:
-            impresora = Impresora.objects.filter(
-                es_principal_tickets=True,
-                estado='ACTIVA'
-            ).first()
-            
-            if not impresora:
-                logger.error("No hay impresora de tickets configurada")
-                return False
-        
-        inicio = time.time()
-        
-        try:
-            conn = PrinterService.get_printer_connection(impresora)
-            if conn is None:
-                raise Exception("No se pudo conectar a la impresora")
-            
-            if impresora.protocolo == 'ESC_POS' and hasattr(conn, 'text'):
-                # Imprimir con ESC/POS
-                TicketPrinter._imprimir_ticket_escpos(conn, venta, impresora)
-            else:
-                # Imprimir con otro protocolo
-                texto = TicketPrinter._generar_texto_ticket(venta)
-                PrinterService._enviar_texto_generico(conn, texto)
-            
-            # Registrar impresión exitosa
-            tiempo_ms = int((time.time() - inicio) * 1000)
-            
-            RegistroImpresion.objects.create(
-                impresora=impresora,
-                tipo_documento='TICKET',
-                venta=venta,
-                numero_documento=venta.numero_venta,
-                contenido_resumen=f"Ticket de venta ${venta.total}",
-                estado='EXITOSO',
-                tiempo_procesamiento=tiempo_ms,
-                usuario=venta.vendedor
-            )
-            
-            # Incrementar contador
-            impresora.incrementar_contador()
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error al imprimir ticket: {str(e)}")
-            
-            # Registrar fallo
-            RegistroImpresion.objects.create(
-                impresora=impresora,
-                tipo_documento='TICKET',
-                venta=venta,
-                numero_documento=venta.numero_venta,
-                contenido_resumen=f"Ticket de venta ${venta.total}",
-                estado='ERROR',
-                mensaje_error=str(e),
-                usuario=venta.vendedor
-            )
-            
-            return False
-        finally:
-            try:
-                if hasattr(conn, 'close') and callable(getattr(conn, 'close')):
-                    conn.close()
-            except:
-                pass
-    
-    @staticmethod
-    def _imprimir_ticket_escpos(conn, venta, impresora):
-        """
-        Imprime ticket usando comandos ESC/POS
-        """
-        # Usar valores por defecto si no existen en settings
-        empresa_nombre = getattr(settings, 'EMPRESA_NOMBRE', 'COMMERCEBOX')
-        empresa_ruc = getattr(settings, 'EMPRESA_RUC', 'RUC: 1234567890001')
-        empresa_direccion = getattr(settings, 'EMPRESA_DIRECCION', 'Dirección de la empresa')
-        empresa_telefono = getattr(settings, 'EMPRESA_TELEFONO', 'Teléfono')
-        
-        # Encabezado
-        conn.set(align='center', text_type='B', width=2, height=2)
-        conn.text(f"{empresa_nombre}\\n")
-        conn.set(align='center', text_type='NORMAL')
-        conn.text(f"{empresa_ruc}\\n")
-        conn.text(f"{empresa_direccion}\\n")
-        conn.text(f"Tel: {empresa_telefono}\\n")
-        conn.text("=" * 42 + "\\n")
-        
-        # Datos de venta
-        conn.set(align='left')
-        conn.text(f"Ticket: {venta.numero_venta}\\n")
-        conn.text(f"Fecha: {venta.fecha_venta.strftime('%d/%m/%Y %H:%M')}\\n")
-        conn.text(f"Vendedor: {venta.vendedor.username}\\n")
-        
-        if venta.cliente:
-            conn.text(f"Cliente: {venta.cliente.nombre_completo()}\\n")
-            conn.text(f"Doc: {venta.cliente.numero_documento}\\n")
-        
-        conn.text("-" * 42 + "\\n")
-        
-        # Detalles
-        conn.text("PRODUCTO               CANT    P.UNIT  TOTAL\\n")
-        conn.text("-" * 42 + "\\n")
-        
-        for detalle in venta.detalles.all():
-            # Nombre del producto (máx 20 caracteres)
-            nombre = detalle.producto.nombre[:20].ljust(20)
-            
-            if detalle.producto.es_quintal():
-                cant = f"{detalle.peso_vendido:.2f}"
-                precio = f"{detalle.precio_por_unidad_peso:.2f}"
-            else:
-                cant = f"{detalle.cantidad_unidades}"
-                precio = f"{detalle.precio_unitario:.2f}"
-            
-            total = f"{detalle.total:.2f}"
-            
-            linea = f"{nombre} {cant:>6} {precio:>8} {total:>8}\\n"
-            conn.text(linea)
-            
-            # Si es quintal, mostrar código
-            if detalle.quintal:
-                conn.set(text_type='NORMAL', width=1, height=1)
-                conn.text(f"  Quintal: {detalle.quintal.codigo_unico}\\n")
-        
-        conn.text("=" * 42 + "\\n")
-        
-        # Totales
-        conn.set(align='right')
-        conn.text(f"SUBTOTAL: ${venta.subtotal:>10.2f}\\n")
-        if venta.descuento > 0:
-            conn.text(f"DESCUENTO: -${venta.descuento:>9.2f}\\n")
-        if venta.impuestos > 0:
-            conn.text(f"IMPUESTOS: ${venta.impuestos:>10.2f}\\n")
-        
-        conn.set(text_type='B', width=2, height=2)
-        conn.text(f"TOTAL: ${venta.total:>10.2f}\\n")
-        
-        conn.set(text_type='NORMAL', width=1, height=1)
-        conn.text("=" * 42 + "\\n")
-        
-        # Pagos
-        for pago in venta.pagos.all():
-            conn.text(f"{pago.get_forma_pago_display()}: ${pago.monto:>10.2f}\\n")
-        
-        if venta.cambio > 0:
-            conn.text(f"CAMBIO: ${venta.cambio:>10.2f}\\n")
-        
-        conn.text("=" * 42 + "\\n")
-        
-        # Pie
-        conn.set(align='center')
-        conn.text("GRACIAS POR SU COMPRA\\n")
-        conn.text("\\n")
-        
-        # Código de barras o QR
-        if impresora.soporta_codigo_barras:
-            conn.barcode(venta.numero_venta, 'CODE128', 64, 2, '', '')
-            conn.text("\\n")
-        
-        # Cortar
-        if impresora.soporta_corte_automatico:
-            if impresora.soporta_corte_parcial:
-                conn.cut(mode='PART')
-            else:
-                conn.cut()
-        
-        # Abrir gaveta si está configurado
-        if impresora.tiene_gaveta:
-            conn.cashdraw(impresora.pin_gaveta or 0)
-    
-    @staticmethod
-    def _generar_texto_ticket(venta):
-        """
-        Genera texto plano del ticket
-        """
-        lineas = []
-        ancho = 42
-        
-        # Encabezado
-        empresa_nombre = getattr(settings, 'EMPRESA_NOMBRE', 'COMMERCEBOX')
-        empresa_ruc = getattr(settings, 'EMPRESA_RUC', 'RUC: 1234567890001')
-        empresa_direccion = getattr(settings, 'EMPRESA_DIRECCION', 'Dirección de la empresa')
-        empresa_telefono = getattr(settings, 'EMPRESA_TELEFONO', 'Teléfono')
-        
-        lineas.append(empresa_nombre.center(ancho))
-        lineas.append(empresa_ruc.center(ancho))
-        lineas.append(empresa_direccion.center(ancho))
-        lineas.append(f"Tel: {empresa_telefono}".center(ancho))
-        lineas.append("=" * ancho)
-        
-        # Datos de venta
-        lineas.append(f"Ticket: {venta.numero_venta}")
-        lineas.append(f"Fecha: {venta.fecha_venta.strftime('%d/%m/%Y %H:%M')}")
-        lineas.append(f"Vendedor: {venta.vendedor.username}")
-        
-        if venta.cliente:
-            lineas.append(f"Cliente: {venta.cliente.nombre_completo()}")
-            lineas.append(f"Doc: {venta.cliente.numero_documento}")
-        
-        lineas.append("-" * ancho)
-        
-        # Detalles
-        lineas.append("PRODUCTO               CANT    P.UNIT  TOTAL")
-        lineas.append("-" * ancho)
-        
-        for detalle in venta.detalles.all():
-            nombre = detalle.producto.nombre[:20].ljust(20)
-            
-            if detalle.producto.es_quintal():
-                cant = f"{detalle.peso_vendido:.2f}"
-                precio = f"{detalle.precio_por_unidad_peso:.2f}"
-            else:
-                cant = f"{detalle.cantidad_unidades}"
-                precio = f"{detalle.precio_unitario:.2f}"
-            
-            total = f"{detalle.total:.2f}"
-            
-            linea = f"{nombre} {cant:>6} {precio:>8} {total:>8}"
-            lineas.append(linea)
-            
-            if detalle.quintal:
-                lineas.append(f"  Quintal: {detalle.quintal.codigo_unico}")
-        
-        lineas.append("=" * ancho)
-        
-        # Totales
-        lineas.append(f"{'SUBTOTAL:':>30} ${venta.subtotal:>10.2f}")
-        if venta.descuento > 0:
-            lineas.append(f"{'DESCUENTO:':>30} -${venta.descuento:>9.2f}")
-        if venta.impuestos > 0:
-            lineas.append(f"{'IMPUESTOS:':>30} ${venta.impuestos:>10.2f}")
-        lineas.append(f"{'TOTAL:':>30} ${venta.total:>10.2f}")
-        
-        lineas.append("=" * ancho)
-        
-        # Pagos
-        for pago in venta.pagos.all():
-            lineas.append(f"{pago.get_forma_pago_display():>30} ${pago.monto:>10.2f}")
-        
-        if venta.cambio > 0:
-            lineas.append(f"{'CAMBIO:':>30} ${venta.cambio:>10.2f}")
-        
-        lineas.append("=" * ancho)
-        lineas.append("GRACIAS POR SU COMPRA".center(ancho))
-        lineas.append("")
-        
-        return "\\n".join(lineas)
-
-
-class LabelPrinter:
-    """
-    Servicio para impresión de etiquetas y códigos de barras
-    """
-    
-    @staticmethod
-    def imprimir_etiqueta_producto(producto, cantidad=1, impresora=None, configuracion=None):
-        """
-        Imprime etiquetas de producto
-        
-        Args:
-            producto: Modelo Producto
-            cantidad: Número de etiquetas a imprimir
-            impresora: Modelo Impresora (opcional)
-            configuracion: Modelo ConfiguracionCodigoBarras (opcional)
-        
-        Returns:
-            bool: True si fue exitoso
-        """
-        from ..models import Impresora, ConfiguracionCodigoBarras, RegistroImpresion
-        
-        # Obtener impresora si no se especifica
-        if impresora is None:
-            impresora = Impresora.objects.filter(
-                es_principal_etiquetas=True,
-                estado='ACTIVA',
-                tipo_impresora='ETIQUETAS'
-            ).first()
-            
-            if not impresora:
-                logger.error("No hay impresora de etiquetas configurada")
-                return False
-        
-        # Obtener configuración si no se especifica
-        if configuracion is None:
-            configuracion = ConfiguracionCodigoBarras.objects.filter(
-                es_predeterminada=True,
-                activa=True
-            ).first()
-            
-            if not configuracion:
-                logger.error("No hay configuración de códigos de barras")
-                return False
-        
-        try:
-            conn = PrinterService.get_printer_connection(impresora)
-            if conn is None:
-                raise Exception("No se pudo conectar a la impresora")
-            
-            # Según el protocolo de la impresora
-            if impresora.protocolo == 'ZPL':
-                LabelPrinter._imprimir_etiqueta_zpl(
-                    conn, producto, cantidad, impresora, configuracion
-                )
-            elif impresora.protocolo == 'TSPL':
-                LabelPrinter._imprimir_etiqueta_tspl(
-                    conn, producto, cantidad, impresora, configuracion
-                )
-            elif impresora.protocolo == 'ESC_POS':
-                LabelPrinter._imprimir_etiqueta_escpos(
-                    conn, producto, cantidad, impresora, configuracion
-                )
-            else:
-                raise ValueError(f"Protocolo no soportado: {impresora.protocolo}")
-            
-            # Registrar impresión
-            RegistroImpresion.objects.create(
-                impresora=impresora,
-                tipo_documento='ETIQUETA',
-                producto=producto,
-                contenido_resumen=f"Etiqueta de {producto.nombre} x{cantidad}",
-                estado='EXITOSO'
-            )
-            
-            # Incrementar contador
-            for _ in range(cantidad):
-                impresora.incrementar_contador()
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error al imprimir etiqueta: {str(e)}")
-            
-            RegistroImpresion.objects.create(
-                impresora=impresora,
-                tipo_documento='ETIQUETA',
-                producto=producto,
-                contenido_resumen=f"Etiqueta de {producto.nombre} x{cantidad}",
-                estado='ERROR',
-                mensaje_error=str(e)
-            )
-            
-            return False
-        finally:
-            try:
-                if hasattr(conn, 'close') and callable(getattr(conn, 'close')):
-                    conn.close()
-            except:
-                pass
-    
-    @staticmethod
-    def _imprimir_etiqueta_zpl(conn, producto, cantidad, impresora, config):
-        """
-        Imprime etiqueta usando ZPL (Zebra)
-        """
-        # Comandos ZPL para etiqueta
-        zpl = []
-        
-        # Configuración inicial
-        zpl.append("^XA")  # Inicio de formato
-        zpl.append(f"^PW{impresora.ancho_etiqueta * 8}")  # Ancho de etiqueta (en dots)
-        zpl.append(f"^LL{impresora.alto_etiqueta * 8}")  # Alto de etiqueta (en dots)
-        
-        # Nombre del producto
-        if config.incluir_nombre_producto:
-            zpl.append("^FO50,30")  # Posición
-            zpl.append("^A0N,25,25")  # Fuente
-            zpl.append(f"^FD{producto.nombre[:30]}^FS")
-        
-        # Marca
-        if config.incluir_marca and producto.marca:
-            zpl.append("^FO50,60")
-            zpl.append("^A0N,20,20")
-            zpl.append(f"^FD{producto.marca.nombre}^FS")
-        
-        # Código de barras
-        zpl.append("^FO50,90")
-        if config.tipo_codigo == 'CODE128':
-            zpl.append("^BCN,70,Y,N,N")
-        elif config.tipo_codigo == 'EAN13':
-            zpl.append("^BEN,70,Y,N")
-        zpl.append(f"^FD{producto.codigo_barras}^FS")
-        
-        # Precio
-        if config.incluir_precio:
-            precio = producto.precio_unitario if producto.es_normal() else producto.precio_por_unidad_peso
-            zpl.append("^FO50,180")
-            zpl.append("^A0N,35,35")
-            zpl.append(f"^FD${precio:.2f}^FS")
-        
-        # Cantidad de copias
-        zpl.append(f"^PQ{cantidad}")
-        
-        # Fin de formato
-        zpl.append("^XZ")
-        
-        # Enviar comandos
-        comando_completo = "\\n".join(zpl)
-        
-        if isinstance(conn, socket.socket):
-            conn.send(comando_completo.encode())
-        elif isinstance(conn, serial.Serial):
-            conn.write(comando_completo.encode())
-    
-    @staticmethod
-    def _imprimir_etiqueta_tspl(conn, producto, cantidad, impresora, config):
-        """
-        Imprime etiqueta usando TSPL (TSC)
-        """
-        # Comandos TSPL
-        tspl = []
-        
-        # Configuración inicial
-        tspl.append(f"SIZE {impresora.ancho_etiqueta} mm, {impresora.alto_etiqueta} mm")
-        tspl.append(f"GAP {impresora.gap_etiquetas} mm, 0")
-        tspl.append("CLS")
-        
-        # Nombre del producto
-        if config.incluir_nombre_producto:
-            tspl.append(f'TEXT 50,30,"2",0,1,1,"{producto.nombre[:30]}"')
-        
-        # Marca
-        if config.incluir_marca and producto.marca:
-            tspl.append(f'TEXT 50,60,"1",0,1,1,"{producto.marca.nombre}"')
-        
-        # Código de barras
-        if config.tipo_codigo == 'CODE128':
-            tspl.append(f"BARCODE 50,90,\"128\",70,1,0,2,2,\"{producto.codigo_barras}\"")
-        elif config.tipo_codigo == 'EAN13':
-            tspl.append(f"BARCODE 50,90,\"EAN13\",70,1,0,2,2,\"{producto.codigo_barras}\"")
-        
-        # Precio
-        if config.incluir_precio:
-            precio = producto.precio_unitario if producto.es_normal() else producto.precio_por_unidad_peso
-            tspl.append(f'TEXT 50,180,"3",0,1,1,"${precio:.2f}"')
-        
-        # Imprimir
-        tspl.append(f"PRINT {cantidad}")
-        
-        # Enviar comandos
-        comando_completo = "\\n".join(tspl)
-        
-        if isinstance(conn, socket.socket):
-            conn.send(comando_completo.encode())
-        elif isinstance(conn, serial.Serial):
-            conn.write(comando_completo.encode())
-    
-    @staticmethod
-    def _imprimir_etiqueta_escpos(conn, producto, cantidad, impresora, config):
-        """
-        Imprime etiqueta usando ESC/POS
-        """
-        if not hasattr(conn, 'text'):
-            raise ValueError("Conexión no compatible con ESC/POS")
-        
-        for i in range(cantidad):
-            # Nombre del producto
-            if config.incluir_nombre_producto:
-                conn.set(align='center', text_type='B')
-                conn.text(f"{producto.nombre[:30]}\\n")
-            
-            # Marca
-            if config.incluir_marca and producto.marca:
-                conn.set(align='center', text_type='NORMAL')
-                conn.text(f"{producto.marca.nombre}\\n")
-            
-            # Código de barras
-            conn.barcode(producto.codigo_barras, 'CODE128', 64, 2, '', '')
-            
-            # Precio
-            if config.incluir_precio:
-                precio = producto.precio_unitario if producto.es_normal() else producto.precio_por_unidad_peso
-                conn.set(align='center', text_type='B', width=2)
-                conn.text(f"${precio:.2f}\\n")
-            
-            conn.text("\\n\\n")
-            
-            # Cortar después de cada etiqueta
-            if impresora.soporta_corte_automatico and i < cantidad - 1:
-                conn.cut(mode='PART')
-        
-        # Corte final
-        if impresora.soporta_corte_automatico:
-            conn.cut()

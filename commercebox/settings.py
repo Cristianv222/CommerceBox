@@ -1,6 +1,10 @@
 """
 CommerceBox - Sistema de Inventario Comercial Dual
 Configuración principal de Django
+
+🔧 ARCHIVO CORREGIDO - Versión con solución para sesiones y autenticación
+Fecha: 2025-10-18
+Cambios: CORS, CSRF, ALLOWED_HOSTS, SESIONES configurados correctamente
 """
 
 import os
@@ -17,7 +21,18 @@ SECRET_KEY = config('COMMERCEBOX_SECRET_KEY', default='django-insecure-commerceb
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('COMMERCEBOX_DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('COMMERCEBOX_ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
+# ============================================================================
+# 🔧 CORRECCIÓN 1: ALLOWED_HOSTS - Permitir acceso desde cualquier IP
+# ============================================================================
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '0.0.0.0',
+    '*',  # ⚠️ Permite TODAS las IPs - SOLO PARA DESARROLLO
+]
+
+# Para producción, usar lista específica:
+# ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.100', 'tudominio.com']
 
 # Application definition
 DJANGO_APPS = [
@@ -36,6 +51,7 @@ THIRD_PARTY_APPS = [
     'corsheaders',
     'django_extensions',
     'django_filters',
+    'rest_framework.authtoken',
 ]
 
 COMMERCEBOX_APPS = [
@@ -53,16 +69,23 @@ COMMERCEBOX_APPS = [
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + COMMERCEBOX_APPS
 
+# ============================================================================
+# 🔧 CORRECCIÓN 2: MIDDLEWARE - Agregar CsrfExemptAgenteMiddleware
+# ============================================================================
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # ✅ Debe estar primero
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'apps.authentication.middleware.DualAuthenticationMiddleware',  # Autenticación dual JWT + Sessions
+    # 🆕 AGREGADO: Middleware para leer JWT desde cookies HTTP-only
+    'apps.authentication.middleware.JWTAuthFromCookieMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Middleware para excluir CSRF del agente
+    'apps.hardware_integration.middleware.CsrfExemptAgenteMiddleware',
 ]
 
 ROOT_URLCONF = 'commercebox.urls'
@@ -150,11 +173,14 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# REST Framework Configuration
+# ============================================================================
+# 🔧 CORRECCIÓN 3: REST FRAMEWORK - Asegurar TokenAuthentication
+# ============================================================================
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',  # ✅ Requerido para el agente
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -172,13 +198,12 @@ REST_FRAMEWORK = {
     ],
     'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
     'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/hour',
-        'user': '1000/hour',
-    },
+        'user': '1000/hour',  
+        'agente': None,  # Sin límite para el agente
+    }
 }
 
 # Simple JWT Configuration
@@ -215,97 +240,73 @@ SIMPLE_JWT = {
 }
 
 # ============================================================================
-# CONFIGURACIÓN DE CELERY - COMPLETA Y MEJORADA
+# CONFIGURACIÓN DE CELERY PARA TAREAS ASÍNCRONAS
 # ============================================================================
 
-# Importar crontab para tareas programadas
-from celery.schedules import crontab
-
-# -------- CONFIGURACIÓN DEL BROKER Y BACKEND --------
+# URL del broker de mensajes (Redis)
 CELERY_BROKER_URL = config('COMMERCEBOX_REDIS_URL', default='redis://localhost:6379/0')
+
+# URL del backend de resultados (Redis)
 CELERY_RESULT_BACKEND = config('COMMERCEBOX_REDIS_URL', default='redis://localhost:6379/0')
 
-# -------- SERIALIZACIÓN --------
+# Formato de serialización
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
-# -------- ZONA HORARIA --------
+# Timezone
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_ENABLE_UTC = True
 
-# -------- CONFIGURACIÓN DE TAREAS --------
+# Configuración de tareas
 CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutos límite máximo
-CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutos límite suave (advertencia)
-CELERY_TASK_MAX_RETRIES = 3
-CELERY_TASK_DEFAULT_RETRY_DELAY = 5 * 60  # 5 minutos entre reintentos
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutos
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutos
 
-# -------- CONFIGURACIÓN DE RESULTADOS --------
-CELERY_RESULT_EXPIRES = 3600  # Los resultados expiran después de 1 hora
-CELERY_RESULT_PERSISTENT = True  # Persistir resultados en Redis
-CELERY_IGNORE_RESULT = False  # No ignorar resultados (queremos guardarlos)
+# Configuración de workers
+CELERY_WORKER_PREFETCH_MULTIPLIER = 4
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 100
 
-# -------- OPTIMIZACIÓN Y RENDIMIENTO --------
-CELERY_WORKER_PREFETCH_MULTIPLIER = 4  # Número de tareas a pre-cargar por worker
-CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000  # Reiniciar worker después de 1000 tareas
-CELERY_TASK_ACKS_LATE = True  # Reconocer tarea solo después de completarla
-CELERY_TASK_REJECT_ON_WORKER_LOST = True  # Rechazar tarea si el worker falla
+# Beat Schedule (Tareas periódicas)
+from celery.schedules import crontab
 
-# -------- CONFIGURACIÓN DE REDIS --------
-CELERY_BROKER_CONNECTION_RETRY = True
-CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
-CELERY_BROKER_CONNECTION_MAX_RETRIES = 10
-
-# -------- CONFIGURACIÓN DE LOGS --------
-CELERY_WORKER_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s] %(message)s'
-CELERY_WORKER_TASK_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s][%(task_name)s(%(task_id)s)] %(message)s'
-
-# -------- CELERY BEAT SCHEDULER (Tareas Programadas) --------
-# Si quieres usar django-celery-beat (base de datos para tareas programadas)
-# Descomenta las siguientes líneas y agrega 'django_celery_beat' a INSTALLED_APPS
-# CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
-
-# -------- TAREAS PROGRAMADAS --------
 CELERY_BEAT_SCHEDULE = {
-    # Verificar alertas de stock cada 30 minutos
-    'check-stock-alerts': {
-        'task': 'apps.stock_alert_system.tasks.check_stock_alerts',
-        'schedule': crontab(minute='*/30'),
+    'verificar-alertas-stock': {
+        'task': 'apps.stock_alert_system.tasks.verificar_alertas_stock',
+        'schedule': crontab(minute='*/15'),
         'options': {
-            'expires': 15 * 60,  # La tarea expira en 15 minutos si no se ejecuta
+            'expires': 10 * 60,
         }
     },
-    
-    # Ejemplo: Generar reporte diario a las 00:00
-    # 'generate-daily-report': {
-    #     'task': 'apps.reports_analytics.tasks.generate_daily_report',
-    #     'schedule': crontab(hour=0, minute=0),
-    #     'options': {
-    #         'expires': 3600,
-    #     }
-    # },
-    
-    # Ejemplo: Limpiar sesiones expiradas cada domingo a las 3:00 AM
-    # 'cleanup-expired-sessions': {
-    #     'task': 'apps.authentication.tasks.cleanup_expired_sessions',
-    #     'schedule': crontab(hour=3, minute=0, day_of_week=0),
-    # },
-    
-    # Ejemplo: Enviar alertas de productos por vencer cada día a las 9:00 AM
-    # 'send-expiration-alerts': {
-    #     'task': 'apps.inventory_management.tasks.send_expiration_alerts',
-    #     'schedule': crontab(hour=9, minute=0),
-    # },
+    'procesar-notificaciones-pendientes': {
+        'task': 'apps.notifications.tasks.procesar_notificaciones_pendientes',
+        'schedule': crontab(minute='*/5'),
+        'options': {
+            'expires': 4 * 60,
+        }
+    },
+    'limpiar-sesiones-expiradas': {
+        'task': 'apps.authentication.tasks.limpiar_sesiones_expiradas',
+        'schedule': crontab(hour=3, minute=0),
+        'options': {
+            'expires': 30 * 60,
+        }
+    },
+    'generar-reporte-ventas-diario': {
+        'task': 'apps.reports_analytics.tasks.generar_reporte_ventas_diario',
+        'schedule': crontab(hour=23, minute=30),
+        'options': {
+            'expires': 15 * 60,
+        }
+    },
 }
 
-# -------- CONFIGURACIÓN DE MONITOREO --------
-CELERY_SEND_TASK_ERROR_EMAILS = False  # Cambiar a True en producción
-CELERY_SEND_TASK_SENT_EVENT = True  # Enviar eventos cuando se envía una tarea
+# Monitoreo
+CELERY_SEND_TASK_ERROR_EMAILS = False
+CELERY_SEND_TASK_SENT_EVENT = True
 
-# -------- CONFIGURACIÓN DE SEGURIDAD --------
-CELERY_TASK_ALWAYS_EAGER = False  # False en producción, True solo para testing
-# Si CELERY_TASK_ALWAYS_EAGER = True, las tareas se ejecutan síncronamente (útil para tests)
+# Seguridad
+CELERY_TASK_ALWAYS_EAGER = False
 
 # ============================================================================
 # FIN DE CONFIGURACIÓN DE CELERY
@@ -327,7 +328,6 @@ COMMERCEBOX_SETTINGS = {
 }
 
 # Logging Configuration
-# Crear directorio de logs si no existe
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(exist_ok=True)
 
@@ -386,16 +386,31 @@ LOGGING = {
     },
 }
 
-# CORS settings
+# ============================================================================
+# 🔧 CORRECCIÓN 4: CONFIGURACIÓN DE CORS - COMPLETA Y CORREGIDA
+# ============================================================================
+
+# Orígenes específicos permitidos
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "http://localhost:8001",
+    "http://127.0.0.1:8001",
 ]
 
+# Permitir peticiones desde la red local usando regex
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$",  # Redes 192.168.x.x
+    r"^http://172\.16\.\d{1,3}\.\d{1,3}(:\d+)?$",   # Docker (172.16.x.x)
+    r"^http://10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$",  # Otras redes privadas (10.x.x.x)
+]
+
+# Permitir cookies y autenticación en peticiones CORS
 CORS_ALLOW_CREDENTIALS = True
 
+# Métodos HTTP permitidos
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -405,6 +420,7 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
+# Headers permitidos en peticiones CORS
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -415,13 +431,25 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'X-CSRFToken',
+]
+
+# ============================================================================
+# 🔧 CORRECCIÓN 5: CSRF_TRUSTED_ORIGINS - Permitir red local
+# ============================================================================
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://localhost:8001',
+    'http://127.0.0.1:8001',
 ]
 
 # ============================================================================
 # CONFIGURACIÓN DE LOGIN Y REDIRECCIÓN
 # ============================================================================
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/panel/dashboard/'
+LOGIN_REDIRECT_URL = '/panel/'
 LOGOUT_REDIRECT_URL = '/login/'
 
 # Email Configuration
@@ -433,7 +461,11 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@commercebox.com')
 
-# Security settings
+# ============================================================================
+# 🔧 CORRECCIÓN 6: CONFIGURACIÓN DE SESIONES - CRÍTICO PARA AUTENTICACIÓN
+# ============================================================================
+
+# Security settings - Solo aplicar en producción
 if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -446,10 +478,24 @@ if not DEBUG:
     CSRF_COOKIE_HTTPONLY = True
     SESSION_COOKIE_HTTPONLY = True
 
-# Session Configuration
-SESSION_COOKIE_AGE = config('COMMERCEBOX_SESSION_TIMEOUT', default=3600, cast=int)  # 1 hora
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-SESSION_SAVE_EVERY_REQUEST = False
+# ✅ CONFIGURACIÓN DE SESIONES - CORREGIDA PARA DESARROLLO
+# Estas configuraciones DEBEN estar DESPUÉS del bloque "if not DEBUG"
+# para que no sean sobrescritas
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_AGE = 86400
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_NAME = 'sessionid'  # ← Asegúrate que sea 'sessionid', no otro nombre
+SESSION_COOKIE_HTTPONLY = False  # ← Temporalmente en False para debug
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = False
+SESSION_COOKIE_DOMAIN = None  # ← AGREGA ESTA LÍNEA
+SESSION_COOKIE_PATH = '/'  # ← AGREGA ESTA LÍNEA
+
+# ⚠️ IMPORTANTE: En producción, cambiar a:
+# SESSION_COOKIE_HTTPONLY = True
+# SESSION_COOKIE_SECURE = True
 
 # Cache Configuration
 CACHES = {
