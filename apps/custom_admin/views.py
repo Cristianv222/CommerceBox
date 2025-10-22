@@ -43,17 +43,14 @@ from django.shortcuts import redirect
 def login_page_view(request):
     """Renderiza la página HTML de login - SIN autenticación requerida"""
     
-    # ✅ Si ya está autenticado (sesión Django), redirigir
-    if request.user.is_authenticated:
-        return redirect('/panel/')
-    
-    # ✅ Limpiar cualquier sesión parcial/corrupta
-    if request.method == 'GET':
-        # Solo limpiar si no hay usuario autenticado
-        if not request.user.is_authenticated:
-            request.session.flush()
+    # ✅ SIEMPRE limpiar sesión al llegar a login
+    request.session.flush()
     
     response = render(request, 'authentication/login.html')
+    
+    # ✅ Limpiar cookies JWT para evitar bucle
+    response.delete_cookie('access_token')
+    response.delete_cookie('refresh_token')
     
     # ✅ Headers anti-cache
     response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
@@ -61,9 +58,7 @@ def login_page_view(request):
     response['Expires'] = '0'
     
     return response
-# ========================================
-# DASHBOARD
-# ========================================
+
 
 @ensure_csrf_cookie
 @auth_required

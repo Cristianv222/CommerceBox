@@ -638,23 +638,48 @@
                 }
             });
             
-            if (response.ok) {
-                const data = await response.json();
-                
-                // Actualizar stats
-                document.getElementById('ventasHoy').textContent = `$${data.ventas_hoy?.toFixed(2) || '0.00'}`;
-                document.getElementById('numVentas').textContent = data.num_ventas || '0';
-                document.getElementById('productosTotal').textContent = data.productos_total || '0';
-                document.getElementById('alertasCriticas').textContent = data.alertas_criticas || '0';
-                
-                // Cargar gráficos
-                loadVentasChart(data.ventas_semana || []);
-                loadProductosChart(data.top_productos || []);
-                loadUltimasVentas(data.ultimas_ventas || []);
-                loadAlertas(data.alertas || []);
+            // Redirigir a login si no está autenticado
+            if (response.status === 401 || response.status === 403) {
+                window.location.href = '/login/';
+                return;
             }
+            
+            // Si hay otro error, solo registrarlo sin redirigir
+            if (!response.ok) {
+                console.error('Error en la API:', response.status);
+                return;
+            }
+            
+            const data = await response.json();
+            
+            // Actualizar stats
+            document.getElementById('ventasHoy').textContent = `$${data.ventas_hoy?.toFixed(2) || '0.00'}`;
+            document.getElementById('numVentas').textContent = data.num_ventas || '0';
+            document.getElementById('productosTotal').textContent = data.productos_total || '0';
+            document.getElementById('alertasCriticas').textContent = data.alertas_criticas || '0';
+            
+            // Cargar gráficos
+            loadVentasChart(data.ventas_semana || []);     
+            loadProductosChart(data.top_productos || []);  
+            loadUltimasVentas(data.ultimas_ventas || []);  
+            loadAlertas(data.alertas || []);
+            
         } catch (error) {
             console.error('Error cargando dashboard:', error);
+            // NO redirigir aquí - solo es error de red
+        }
+    }
+
+            
+            // Cargar gráficos
+            loadVentasChart(data.ventas_semana || []);     
+            loadProductosChart(data.top_productos || []);  
+            loadUltimasVentas(data.ultimas_ventas || []);  
+            loadAlertas(data.alertas || []);
+            
+        } catch (error) {
+            console.error('Error cargando dashboard:', error);
+            // NO redirigir aquí - solo es error de red
         }
     }
 
