@@ -608,6 +608,242 @@
             transform: translateX(100px);
         }
     }
+
+    /* ============= BOTONES DE AGREGAR RÁPIDO ============= */
+    .btn-add-quick {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        min-width: 45px;
+        height: 45px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1.2rem;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        flex-shrink: 0;
+        padding: 0;
+    }
+
+
+    /* Contenedor flex para select + botón */
+    .select-with-button {
+        display: flex;
+        gap: 0.5rem;
+        align-items: stretch;
+    }
+
+    .select-with-button select {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .btn-add-quick:hover {
+        background: linear-gradient(135deg, #059669, #047857);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+
+    /* ============= MODALES ============= */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.show {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 16px;
+        max-width: 700px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        color: #1e40af;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #64748b;
+        transition: color 0.3s;
+    }
+
+    .modal-close:hover {
+        color: #ef4444;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        padding: 1.5rem;
+        border-top: 2px solid #e5e7eb;
+    }
+
+    .help-text {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-top: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: 8px;
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .alert-info {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1e40af;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #4b5563;
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: linear-gradient(135deg, #059669, #047857);
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .required {
+        color: #ef4444;
+    }
+
+
+    /* Tooltips mejorados para botones + */
+    .btn-add-quick {
+        position: relative;
+    }
+
+    .btn-add-quick::before {
+        content: attr(title);
+        position: absolute;
+        bottom: 120%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        z-index: 1000;
+    }
+
+    .btn-add-quick::after {
+        content: '';
+        position: absolute;
+        bottom: 105%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-top-color: rgba(0, 0, 0, 0.9);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .btn-add-quick:hover::before,
+    .btn-add-quick:hover::after {
+        opacity: 1;
+    }
+
+    /* Animación de pulso para los botones + */
+    @keyframes pulse-green {
+        0%, 100% {
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+        50% {
+            box-shadow: 0 2px 16px rgba(16, 185, 129, 0.5);
+        }
+    }
+
+    .btn-add-quick:focus {
+        animation: pulse-green 1.5s ease-in-out;
+        outline: none;
+    }
+
+    /* Mejorar el espaciado de los form-group con botones */
+    .form-group:has(.select-with-button) {
+        position: relative;
+    }
+
 </style>
 {% endblock %}
 
@@ -641,21 +877,6 @@
 
         <form id="form-producto" onsubmit="event.preventDefault(); agregarProducto();">
             <div class="form-grid">
-                <!-- ALERTA INFORMATIVA -->
-                <div style="grid-column: 1 / -1; background: linear-gradient(135deg, #d1fae5, #a7f3d0); border: 2px solid #10b981; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem;">
-                    <div style="display: flex; align-items: start; gap: 1rem;">
-                        <div style="font-size: 2rem;">💰</div>
-                        <div>
-                            <h4 style="margin: 0 0 0.5rem 0; color: #065f46; font-size: 1.1rem;">Cálculo Automático de Precio</h4>
-                            <p style="margin: 0; color: #065f46; line-height: 1.6;">
-                                <strong>El precio de venta se calcula automáticamente</strong> según el margen de ganancia de la categoría.<br>
-                                📊 Ejemplo: Si el costo es $10 y la categoría tiene 30% de ganancia → Precio: $13.00<br>
-                                ✅ Solo ingresa el <strong>costo unitario</strong> y selecciona la <strong>categoría</strong>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- IMAGEN DEL PRODUCTO -->
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label class="form-label-custom">
@@ -695,12 +916,17 @@
                         <span>Marca</span>
                         <span class="required">*</span>
                     </label>
-                    <select id="input_marca" class="form-input" required>
+                    <div class="select-with-button">
+                        <select id="input_marca" class="form-input" required style="flex: 1;">
                         <option value="">Seleccione una marca</option>
                         {% for marca in marcas %}
                         <option value="{{ marca.id }}">{{ marca.nombre }}</option>
                         {% endfor %}
                     </select>
+                        <button type="button" onclick="openModal('marca')" class="btn-add-quick" title="➕ Agregar Marca Nueva">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- CATEGORÍA -->
@@ -709,12 +935,17 @@
                         <span>Categoría</span>
                         <span class="required">*</span>
                     </label>
-                    <select id="input_categoria" class="form-input" required onchange="calcularPrecioVenta()">
+                    <div class="select-with-button">
+                        <select id="input_categoria" class="form-input" required onchange="calcularPrecioVenta()" style="flex: 1;">
                         <option value="">Seleccione una categoría</option>
                         {% for categoria in categorias %}
                         <option value="{{ categoria.id }}">{{ categoria.nombre }} ({{ categoria.margen_ganancia_sugerido }}% ganancia)</option>
                         {% endfor %}
                     </select>
+                        <button type="button" onclick="openModal('categoria')" class="btn-add-quick" title="➕ Agregar Categoría Nueva">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- PROVEEDOR -->
@@ -723,12 +954,17 @@
                         <span>Proveedor</span>
                         <span class="required">*</span>
                     </label>
-                    <select id="input_proveedor" class="form-input" required>
+                    <div class="select-with-button">
+                        <select id="input_proveedor" class="form-input" required style="flex: 1;">
                         <option value="">Seleccione un proveedor</option>
                         {% for proveedor in proveedores %}
                         <option value="{{ proveedor.id }}">{{ proveedor.nombre_comercial }}</option>
                         {% endfor %}
                     </select>
+                        <button type="button" onclick="openModal('proveedor')" class="btn-add-quick" title="➕ Agregar Proveedor Nuevo">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- TIPO DE INVENTARIO -->
@@ -1374,7 +1610,277 @@
         </div>
     </div>
 </div>
+<!-- Modal: Nueva Categoría -->
+<div class="modal-overlay" id="modalCategoria">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3><i class="bi bi-grid"></i> Nueva Categoría</h3>
+            <button class="modal-close" onclick="closeModal('categoria')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-grid" style="grid-template-columns: 1fr;">
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-tag"></i>
+                        Nombre <span class="required">*</span>
+                    </label>
+                    <input type="text" id="nombreCategoria" class="form-input" placeholder="Ej: Lácteos, Cereales..." required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-text-paragraph"></i>
+                        Descripción
+                    </label>
+                    <textarea id="descripcionCategoria" class="form-input" rows="3" placeholder="Descripción opcional..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-percent"></i>
+                        Margen Ganancia (%) <span class="required">*</span>
+                    </label>
+                    <input type="number" id="margenGananciaCategoria" class="form-input" step="0.01" min="0" value="30.00" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-percent"></i>
+                        Descuento Máximo (%) <span class="required">*</span>
+                    </label>
+                    <input type="number" id="descuentoMaximoCategoria" class="form-input" step="0.01" min="0" value="10.00" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-sort-numeric-down"></i>
+                        Orden de Visualización <span class="required">*</span>
+                    </label>
+                    <input type="number" id="ordenCategoria" class="form-input" min="0" value="0" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" style="cursor: pointer;">
+                        <input type="checkbox" id="activaCategoria" checked style="width: 20px; height: 20px;">
+                        <span><i class="bi bi-check-circle"></i> Categoría Activa</span>
+                    </label>
+                </div>
+            </div>
+            <div class="alert alert-info" style="margin-top: 1rem;">
+                <i class="bi bi-info-circle"></i>
+                <div><strong>Los campos marcados con (*) son obligatorios</strong></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('categoria')">
+                <i class="bi bi-x-circle"></i> Cancelar
+            </button>
+            <button class="btn btn-success" onclick="guardarCategoriaCompleta()">
+                <i class="bi bi-check-circle"></i> Guardar
+            </button>
+        </div>
+    </div>
+</div>
 
+<!-- Modal: Nueva Marca -->
+<div class="modal-overlay" id="modalMarca">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h3><i class="bi bi-award"></i> Nueva Marca</h3>
+            <button class="modal-close" onclick="closeModal('marca')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-tag"></i>
+                        Nombre de la Marca <span class="required">*</span>
+                    </label>
+                    <input type="text" id="nombreMarca" class="form-input" placeholder="Ej: Nestlé, Bimbo..." required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-sort-numeric-down"></i>
+                        Orden
+                    </label>
+                    <input type="number" id="ordenMarca" class="form-input" min="0" value="0">
+                </div>
+                
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label">
+                        <i class="bi bi-image"></i>
+                        Logo de la Marca
+                    </label>
+                    <input type="file" id="logoMarca" class="form-input" accept="image/*" onchange="previewLogoMarca(this)">
+                    <div id="logoPreviewContainer" class="image-preview-container" style="margin-top: 1rem; display: none;">
+                        <img id="logoPreview" class="image-preview" alt="Logo preview" style="max-height: 150px; max-width: 100%; border-radius: 8px;">
+                    </div>
+                </div>
+                
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label">
+                        <i class="bi bi-text-paragraph"></i>
+                        Descripción
+                    </label>
+                    <textarea id="descripcionMarca" class="form-input" rows="3" placeholder="Descripción opcional..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-globe"></i>
+                        País de Origen
+                    </label>
+                    <input type="text" id="paisOrigenMarca" class="form-input" placeholder="Ej: México">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-building"></i>
+                        Fabricante
+                    </label>
+                    <input type="text" id="fabricanteMarca" class="form-input" placeholder="Nombre del fabricante">
+                </div>
+                
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label">
+                        <i class="bi bi-link-45deg"></i>
+                        Sitio Web
+                    </label>
+                    <input type="url" id="sitioWebMarca" class="form-input" placeholder="https://www.ejemplo.com">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" style="cursor: pointer;">
+                        <input type="checkbox" id="activaMarca" checked style="width: 20px; height: 20px;">
+                        <span><i class="bi bi-check-circle"></i> Marca Activa</span>
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" style="cursor: pointer;">
+                        <input type="checkbox" id="destacadaMarca" style="width: 20px; height: 20px;">
+                        <span><i class="bi bi-star"></i> Marca Destacada</span>
+                    </label>
+                </div>
+            </div>
+            <div class="alert alert-info" style="margin-top: 1.5rem;">
+                <i class="bi bi-info-circle"></i>
+                <div><strong>Los campos marcados con (*) son obligatorios</strong></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('marca')">
+                <i class="bi bi-x-circle"></i> Cancelar
+            </button>
+            <button class="btn btn-success" onclick="guardarMarcaCompleta()">
+                <i class="bi bi-check-circle"></i> Guardar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Nuevo Proveedor -->
+<div class="modal-overlay" id="modalProveedor">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h3><i class="bi bi-truck"></i> Nuevo Proveedor</h3>
+            <button class="modal-close" onclick="closeModal('proveedor')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-building"></i>
+                        Nombre Comercial <span class="required">*</span>
+                    </label>
+                    <input type="text" id="nombreComercialProveedor" class="form-input" placeholder="Ej: Distribuidora XYZ" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-file-text"></i>
+                        Razón Social
+                    </label>
+                    <input type="text" id="razonSocialProveedor" class="form-input" placeholder="Razón social">
+                </div>
+                
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label">
+                        <i class="bi bi-card-text"></i>
+                        RUC/NIT <span class="required">*</span>
+                    </label>
+                    <input type="text" id="rucNitProveedor" class="form-input" placeholder="10-20 dígitos" maxlength="20" required>
+                </div>
+                
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label">
+                        <i class="bi bi-geo-alt"></i>
+                        Dirección
+                    </label>
+                    <input type="text" id="direccionProveedor" class="form-input" placeholder="Dirección completa">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-telephone"></i>
+                        Teléfono
+                    </label>
+                    <input type="tel" id="telefonoProveedor" class="form-input" placeholder="555-1234">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-envelope"></i>
+                        Email
+                    </label>
+                    <input type="email" id="emailProveedor" class="form-input" placeholder="email@ejemplo.com">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-calendar-check"></i>
+                        Días de Crédito
+                    </label>
+                    <input type="number" id="diasCreditoProveedor" class="form-input" min="0" value="0">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-currency-dollar"></i>
+                        Límite de Crédito
+                    </label>
+                    <input type="number" id="limiteCreditoProveedor" class="form-input" step="0.01" min="0" value="0.00">
+                </div>
+                
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label" style="cursor: pointer;">
+                        <input type="checkbox" id="activoProveedor" checked style="width: 20px; height: 20px;">
+                        <span><i class="bi bi-check-circle"></i> Proveedor Activo</span>
+                    </label>
+                </div>
+            </div>
+            <div class="alert alert-info" style="margin-top: 1.5rem;">
+                <i class="bi bi-info-circle"></i>
+                <div><strong>Los campos marcados con (*) son obligatorios</strong></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('proveedor')">
+                <i class="bi bi-x-circle"></i> Cancelar
+            </button>
+            <button class="btn btn-success" onclick="guardarProveedorCompleto()">
+                <i class="bi bi-check-circle"></i> Guardar
+            </button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -2550,6 +3056,257 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+// ============= FUNCIONES PARA MODALES =============
+function openModal(tipo) {
+    const modalId = 'modal' + tipo.charAt(0).toUpperCase() + tipo.slice(1);
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('show');
+    }
+}
+
+function closeModal(tipo) {
+    const modalId = 'modal' + tipo.charAt(0).toUpperCase() + tipo.slice(1);
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+// Cerrar modal al hacer clic fuera
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('show');
+            }
+        });
+    });
+});
+
+// ============= GUARDAR CATEGORÍA COMPLETA =============
+async function guardarCategoriaCompleta() {
+    const nombre = document.getElementById('nombreCategoria').value.trim();
+    const descripcion = document.getElementById('descripcionCategoria').value.trim();
+    const margenGanancia = document.getElementById('margenGananciaCategoria').value;
+    const descuentoMaximo = document.getElementById('descuentoMaximoCategoria').value;
+    const orden = document.getElementById('ordenCategoria').value;
+    const activa = document.getElementById('activaCategoria').checked;
+    
+    if (!nombre) {
+        alert('❌ Por favor ingrese el nombre de la categoría');
+        return;
+    }
+    
+    try {
+        const response = await fetch('{% url "custom_admin:categoria_crear" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                nombre: nombre,
+                descripcion: descripcion,
+                margen_ganancia_sugerido: parseFloat(margenGanancia),
+                descuento_maximo_permitido: parseFloat(descuentoMaximo),
+                orden: parseInt(orden),
+                activa: activa
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const select = document.getElementById('input_categoria');
+            const option = document.createElement('option');
+            option.value = data.id;
+            option.textContent = `${data.nombre} (${margenGanancia}% ganancia)`;
+            option.selected = true;
+            select.appendChild(option);
+            
+            document.getElementById('nombreCategoria').value = '';
+            document.getElementById('descripcionCategoria').value = '';
+            document.getElementById('margenGananciaCategoria').value = '30.00';
+            document.getElementById('descuentoMaximoCategoria').value = '10.00';
+            document.getElementById('ordenCategoria').value = '0';
+            document.getElementById('activaCategoria').checked = true;
+            
+            closeModal('categoria');
+            alert('✅ Categoría creada exitosamente');
+        } else {
+            alert('❌ Error: ' + (data.error || 'No se pudo crear la categoría'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error al crear la categoría');
+    }
+}
+
+// ============= PREVIEW LOGO MARCA =============
+function previewLogoMarca(input) {
+    const container = document.getElementById('logoPreviewContainer');
+    const preview = document.getElementById('logoPreview');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            container.style.display = 'block';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// ============= GUARDAR MARCA COMPLETA =============
+async function guardarMarcaCompleta() {
+    const nombre = document.getElementById('nombreMarca').value.trim();
+    const descripcion = document.getElementById('descripcionMarca').value.trim();
+    const paisOrigen = document.getElementById('paisOrigenMarca').value.trim();
+    const fabricante = document.getElementById('fabricanteMarca').value.trim();
+    const sitioWeb = document.getElementById('sitioWebMarca').value.trim();
+    const orden = document.getElementById('ordenMarca').value;
+    const activa = document.getElementById('activaMarca').checked;
+    const destacada = document.getElementById('destacadaMarca').checked;
+    const logoFile = document.getElementById('logoMarca').files[0];
+    
+    if (!nombre) {
+        alert('❌ Por favor ingrese el nombre de la marca');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('nombre', nombre);
+        formData.append('descripcion', descripcion);
+        formData.append('pais_origen', paisOrigen);
+        formData.append('fabricante', fabricante);
+        formData.append('sitio_web', sitioWeb);
+        formData.append('orden', orden);
+        formData.append('activa', activa ? '1' : '0');
+        formData.append('destacada', destacada ? '1' : '0');
+        
+        if (logoFile) {
+            formData.append('logo', logoFile);
+        }
+        
+        const response = await fetch('{% url "custom_admin:marca_crear_formdata" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const select = document.getElementById('input_marca');
+            const option = document.createElement('option');
+            option.value = data.id;
+            option.textContent = data.nombre;
+            option.selected = true;
+            select.appendChild(option);
+            
+            document.getElementById('nombreMarca').value = '';
+            document.getElementById('descripcionMarca').value = '';
+            document.getElementById('paisOrigenMarca').value = '';
+            document.getElementById('fabricanteMarca').value = '';
+            document.getElementById('sitioWebMarca').value = '';
+            document.getElementById('ordenMarca').value = '0';
+            document.getElementById('activaMarca').checked = true;
+            document.getElementById('destacadaMarca').checked = false;
+            document.getElementById('logoMarca').value = '';
+            document.getElementById('logoPreviewContainer').style.display = 'none';
+            
+            closeModal('marca');
+            alert('✅ Marca creada exitosamente');
+        } else {
+            alert('❌ Error: ' + (data.error || 'No se pudo crear la marca'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error al crear la marca');
+    }
+}
+
+// ============= GUARDAR PROVEEDOR COMPLETO =============
+async function guardarProveedorCompleto() {
+    const nombreComercial = document.getElementById('nombreComercialProveedor').value.trim();
+    const razonSocial = document.getElementById('razonSocialProveedor').value.trim();
+    const rucNit = document.getElementById('rucNitProveedor').value.trim();
+    const direccion = document.getElementById('direccionProveedor').value.trim();
+    const telefono = document.getElementById('telefonoProveedor').value.trim();
+    const email = document.getElementById('emailProveedor').value.trim();
+    const diasCredito = document.getElementById('diasCreditoProveedor').value;
+    const limiteCredito = document.getElementById('limiteCreditoProveedor').value;
+    const activo = document.getElementById('activoProveedor').checked;
+    
+    if (!nombreComercial) {
+        alert('❌ Por favor ingrese el nombre comercial');
+        return;
+    }
+    
+    if (!rucNit) {
+        alert('❌ Por favor ingrese el RUC/NIT');
+        return;
+    }
+    
+    if (rucNit.length < 10 || rucNit.length > 20) {
+        alert('❌ El RUC/NIT debe tener entre 10 y 20 dígitos');
+        return;
+    }
+    
+    try {
+        const response = await fetch('{% url "custom_admin:proveedor_crear_api" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                nombre_comercial: nombreComercial,
+                razon_social: razonSocial,
+                ruc_nit: rucNit,
+                direccion: direccion,
+                telefono: telefono,
+                email: email,
+                dias_credito: parseInt(diasCredito) || 0,
+                limite_credito: parseFloat(limiteCredito) || 0.00,
+                activo: activo
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const select = document.getElementById('input_proveedor');
+            const option = document.createElement('option');
+            option.value = data.id;
+            option.textContent = data.nombre_comercial;
+            option.selected = true;
+            select.appendChild(option);
+            
+            document.getElementById('nombreComercialProveedor').value = '';
+            document.getElementById('razonSocialProveedor').value = '';
+            document.getElementById('rucNitProveedor').value = '';
+            document.getElementById('direccionProveedor').value = '';
+            document.getElementById('telefonoProveedor').value = '';
+            document.getElementById('emailProveedor').value = '';
+            document.getElementById('diasCreditoProveedor').value = '0';
+            document.getElementById('limiteCreditoProveedor').value = '0.00';
+            document.getElementById('activoProveedor').checked = true;
+            
+            closeModal('proveedor');
+            alert('✅ Proveedor creado exitosamente');
+        } else {
+            alert('❌ Error: ' + (data.error || 'No se pudo crear el proveedor'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error al crear el proveedor');
+    }
 }
 </script>
 {% endblock %}

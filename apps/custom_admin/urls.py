@@ -29,8 +29,6 @@ urlpatterns = [
     path('api/productos/<uuid:producto_id>/', views.api_obtener_producto, name='api_obtener_producto'),
     path('api/ventas/procesar/', views.api_procesar_venta, name='api_procesar_venta'),
     path('api/ventas/<uuid:venta_id>/detalle/', views.api_venta_detalle, name='api_venta_detalle'),
-    
-    # ✅ NUEVO: API para reimpresión de tickets
     path('api/ventas/<uuid:venta_id>/reimprimir-ticket/', views.api_reimprimir_ticket, name='api_reimprimir_ticket'),
     
     # ========================================
@@ -49,6 +47,7 @@ urlpatterns = [
     
     # APIs para productos
     path('api/productos/buscar-codigo/', views.api_buscar_producto_codigo, name='api_buscar_codigo'),
+    path('api/productos/count/', views.api_productos_count, name='api_productos_count'),
     
     # ========================================
     # INVENTARIO - Quintales
@@ -64,28 +63,43 @@ urlpatterns = [
     # INVENTARIO - Categorías
     # ========================================
     path('inventario/categorias/', views.categorias_view, name='categorias'),
-    path('inventario/categorias/crear/', views.categoria_crear_view, name='categoria_crear'),
+    path('inventario/categorias/crear/', views.categoria_crear_view, name='categoria_crear_view'),
     path('inventario/categorias/<uuid:pk>/editar/', views.categoria_editar_view, name='categoria_editar'),
     path('inventario/categorias/<uuid:pk>/eliminar/', views.categoria_eliminar_view, name='categoria_eliminar'),
+    
+    # API para crear categoría desde modal (JSON)
+    path('api/categorias/crear/', views.categoria_crear_api, name='categoria_crear'),
     
     # ========================================
     # INVENTARIO - Marcas
     # ========================================
     path('inventario/marcas/', views.marcas_list, name='marcas'),
-    path('inventario/marcas/crear/', views.marca_crear, name='marca_crear'),
+    path('inventario/marcas/crear/', views.marca_crear, name='marca_crear'),  # ← Corregido: marca_crear (sin _view)
     path('inventario/marcas/<uuid:pk>/editar/', views.marca_editar, name='marca_editar'),
     path('inventario/marcas/<uuid:pk>/eliminar/', views.marca_eliminar, name='marca_eliminar'),
     
+    # API para crear marca desde modal (JSON)
+    path('api/marcas/crear/', views.marca_crear_api, name='marca_crear_api'),  # ← Nombre único
+    path('api/marcas/crear-formdata/', views.marca_crear_formdata, name='marca_crear_formdata'),
     # ========================================
     # INVENTARIO - Proveedores
     # ========================================
     path('inventario/proveedores/', views.proveedores_view, name='proveedores'),
-    path('inventario/proveedores/crear/', views.proveedor_crear, name='proveedor_crear'),
+    path('inventario/proveedores/crear/', views.proveedor_crear, name='proveedor_crear'),  # ← Corregido: proveedor_crear (sin _view)
     path('inventario/proveedores/<uuid:pk>/editar/', views.proveedor_editar, name='proveedor_editar'),
     path('inventario/proveedores/<uuid:pk>/eliminar/', views.proveedor_eliminar, name='proveedor_eliminar'),
     
+    # API para crear proveedor desde modal (JSON)
+    path('api/proveedores/crear/', views.proveedor_crear_api, name='proveedor_crear_api'),  # ← Nombre único
+    
     # API para proveedores
     path('api/proveedores/<uuid:pk>/detalle/', views.proveedor_detalle_api, name='proveedor_detalle_api'),
+    
+    # ========================================
+    # INVENTARIO - Unidades de Medida
+    # ========================================
+    # API para crear unidad de medida desde modal (JSON)
+    path('api/unidades-medida/crear/', views.api_crear_unidad_medida, name='api_crear_unidad_medida'),
     
     # ========================================
     # INVENTARIO - Movimientos
@@ -99,7 +113,7 @@ urlpatterns = [
     path('inventario/movimientos/<uuid:pk>/export/excel/', views.exportar_movimiento_excel, name='exportar_movimiento_excel'),
     path('inventario/movimientos/<uuid:pk>/export/pdf/', views.exportar_movimiento_pdf, name='exportar_movimiento_pdf'),
     
-    # ✅ CORREGIDO: Exportación general de movimientos
+    # Exportación general de movimientos
     path('inventario/movimientos/export-all/excel/', views.exportar_movimientos_excel_general, name='exportar_movimientos_excel_general'),
     path('inventario/movimientos/export-all/pdf/', views.exportar_movimientos_pdf_general, name='exportar_movimientos_pdf_general'),
     
@@ -174,6 +188,7 @@ urlpatterns = [
     path('ventas/api/buscar-venta/', views.buscar_venta_api, name='buscar_venta_api'),
     path('ventas/api/procesar-devolucion/', views.procesar_devolucion_api, name='procesar_devolucion_api'),
     path('ventas/api/aprobar-devolucion/<uuid:id>/', views.aprobar_devolucion_api, name='aprobar_devolucion_api'),
+    
     # ========================================
     # FINANZAS - Dashboard
     # ========================================
@@ -202,9 +217,9 @@ urlpatterns = [
     path('finanzas/caja-chica/crear/', views.crear_caja_chica, name='crear_caja_chica'),
     path('finanzas/caja-chica/<uuid:caja_chica_id>/gasto/', views.registrar_gasto_caja_chica, name='registrar_gasto_caja_chica'),
     path('finanzas/caja-chica/<uuid:caja_chica_id>/reponer/', views.reponer_caja_chica, name='reponer_caja_chica'),
-    # Caja Chica
     path('finanzas/caja-chica/<uuid:caja_chica_id>/movimientos/', views.caja_chica_movimientos_api, name='caja_chica_movimientos_api'),
     path('finanzas/caja-chica/<uuid:caja_chica_id>/editar/', views.editar_caja_chica, name='editar_caja_chica'),
+    
     # ========================================
     # REPORTES
     # ========================================

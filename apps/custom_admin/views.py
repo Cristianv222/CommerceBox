@@ -18,6 +18,7 @@ import json
 from django.http import JsonResponse
 from django.db.models import Sum, Q
 from apps.sales_management.models import Venta, DetalleVenta, Devolucion
+from django.db import IntegrityError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -6462,3 +6463,456 @@ def aprobar_devolucion_api(request, id):
             json.dumps({'success': False, 'error': str(e)}),
             content_type='application/json'
         )
+# ============================================================================
+# TODAS LAS VISTAS API CORREGIDAS CON CAMPOS CORRECTOS
+# ============================================================================
+# Reemplaza las 5 funciones API en tu views.py con estas versiones corregidas
+
+import json
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.contrib.auth.decorators import login_required
+from apps.inventory_management.models import (
+    UnidadMedida, Categoria, Marca, Proveedor, Producto
+)
+from decimal import Decimal
+
+
+# ============================================
+# API: CONTADOR DE PRODUCTOS
+# ============================================
+@login_required
+@require_http_methods(["GET"])
+def api_productos_count(request):
+    """API para obtener el contador total de productos"""
+    try:
+        count = Producto.objects.filter(activo=True).count()
+        return JsonResponse({
+            'success': True,
+            'count': count
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# ============================================
+# API: CREAR UNIDAD DE MEDIDA (MODAL)
+# ============================================
+@ensure_csrf_cookie
+@login_required
+@require_http_methods(["POST"])
+def api_crear_unidad_medida(request):
+    """API para crear una unidad de medida desde el modal - Retorna JSON"""
+    try:
+        data = json.loads(request.body)
+        nombre = data.get('nombre', '').strip()
+        abreviatura = data.get('abreviatura', '').strip()
+        
+        if not nombre or not abreviatura:
+            return JsonResponse({
+                'success': False,
+                'error': 'El nombre y la abreviatura son requeridos'
+            }, status=400)
+        
+        # Verificar si ya existe
+        if UnidadMedida.objects.filter(nombre__iexact=nombre).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Ya existe una unidad de medida con el nombre "{nombre}"'
+            }, status=400)
+        
+        if UnidadMedida.objects.filter(abreviatura__iexact=abreviatura).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Ya existe una unidad de medida con la abreviatura "{abreviatura}"'
+            }, status=400)
+        
+        # Crear la unidad - usando 'activa' en lugar de 'activo'
+        unidad = UnidadMedida.objects.create(
+            nombre=nombre,
+            abreviatura=abreviatura,
+            activa=True  # ← CORREGIDO
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'id': str(unidad.id),
+            'nombre': unidad.nombre,
+            'abreviatura': unidad.abreviatura,
+            'message': 'Unidad de medida creada exitosamente'
+        })
+        
+    except Exception as e:
+        import traceback
+        print(f"❌ Error en api_crear_unidad_medida: {traceback.format_exc()}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# ============================================
+# API: CREAR CATEGORÍA (MODAL)
+# ============================================
+@ensure_csrf_cookie
+@login_required
+@require_http_methods(["POST"])
+def categoria_crear_api(request):
+    """API para crear una categoría desde el modal - Retorna JSON - VERSIÓN COMPLETA"""
+    try:
+        data = json.loads(request.body)
+        
+        # Obtener todos los campos
+        nombre = data.get('nombre', '').strip()
+        descripcion = data.get('descripcion', '').strip()
+        margen_ganancia = data.get('margen_ganancia_sugerido', 30.00)
+        descuento_maximo = data.get('descuento_maximo_permitido', 10.00)
+        orden = data.get('orden', 0)
+        activa = data.get('activa', True)
+        
+        # Validaciones
+        if not nombre:
+            return JsonResponse({
+                'success': False,
+                'error': 'El nombre es requerido'
+            }, status=400)
+        
+        # Verificar si ya existe
+        if Categoria.objects.filter(nombre__iexact=nombre).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Ya existe una categoría con el nombre "{nombre}"'
+            }, status=400)
+        
+        # Crear la categoría con TODOS los campos
+        categoria = Categoria.objects.create(
+            nombre=nombre,
+            descripcion=descripcion,
+            activa=activa,
+            margen_ganancia_sugerido=Decimal(str(margen_ganancia)),
+            descuento_maximo_permitido=Decimal(str(descuento_maximo)),
+            orden=int(orden)
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'id': str(categoria.id),
+            'nombre': categoria.nombre,
+            'descripcion': categoria.descripcion,
+            'margen_ganancia_sugerido': float(categoria.margen_ganancia_sugerido),
+            'descuento_maximo_permitido': float(categoria.descuento_maximo_permitido),
+            'orden': categoria.orden,
+            'activa': categoria.activa,
+            'message': 'Categoría creada exitosamente'
+        })
+        
+    except Exception as e:
+        import traceback
+        print(f"❌ Error en categoria_crear_api: {traceback.format_exc()}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+# ============================================
+# VISTA API MARCA CON FORMDATA (MANEJA LOGO)
+# ============================================
+# AGREGAR esta nueva vista en views.py
+
+@ensure_csrf_cookie
+@login_required
+@require_http_methods(["POST"])
+def marca_crear_formdata(request):
+    """API para crear una marca desde el modal con logo - Recibe FormData"""
+    try:
+        # Obtener datos del FormData
+        nombre = request.POST.get('nombre', '').strip()
+        descripcion = request.POST.get('descripcion', '').strip()
+        pais_origen = request.POST.get('pais_origen', '').strip()
+        fabricante = request.POST.get('fabricante', '').strip()
+        sitio_web = request.POST.get('sitio_web', '').strip()
+        orden = request.POST.get('orden', '0')
+        activa = request.POST.get('activa', '0') == '1'
+        destacada = request.POST.get('destacada', '0') == '1'
+        logo = request.FILES.get('logo')
+        
+        # Validaciones
+        if not nombre:
+            return JsonResponse({
+                'success': False,
+                'error': 'El nombre es requerido'
+            }, status=400)
+        
+        # Verificar si ya existe
+        if Marca.objects.filter(nombre__iexact=nombre).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Ya existe una marca con el nombre "{nombre}"'
+            }, status=400)
+        
+        # Preparar datos de la marca
+        # Usar string vacío '' en lugar de None para campos que no permiten NULL
+        marca_data = {
+            'nombre': nombre,
+            'descripcion': descripcion,  # String vacío si está vacío
+            'pais_origen': pais_origen if pais_origen else '',  # String vacío
+            'fabricante': fabricante if fabricante else '',      # String vacío
+            'sitio_web': sitio_web if sitio_web else '',        # String vacío (era el problema)
+            'activa': activa,
+            'destacada': destacada,
+            'orden': int(orden)
+        }
+        
+        # Agregar logo solo si existe
+        if logo:
+            marca_data['logo'] = logo
+        
+        # Crear la marca
+        marca = Marca.objects.create(**marca_data)
+        
+        return JsonResponse({
+            'success': True,
+            'id': str(marca.id),
+            'nombre': marca.nombre,
+            'descripcion': marca.descripcion,
+            'pais_origen': marca.pais_origen,
+            'fabricante': marca.fabricante,
+            'sitio_web': marca.sitio_web,
+            'orden': marca.orden,
+            'activa': marca.activa,
+            'destacada': marca.destacada,
+            'logo_url': marca.logo.url if marca.logo else None,
+            'message': 'Marca creada exitosamente'
+        })
+        
+    except IntegrityError as e:
+        error_msg = str(e)
+        if 'not-null constraint' in error_msg.lower():
+            return JsonResponse({
+                'success': False,
+                'error': 'Falta un campo obligatorio. Por favor complete todos los campos requeridos.'
+            }, status=400)
+        return JsonResponse({
+            'success': False,
+            'error': f'Error de integridad: {error_msg}'
+        }, status=400)
+    except Exception as e:
+        import traceback
+        print(f"❌ Error en marca_crear_formdata: {traceback.format_exc()}")
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al crear la marca: {str(e)}'
+        }, status=500)
+    
+@ensure_csrf_cookie
+@login_required
+@require_http_methods(["POST"])
+def marca_crear_api(request):
+    """API para crear una marca desde el modal - Retorna JSON"""
+    try:
+        data = json.loads(request.body)
+        nombre = data.get('nombre', '').strip()
+        descripcion = data.get('descripcion', '').strip()
+        
+        if not nombre:
+            return JsonResponse({
+                'success': False,
+                'error': 'El nombre es requerido'
+            }, status=400)
+        
+        # Verificar si ya existe
+        if Marca.objects.filter(nombre__iexact=nombre).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Ya existe una marca con el nombre "{nombre}"'
+            }, status=400)
+        
+        # Crear la marca - el campo ya es 'activa'
+        marca = Marca.objects.create(
+            nombre=nombre,
+            descripcion=descripcion,
+            activa=True  # ← Este ya estaba correcto
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'id': str(marca.id),
+            'nombre': marca.nombre,
+            'descripcion': marca.descripcion,
+            'message': 'Marca creada exitosamente'
+        })
+        
+    except Exception as e:
+        import traceback
+        print(f"❌ Error en marca_crear_api: {traceback.format_exc()}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# ============================================
+# API: CREAR PROVEEDOR (MODAL)
+# ============================================
+@ensure_csrf_cookie
+@login_required
+@require_http_methods(["POST"])
+def proveedor_crear_api(request):
+    """API para crear un proveedor desde el modal - Retorna JSON"""
+    try:
+        data = json.loads(request.body)
+        nombre_comercial = data.get('nombre_comercial', '').strip()
+        contacto = data.get('contacto', '').strip()
+        telefono = data.get('telefono', '').strip()
+        email = data.get('email', '').strip()
+        
+        if not nombre_comercial:
+            return JsonResponse({
+                'success': False,
+                'error': 'El nombre comercial es requerido'
+            }, status=400)
+        
+        # Verificar si ya existe
+        if Proveedor.objects.filter(nombre_comercial__iexact=nombre_comercial).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Ya existe un proveedor con el nombre "{nombre_comercial}"'
+            }, status=400)
+        
+        # Crear el proveedor - el campo es 'activo' (masculino)
+        proveedor = Proveedor.objects.create(
+            nombre_comercial=nombre_comercial,
+            contacto=contacto if contacto else None,
+            telefono=telefono if telefono else None,
+            email=email if email else None,
+            activo=True  # ← Este es 'activo' (masculino)
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'id': str(proveedor.id),
+            'nombre_comercial': proveedor.nombre_comercial,
+            'contacto': proveedor.contacto,
+            'telefono': proveedor.telefono,
+            'email': proveedor.email,
+            'message': 'Proveedor creado exitosamente'
+        })
+        
+    except Exception as e:
+        import traceback
+        print(f"❌ Error en proveedor_crear_api: {traceback.format_exc()}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+    
+# ============================================
+# VISTA API PROVEEDOR - SIN CAMPO CONTACTO
+# ============================================
+# REEMPLAZAR proveedor_crear_api en views.py
+
+@ensure_csrf_cookie
+@login_required
+@require_http_methods(["POST"])
+def proveedor_crear_api(request):
+    """API para crear un proveedor desde el modal"""
+    try:
+        data = json.loads(request.body)
+        
+        # Obtener campos
+        nombre_comercial = data.get('nombre_comercial', '').strip()
+        razon_social = data.get('razon_social', '').strip()
+        ruc_nit = data.get('ruc_nit', '').strip()
+        direccion = data.get('direccion', '').strip()
+        telefono = data.get('telefono', '').strip()
+        email = data.get('email', '').strip()
+        dias_credito = data.get('dias_credito', 0)
+        limite_credito = data.get('limite_credito', 0.00)
+        activo = data.get('activo', True)
+        
+        # Validaciones
+        if not nombre_comercial:
+            return JsonResponse({
+                'success': False,
+                'error': 'El nombre comercial es requerido'
+            }, status=400)
+        
+        if not ruc_nit:
+            return JsonResponse({
+                'success': False,
+                'error': 'El RUC/NIT es requerido'
+            }, status=400)
+        
+        # Validar longitud de RUC/NIT
+        if len(ruc_nit) < 10 or len(ruc_nit) > 20:
+            return JsonResponse({
+                'success': False,
+                'error': 'El RUC/NIT debe tener entre 10 y 20 dígitos'
+            }, status=400)
+        
+        # Verificar duplicados
+        if Proveedor.objects.filter(nombre_comercial__iexact=nombre_comercial).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Ya existe un proveedor con el nombre "{nombre_comercial}"'
+            }, status=400)
+        
+        if Proveedor.objects.filter(ruc_nit=ruc_nit).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Ya existe un proveedor con el RUC/NIT "{ruc_nit}"'
+            }, status=400)
+        
+        # Crear el proveedor SIN el campo 'contacto'
+        proveedor = Proveedor.objects.create(
+            nombre_comercial=nombre_comercial,
+            razon_social=razon_social if razon_social else '',
+            ruc_nit=ruc_nit,
+            direccion=direccion if direccion else '',
+            telefono=telefono if telefono else '',
+            email=email if email else '',
+            dias_credito=int(dias_credito),
+            limite_credito=Decimal(str(limite_credito)),
+            activo=activo
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'id': str(proveedor.id),
+            'nombre_comercial': proveedor.nombre_comercial,
+            'razon_social': proveedor.razon_social,
+            'ruc_nit': proveedor.ruc_nit,
+            'direccion': proveedor.direccion,
+            'telefono': proveedor.telefono,
+            'email': proveedor.email,
+            'dias_credito': proveedor.dias_credito,
+            'limite_credito': float(proveedor.limite_credito),
+            'activo': proveedor.activo,
+            'message': 'Proveedor creado exitosamente'
+        })
+        
+    except IntegrityError as e:
+        error_msg = str(e).lower()
+        if 'unique' in error_msg or 'ruc' in error_msg:
+            return JsonResponse({
+                'success': False,
+                'error': 'Ya existe un proveedor con este RUC/NIT'
+            }, status=400)
+        return JsonResponse({
+            'success': False,
+            'error': f'Error de integridad en la base de datos'
+        }, status=400)
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"❌ Error en proveedor_crear_api: {error_trace}")
+        
+        # Mostrar el error completo para debugging
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al crear el proveedor: {str(e)}'
+        }, status=500)
