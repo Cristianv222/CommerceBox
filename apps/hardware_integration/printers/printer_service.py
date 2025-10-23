@@ -815,3 +815,403 @@ class PrinterService:
         except Exception as e:
             logger.error(f"Error con timeout: {e}")
             return False
+    @staticmethod
+    def generar_codigo_barras(
+        codigo: str,
+        tipo: str = 'CODE128',
+        altura: int = 100,
+        ancho: int = 2,
+        texto_posicion: str = 'BELOW',
+        centrar: bool = True
+    ) -> bytes:
+        """
+        Genera comandos ESC/POS para un código de barras
+        
+        Args:
+            codigo: Código a imprimir
+            tipo: EAN13, CODE128, CODE39, UPC_A, etc.
+            altura: Altura del código en puntos (20-255)
+            ancho: Ancho del módulo (2-6)
+            texto_posicion: NONE, ABOVE, BELOW, BOTH
+            centrar: Si debe centrar el código
+            
+        Returns:
+            bytes: Comandos ESC/POS
+        """
+        # Tipos de códigos soportados
+        BARCODE_TYPES = {
+            'UPC_A': 0, 'UPC_E': 1, 'EAN13': 2, 'EAN8': 3,
+            'CODE39': 4, 'ITF': 5, 'CODABAR': 6,
+            'CODE93': 72, 'CODE128': 73,
+        }
+        
+        HRI_POSITIONS = {
+            'NONE': 0, 'ABOVE': 1, 'BELOW': 2, 'BOTH': 3,
+        }
+        
+        comandos = b''
+        
+        # Validar tipo
+        if tipo not in BARCODE_TYPES:
+            logger.error(f"Tipo de código no soportado: {tipo}")
+            return b''
+        
+        tipo_codigo = BARCODE_TYPES[tipo]
+        
+        # Centrar si se solicita
+        if centrar:
+            comandos += b'\x1B\x61\x01'  # ESC a 1 - Centrar
+        
+        # Configurar altura (GS h n)
+        altura = max(20, min(255, altura))
+        comandos += b'\x1D\x68' + bytes([altura])
+        
+        # Configurar ancho (GS w n)
+        ancho = max(2, min(6, ancho))
+        comandos += b'\x1D\x77' + bytes([ancho])
+        
+        # Configurar posición del texto (GS H n)
+        posicion = HRI_POSITIONS.get(texto_posicion, 2)
+        comandos += b'\x1D\x48' + bytes([posicion])
+        
+        # Configurar fuente del texto (GS f n)
+        comandos += b'\x1D\x66\x00'  # Font A
+        
+        # Comando de impresión según el tipo
+        if tipo in ['CODE128', 'CODE93']:
+            # Formato: GS k m n d1...dn
+            codigo_bytes = codigo.encode('ascii', errors='ignore')
+            comandos += b'\x1D\x6B' + bytes([tipo_codigo, len(codigo_bytes)])
+            comandos += codigo_bytes
+        
+        elif tipo in ['EAN13', 'EAN8', 'UPC_A', 'UPC_E']:
+            # Formato: GS k m n d1...dn (mode 67 + tipo)
+            codigo_bytes = codigo.encode('ascii', errors='ignore')
+            comandos += b'\x1D\x6B' + bytes([67 + tipo_codigo, len(codigo_bytes)])
+            comandos += codigo_bytes
+        
+        else:
+            # Formato: GS k m d1...dn 0x00
+            codigo_bytes = codigo.encode('ascii', errors='ignore')
+            comandos += b'\x1D\x6B' + bytes([tipo_codigo])
+            comandos += codigo_bytes + b'\x00'
+        
+        comandos += b'\n'
+        
+        # Restaurar alineación
+        if centrar:
+            comandos += b'\x1B\x61\x00'  # ESC a 0 - Izquierda
+        
+        return comandos
+    
+    @staticmethod
+    def generar_etiqueta_producto(
+        producto_codigo: str,
+        producto_nombre: str,
+        precio: float,
+        tipo_codigo: str = 'CODE128',
+        incluir_moneda: bool = True
+    ) -> bytes:
+        """
+        Genera una etiqueta completa de producto con código de barras
+        
+        Args:
+            producto_codigo: Código del producto
+            producto_nombre: Nombre del producto
+            precio: Precio
+            tipo_codigo: Tipo de código de barras
+            incluir_moneda: Si incluye símbolo de moneda
+            
+        Returns:
+            bytes: Comandos ESC/POS para la etiqueta
+        """
+        comandos = b''
+        
+        # Inicializar impresora
+        comandos += b'\x1B\x40'  # ESC @
+        
+        # Nombre del producto (centrado, negrita)
+        comandos += b'\x1B\x61\x01'  # Centrar
+        comandos += b'\x1B\x45\x01'  # Negrita ON
+        comandos += b'\x1B\x21\x10'  # Texto doble alto
+        
+        # Truncar nombre si es muy largo
+        nombre_truncado = producto_nombre[:20]
+        comandos += nombre_truncado.encode('utf-8', errors='ignore') + b'\n'
+        
+        comandos += b'\x1B\x45\x00'  # Negrita OFF
+        comandos += b'\x1B\x21\x00'  # Texto normal
+        comandos += b'\n'
+        
+        # Código de barras
+        comandos += PrinterService.generar_codigo_barras(
+            codigo=producto_codigo,
+            tipo=tipo_codigo,
+            altura=80,
+            ancho=2,
+            texto_posicion='BELOW',
+            centrar=True
+        )
+        
+        comandos += b'\n'
+        
+        # Precio (grande, centrado)
+        comandos += b'\x1B\x61\x01'  # Centrar
+        comandos += b'\x1B\x21\x30'  # Texto doble ancho y alto
+        comandos += b'\x1B\x45\x01'  # Negrita
+        
+        if incluir_moneda:
+            moneda = getattr(settings, 'MONEDA_SIMBOLO', '$')
+            precio_texto = f"{moneda} {precio:.2f}"
+        else:
+            precio_texto = f"{precio:.2f}"
+        
+        comandos += precio_texto.encode('utf-8', errors='ignore') + b'\n'
+        
+        comandos += b'\x1B\x45\x00'  # Negrita OFF
+        comandos += b'\x1B\x21\x00'  # Texto normal
+        comandos += b'\x1B\x61\x00'  # Alinear izquierda
+        
+        # Espaciado final
+        comandos += b'\n\n'
+        
+        # Cortar
+        comandos += b'\x1D\x56\x00'  # Corte completo
+        
+        return comandos
+    
+    @staticmethod
+    def generar_pagina_prueba_codigos() -> bytes:
+        """
+        Genera una página de prueba con varios tipos de códigos de barras
+        """
+        comandos = b''
+        
+        # Inicializar
+        comandos += b'\x1B\x40'
+        
+        # Encabezado
+        comandos += b'\x1B\x61\x01'  # Centrar
+        comandos += b'\x1B\x21\x10'  # Texto grande
+        comandos += b'PRUEBA DE CODIGOS\n'
+        comandos += b'\x1B\x21\x00'  # Texto normal
+        comandos += b'CommerceBox System\n'
+        comandos += b'\x1B\x61\x00'  # Izquierda
+        comandos += b'\n'
+        
+        # EAN-13
+        comandos += b'1. EAN-13:\n'
+        comandos += PrinterService.generar_codigo_barras(
+            '7501234567890', tipo='EAN13', altura=60
+        )
+        comandos += b'\n'
+        
+        # CODE128
+        comandos += b'2. CODE128:\n'
+        comandos += PrinterService.generar_codigo_barras(
+            'PROD-2024-001', tipo='CODE128', altura=60
+        )
+        comandos += b'\n'
+        
+        # CODE39
+        comandos += b'3. CODE39:\n'
+        comandos += PrinterService.generar_codigo_barras(
+            'ABC-123', tipo='CODE39', altura=60
+        )
+        comandos += b'\n'
+        
+        # Pie de página
+        comandos += b'\x1B\x61\x01'  # Centrar
+        comandos += b'\n' + b'-' * 32 + b'\n'
+        comandos += b'Prueba completada\n'
+        comandos += b'\n\n'
+        
+        # Cortar
+        comandos += b'\x1D\x56\x00'
+        
+        return comandos
+    
+    @staticmethod
+    def imprimir_codigo_barras(
+        impresora,
+        codigo: str,
+        tipo: str = 'CODE128',
+        usar_agente: bool = True
+    ) -> bool:
+        """
+        Imprime un código de barras en la impresora
+        
+        Args:
+            impresora: Modelo Impresora
+            codigo: Código a imprimir
+            tipo: Tipo de código (EAN13, CODE128, etc.)
+            usar_agente: Si debe usar el agente local
+            
+        Returns:
+            bool: True si se imprimió correctamente
+        """
+        try:
+            logger.info(f"🏷️ Imprimiendo código de barras: {codigo}")
+            logger.info(f"   Tipo: {tipo}")
+            logger.info(f"   Impresora: {impresora.nombre}")
+            
+            # Generar comandos
+            comandos = PrinterService.generar_codigo_barras(
+                codigo=codigo,
+                tipo=tipo,
+                altura=100,
+                ancho=2,
+                texto_posicion='BELOW',
+                centrar=True
+            )
+            
+            if not comandos:
+                raise Exception(f"No se pudieron generar comandos para el código {codigo}")
+            
+            # Agregar espaciado y corte
+            comandos += b'\n\n\n'
+            comandos += b'\x1D\x56\x00'
+            
+            # Convertir a hex
+            comandos_hex = comandos.hex()
+            
+            # Usar agente si está disponible
+            if usar_agente and impresora.nombre_driver:
+                from ..api.agente_views import crear_trabajo_impresion, obtener_usuario_para_impresion
+                
+                usuario = obtener_usuario_para_impresion()
+                trabajo_id = crear_trabajo_impresion(
+                    usuario=usuario,
+                    impresora_nombre=impresora.nombre_driver,
+                    comandos_hex=comandos_hex,
+                    tipo='CODIGO_BARRAS',
+                    prioridad=2,
+                    abrir_gaveta=False
+                )
+                
+                logger.info(f"✅ Trabajo de impresión creado: {trabajo_id}")
+                return True
+            
+            # Si no hay agente, imprimir directo
+            elif WINDOWS_PRINTING_AVAILABLE and impresora.nombre_driver:
+                success, msg = PrinterService.imprimir_raw_windows(
+                    impresora.nombre_driver,
+                    comandos
+                )
+                return success
+            
+            else:
+                raise Exception("No hay método de impresión disponible")
+                
+        except Exception as e:
+            logger.error(f"❌ Error imprimiendo código de barras: {e}")
+            return False
+
+    @staticmethod
+    def generar_pagina_prueba_codigos():
+        """
+        Genera página de prueba con códigos de barras usando TSPL
+        TSPL es el lenguaje usado por impresoras 3nstar LDT114
+        """
+        comandos = b''
+        
+        # Configuración de la etiqueta (62mm x 29mm)
+        comandos += b'SIZE 62 mm, 29 mm\r\n'
+        comandos += b'GAP 2 mm, 0 mm\r\n'
+        comandos += b'DIRECTION 1\r\n'
+        comandos += b'CLS\r\n'
+        
+        # Título
+        comandos += b'TEXT 10,10,"4",0,1,1,"PRUEBA CODIGOS"\r\n'
+        
+        # CODE128
+        comandos += b'TEXT 10,50,"2",0,1,1,"CODE128:"\r\n'
+        comandos += b'BARCODE 10,70,"128",50,1,0,2,2,"TEST123"\r\n'
+        
+        comandos += b'PRINT 1,1\r\n'
+        
+        # Segunda etiqueta - EAN13
+        comandos += b'CLS\r\n'
+        comandos += b'TEXT 10,10,"4",0,1,1,"CODIGO EAN13"\r\n'
+        comandos += b'BARCODE 10,50,"EAN13",60,1,0,2,2,"7501234567890"\r\n'
+        comandos += b'PRINT 1,1\r\n'
+        
+        # Tercera etiqueta - CODE39
+        comandos += b'CLS\r\n'
+        comandos += b'TEXT 10,10,"4",0,1,1,"CODIGO 39"\r\n'
+        comandos += b'BARCODE 10,50,"39",60,1,0,2,2,"CODE39"\r\n'
+        comandos += b'PRINT 1,1\r\n'
+        
+        return comandos
+    
+    @staticmethod
+    def generar_etiqueta_producto(nombre, codigo, precio, codigo_barras, ancho_mm=62, alto_mm=29):
+        """
+        Genera etiqueta de producto con TSPL
+        
+        Args:
+            nombre: Nombre del producto
+            codigo: Código del producto
+            precio: Precio (string o número)
+            codigo_barras: Código para el código de barras
+            ancho_mm: Ancho de la etiqueta en mm
+            alto_mm: Alto de la etiqueta en mm
+        
+        Returns:
+            bytes: Comandos TSPL
+        """
+        comandos = b''
+        
+        # Configuración
+        comandos += f'SIZE {ancho_mm} mm, {alto_mm} mm\r\n'.encode('ascii')
+        comandos += b'GAP 2 mm, 0 mm\r\n'
+        comandos += b'DIRECTION 1\r\n'
+        comandos += b'CLS\r\n'
+        
+        # Nombre del producto (truncar si es muy largo)
+        nombre_truncado = nombre[:30]
+        comandos += f'TEXT 10,10,"3",0,1,1,"{nombre_truncado}"\r\n'.encode('utf-8')
+        
+        # Código
+        comandos += f'TEXT 10,45,"2",0,1,1,"Cod: {codigo}"\r\n'.encode('utf-8')
+        
+        # Precio
+        comandos += f'TEXT 10,75,"4",0,1,1,"${precio}"\r\n'.encode('utf-8')
+        
+        # Código de barras CODE128
+        comandos += f'BARCODE 10,120,"128",60,1,0,2,2,"{codigo_barras}"\r\n'.encode('ascii')
+        
+        # Imprimir
+        comandos += b'PRINT 1,1\r\n'
+        
+        return comandos
+    
+    @staticmethod
+    def generar_etiqueta_simple(texto, codigo_barras=None):
+        """
+        Genera etiqueta simple con TSPL
+        
+        Args:
+            texto: Texto a imprimir
+            codigo_barras: Código de barras opcional
+        
+        Returns:
+            bytes: Comandos TSPL
+        """
+        comandos = b''
+        
+        comandos += b'SIZE 62 mm, 29 mm\r\n'
+        comandos += b'GAP 2 mm, 0 mm\r\n'
+        comandos += b'DIRECTION 1\r\n'
+        comandos += b'CLS\r\n'
+        
+        # Texto
+        comandos += f'TEXT 10,10,"4",0,1,1,"{texto}"\r\n'.encode('utf-8')
+        
+        # Código de barras si se proporciona
+        if codigo_barras:
+            comandos += f'BARCODE 10,60,"128",60,1,0,2,2,"{codigo_barras}"\r\n'.encode('ascii')
+        
+        comandos += b'PRINT 1,1\r\n'
+        
+        return comandos

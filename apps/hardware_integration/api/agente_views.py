@@ -42,7 +42,7 @@ def normalizar_nombre_impresora(nombre_solicitado):
         nombre_solicitado = nombre_solicitado.strip()
         
         # Buscar en BD
-        impresoras_bd = Impresora.objects.filter(activa=True).values_list('nombre', 'nombre_driver')
+        impresoras_bd = Impresora.objects.filter(activa='ACTIVA').values_list('nombre', 'nombre_driver')
         
         # Coincidencia exacta
         for nombre_bd, driver_bd in impresoras_bd:
@@ -191,7 +191,7 @@ def obtener_trabajos_pendientes(request):
                 # Si no tiene impresora asignada, buscar la predeterminada
                 impresora_default = Impresora.objects.filter(
                     es_principal_tickets=True,
-                    activa=True
+                    activa='ACTIVA'
                 ).first()
                 nombre_impresora = impresora_default.nombre_driver if impresora_default else "PrinterPOS-80"
             
@@ -432,14 +432,14 @@ def crear_trabajo_impresion(usuario, impresora_nombre, comandos_hex, tipo='ticke
         if not impresora:
             impresora = Impresora.objects.filter(
                 nombre__icontains=impresora_nombre[:50],
-                activa=True
+                activa='ACTIVA'
             ).first()
         
         # Si aún no se encuentra, usar la predeterminada
         if not impresora:
             impresora = Impresora.objects.filter(
                 es_principal_tickets=True,
-                activa=True
+                activa='ACTIVA'
             ).first()
         
         if not impresora:
@@ -460,7 +460,7 @@ def crear_trabajo_impresion(usuario, impresora_nombre, comandos_hex, tipo='ticke
                 from ..models import GavetaDinero
                 gaveta = GavetaDinero.objects.filter(
                     impresora=impresora,
-                    activa=True
+                    activa='ACTIVA'
                 ).first()
                 abrir_gaveta = gaveta is not None
         
@@ -519,3 +519,329 @@ def cancelar_trabajo_impresion(usuario, trabajo_id):
     except Exception as e:
         logger.error(f"❌ Error cancelando trabajo: {e}", exc_info=True)
         return False
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def imprimir_codigo_barras(request):
+    """
+    Imprime un código de barras en una impresora de etiquetas
+    
+    POST /api/hardware/codigos-barras/imprimir/
+    
+    Body:
+    {
+        "codigo": "7501234567890",
+        "tipo": "EAN13",  // EAN13, CODE128, CODE39, etc.
+        "impresora_id": "uuid",  // opcional
+        "altura": 100,  // opcional
+        "ancho": 2,  // opcional
+        "texto_posicion": "BELOW"  // opcional
+    }
+    """
+    try:
+        from ..printers.printer_service import PrinterService
+        
+        # Obtener datos
+        codigo = request.data.get('codigo')
+        tipo = request.data.get('tipo', 'CODE128')
+        impresora_id = request.data.get('impresora_id')
+        altura = request.data.get('altura', 100)
+        ancho = request.data.get('ancho', 2)
+        texto_posicion = request.data.get('texto_posicion', 'BELOW')
+        
+        # Validar código
+        if not codigo:
+            return Response({
+                'success': False,
+                'error': 'El código es requerido'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Obtener impresora
+        if impresora_id:
+            try:
+                impresora = Impresora.objects.get(id=impresora_id, activa='ACTIVA')
+            except Impresora.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'error': 'Impresora no encontrada'
+                }, status=status.HTTP_404_NOT_FOUND)
+        else:
+            # Buscar impresora de etiquetas predeterminada
+            impresora = Impresora.objects.filter(
+                tipo_impresora='ETIQUETAS',
+                es_principal_etiquetas=True,
+                activa='ACTIVA'
+            ).first()
+            
+            if not impresora:
+                impresora = Impresora.objects.filter(
+                    tipo_impresora='ETIQUETAS',
+                    activa='ACTIVA'
+                ).first()
+        
+        if not impresora:
+            return Response({
+                'success': False,
+                'error': 'No hay impresoras de etiquetas configuradas'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        logger.info(f"🏷️ Imprimiendo código de barras: {codigo}")
+        logger.info(f"   Tipo: {tipo}")
+        logger.info(f"   Impresora: {impresora.nombre}")
+        
+        # Generar comandos ESC/POS
+        comandos = PrinterService.generar_codigo_barras(
+            codigo=codigo,
+            tipo=tipo,
+            altura=altura,
+            ancho=ancho,
+            texto_posicion=texto_posicion,
+            centrar=True
+        )
+        
+        if not comandos:
+            return Response({
+                'success': False,
+                'error': f'No se pudieron generar comandos para el código. Verifica que sea válido para tipo {tipo}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Agregar saltos y corte
+        comandos += b'\n\n\n'
+        comandos += b'\x1D\x56\x00'
+        
+        # Convertir a hexadecimal
+        comandos_hex = comandos.hex()
+        
+        # Crear trabajo de impresión
+        trabajo_id = crear_trabajo_impresion(
+            usuario=request.user,
+            impresora_nombre=impresora.nombre_driver or impresora.nombre,
+            comandos_hex=comandos_hex,
+            tipo='CODIGO_BARRAS',
+            prioridad=2,
+            abrir_gaveta=False
+        )
+        
+        logger.info(f"✅ Trabajo de impresión creado: {trabajo_id}")
+        
+        return Response({
+            'success': True,
+            'mensaje': 'Código de barras enviado a imprimir',
+            'trabajo_id': trabajo_id,
+            'impresora': impresora.nombre,
+            'codigo': codigo,
+            'tipo': tipo
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        logger.error(f"❌ Error imprimiendo código: {e}", exc_info=True)
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def imprimir_etiqueta_producto(request):
+    """
+    Imprime una etiqueta completa de producto con código de barras
+    
+    POST /api/hardware/codigos-barras/etiqueta/
+    
+    Body:
+    {
+        "producto_codigo": "PROD-001",
+        "producto_nombre": "Producto de Prueba",
+        "precio": 99.99,
+        "tipo_codigo": "CODE128",  // opcional
+        "impresora_id": "uuid",  // opcional
+        "copias": 1  // opcional
+    }
+    """
+    try:
+        from ..printers.printer_service import PrinterService
+        
+        # Obtener datos
+        producto_codigo = request.data.get('producto_codigo')
+        producto_nombre = request.data.get('producto_nombre')
+        precio = request.data.get('precio')
+        tipo_codigo = request.data.get('tipo_codigo', 'CODE128')
+        impresora_id = request.data.get('impresora_id')
+        copias = request.data.get('copias', 1)
+        
+        # Validar datos
+        if not all([producto_codigo, producto_nombre, precio is not None]):
+            return Response({
+                'success': False,
+                'error': 'Faltan datos: producto_codigo, producto_nombre, precio'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Convertir precio
+        try:
+            precio = float(precio)
+        except (ValueError, TypeError):
+            return Response({
+                'success': False,
+                'error': 'El precio debe ser un número válido'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Obtener impresora
+        if impresora_id:
+            try:
+                impresora = Impresora.objects.get(id=impresora_id, activa='ACTIVA')
+            except Impresora.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'error': 'Impresora no encontrada'
+                }, status=status.HTTP_404_NOT_FOUND)
+        else:
+            impresora = Impresora.objects.filter(
+                tipo_impresora='ETIQUETAS',
+                es_principal_etiquetas=True,
+                activa='ACTIVA'
+            ).first()
+            
+            if not impresora:
+                impresora = Impresora.objects.filter(
+                    tipo_impresora='ETIQUETAS',
+                    activa='ACTIVA'
+                ).first()
+        
+        if not impresora:
+            return Response({
+                'success': False,
+                'error': 'No hay impresoras de etiquetas configuradas'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        logger.info(f"🏷️ Imprimiendo etiqueta: {producto_nombre}")
+        logger.info(f"   Código: {producto_codigo}")
+        logger.info(f"   Precio: ${precio:.2f}")
+        logger.info(f"   Copias: {copias}")
+        
+        # Generar etiqueta
+        comandos = PrinterService.generar_etiqueta_producto(
+            producto_codigo=producto_codigo,
+            producto_nombre=producto_nombre,
+            precio=precio,
+            tipo_codigo=tipo_codigo,
+            incluir_moneda=True
+        )
+        
+        # Convertir a hexadecimal
+        comandos_hex = comandos.hex()
+        
+        # Crear trabajo de impresión
+        trabajo_id = crear_trabajo_impresion(
+            usuario=request.user,
+            impresora_nombre=impresora.nombre_driver or impresora.nombre,
+            comandos_hex=comandos_hex,
+            tipo='ETIQUETA',
+            prioridad=2,
+            abrir_gaveta=False
+        )
+        
+        # Actualizar copias si es necesario
+        if copias > 1:
+            trabajo = TrabajoImpresion.objects.get(id=trabajo_id)
+            trabajo.copias = copias
+            trabajo.save(update_fields=['copias'])
+        
+        logger.info(f"✅ Trabajo creado: {trabajo_id}")
+        
+        return Response({
+            'success': True,
+            'mensaje': 'Etiqueta enviada a imprimir',
+            'trabajo_id': trabajo_id,
+            'impresora': impresora.nombre,
+            'producto': producto_nombre,
+            'copias': copias
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        logger.error(f"❌ Error imprimiendo etiqueta: {e}", exc_info=True)
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def imprimir_prueba_codigos(request):
+    """
+    Imprime una página de prueba con varios códigos de barras
+    
+    POST /api/hardware/codigos-barras/prueba/
+    
+    Body:
+    {
+        "impresora_id": "uuid"  // opcional
+    }
+    """
+    try:
+        from ..printers.printer_service import PrinterService
+        
+        impresora_id = request.data.get('impresora_id')
+        
+        # Obtener impresora
+        if impresora_id:
+            try:
+                impresora = Impresora.objects.get(id=impresora_id, activa='ACTIVA')
+            except Impresora.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'error': 'Impresora no encontrada'
+                }, status=status.HTTP_404_NOT_FOUND)
+        else:
+            impresora = Impresora.objects.filter(
+                tipo_impresora='ETIQUETAS',
+                es_principal_etiquetas=True,
+                activa='ACTIVA'
+            ).first()
+            
+            if not impresora:
+                impresora = Impresora.objects.filter(
+                    tipo_impresora='ETIQUETAS',
+                    activa='ACTIVA'
+                ).first()
+        
+        if not impresora:
+            return Response({
+                'success': False,
+                'error': 'No hay impresoras configuradas'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        logger.info(f"🧪 Imprimiendo página de prueba")
+        logger.info(f"   Impresora: {impresora.nombre}")
+        
+        # Generar página de prueba
+        comandos = PrinterService.generar_pagina_prueba_codigos()
+        
+        # Convertir a hexadecimal
+        comandos_hex = comandos.hex()
+        
+        # Crear trabajo
+        trabajo_id = crear_trabajo_impresion(
+            usuario=request.user,
+            impresora_nombre=impresora.nombre_driver or impresora.nombre,
+            comandos_hex=comandos_hex,
+            tipo='PRUEBA',
+            prioridad=1,
+            abrir_gaveta=False
+        )
+        
+        logger.info(f"✅ Trabajo creado: {trabajo_id}")
+        
+        return Response({
+            'success': True,
+            'mensaje': 'Página de prueba enviada',
+            'trabajo_id': trabajo_id,
+            'impresora': impresora.nombre
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        logger.error(f"❌ Error: {e}", exc_info=True)
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

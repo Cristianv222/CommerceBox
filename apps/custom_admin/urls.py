@@ -113,6 +113,7 @@ urlpatterns = [
     path('api/inventario/quintales-disponibles/', views.api_quintales_disponibles, name='api_quintales_disponibles'),
     path('api/inventario/procesar-entrada/', views.api_procesar_entrada_masiva, name='api_procesar_entrada'),
     path('api/inventario/generar-pdf-codigos/', views.api_generar_pdf_codigos, name='api_generar_pdf_codigos'),
+    path('inventario/productos/<uuid:producto_id>/imprimir-codigo/', views.producto_imprimir_codigo, name='producto_imprimir_codigo'),
     
     # ========================================
     # VENTAS - Dashboard

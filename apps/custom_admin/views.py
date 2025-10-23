@@ -11,7 +11,10 @@ from django.contrib import messages
 from functools import wraps
 from apps.inventory_management.models import Marca
 from functools import wraps
-
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import ensure_csrf_cookie
+import logging 
+import json
 
 # ========================================
 # DECORATOR DE AUTENTICACIÓN
@@ -3378,6 +3381,7 @@ def api_procesar_entrada_masiva(request):
                         cantidad_etiquetas = int(peso_inicial)  # 1 etiqueta por unidad de peso
                         
                         codigos_generados.append({
+                            'producto_id': str(producto.id),
                             'tipo': 'QUINTAL',
                             'codigo': quintal.codigo_unico,
                             'producto_nombre': producto.nombre,
@@ -3435,6 +3439,7 @@ def api_procesar_entrada_masiva(request):
                         
                         # Generar códigos de barras
                         codigos_generados.append({
+                            'producto_id': str(producto.id),
                             'tipo': 'NORMAL',
                             'codigo': producto.codigo_barras,
                             'producto_nombre': producto.nombre,
@@ -3953,6 +3958,7 @@ def api_procesar_entrada_unificada(request):
                         cantidad_etiquetas = int(peso_inicial)  # 1 etiqueta por unidad
                         
                         codigos_generados.append({
+                            'producto_id': str(producto.id),
                             'tipo': 'QUINTAL',
                             'codigo_base': quintal.codigo_unico,
                             'producto_nombre': producto.nombre,
@@ -4120,6 +4126,7 @@ def api_procesar_entrada_unificada(request):
                         cantidad_codigos = int(prod_data.get('cantidad_codigos', cantidad))
                         
                         codigos_generados.append({
+                            'producto_id': str(producto.id),
                             'tipo': 'NORMAL',
                             'codigo_base': producto.codigo_barras,
                             'producto_nombre': producto.nombre,
@@ -5678,3 +5685,148 @@ def reponer_caja_chica(request, caja_chica_id):
             messages.error(request, f'Error al reponer caja chica: {str(e)}')
     
     return redirect('custom_admin:caja_chica_list')
+
+logger = logging.getLogger(__name__)
+@ensure_csrf_cookie
+@auth_required
+@require_http_methods(["POST"])
+def producto_imprimir_codigo(request, producto_id):
+    """
+    Imprime el código de barras de un producto
+    Ahora con soporte para múltiples copias
+    
+    POST /panel/inventario/productos/{producto_id}/imprimir-codigo/
+    
+    Body (opcional):
+    {
+        "copias": 3  // Número de copias a imprimir (default: 1)
+    }
+    """
+    try:
+        from apps.inventory_management.models import Producto
+        from apps.hardware_integration.models import Impresora, TrabajoImpresion
+        from apps.hardware_integration.printers.printer_service import PrinterService
+        from django.utils import timezone
+        import uuid
+        
+        # Obtener número de copias del request
+        copias = 1
+        if request.body:
+            try:
+                body = json.loads(request.body)
+                copias = int(body.get('copias', 1))
+                if copias < 1:
+                    copias = 1
+                elif copias > 100:  # Límite de seguridad
+                    copias = 100
+            except (json.JSONDecodeError, ValueError, TypeError):
+                copias = 1
+        
+        # Obtener el producto
+        try:
+            producto = Producto.objects.get(id=producto_id)
+        except Producto.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Producto no encontrado'
+            }, status=404)
+        
+        # Validar que el producto tenga código de barras
+        if not producto.codigo_barras:
+            return JsonResponse({
+                'success': False,
+                'error': 'El producto no tiene código de barras asignado'
+            }, status=400)
+        
+        logger.info(f"🏷️ Solicitando impresión de código de barras")
+        logger.info(f"   Producto: {producto.nombre}")
+        logger.info(f"   Código: {producto.codigo_barras}")
+        logger.info(f"   Copias: {copias}")
+        
+        # Obtener impresora de etiquetas principal
+        impresora = Impresora.objects.filter(
+            tipo_impresora='ETIQUETAS',
+            es_principal_etiquetas=True,
+            estado='ACTIVA'
+        ).first()
+        
+        if not impresora:
+            # Buscar cualquier impresora de etiquetas activa
+            impresora = Impresora.objects.filter(
+                tipo_impresora='ETIQUETAS',
+                estado='ACTIVA'
+            ).first()
+        
+        if not impresora:
+            return JsonResponse({
+                'success': False,
+                'error': 'No hay impresoras de etiquetas configuradas. Por favor configure una impresora primero.'
+            }, status=404)
+        
+        logger.info(f"   Impresora seleccionada: {impresora.nombre}")
+        
+            # Generar comandos para las copias
+        comandos_completos = b''
+        
+        for i in range(copias):
+            # Generar etiqueta individual
+            comandos = PrinterService.generar_etiqueta_producto(
+            nombre=producto.nombre,
+            codigo=producto.codigo_barras,
+            precio=float(producto.precio_unitario or 0),
+            codigo_barras=producto.codigo_barras
+        )
+
+        if not comandos:
+            return JsonResponse({
+                'success': False,
+                'error': 'No se pudieron generar los comandos de impresión'
+            }, status=500)
+
+        # Convertir a hexadecimal
+        comandos_hex = comandos.hex()
+
+        # Crear trabajo de impresión
+        trabajo = TrabajoImpresion.objects.create(
+            id=uuid.uuid4(),
+            tipo='CODIGO_BARRAS',
+            impresora=impresora,
+            producto=producto,
+            datos_impresion=comandos_hex,
+            formato='TSPL',
+            prioridad=2,
+            estado='PENDIENTE',
+            copias=copias,  # ✅ El agente imprimirá N copias automáticamente
+            creado_por=request.user,
+            metadata={
+                'descripcion': f'Código de barras: {producto.nombre} ({copias} copia(s))',
+                'codigo_barras': producto.codigo_barras,
+                'nombre_producto': producto.nombre
+            }
+        )
+        
+        logger.info(f" Trabajo de impresión creado: {trabajo.id}")
+        logger.info(f"   Estado: {trabajo.estado}")
+        logger.info(f"   Impresora: {trabajo.impresora_nombre}")
+        logger.info(f"   Copias: {copias}")
+        
+        return JsonResponse({
+            'success': True,
+            'mensaje': f'{"Código de barras" if copias == 1 else f"{copias} etiquetas"} enviado(s) a imprimir en {impresora.nombre}',
+            'trabajo_id': str(trabajo.id),
+            'producto': {
+                'id': str(producto.id),
+                'nombre': producto.nombre,
+                'codigo_barras': producto.codigo_barras
+            },
+            'impresora': impresora.nombre,
+            'copias': copias
+        }, status=201)
+        
+    except Exception as e:
+        logger.error(f"❌ Error imprimiendo código de barras: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al procesar la impresión: {str(e)}'
+        }, status=500)
+

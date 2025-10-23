@@ -104,7 +104,8 @@ class ImpresoraAdmin(admin.ModelAdmin):
     ]
     fieldsets = (
         ('Identificación', {
-            'fields': ('codigo', 'nombre', 'marca', 'modelo', 'numero_serie')
+            'fields': ('codigo', 'nombre', 'marca', 'modelo', 'numero_serie'),
+            'description': '📌 El código se genera automáticamente si se deja vacío'
         }),
         ('Tipo y Conexión', {
             'fields': ('tipo_impresora', 'tipo_conexion', 'protocolo')
@@ -160,6 +161,40 @@ class ImpresoraAdmin(admin.ModelAdmin):
     inlines = [GavetaDineroInline, PlantillaImpresionInline]
     actions = [test_conexion_impresoras, reiniciar_contador_impresoras]
 
+    def save_model(self, request, obj, form, change):
+        """
+        Genera automáticamente el código si está vacío
+        """
+        # Si el código está vacío o solo contiene espacios, generar uno nuevo
+        if not obj.codigo or obj.codigo.strip() == '':
+            # Buscar el último código generado
+            ultimo = Impresora.objects.filter(
+                codigo__startswith='IMP-'
+            ).order_by('-codigo').first()
+            
+            if ultimo and ultimo.codigo:
+                try:
+                    # Extraer el número del último código (IMP-001 -> 001)
+                    numero = int(ultimo.codigo.split('-')[1]) + 1
+                except (IndexError, ValueError):
+                    # Si hay error al parsear, empezar desde 1
+                    numero = 1
+            else:
+                # No hay códigos previos, empezar desde 1
+                numero = 1
+            
+            # Generar el nuevo código con formato IMP-XXX
+            obj.codigo = f'IMP-{numero:03d}'
+            
+            # Mensaje informativo
+            messages.info(
+                request,
+                f"✅ Código generado automáticamente: {obj.codigo}"
+            )
+        
+        # Guardar el objeto
+        super().save_model(request, obj, form, change)
+
     def tipo_impresora_display(self, obj):
         return obj.get_tipo_impresora_display()
     tipo_impresora_display.short_description = 'Tipo'
@@ -186,40 +221,68 @@ class ImpresoraAdmin(admin.ModelAdmin):
         url_test = reverse('admin:probar_impresora', args=[obj.pk])
         url_print_direct = reverse('admin:imprimir_prueba_directa', args=[obj.pk])
         url_comandos = reverse('admin:obtener_comandos_raw', args=[obj.pk])
+        url_codigos_barras = reverse('admin:imprimir_prueba_codigos_barras', args=[obj.pk])
         
-        return format_html(
-            '<div style="display: flex; flex-direction: column; gap: 10px; max-width: 600px;">'
-            
-            # Botón 1: Probar configuración
-            '<div style="display: flex; align-items: center; gap: 10px;">'
+        # Determinar si es una impresora de etiquetas/códigos de barras
+        es_impresora_etiquetas = obj.tipo_impresora == 'ETIQUETAS'
+        
+        # Construir botones según el tipo
+        botones = []
+        
+        # Botón 1: Probar configuración (siempre visible)
+        botones.append(format_html(
+            '<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">'
             '<a class="button" href="{}" style="padding: 10px 15px; '
             'background-color: #417690; color: white; text-decoration: none; '
             'border-radius: 4px; display: inline-block; white-space: nowrap;">'
             '🔍 Probar Configuración</a>'
             '<span style="font-size: 11px; color: #666;">Valida la configuración sin imprimir</span>'
-            '</div>'
-            
-            # Botón 2: Imprimir directo
-            '<div style="display: flex; align-items: center; gap: 10px;">'
-            '<a class="button" href="{}" style="padding: 10px 15px; '
-            'background-color: #28a745; color: white; text-decoration: none; '
-            'border-radius: 4px; display: inline-block; white-space: nowrap;">'
-            '⚡ Imprimir Directo</a>'
-            '<span style="font-size: 11px; color: #666;">Imprime y abre gaveta automáticamente</span>'
-            '</div>'
-            
-            # Botón 3: Obtener comandos raw
-            '<div style="display: flex; align-items: center; gap: 10px;">'
+            '</div>',
+            url_test
+        ))
+        
+        # Botón 2: Imprimir directo (solo para impresoras térmicas)
+        if not es_impresora_etiquetas:
+            botones.append(format_html(
+                '<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">'
+                '<a class="button" href="{}" style="padding: 10px 15px; '
+                'background-color: #28a745; color: white; text-decoration: none; '
+                'border-radius: 4px; display: inline-block; white-space: nowrap;">'
+                '⚡ Imprimir Ticket Prueba</a>'
+                '<span style="font-size: 11px; color: #666;">Imprime ticket y abre gaveta</span>'
+                '</div>',
+                url_print_direct
+            ))
+        
+        # Botón 3: Códigos de barras (solo para impresoras de etiquetas)
+        if es_impresora_etiquetas:
+            botones.append(format_html(
+                '<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">'
+                '<a class="button" href="{}" style="padding: 10px 15px; '
+                'background-color: #ff9800; color: white; text-decoration: none; '
+                'border-radius: 4px; display: inline-block; white-space: nowrap;">'
+                '🏷️ Imprimir Códigos Barras</a>'
+                '<span style="font-size: 11px; color: #666;">Imprime etiqueta con varios códigos</span>'
+                '</div>',
+                url_codigos_barras
+            ))
+        
+        # Botón 4: Comandos ESC/POS (siempre visible)
+        botones.append(format_html(
+            '<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">'
             '<a class="button" href="{}" target="_blank" style="padding: 10px 15px; '
             'background-color: #6c757d; color: white; text-decoration: none; '
             'border-radius: 4px; display: inline-block; white-space: nowrap;">'
             '📋 Comandos ESC/POS</a>'
             '<span style="font-size: 11px; color: #666;">Para usar con agente local</span>'
-            '</div>'
-            
             '</div>',
-            url_test, url_print_direct, url_comandos
-        )
+            url_comandos
+        ))
+        
+        # Unir todos los botones
+        from django.utils.safestring import mark_safe
+        return mark_safe(''.join(str(b) for b in botones))
+    
     botones_prueba_impresora.short_description = "Herramientas de Prueba"
     
     def get_urls(self):
@@ -240,6 +303,11 @@ class ImpresoraAdmin(admin.ModelAdmin):
                 '<uuid:impresora_id>/comandos-raw/',
                 self.admin_site.admin_view(self.obtener_comandos_raw_view),
                 name='obtener_comandos_raw',
+            ),
+            path(
+                '<uuid:impresora_id>/prueba-codigos-barras/',
+                self.admin_site.admin_view(self.imprimir_prueba_codigos_barras_view),
+                name='imprimir_prueba_codigos_barras',
             ),
         ]
         return custom_urls + urls
@@ -384,6 +452,150 @@ class ImpresoraAdmin(admin.ModelAdmin):
             return HttpResponse("❌ Impresora no encontrada", status=404)
         except Exception as e:
             return HttpResponse(f"❌ Error: {str(e)}", status=500)
+    
+    def imprimir_prueba_codigos_barras_view(self, request, impresora_id):
+        """Vista para imprimir prueba de códigos de barras con impresión directa"""
+        try:
+            impresora = Impresora.objects.get(pk=impresora_id)
+            
+            # Verificar que sea una impresora de etiquetas
+            if impresora.tipo_impresora != 'ETIQUETAS':
+                self.message_user(
+                    request,
+                    "⚠️ Esta función es solo para impresoras de etiquetas/códigos de barras.",
+                    messages.WARNING
+                )
+                return redirect('admin:hardware_integration_impresora_change', impresora_id)
+            
+            # Generar página de prueba con códigos de barras
+            comandos = PrinterService.generar_pagina_prueba_codigos()
+            
+            if not comandos:
+                self.message_user(
+                    request,
+                    "❌ No se pudieron generar los comandos de códigos de barras.",
+                    messages.ERROR
+                )
+                return redirect('admin:hardware_integration_impresora_change', impresora_id)
+            
+            # 🔥 PRIMERO: INTENTAR IMPRESIÓN DIRECTA
+            impreso_directo = False
+            metodo_usado = ""
+            
+            # Intentar con Windows (si está disponible)
+            import platform
+            if platform.system() == 'Windows' and impresora.nombre_driver:
+                try:
+                    import win32print
+                    
+                    # Abrir impresora
+                    handle = win32print.OpenPrinter(impresora.nombre_driver)
+                    
+                    # Iniciar trabajo
+                    job_info = ("Prueba Codigos Barras", None, "RAW")
+                    job_id = win32print.StartDocPrinter(handle, 1, job_info)
+                    
+                    # Enviar comandos
+                    win32print.StartPagePrinter(handle)
+                    win32print.WritePrinter(handle, comandos)
+                    win32print.EndPagePrinter(handle)
+                    
+                    # Finalizar
+                    win32print.EndDocPrinter(handle)
+                    win32print.ClosePrinter(handle)
+                    
+                    impreso_directo = True
+                    metodo_usado = "Windows directo"
+                    
+                except Exception as e:
+                    import logging
+                    logging.warning(f"No se pudo imprimir por Windows: {e}")
+            
+            # Intentar con Puerto Serial (COM)
+            if not impreso_directo and impresora.puerto_serial:
+                try:
+                    import serial
+                    
+                    # Abrir puerto serial
+                    baudrate = impresora.baudrate or 9600
+                    with serial.Serial(impresora.puerto_serial, baudrate, timeout=5) as ser:
+                        ser.write(comandos)
+                        ser.flush()
+                    
+                    impreso_directo = True
+                    metodo_usado = f"Puerto serial {impresora.puerto_serial}"
+                    
+                except Exception as e:
+                    import logging
+                    logging.warning(f"No se pudo imprimir por serial: {e}")
+            
+            # Intentar con Red
+            if not impreso_directo and impresora.tipo_conexion in ['LAN', 'WIFI', 'RAW'] and impresora.direccion_ip:
+                try:
+                    import socket
+                    
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                        s.settimeout(5)
+                        s.connect((impresora.direccion_ip, impresora.puerto_red or 9100))
+                        s.sendall(comandos)
+                    
+                    impreso_directo = True
+                    metodo_usado = f"Red {impresora.direccion_ip}"
+                    
+                except Exception as e:
+                    import logging
+                    logging.warning(f"No se pudo imprimir por red: {e}")
+            
+            # Si se imprimió directo, actualizar y mostrar mensaje
+            if impreso_directo:
+                impresora.fecha_ultima_prueba = timezone.now()
+                impresora.save(update_fields=['fecha_ultima_prueba'])
+                
+                self.message_user(
+                    request,
+                    f"✅ ¡Página de prueba enviada directamente! Método: {metodo_usado}",
+                    messages.SUCCESS
+                )
+            else:
+                # 🔥 SI NO SE PUDO IMPRIMIR DIRECTO, USAR AGENTE
+                try:
+                    from .api.agente_views import crear_trabajo_impresion, obtener_usuario_para_impresion
+                    
+                    # Convertir a hexadecimal
+                    comandos_hex = comandos.hex()
+                    
+                    usuario = obtener_usuario_para_impresion()
+                    
+                    trabajo_id = crear_trabajo_impresion(
+                        usuario=usuario,
+                        impresora_nombre=impresora.nombre_driver or impresora.nombre,
+                        comandos_hex=comandos_hex,
+                        tipo='PRUEBA',
+                        prioridad=1,
+                        abrir_gaveta=False
+                    )
+                    
+                    self.message_user(
+                        request,
+                        f"⚠️ No se pudo imprimir directamente. "
+                        f"Trabajo enviado al agente (ID: {trabajo_id}). "
+                        f"Verifica que el agente esté ejecutándose.",
+                        messages.WARNING
+                    )
+                    
+                except Exception as e:
+                    self.message_user(
+                        request,
+                        f"❌ No se pudo imprimir ni directamente ni con el agente: {str(e)}",
+                        messages.ERROR
+                    )
+            
+        except Impresora.DoesNotExist:
+            self.message_user(request, "❌ Impresora no encontrada.", messages.ERROR)
+        except Exception as e:
+            self.message_user(request, f"❌ Error: {str(e)}", messages.ERROR)
+        
+        return redirect('admin:hardware_integration_impresora_change', impresora_id)
 
 
 @admin.register(GavetaDinero)
@@ -397,7 +609,61 @@ class GavetaDineroAdmin(admin.ModelAdmin):
         'id', 'codigo', 'contador_aperturas', 'fecha_ultima_apertura',
         'usuario_ultima_apertura'
     ]
+    fieldsets = (
+        ('Identificación', {
+            'fields': ('codigo', 'nombre', 'ubicacion'),
+            'description': '📌 El código se genera automáticamente si se deja vacío'
+        }),
+        ('Conexión', {
+            'fields': ('tipo_conexion', 'impresora', 'puerto')
+        }),
+        ('Configuración', {
+            'fields': ('comando_apertura', 'duracion_pulso')
+        }),
+        ('Control', {
+            'fields': (
+                'estado', 'activa', 'abrir_en_venta',
+                'abrir_en_cobro', 'requiere_autorizacion'
+            )
+        }),
+        ('Auditoría', {
+            'fields': (
+                'contador_aperturas', 'fecha_ultima_apertura',
+                'usuario_ultima_apertura'
+            )
+        }),
+        ('Notas', {
+            'fields': ('notas',)
+        }),
+    )
     actions = [abrir_gavetas_seleccionadas]
+    
+    def save_model(self, request, obj, form, change):
+        """
+        Genera automáticamente el código si está vacío
+        """
+        if not obj.codigo or obj.codigo.strip() == '':
+            # Buscar el último código generado
+            ultimo = GavetaDinero.objects.filter(
+                codigo__startswith='GAV-'
+            ).order_by('-codigo').first()
+            
+            if ultimo and ultimo.codigo:
+                try:
+                    numero = int(ultimo.codigo.split('-')[1]) + 1
+                except (IndexError, ValueError):
+                    numero = 1
+            else:
+                numero = 1
+            
+            obj.codigo = f'GAV-{numero:03d}'
+            
+            messages.info(
+                request,
+                f"✅ Código generado automáticamente: {obj.codigo}"
+            )
+        
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(PlantillaImpresion)
@@ -407,6 +673,58 @@ class PlantillaImpresionAdmin(admin.ModelAdmin):
     search_fields = ['nombre', 'codigo']
     readonly_fields = ['id', 'fecha_creacion', 'fecha_actualizacion']
     list_editable = ['activa', 'es_predeterminada']
+    fieldsets = (
+        ('Identificación', {
+            'fields': ('codigo', 'nombre', 'descripcion'),
+            'description': '📌 El código se genera automáticamente si se deja vacío'
+        }),
+        ('Tipo y Formato', {
+            'fields': ('tipo_documento', 'formato', 'impresora')
+        }),
+        ('Contenido', {
+            'fields': ('contenido', 'variables_disponibles')
+        }),
+        ('Diseño', {
+            'fields': (
+                'incluir_logo', 'incluir_encabezado', 'incluir_pie',
+                ('margen_superior', 'margen_inferior'),
+                ('margen_izquierdo', 'margen_derecho')
+            )
+        }),
+        ('Estado', {
+            'fields': ('activa', 'es_predeterminada')
+        }),
+        ('Auditoría', {
+            'fields': ('fecha_creacion', 'fecha_actualizacion')
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        """
+        Genera automáticamente el código si está vacío
+        """
+        if not obj.codigo or obj.codigo.strip() == '':
+            # Buscar el último código generado
+            ultimo = PlantillaImpresion.objects.filter(
+                codigo__startswith='PLT-'
+            ).order_by('-codigo').first()
+            
+            if ultimo and ultimo.codigo:
+                try:
+                    numero = int(ultimo.codigo.split('-')[1]) + 1
+                except (IndexError, ValueError):
+                    numero = 1
+            else:
+                numero = 1
+            
+            obj.codigo = f'PLT-{numero:03d}'
+            
+            messages.info(
+                request,
+                f"✅ Código generado automáticamente: {obj.codigo}"
+            )
+        
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(ConfiguracionCodigoBarras)
@@ -451,3 +769,55 @@ class EscanerCodigoBarrasAdmin(admin.ModelAdmin):
     search_fields = ['nombre', 'codigo', 'marca', 'modelo', 'numero_serie']
     readonly_fields = ['id', 'codigo', 'fecha_instalacion', 'contador_lecturas']
     list_editable = ['activo']
+    fieldsets = (
+        ('Identificación', {
+            'fields': ('codigo', 'nombre', 'marca', 'modelo', 'numero_serie'),
+            'description': '📌 El código se genera automáticamente si se deja vacío'
+        }),
+        ('Tipo y Conexión', {
+            'fields': ('tipo_escaner', 'modo_operacion')
+        }),
+        ('Configuración', {
+            'fields': ('prefijo', 'sufijo')
+        }),
+        ('Códigos Soportados', {
+            'fields': (
+                'soporta_ean13', 'soporta_ean8', 'soporta_upc',
+                'soporta_code128', 'soporta_code39',
+                'soporta_qr', 'soporta_datamatrix'
+            )
+        }),
+        ('Estado y Ubicación', {
+            'fields': ('activo', 'ubicacion')
+        }),
+        ('Auditoría', {
+            'fields': ('fecha_instalacion', 'contador_lecturas')
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        """
+        Genera automáticamente el código si está vacío
+        """
+        if not obj.codigo or obj.codigo.strip() == '':
+            # Buscar el último código generado
+            ultimo = EscanerCodigoBarras.objects.filter(
+                codigo__startswith='ESC-'
+            ).order_by('-codigo').first()
+            
+            if ultimo and ultimo.codigo:
+                try:
+                    numero = int(ultimo.codigo.split('-')[1]) + 1
+                except (IndexError, ValueError):
+                    numero = 1
+            else:
+                numero = 1
+            
+            obj.codigo = f'ESC-{numero:03d}'
+            
+            messages.info(
+                request,
+                f"✅ Código generado automáticamente: {obj.codigo}"
+            )
+        
+        super().save_model(request, obj, form, change)

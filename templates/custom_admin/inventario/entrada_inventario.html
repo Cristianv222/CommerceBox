@@ -2335,7 +2335,20 @@ function mostrarModalCodigosGenerados(codigos) {
     const lista = document.getElementById('lista-codigos-generados');
     lista.innerHTML = '';
 
+    // 🐛 DEBUG: Ver qué datos llegan
+    console.log('📦 Códigos recibidos:', codigos);
+    
     codigos.forEach((codigo, index) => {
+        // 🐛 DEBUG: Ver estructura de cada código
+        console.log(`Código ${index}:`, codigo);
+        
+        // 🔧 FIX: Detectar qué propiedad tiene el ID del producto
+        const productoId = codigo.producto_id || codigo.id || codigo.producto || null;
+        
+        if (!productoId) {
+            console.error('⚠️ No se pudo obtener el ID del producto:', codigo);
+        }
+        
         const item = document.createElement('div');
         item.style.cssText = 'background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem;';
         item.innerHTML = `
@@ -2355,9 +2368,31 @@ function mostrarModalCodigosGenerados(codigos) {
                         </span>
                     </div>
                 </div>
-                <a href="${codigo.pdf_url}" target="_blank" class="btn-custom btn-primary-custom" style="margin: 0;">
-                    <i class="bi bi-download"></i> Descargar PDF
-                </a>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    ${productoId ? `
+                        <!-- ✨ Botón de imprimir (solo si hay productoId) -->
+                        <button onclick="imprimirCodigoBarras('${productoId}', ${codigo.cantidad_codigos})" 
+                                class="btn-custom btn-primary-custom" 
+                                style="margin: 0; white-space: nowrap;">
+                            <i class="bi bi-printer"></i> Imprimir (${codigo.cantidad_codigos})
+                        </button>
+                    ` : `
+                        <!-- Botón deshabilitado si no hay ID -->
+                        <button class="btn-custom btn-primary-custom" 
+                                disabled
+                                style="margin: 0; white-space: nowrap; opacity: 0.5;">
+                            <i class="bi bi-printer"></i> Sin ID
+                        </button>
+                    `}
+                    
+                    <!-- PDF como backup -->
+                    <a href="${codigo.pdf_url}" 
+                       target="_blank" 
+                       class="btn-custom btn-secondary-custom" 
+                       style="margin: 0; text-align: center; text-decoration: none; color: inherit;">
+                        <i class="bi bi-download"></i> PDF Backup
+                    </a>
+                </div>
             </div>
         `;
         lista.appendChild(item);
@@ -2366,21 +2401,116 @@ function mostrarModalCodigosGenerados(codigos) {
     document.getElementById('modal-codigos').classList.add('show');
 }
 
+async function imprimirCodigoBarras(productoId, cantidadCopias = 1) {
+    console.log('🖨️ Imprimiendo código de barras:', {
+        productoId,
+        cantidadCopias
+    });
+    
+    try {
+        // Mostrar indicador de carga
+        mostrarNotificacion(`⏳ Enviando ${cantidadCopias} etiqueta(s) a la impresora...`, 'success');
+        
+        // Obtener CSRF token
+        const csrfToken = getCookie('csrftoken');
+        
+        if (!csrfToken) {
+            throw new Error('Token CSRF no encontrado');
+        }
+        
+        // Realizar petición para imprimir
+        const response = await fetch(`/panel/inventario/productos/${productoId}/imprimir-codigo/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                copias: cantidadCopias
+            }),
+            credentials: 'same-origin'
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Error en la solicitud');
+        }
+        
+        if (data.success) {
+            console.log('✅ Impresión enviada correctamente:', data);
+            
+            // Mostrar notificación de éxito
+            mostrarNotificacion(
+                `✅ ${cantidadCopias} etiqueta(s) enviada(s) a imprimir en ${data.impresora}`,
+                'success'
+            );
+            
+        } else {
+            throw new Error(data.error || 'Error desconocido');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error imprimiendo código de barras:', error);
+        
+        // Mostrar notificación de error con detalles
+        mostrarNotificacion(
+            `❌ Error al imprimir: ${error.message}. Verifica que la impresora esté configurada y el agente esté activo.`,
+            'error'
+        );
+    }
+}
+
 function cerrarModalCodigos() {
     document.getElementById('modal-codigos').classList.remove('show');
 }
 
 function descargarTodosPDFs() {
-    const links = document.querySelectorAll('#lista-codigos-generados a.btn-primary-custom');
-    if (links.length === 0) {
-        mostrarNotificacion('No hay PDFs para descargar', 'error');
+    // Cambiar el nombre de la función o crear una nueva
+    imprimirTodosLosCodigos();
+}
+
+async function imprimirTodosLosCodigos() {
+    const items = document.querySelectorAll('#lista-codigos-generados > div');
+    
+    if (items.length === 0) {
+        mostrarNotificacion('No hay códigos para imprimir', 'error');
         return;
     }
 
-    mostrarNotificacion(`Descargando ${links.length} archivos PDF...`, 'success');
-    links.forEach((link, index) => {
-        setTimeout(() => link.click(), index * 500);
-    });
+    mostrarNotificacion(`🖨️ Enviando ${items.length} productos a imprimir...`, 'success');
+    
+    let exitosos = 0;
+    let errores = 0;
+    
+    for (let i = 0; i < items.length; i++) {
+        const buttons = items[i].querySelectorAll('button[onclick*="imprimirCodigoBarras"]');
+        if (buttons.length > 0) {
+            try {
+                const onclickAttr = buttons[0].getAttribute('onclick');
+                const match = onclickAttr.match(/imprimirCodigoBarras\('([^']+)',\s*(\d+)\)/);
+                
+                if (match) {
+                    const productoId = match[1];
+                    const cantidad = parseInt(match[2]);
+                    
+                    await imprimirCodigoBarras(productoId, cantidad);
+                    exitosos++;
+                    
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            } catch (error) {
+                console.error(`Error imprimiendo producto ${i + 1}:`, error);
+                errores++;
+            }
+        }
+    }
+    
+    if (errores === 0) {
+        mostrarNotificacion(`✅ ${exitosos} productos enviados a imprimir correctamente`, 'success');
+    } else {
+        mostrarNotificacion(`⚠️ ${exitosos} éxito, ${errores} errores`, 'error');
+    }
 }
 
 // ========================================
