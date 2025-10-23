@@ -5623,7 +5623,7 @@ def registrar_gasto_caja_chica(request, caja_chica_id):
     
     if request.method == 'POST':
         try:
-            # ✅ NO esperar tipo_movimiento del formulario, establecerlo directamente
+            # Obtener datos del formulario
             monto = Decimal(request.POST.get('monto'))
             categoria = request.POST.get('categoria_gasto', '')
             descripcion = request.POST.get('descripcion')
@@ -5657,10 +5657,10 @@ def registrar_gasto_caja_chica(request, caja_chica_id):
             saldo_anterior = caja_chica.monto_actual
             saldo_nuevo = saldo_anterior - monto
             
-            # ✅ Crear movimiento CON tipo_movimiento='GASTO'
+            # Crear movimiento
             movimiento = MovimientoCajaChica.objects.create(
                 caja_chica=caja_chica,
-                tipo_movimiento='GASTO',  # ✅ ESTABLECER DIRECTAMENTE
+                tipo_movimiento='GASTO',
                 categoria_gasto=categoria,
                 monto=monto,
                 saldo_anterior=saldo_anterior,
@@ -5680,8 +5680,8 @@ def registrar_gasto_caja_chica(request, caja_chica_id):
                 f'✅ Gasto de Q. {monto} registrado exitosamente. Saldo actual: Q. {saldo_nuevo}'
             )
             
-            # Alertar si necesita reposición
-            if caja_chica.necesita_reposicion():
+            # ✅ CORREGIDO: Verificar si necesita reposición con el SALDO NUEVO
+            if caja_chica.umbral_reposicion > 0 and saldo_nuevo < caja_chica.umbral_reposicion:
                 messages.warning(
                     request,
                     f'⚠️ La caja chica necesita reposición. Umbral: Q. {caja_chica.umbral_reposicion}'
@@ -5951,3 +5951,76 @@ def caja_chica_movimientos_api(request, caja_chica_id):
     except Exception as e:
         logger.error(f"Error en caja_chica_movimientos_api: {str(e)}")
         return JsonResponse({'error': str(e)}, status=400)
+@auth_required
+@require_http_methods(["POST"])
+def editar_caja_chica(request, caja_chica_id):
+    """Editar una caja chica existente"""
+    try:
+        from apps.authentication.models import Usuario
+        
+        caja_chica = get_object_or_404(CajaChica, id=caja_chica_id)
+        
+        # Obtener datos del formulario
+        nombre = request.POST.get('nombre', '').strip()
+        codigo = request.POST.get('codigo', '').strip()
+        monto_fondo = Decimal(request.POST.get('monto_fondo', 0))
+        responsable_id = request.POST.get('responsable')
+        umbral_reposicion = Decimal(request.POST.get('umbral_reposicion', 0))
+        limite_gasto = Decimal(request.POST.get('limite_gasto_individual', 0))
+        estado = request.POST.get('estado', 'ACTIVA')
+        
+        # DEBUG: Imprimir valores recibidos
+        print(f"DEBUG - Umbral recibido: {umbral_reposicion}")
+        print(f"DEBUG - POST data: {request.POST}")
+        
+        # Validaciones
+        if not nombre:
+            messages.error(request, '❌ El nombre es obligatorio.')
+            return redirect('custom_admin:caja_chica_list')
+        
+        if not codigo:
+            messages.error(request, '❌ El código es obligatorio.')
+            return redirect('custom_admin:caja_chica_list')
+        
+        # Validar código único (excepto para la misma caja)
+        if CajaChica.objects.filter(codigo=codigo).exclude(id=caja_chica_id).exists():
+            messages.error(request, f'❌ Ya existe otra caja chica con el código {codigo}')
+            return redirect('custom_admin:caja_chica_list')
+        
+        if monto_fondo <= 0:
+            messages.error(request, '❌ El monto del fondo debe ser mayor a cero.')
+            return redirect('custom_admin:caja_chica_list')
+        
+        # Obtener responsable
+        try:
+            responsable = Usuario.objects.get(id=responsable_id)
+        except Usuario.DoesNotExist:
+            messages.error(request, '❌ El responsable seleccionado no existe.')
+            return redirect('custom_admin:caja_chica_list')
+        
+        # Actualizar la caja chica
+        caja_chica.nombre = nombre
+        caja_chica.codigo = codigo
+        caja_chica.monto_fondo = monto_fondo
+        caja_chica.responsable = responsable
+        caja_chica.umbral_reposicion = umbral_reposicion
+        caja_chica.limite_gasto_individual = limite_gasto
+        caja_chica.estado = estado
+        caja_chica.save()
+        
+        # DEBUG: Verificar que se guardó
+        caja_chica.refresh_from_db()
+        print(f"DEBUG - Umbral guardado: {caja_chica.umbral_reposicion}")
+        
+        messages.success(
+            request,
+            f'✅ Caja chica "{nombre}" actualizada exitosamente. Umbral: Q. {caja_chica.umbral_reposicion}'
+        )
+        
+    except Exception as e:
+        messages.error(request, f'❌ Error al editar caja chica: {str(e)}')
+        logger.error(f"Error en editar_caja_chica: {str(e)}")
+        import traceback
+        traceback.print_exc()
+    
+    return redirect('custom_admin:caja_chica_list')

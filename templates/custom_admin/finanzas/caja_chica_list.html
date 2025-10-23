@@ -6,6 +6,22 @@
 {% block extra_css %}
 <style>
     /* ============================================
+    OCULTAR NOTIFICACIONES DUPLICADAS
+    ============================================ */
+    /* Ocultar alertas del base template */
+    body > .container-fluid.mt-3 > .alert,
+    .position-fixed > .alert,
+    .toast-container {
+        display: none !important;
+    }
+
+    /* Mostrar solo las alertas en nuestro contenedor py-4 */
+    body > .container-fluid.py-4 > .alert,
+    .container-fluid.py-4 > .alert {
+        display: flex !important;
+    }
+
+    /* ============================================
        MODALES - Centrado vertical mejorado
        ============================================ */
     .modal-dialog {
@@ -180,6 +196,18 @@
 
     .btn-outline-primary:hover {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-color: transparent;
+    }
+
+    .btn-outline-warning {
+        border: 2px solid #f59e0b;
+        color: #f59e0b;
+        background: transparent;
+    }
+
+    .btn-outline-warning:hover {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         color: white;
         border-color: transparent;
     }
@@ -392,12 +420,25 @@
                                     <i class="fas fa-plus-circle"></i> Reponer Fondo
                                 </button>
                             {% endif %}
-                            <button 
-                                class="btn btn-outline-primary btn-action"
-                                onclick="verDetalleCaja('{{ caja.id }}')"
-                                title="Ver Detalles y Movimientos">
-                                <i class="fas fa-eye"></i> Ver Detalles
-                            </button>
+                            
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <button 
+                                        class="btn btn-outline-primary btn-action w-100"
+                                        onclick="verDetalleCaja('{{ caja.id }}')"
+                                        title="Ver Detalles y Movimientos">
+                                        <i class="fas fa-eye"></i> Detalles
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button 
+                                        class="btn btn-outline-warning btn-action w-100"
+                                        onclick="abrirModalEditar('{{ caja.id }}', '{{ caja.nombre }}', '{{ caja.codigo }}', '{{ caja.monto_fondo }}', '{{ caja.responsable.id }}', '{{ caja.umbral_reposicion }}', '{{ caja.limite_gasto_individual }}', '{{ caja.estado }}')"
+                                        title="Editar Caja Chica">
+                                        <i class="fas fa-edit"></i> Editar
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="card-footer text-muted">
@@ -417,7 +458,7 @@
                     <i class="fas fa-cash-register"></i>
                     <h4>No hay cajas chicas registradas</h4>
                     <p>Crea tu primera caja chica para comenzar a gestionar los gastos menores.</p>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearCajaChicaModal">
+                    <button class="btn btn-primary btn-action" data-bs-toggle="modal" data-bs-target="#crearCajaChicaModal">
                         <i class="fas fa-plus-circle"></i> Crear Primera Caja Chica
                     </button>
                 </div>
@@ -489,6 +530,84 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save"></i> Crear Caja Chica
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Editar Caja Chica -->
+<div class="modal fade" id="editarCajaChicaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit"></i> Editar Caja Chica
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="formEditarCajaChica">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre *</label>
+                        <input type="text" name="nombre" id="edit_nombre" class="form-control" required 
+                               placeholder="Ej: Caja Chica Principal">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Código *</label>
+                        <input type="text" name="codigo" id="edit_codigo" class="form-control" required 
+                               placeholder="Ej: CC-001">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Monto del Fondo *</label>
+                        <div class="input-group">
+                            <span class="input-group-text">Q.</span>
+                            <input type="number" name="monto_fondo" id="edit_monto_fondo" class="form-control" 
+                                   step="0.01" min="0" required placeholder="0.00">
+                        </div>
+                        <small class="text-muted">Nota: Cambiar el monto del fondo no afecta el saldo actual</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Responsable *</label>
+                        <select name="responsable" id="edit_responsable" class="form-control" required>
+                            <option value="">Seleccione un responsable</option>
+                            {% for usuario in usuarios %}
+                            <option value="{{ usuario.id }}">{{ usuario.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Umbral de Reposición</label>
+                        <div class="input-group">
+                            <span class="input-group-text">Q.</span>
+                            <input type="number" name="umbral_reposicion" id="edit_umbral_reposicion" class="form-control" 
+                                   step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <small class="text-muted">Alertar cuando el saldo esté por debajo de este monto</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Límite de Gasto Individual</label>
+                        <div class="input-group">
+                            <span class="input-group-text">Q.</span>
+                            <input type="number" name="limite_gasto_individual" id="edit_limite_gasto" class="form-control" 
+                                   step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <small class="text-muted">Monto máximo permitido por gasto (0 = sin límite)</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Estado *</label>
+                        <select name="estado" id="edit_estado" class="form-control" required>
+                            <option value="ACTIVA">Activa</option>
+                            <option value="CERRADA">Cerrada</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Guardar Cambios
                     </button>
                 </div>
             </form>
@@ -658,6 +777,25 @@
         modal.show();
     }
 
+    function abrirModalEditar(cajaId, nombre, codigo, montoFondo, responsableId, umbral, limite, estado) {
+        // Establecer la acción del formulario
+        const form = document.getElementById('formEditarCajaChica');
+        form.action = `/panel/finanzas/caja-chica/${cajaId}/editar/`;
+        
+        // Llenar los campos del formulario
+        document.getElementById('edit_nombre').value = nombre;
+        document.getElementById('edit_codigo').value = codigo;
+        document.getElementById('edit_monto_fondo').value = parseFloat(montoFondo);
+        document.getElementById('edit_responsable').value = responsableId;
+        document.getElementById('edit_umbral_reposicion').value = parseFloat(umbral) || 0;
+        document.getElementById('edit_limite_gasto').value = parseFloat(limite) || 0;
+        document.getElementById('edit_estado').value = estado;
+        
+        // Abrir el modal
+        const modal = new bootstrap.Modal(document.getElementById('editarCajaChicaModal'));
+        modal.show();
+    }
+
     function verDetalleCaja(cajaId) {
         const modal = new bootstrap.Modal(document.getElementById('detallesCajaModal'));
         const content = document.getElementById('detallesCajaContent');
@@ -808,10 +946,12 @@
     // Auto-cerrar alertas después de 5 segundos
     document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function() {
-            const alerts = document.querySelectorAll('.alert');
+            const alerts = document.querySelectorAll('.container-fluid > .alert-dismissible');
             alerts.forEach(function(alert) {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
+                if (alert.parentElement) {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }
             });
         }, 5000);
     });
