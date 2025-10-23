@@ -1,400 +1,494 @@
 {% extends 'custom_admin/base_admin.html' %}
 {% load static %}
 
-{% block title %}Caja Chica{% endblock %}
-
-{% block alerts %}{% endblock %}
+{% block title %}Caja Chica - Sistema de Administración{% endblock %}
 
 {% block extra_css %}
 <style>
-    .caja-chica-card {
-        border: 2px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 20px;
-        transition: all 0.3s;
-        background: white;
+    /* ============================================
+       MODALES - Centrado vertical mejorado
+       ============================================ */
+    .modal-dialog {
+        margin-top: 8rem !important;
+        margin-bottom: 8rem !important;
+    }
+
+    .modal-dialog-centered {
+        min-height: calc(100% - 11rem);
+    }
+
+    /* ============================================
+       FIX CRÍTICO: Permitir que los modales estén por encima de todo
+       ============================================ */
+    body.modal-open {
+        position: static !important;
+    }
+
+    .modal-body {
+        max-height: calc(80vh - 200px);
+        overflow-y: auto;
+    }
+
+    /* ============================================
+       MODAL GLASSMORPHISM
+       ============================================ */
+    .modal-content {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        box-shadow:
+            0 20px 60px rgba(59, 130, 246, 0.15),
+            0 8px 24px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 16px 16px 0 0 !important;
+        padding: 1.25rem 1.5rem;
+        border-bottom: none;
+    }
+
+    .modal-title {
+        font-weight: 700;
+        font-size: 1.25rem;
+    }
+
+    .modal-footer {
+        border-top: 1px solid rgba(219, 234, 254, 0.3);
+        padding: 1.25rem 1.5rem;
+        border-radius: 0 0 16px 16px;
+    }
+
+    /* ============================================
+       CARDS
+       ============================================ */
+    .card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        box-shadow:
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
     }
     
-    .caja-chica-card:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        transform: translateY(-2px);
+    .card:hover {
+        transform: translateY(-4px);
+        box-shadow:
+            0 12px 40px rgba(59, 130, 246, 0.15),
+            0 4px 12px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        border-color: rgba(96, 165, 250, 0.6);
     }
     
-    .caja-chica-card.activa {
-        border-color: #10b981;
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 16px 16px 0 0 !important;
+        padding: 15px 20px;
+        border-bottom: none;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .card-footer {
+        background: rgba(248, 250, 252, 0.5);
+        border-top: 1px solid rgba(219, 234, 254, 0.3);
+        border-radius: 0 0 16px 16px;
+        padding: 1rem 1.5rem;
     }
     
-    .caja-chica-card.inactiva {
-        border-color: #ef4444;
-        opacity: 0.7;
-    }
-    
-    .caja-chica-card.necesita-reposicion {
-        border-color: #f59e0b;
-        background: linear-gradient(135deg, #fff 0%, #fef3c7 100%);
-    }
-    
-    .badge-estado {
-        padding: 6px 12px;
+    /* ============================================
+       BADGES
+       ============================================ */
+    .badge-activa {
+        background: rgba(16, 185, 129, 0.1);
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        padding: 6px 14px;
         border-radius: 20px;
         font-size: 0.85rem;
         font-weight: 600;
     }
     
-    .badge-activa {
-        background: #d1fae5;
-        color: #065f46;
+    .badge-cerrada {
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
     }
     
-    .badge-inactiva {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-    
-    .progress-bar-custom {
-        height: 8px;
-        border-radius: 10px;
-        background: #e5e7eb;
-        overflow: hidden;
+    /* ============================================
+       BALANCE INFO
+       ============================================ */
+    .balance-info {
+        background: rgba(248, 250, 252, 0.8);
+        border-left: 4px solid #667eea;
+        padding: 15px;
         margin: 10px 0;
+        border-radius: 8px;
     }
     
-    .progress-fill {
-        height: 100%;
-        transition: width 0.3s;
+    /* ============================================
+       BOTONES
+       ============================================ */
+    .btn-action {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
     }
     
-    .progress-fill.green { background: #10b981; }
-    .progress-fill.yellow { background: #f59e0b; }
-    .progress-fill.red { background: #ef4444; }
-    
-    .stat-card {
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+    }
+
+    .btn-primary {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        border-radius: 12px;
-        padding: 20px;
     }
-    
-    .stat-card.green {
+
+    .btn-success {
         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
     }
-    
-    .stat-card.orange {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    }
-    
-    .stat-card.blue {
+
+    .btn-info {
         background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+    }
+
+    .btn-outline-primary {
+        border: 2px solid #667eea;
+        color: #667eea;
+        background: transparent;
+    }
+
+    .btn-outline-primary:hover {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-color: transparent;
+    }
+
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
     }
     
-    .modal-backdrop.show {
-        opacity: 0.5;
+    /* ============================================
+       FORM CONTROLS
+       ============================================ */
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    .form-control, .form-select {
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 8px;
+        padding: 0.625rem 0.875rem;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 0.5rem;
+    }
+
+    .input-group-text {
+        background: rgba(241, 245, 249, 0.8);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        color: #64748b;
+        font-weight: 600;
+    }
+    
+    /* ============================================
+       TABLE
+       ============================================ */
+    .table {
+        background: rgba(255, 255, 255, 0.5);
+    }
+
+    .table thead th {
+        background: rgba(241, 245, 249, 0.8);
+        color: #475569;
+        font-weight: 700;
+        border-bottom: 2px solid rgba(219, 234, 254, 0.5);
+        padding: 1rem;
+    }
+
+    .table-hover tbody tr:hover {
+        background: rgba(241, 245, 249, 0.5);
+        transition: all 0.2s ease;
+    }
+
+    .table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+    
+    /* ============================================
+       EMPTY STATE
+       ============================================ */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #64748b;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        opacity: 0.3;
+        color: #94a3b8;
+    }
+
+    /* ============================================
+       PREVIEW IMAGE
+       ============================================ */
+    .preview-image {
+        max-width: 100%;
+        max-height: 200px;
+        margin-top: 10px;
+        border-radius: 8px;
+        display: none;
+        border: 2px solid rgba(219, 234, 254, 0.5);
+    }
+
+    /* ============================================
+       ALERTS
+       ============================================ */
+    .alert {
+        border-radius: 12px;
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        backdrop-filter: blur(10px);
+    }
+
+    .alert-info {
+        background: rgba(191, 219, 254, 0.2);
+        color: #1e40af;
+        border-color: rgba(96, 165, 250, 0.3);
+    }
+
+    .alert-success {
+        background: rgba(167, 243, 208, 0.2);
+        color: #065f46;
+        border-color: rgba(52, 211, 153, 0.3);
+    }
+
+    .alert-danger {
+        background: rgba(254, 202, 202, 0.2);
+        color: #991b1b;
+        border-color: rgba(248, 113, 113, 0.3);
+    }
+
+    .alert-warning {
+        background: rgba(253, 230, 138, 0.2);
+        color: #92400e;
+        border-color: rgba(251, 191, 36, 0.3);
+    }
+
+    /* ============================================
+       SPINNER
+       ============================================ */
+    .spinner-border {
+        border-color: rgba(102, 126, 234, 0.2);
+        border-right-color: #667eea;
+    }
+
+    /* ============================================
+       BTN CLOSE WHITE (para modales con header oscuro)
+       ============================================ */
+    .btn-close-white {
+        filter: brightness(0) invert(1);
+        opacity: 0.8;
+    }
+
+    .btn-close-white:hover {
+        opacity: 1;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid px-4 py-4">
-    
-    <!-- Header -->
+<div class="container-fluid py-4">
+    <!-- Encabezado -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="h3 mb-1 text-gray-800">
-                <i class="fas fa-wallet text-primary me-2"></i>
-                Cajas Chicas
-            </h1>
-            <p class="text-muted mb-0">Gestión de fondos para gastos menores</p>
+            <h2 class="mb-1">
+                <i class="fas fa-cash-register"></i> Gestión de Caja Chica
+            </h2>
+            <p class="text-muted mb-0">Administra el fondo de caja chica y sus movimientos</p>
         </div>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearCajaChica">
-            <i class="fas fa-plus me-2"></i>
-            Nueva Caja Chica
+        <button class="btn btn-primary btn-action" data-bs-toggle="modal" data-bs-target="#crearCajaChicaModal">
+            <i class="fas fa-plus-circle"></i> Nueva Caja Chica
         </button>
     </div>
-    
-    <!-- Estadísticas -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="stat-card green">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div style="opacity: 0.9; font-size: 0.9rem;">Total Fondos</div>
-                        <div class="h3 mb-0 mt-1">${{ total_fondos|floatformat:2 }}</div>
-                    </div>
-                    <i class="fas fa-money-bill-wave fa-2x" style="opacity: 0.3;"></i>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card blue">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div style="opacity: 0.9; font-size: 0.9rem;">Disponible</div>
-                        <div class="h3 mb-0 mt-1">${{ total_disponible|floatformat:2 }}</div>
-                    </div>
-                    <i class="fas fa-hand-holding-usd fa-2x" style="opacity: 0.3;"></i>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card orange">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div style="opacity: 0.9; font-size: 0.9rem;">Requieren Reposición</div>
-                        <div class="h3 mb-0 mt-1">{{ requieren_reposicion }}</div>
-                    </div>
-                    <i class="fas fa-exclamation-triangle fa-2x" style="opacity: 0.3;"></i>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card" style="background: linear-gradient(135deg, #ec4899 0%, #be185d 100%);">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div style="opacity: 0.9; font-size: 0.9rem;">Total Cajas</div>
-                        <div class="h3 mb-0 mt-1">{{ cajas_chicas.paginator.count }}</div>
-                    </div>
-                    <i class="fas fa-wallet fa-2x" style="opacity: 0.3;"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Filtros -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-4">
-                    <input type="text" name="search" class="form-control" 
-                           placeholder="🔍 Buscar por nombre o código..." 
-                           value="{{ request.GET.search }}">
-                </div>
-                <div class="col-md-3">
-                    <select name="estado" class="form-select">
-                        <option value="">📊 Todos los estados</option>
-                        <option value="ACTIVA" {% if request.GET.estado == 'ACTIVA' %}selected{% endif %}>
-                            🟢 Activas
-                        </option>
-                        <option value="INACTIVA" {% if request.GET.estado == 'INACTIVA' %}selected{% endif %}>
-                            🔴 Inactivas
-                        </option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-filter me-1"></i> Filtrar
-                    </button>
-                </div>
-                <div class="col-md-2">
-                    <a href="{% url 'custom_admin:caja_chica_list' %}" class="btn btn-secondary w-100">
-                        <i class="fas fa-redo me-1"></i> Limpiar
-                    </a>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    <!-- Lista de Cajas Chicas -->
-    <div class="row">
-        {% for caja in cajas_chicas %}
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="caja-chica-card {{ caja.estado|lower }} {% if caja.necesita_reposicion %}necesita-reposicion{% endif %}">
-                
-                <!-- Header -->
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div>
-                        <h5 class="mb-1">{{ caja.nombre }}</h5>
-                        <small class="text-muted">{{ caja.codigo }}</small>
-                    </div>
-                    <span class="badge-estado {% if caja.estado == 'ACTIVA' %}badge-activa{% else %}badge-inactiva{% endif %}">
-                        {% if caja.estado == 'ACTIVA' %}🟢{% else %}🔴{% endif %} {{ caja.get_estado_display }}
-                    </span>
-                </div>
-                
-                <!-- Responsable -->
-                <div class="mb-3 pb-3 border-bottom">
-                    <small class="text-muted d-block mb-1">Responsable</small>
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-user-circle text-primary me-2"></i>
-                        <span>{{ caja.responsable.get_full_name }}</span>
-                    </div>
-                </div>
-                
-                <!-- Montos -->
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Fondo:</span>
-                        <strong>${{ caja.monto_fondo|floatformat:2 }}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Disponible:</span>
-                        <strong class="{% if caja.necesita_reposicion %}text-warning{% else %}text-success{% endif %}">
-                            ${{ caja.monto_actual|floatformat:2 }}
-                        </strong>
-                    </div>
-                    
-                    <!-- Barra de progreso -->
-                    {% widthratio caja.monto_actual 1 caja.monto_fondo as porcentaje_float %}
-                    {% widthratio porcentaje_float 1 1 as porcentaje %}
-                    <div class="progress-bar-custom">
-                        <div class="progress-fill {% if porcentaje >= 50 %}green{% elif porcentaje >= 25 %}yellow{% else %}red{% endif %}" 
-                             style="width: {{ porcentaje }}%"></div>
-                    </div>
-                    <small class="text-muted">{{ porcentaje }}% del fondo</small>
-                </div>
-                
-                <!-- Alerta de reposición -->
-                {% if caja.necesita_reposicion %}
-                <div class="alert alert-warning py-2 mb-3">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    <small>
-                        <strong>Requiere reposición</strong><br>
-                        Monto a reponer: <strong>${{ caja.monto_a_reponer|floatformat:2 }}</strong>
-                    </small>
-                </div>
-                {% endif %}
-                
-                <!-- Límites -->
-                <div class="mb-3 pb-3 border-bottom">
-                    <small class="text-muted d-block mb-2">Límites</small>
-                    <div class="d-flex justify-content-between mb-1">
-                        <small>Gasto individual:</small>
-                        <small class="fw-bold">${{ caja.limite_gasto_individual|floatformat:2 }}</small>
-                    </div>
-                    <div class="d-flex justify-content-between">
-                        <small>Umbral reposición:</small>
-                        <small class="fw-bold">${{ caja.umbral_reposicion|floatformat:2 }}</small>
-                    </div>
-                </div>
-                
-                <!-- Acciones -->
-                <div class="btn-group w-100" role="group">
-                    <button type="button" class="btn btn-sm btn-outline-primary" 
-                            onclick="registrarGasto('{{ caja.id }}')" 
-                            {% if caja.estado != 'ACTIVA' %}disabled{% endif %}>
-                        <i class="fas fa-receipt"></i> Gasto
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-success" 
-                            onclick="reponer('{{ caja.id }}')" 
-                            {% if caja.estado != 'ACTIVA' or not caja.necesita_reposicion %}disabled{% endif %}>
-                        <i class="fas fa-plus-circle"></i> Reponer
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-info" 
-                            onclick="verMovimientos('{{ caja.id }}')">
-                        <i class="fas fa-list"></i> Historial
-                    </button>
-                </div>
-                
-            </div>
-        </div>
-        {% empty %}
-        <div class="col-12">
-            <div class="alert alert-info text-center">
-                <i class="fas fa-info-circle fa-3x mb-3"></i>
-                <h5>No hay cajas chicas registradas</h5>
-                <p class="mb-3">Crea una nueva caja chica para comenzar</p>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearCajaChica">
-                    <i class="fas fa-plus me-2"></i> Crear Primera Caja Chica
-                </button>
-            </div>
+
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' or message.tags == 'danger' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         {% endfor %}
-    </div>
-    
-    <!-- Paginación -->
-    {% if cajas_chicas.has_other_pages %}
-    <nav aria-label="Navegación de cajas chicas">
-        <ul class="pagination justify-content-center">
-            {% if cajas_chicas.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ cajas_chicas.previous_page_number }}">Anterior</a>
-            </li>
-            {% endif %}
-            
-            {% for num in cajas_chicas.paginator.page_range %}
-            <li class="page-item {% if cajas_chicas.number == num %}active{% endif %}">
-                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-            </li>
-            {% endfor %}
-            
-            {% if cajas_chicas.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ cajas_chicas.next_page_number }}">Siguiente</a>
-            </li>
-            {% endif %}
-        </ul>
-    </nav>
     {% endif %}
-    
+
+    <!-- Lista de Cajas Chicas -->
+    {% if cajas_chicas %}
+        <div class="row">
+            {% for caja in cajas_chicas %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{{ caja.nombre }}</h5>
+                        <span class="{% if caja.estado == 'ACTIVA' %}badge-activa{% else %}badge-cerrada{% endif %}">
+                            {{ caja.estado }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="balance-info">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span><strong>Monto Fondo:</strong></span>
+                                <span class="text-primary">Q. {{ caja.monto_fondo|floatformat:2 }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span><strong>Saldo Actual:</strong></span>
+                                <span class="text-success"><strong>Q. {{ caja.monto_actual|floatformat:2 }}</strong></span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span><strong>Código:</strong></span>
+                                <span class="text-muted">{{ caja.codigo }}</span>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            {% if caja.estado == 'ACTIVA' %}
+                                <button 
+                                    class="btn btn-success btn-action"
+                                    onclick="abrirModalGasto('{{ caja.id }}')"
+                                    title="Registrar Gasto">
+                                    <i class="fas fa-minus-circle"></i> Registrar Gasto
+                                </button>
+                                <button 
+                                    class="btn btn-info btn-action"
+                                    onclick="abrirModalReposicion('{{ caja.id }}')"
+                                    title="Reponer Fondo">
+                                    <i class="fas fa-plus-circle"></i> Reponer Fondo
+                                </button>
+                            {% endif %}
+                            <button 
+                                class="btn btn-outline-primary btn-action"
+                                onclick="verDetalleCaja('{{ caja.id }}')"
+                                title="Ver Detalles y Movimientos">
+                                <i class="fas fa-eye"></i> Ver Detalles
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-footer text-muted">
+                        <small>
+                            <i class="fas fa-user"></i> 
+                            {{ caja.responsable.get_full_name }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="card">
+            <div class="card-body">
+                <div class="empty-state">
+                    <i class="fas fa-cash-register"></i>
+                    <h4>No hay cajas chicas registradas</h4>
+                    <p>Crea tu primera caja chica para comenzar a gestionar los gastos menores.</p>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearCajaChicaModal">
+                        <i class="fas fa-plus-circle"></i> Crear Primera Caja Chica
+                    </button>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 </div>
 
-<!-- ============================================================================ -->
-<!-- MODAL: CREAR CAJA CHICA -->
-<!-- ============================================================================ -->
-<div class="modal fade" id="modalCrearCajaChica" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+<!-- Modal: Crear Caja Chica -->
+<div class="modal fade" id="crearCajaChicaModal" tabindex="-1">
+    <div class="modal-dialog">
         <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle"></i> Nueva Caja Chica
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
             <form method="post" action="{% url 'custom_admin:crear_caja_chica' %}">
                 {% csrf_token %}
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-wallet me-2"></i>
-                        Nueva Caja Chica
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
                 <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Nombre *</label>
-                            <input type="text" name="nombre" class="form-control" 
-                                   placeholder="Ej: Caja Chica Tienda" required>
+                    <div class="mb-3">
+                        <label class="form-label">Nombre *</label>
+                        <input type="text" name="nombre" class="form-control" required 
+                               placeholder="Ej: Caja Chica Principal">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Código *</label>
+                        <input type="text" name="codigo" class="form-control" required 
+                               placeholder="Ej: CC-001">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Monto del Fondo *</label>
+                        <div class="input-group">
+                            <span class="input-group-text">Q.</span>
+                            <input type="number" name="monto_fondo" class="form-control" 
+                                   step="0.01" min="0" required placeholder="0.00">
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Código *</label>
-                            <input type="text" name="codigo" class="form-control" 
-                                   placeholder="Ej: CCH-001" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Responsable *</label>
+                        <select name="responsable" class="form-control" required>
+                            <option value="">Seleccione un responsable</option>
+                            {% for usuario in usuarios %}
+                            <option value="{{ usuario.id }}">{{ usuario.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Umbral de Reposición</label>
+                        <div class="input-group">
+                            <span class="input-group-text">Q.</span>
+                            <input type="number" name="umbral_reposicion" class="form-control" 
+                                   step="0.01" min="0" placeholder="0.00" value="0">
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Responsable *</label>
-                            <select name="responsable" class="form-select" required>
-                                <option value="">Seleccionar...</option>
-                                {% for usuario in usuarios %}
-                                <option value="{{ usuario.id }}">{{ usuario.get_full_name }}</option>
-                                {% endfor %}
-                            </select>
+                        <small class="text-muted">Alertar cuando el saldo esté por debajo de este monto</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Límite de Gasto Individual</label>
+                        <div class="input-group">
+                            <span class="input-group-text">Q.</span>
+                            <input type="number" name="limite_gasto_individual" class="form-control" 
+                                   step="0.01" min="0" placeholder="0.00" value="0">
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Monto del Fondo *</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" name="monto_fondo" class="form-control" 
-                                       step="0.01" min="0" placeholder="500.00" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Umbral de Reposición *</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" name="umbral_reposicion" class="form-control" 
-                                       step="0.01" min="0" placeholder="100.00" required>
-                            </div>
-                            <small class="text-muted">Cuando llegue a este monto, se alertará para reponer</small>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Límite Gasto Individual</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" name="limite_gasto_individual" class="form-control" 
-                                       step="0.01" min="0" value="50.00">
-                            </div>
-                            <small class="text-muted">Monto máximo por gasto</small>
-                        </div>
+                        <small class="text-muted">Monto máximo permitido por gasto (0 = sin límite)</small>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i> Crear Caja Chica
+                        <i class="fas fa-save"></i> Crear Caja Chica
                     </button>
                 </div>
             </form>
@@ -402,114 +496,65 @@
     </div>
 </div>
 
-<!-- ============================================================================ -->
-<!-- MODAL: REGISTRAR GASTO -->
-<!-- ============================================================================ -->
-<div class="modal fade" id="modalRegistrarGasto" tabindex="-1">
-    <div class="modal-dialog">
+<!-- Modal: Registrar Gasto -->
+<div class="modal fade" id="registrarGastoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form id="formGasto" method="post" enctype="multipart/form-data">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-minus-circle"></i> Registrar Gasto de Caja Chica
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="formRegistrarGasto" enctype="multipart/form-data">
                 {% csrf_token %}
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-receipt me-2"></i>
-                        Registrar Gasto
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Tipo de Movimiento *</label>
-                        <select name="tipo_movimiento" class="form-select" required>
-                            <option value="GASTO">💸 Gasto</option>
-                            <option value="AJUSTE">⚙️ Ajuste</option>
-                        </select>
-                    </div>
-                    <div class="mb-3" id="divCategoriaGasto">
-                        <label class="form-label">Categoría *</label>
-                        <select name="categoria_gasto" class="form-select">
-                            <option value="LIMPIEZA">🧹 Limpieza y aseo</option>
-                            <option value="OFICINA">📎 Materiales de oficina</option>
-                            <option value="MANTENIMIENTO">🔧 Mantenimiento menor</option>
-                            <option value="TRANSPORTE">🚗 Transporte y combustible</option>
-                            <option value="ALIMENTACION">🍔 Alimentación</option>
-                            <option value="EMERGENCIA">🚨 Emergencia</option>
-                            <option value="OTRO">📦 Otro</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Monto *</label>
-                        <div class="input-group">
-                            <span class="input-group-text">$</span>
-                            <input type="number" name="monto" class="form-control" 
-                                   step="0.01" min="0.01" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Categoría *</label>
+                            <select name="categoria_gasto" class="form-control" required>
+                                <option value="">Seleccione una categoría</option>
+                                <option value="LIMPIEZA">🧹 Limpieza y aseo</option>
+                                <option value="OFICINA">📎 Materiales de oficina</option>
+                                <option value="MANTENIMIENTO">🔧 Mantenimiento menor</option>
+                                <option value="TRANSPORTE">🚗 Transporte y combustible</option>
+                                <option value="ALIMENTACION">🍔 Alimentación</option>
+                                <option value="EMERGENCIA">🚨 Emergencia</option>
+                                <option value="OTRO">📦 Otro</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Monto del Gasto *</label>
+                            <div class="input-group">
+                                <span class="input-group-text">Q.</span>
+                                <input type="number" name="monto" class="form-control" 
+                                       step="0.01" min="0.01" required placeholder="0.00">
+                            </div>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Descripción *</label>
-                        <textarea name="descripcion" class="form-control" rows="3" 
-                                  placeholder="Detalle del gasto..." required></textarea>
+                        <textarea name="descripcion" class="form-control" rows="3" required
+                                  placeholder="Detalle del gasto realizado"></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">N° Comprobante</label>
+                        <label class="form-label">Número de Comprobante</label>
                         <input type="text" name="numero_comprobante" class="form-control" 
-                               placeholder="001-001-000001">
+                               placeholder="Número de factura o comprobante">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Comprobante (Opcional)</label>
+                        <label class="form-label">Comprobante / Factura (Foto)</label>
                         <input type="file" name="comprobante_adjunto" class="form-control" 
-                               accept="image/*,.pdf">
-                        <small class="text-muted">Foto o PDF del comprobante</small>
+                               accept="image/*,application/pdf" id="inputComprobante"
+                               onchange="previewImage(this, 'previewGasto')">
+                        <small class="text-muted">Formatos: JPG, PNG, PDF (Máx. 5MB)</small>
+                        <img id="previewGasto" class="preview-image" alt="Vista previa">
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i> Registrar
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================================================ -->
-<!-- MODAL: REPONER FONDO -->
-<!-- ============================================================================ -->
-<div class="modal fade" id="modalReponer" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form id="formReponer" method="post">
-                {% csrf_token %}
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-plus-circle me-2"></i>
-                        Reponer Fondo
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        El sistema calculará automáticamente el monto necesario para completar el fondo.
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Monto a Reponer</label>
-                        <div class="input-group">
-                            <span class="input-group-text">$</span>
-                            <input type="text" id="montoReponer" class="form-control" readonly>
-                        </div>
-                    </div>
-                    <p class="text-muted mb-0">
-                        <small>
-                            Al confirmar, se agregará este monto a la caja chica para completar el fondo asignado.
-                        </small>
-                    </p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-success">
-                        <i class="fas fa-check me-2"></i> Confirmar Reposición
+                        <i class="fas fa-check"></i> Registrar Gasto
                     </button>
                 </div>
             </form>
@@ -517,71 +562,258 @@
     </div>
 </div>
 
+<!-- Modal: Reponer Fondo -->
+<div class="modal fade" id="reponerFondoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle"></i> Reponer Fondo de Caja Chica
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="formReponerFondo">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Información:</strong> La reposición sumará el monto al saldo actual de la caja chica.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Monto a Reponer *</label>
+                        <div class="input-group">
+                            <span class="input-group-text">Q.</span>
+                            <input type="number" name="monto" class="form-control" 
+                                   step="0.01" min="0.01" required placeholder="0.00">
+                        </div>
+                        <small class="text-muted">Este monto se sumará al saldo actual.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones</label>
+                        <textarea name="observaciones" class="form-control" rows="3"
+                                  placeholder="Motivo de la reposición (opcional)"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-info">
+                        <i class="fas fa-check"></i> Confirmar Reposición
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Ver Detalles -->
+<div class="modal fade" id="detallesCajaModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-eye"></i> Detalles de Caja Chica
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detallesCajaContent">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2">Cargando detalles...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Registrar Gasto
-function registrarGasto(cajaChicaId) {
-    const form = document.getElementById('formGasto');
-    form.action = `/panel/finanzas/caja-chica/${cajaChicaId}/gasto/`;
-    
-    // Mostrar/ocultar categoría según tipo
-    const tipoSelect = form.querySelector('[name="tipo_movimiento"]');
-    const divCategoria = document.getElementById('divCategoriaGasto');
-    
-    tipoSelect.addEventListener('change', function() {
-        if (this.value === 'GASTO') {
-            divCategoria.style.display = 'block';
+    function abrirModalGasto(cajaId) {
+        const form = document.getElementById('formRegistrarGasto');
+        form.action = `/panel/finanzas/caja-chica/${cajaId}/gasto/`;
+        
+        // Limpiar formulario
+        form.reset();
+        document.getElementById('previewGasto').style.display = 'none';
+        
+        const modal = new bootstrap.Modal(document.getElementById('registrarGastoModal'));
+        modal.show();
+    }
+
+    function abrirModalReposicion(cajaId) {
+        const form = document.getElementById('formReponerFondo');
+        form.action = `/panel/finanzas/caja-chica/${cajaId}/reponer/`;
+        
+        // Limpiar formulario
+        form.reset();
+        
+        const modal = new bootstrap.Modal(document.getElementById('reponerFondoModal'));
+        modal.show();
+    }
+
+    function verDetalleCaja(cajaId) {
+        const modal = new bootstrap.Modal(document.getElementById('detallesCajaModal'));
+        const content = document.getElementById('detallesCajaContent');
+        
+        // Mostrar loading
+        content.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="mt-2">Cargando detalles...</p>
+            </div>
+        `;
+        
+        modal.show();
+        
+        // Cargar detalles vía AJAX
+        fetch(`/panel/finanzas/caja-chica/${cajaId}/movimientos/`)
+            .then(response => response.json())
+            .then(data => {
+                content.innerHTML = generarHTMLDetalles(data);
+            })
+            .catch(error => {
+                content.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Error al cargar los detalles. Por favor, intenta nuevamente.
+                    </div>
+                `;
+            });
+    }
+
+    function generarHTMLDetalles(data) {
+        let html = `
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <h4>${data.nombre} <small class="text-muted">(${data.codigo || 'Sin código'})</small></h4>
+                    <p class="text-muted">${data.descripcion || 'Sin descripción'}</p>
+                </div>
+            </div>
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">Monto Fondo</h6>
+                            <h3 class="text-primary">Q. ${parseFloat(data.monto_fondo || data.monto_inicial).toFixed(2)}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">Saldo Actual</h6>
+                            <h3 class="text-success">Q. ${parseFloat(data.monto_actual).toFixed(2)}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">Total Gastado</h6>
+                            <h3 class="text-danger">Q. ${parseFloat(data.total_gastos || 0).toFixed(2)}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <h5 class="mb-3">Movimientos Recientes</h5>
+        `;
+        
+        if (data.movimientos && data.movimientos.length > 0) {
+            html += `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Categoría</th>
+                                <th>Descripción</th>
+                                <th>Monto</th>
+                                <th>Comprobante</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            data.movimientos.forEach(mov => {
+                const tipoClass = mov.tipo_movimiento === 'GASTO' ? 'danger' : 'success';
+                const tipoIcon = mov.tipo_movimiento === 'GASTO' ? 'minus-circle' : 'plus-circle';
+                
+                html += `
+                    <tr>
+                        <td>${new Date(mov.fecha_movimiento).toLocaleString('es-GT')}</td>
+                        <td><span class="badge bg-${tipoClass}"><i class="fas fa-${tipoIcon}"></i> ${mov.tipo_movimiento}</span></td>
+                        <td>${mov.categoria_gasto || '-'}</td>
+                        <td>${mov.descripcion}</td>
+                        <td class="text-${tipoClass}"><strong>Q. ${parseFloat(mov.monto).toFixed(2)}</strong></td>
+                        <td>
+                            ${mov.comprobante_adjunto ? 
+                                `<a href="${mov.comprobante_adjunto}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-file-image"></i> Ver
+                                </a>` 
+                                : '-'}
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
         } else {
-            divCategoria.style.display = 'none';
+            html += `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    No hay movimientos registrados aún.
+                </div>
+            `;
         }
+        
+        return html;
+    }
+
+    function previewImage(input, previewId) {
+        const preview = document.getElementById(previewId);
+        const file = input.files[0];
+        
+        if (file) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                if (file.type.startsWith('image/')) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                } else {
+                    preview.style.display = 'none';
+                }
+            }
+            
+            reader.readAsDataURL(file);
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+
+    // Auto-cerrar alertas después de 5 segundos
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
     });
-    
-    const modal = new bootstrap.Modal(document.getElementById('modalRegistrarGasto'));
-    modal.show();
-}
-
-// Reponer Fondo
-function reponer(cajaChicaId) {
-    const form = document.getElementById('formReponer');
-    form.action = `/panel/finanzas/caja-chica/${cajaChicaId}/reponer/`;
-    
-    // Aquí podrías hacer un fetch para obtener el monto exacto a reponer
-    // Por ahora, lo dejamos para que el backend lo calcule
-    document.getElementById('montoReponer').value = 'Se calculará automáticamente';
-    
-    const modal = new bootstrap.Modal(document.getElementById('modalReponer'));
-    modal.show();
-}
-
-// Ver Movimientos (placeholder - implementar después)
-function verMovimientos(cajaChicaId) {
-    alert('Función de historial en desarrollo');
-    // Aquí implementarías la vista de movimientos
-}
-
-// Mostrar mensajes de Django
-{% if messages %}
-{% for message in messages %}
-showToast('{{ message.tags }}', '{{ message }}');
-{% endfor %}
-{% endif %}
-
-function showToast(type, message) {
-    const bgColor = type === 'success' ? '#10b981' : 
-                   type === 'error' ? '#ef4444' : 
-                   type === 'warning' ? '#f59e0b' : '#3b82f6';
-    
-    Toastify({
-        text: message,
-        duration: 3000,
-        gravity: "top",
-        position: "right",
-        style: {
-            background: bgColor,
-        }
-    }).showToast();
-}
 </script>
 {% endblock %}

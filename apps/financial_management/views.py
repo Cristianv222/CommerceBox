@@ -378,8 +378,8 @@ class CierreCajaView(CajeroAccessMixin, TemplateView):
 # MOVIMIENTOS DE CAJA
 # ============================================================================
 
-class RegistrarMovimientoCajaView(CajeroAccessMixin, TemplateView):
-    """Registrar movimiento manual en caja (ingreso/retiro)"""
+class RegistrarMovimientoView(CajeroAccessMixin, TemplateView):
+    """Registrar ingreso/retiro en caja"""
     template_name = 'financial/movimiento_form.html'
     
     def get_context_data(self, **kwargs):
@@ -387,54 +387,42 @@ class RegistrarMovimientoCajaView(CajeroAccessMixin, TemplateView):
         caja = get_object_or_404(Caja, pk=self.kwargs['pk'])
         
         if caja.estado != 'ABIERTA':
-            messages.error(self.request, "No se pueden registrar movimientos en una caja cerrada.")
+            messages.error(self.request, "La caja debe estar abierta para registrar movimientos.")
             return redirect('financial_management:caja_detail', pk=caja.pk)
         
         context['caja'] = caja
-        context['form'] = MovimientoCajaForm(caja=caja, usuario=self.request.user)
+        context['form'] = MovimientoCajaForm()
         return context
     
     @transaction.atomic
     def post(self, request, pk):
         caja = get_object_or_404(Caja, pk=pk)
-        form = MovimientoCajaForm(
-            request.POST,
-            caja=caja,
-            usuario=request.user
-        )
+        form = MovimientoCajaForm(request.POST)
         
         if form.is_valid():
             tipo_movimiento = form.cleaned_data['tipo_movimiento']
             monto = form.cleaned_data['monto']
-            observaciones = form.cleaned_data['observaciones']
+            descripcion = form.cleaned_data['descripcion']
             
-            # Calcular saldos
-            saldo_anterior = caja.monto_actual
-            
-            if tipo_movimiento in ['INGRESO', 'AJUSTE_POSITIVO']:
-                caja.monto_actual += monto
-                monto_movimiento = monto
-            else:  # RETIRO, AJUSTE_NEGATIVO
-                caja.monto_actual -= monto
-                monto_movimiento = -monto
-            
-            caja.save()
-            
-            # Registrar movimiento
+            # Crear movimiento
             MovimientoCaja.objects.create(
                 caja=caja,
                 tipo_movimiento=tipo_movimiento,
-                monto=abs(monto_movimiento),
-                saldo_anterior=saldo_anterior,
-                saldo_nuevo=caja.monto_actual,
-                usuario=request.user,
-                observaciones=observaciones
+                monto=monto,
+                descripcion=descripcion,
+                saldo_anterior=caja.monto_actual,
+                saldo_nuevo=caja.monto_actual + monto if tipo_movimiento == 'INGRESO' else caja.monto_actual - monto,
+                usuario=request.user
             )
             
-            messages.success(
-                request,
-                f"Movimiento registrado exitosamente. Nuevo saldo: ${caja.monto_actual}"
-            )
+            # Actualizar saldo de la caja
+            if tipo_movimiento == 'INGRESO':
+                caja.monto_actual += monto
+            else:  # RETIRO
+                caja.monto_actual -= monto
+            caja.save()
+            
+            messages.success(request, f"Movimiento de {tipo_movimiento} registrado exitosamente.")
             return redirect('financial_management:caja_detail', pk=caja.pk)
         
         return render(request, self.template_name, {
@@ -455,7 +443,9 @@ class ArqueoListView(FinancialAccessMixin, ListView):
     paginate_by = 20
     
     def get_queryset(self):
-        queryset = super().get_queryset().select_related('caja', 'usuario_cierre')
+        queryset = super().get_queryset().select_related(
+            'caja', 'usuario_apertura', 'usuario_cierre'
+        )
         
         # Filtros
         estado = self.request.GET.get('estado')
@@ -470,7 +460,7 @@ class ArqueoListView(FinancialAccessMixin, ListView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['cajas'] = Caja.objects.filter(activa=True)
+        context['cajas'] = Caja.objects.all()
         return context
 
 
@@ -484,7 +474,7 @@ class ArqueoDetailView(FinancialAccessMixin, DetailView):
         context = super().get_context_data(**kwargs)
         arqueo = self.get_object()
         
-        # Movimientos de la sesión
+        # Movimientos del período
         context['movimientos'] = MovimientoCaja.objects.filter(
             caja=arqueo.caja,
             fecha_movimiento__gte=arqueo.fecha_apertura,
@@ -492,10 +482,16 @@ class ArqueoDetailView(FinancialAccessMixin, DetailView):
         ).select_related('usuario').order_by('fecha_movimiento')
         
         return context
+
+
+# ============================================================================
+# CAJA CHICA
+# ============================================================================
+
 class CajaChicaListView(CajaChicaAccessMixin, ListView):
     """Lista de cajas chicas"""
     model = CajaChica
-    template_name = 'financial/caja_chica_list.html'
+    template_name = 'financial_management/caja_chica_list.html'
     context_object_name = 'cajas_chicas'
     
     def get_queryset(self):
@@ -676,36 +672,16 @@ class RegistrarGastoCajaChicaView(CajaChicaAccessMixin, TemplateView):
 
 
 class ReponerCajaChicaView(SupervisorAccessMixin, TemplateView):
-    """Reponer el fondo de caja chica"""
-    template_name = 'financial/reposicion_caja_chica.html'
+    """Reposición de fondo de caja chica"""
+    template_name = 'financial/reposicion_caja_chica_form.html'
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         caja_chica = get_object_or_404(CajaChica, pk=self.kwargs['pk'])
-        
         context['caja_chica'] = caja_chica
         context['form'] = ReposicionCajaChicaForm(caja_chica=caja_chica)
-        
-        # Gastos desde última reposición
-        if caja_chica.fecha_ultima_reposicion:
-            gastos = MovimientoCajaChica.objects.filter(
-                caja_chica=caja_chica,
-                tipo_movimiento='GASTO',
-                fecha_movimiento__gte=caja_chica.fecha_ultima_reposicion
-            )
-        else:
-            gastos = MovimientoCajaChica.objects.filter(
-                caja_chica=caja_chica,
-                tipo_movimiento='GASTO'
-            )
-        
-        context['gastos_periodo'] = gastos.order_by('-fecha_movimiento')
-        context['total_gastado'] = gastos.aggregate(
-            total=Sum('monto')
-        )['total'] or Decimal('0')
-        
         return context
-    
+
     @transaction.atomic
     def post(self, request, pk):
         caja_chica = get_object_or_404(CajaChica, pk=pk)

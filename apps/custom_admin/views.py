@@ -15,6 +15,11 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie
 import logging 
 import json
+from django.http import JsonResponse
+from django.db.models import Sum, Q
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ========================================
 # DECORATOR DE AUTENTICACIÓN
@@ -5510,6 +5515,7 @@ def arqueo_detalle(request, arqueo_id):
 @auth_required
 def caja_chica_list(request):
     """Lista de cajas chicas"""
+    from apps.authentication.models import Usuario
     
     # Obtener todas las cajas chicas
     cajas_chicas = CajaChica.objects.all().select_related('responsable')
@@ -5543,16 +5549,19 @@ def caja_chica_list(request):
     page_number = request.GET.get('page')
     cajas_page = paginator.get_page(page_number)
     
+    # Obtener usuarios activos para el formulario de creación
+    # ✅ CAMBIO: 'first_name', 'last_name' → 'nombres', 'apellidos'
+    usuarios = Usuario.objects.filter(is_active=True).order_by('nombres', 'apellidos')
+    
     context = {
         'cajas_chicas': cajas_page,
         'total_fondos': total_fondos,
         'total_disponible': total_disponible,
         'requieren_reposicion': requieren_reposicion,
+        'usuarios': usuarios,
     }
     
     return render(request, 'custom_admin/finanzas/caja_chica_list.html', context)
-
-
 @auth_required
 def crear_caja_chica(request):
     """Crear nueva caja chica"""
@@ -5614,7 +5623,7 @@ def registrar_gasto_caja_chica(request, caja_chica_id):
     
     if request.method == 'POST':
         try:
-            tipo_movimiento = request.POST.get('tipo_movimiento')
+            # ✅ NO esperar tipo_movimiento del formulario, establecerlo directamente
             monto = Decimal(request.POST.get('monto'))
             categoria = request.POST.get('categoria_gasto', '')
             descripcion = request.POST.get('descripcion')
@@ -5623,30 +5632,64 @@ def registrar_gasto_caja_chica(request, caja_chica_id):
             
             # Validar estado de la caja
             if caja_chica.estado != 'ACTIVA':
-                messages.error(request, 'La caja chica no está activa')
+                messages.error(request, '❌ La caja chica no está activa')
                 return redirect('custom_admin:caja_chica_list')
             
-            # Validar saldo suficiente para gastos
-            if tipo_movimiento == 'GASTO' and monto > caja_chica.monto_actual:
-                messages.error(request, 'Saldo insuficiente en caja chica')
+            # Validar monto
+            if monto <= 0:
+                messages.error(request, '❌ El monto debe ser mayor a cero')
                 return redirect('custom_admin:caja_chica_list')
             
-            # Crear movimiento
+            # Validar saldo suficiente
+            if monto > caja_chica.monto_actual:
+                messages.error(request, f'❌ Saldo insuficiente. Disponible: Q. {caja_chica.monto_actual}')
+                return redirect('custom_admin:caja_chica_list')
+            
+            # Validar límite de gasto individual si existe
+            if caja_chica.limite_gasto_individual > 0 and monto > caja_chica.limite_gasto_individual:
+                messages.error(
+                    request, 
+                    f'❌ El monto excede el límite permitido de Q. {caja_chica.limite_gasto_individual}'
+                )
+                return redirect('custom_admin:caja_chica_list')
+            
+            # Calcular saldos
+            saldo_anterior = caja_chica.monto_actual
+            saldo_nuevo = saldo_anterior - monto
+            
+            # ✅ Crear movimiento CON tipo_movimiento='GASTO'
             movimiento = MovimientoCajaChica.objects.create(
                 caja_chica=caja_chica,
-                tipo_movimiento=tipo_movimiento,
-                categoria_gasto=categoria if tipo_movimiento == 'GASTO' else None,
+                tipo_movimiento='GASTO',  # ✅ ESTABLECER DIRECTAMENTE
+                categoria_gasto=categoria,
                 monto=monto,
+                saldo_anterior=saldo_anterior,
+                saldo_nuevo=saldo_nuevo,
                 descripcion=descripcion,
                 numero_comprobante=numero_comprobante,
                 comprobante_adjunto=comprobante,
                 usuario=get_authenticated_user(request)
             )
             
-            messages.success(request, 'Movimiento registrado exitosamente')
+            # Actualizar saldo de la caja
+            caja_chica.monto_actual = saldo_nuevo
+            caja_chica.save()
+            
+            messages.success(
+                request, 
+                f'✅ Gasto de Q. {monto} registrado exitosamente. Saldo actual: Q. {saldo_nuevo}'
+            )
+            
+            # Alertar si necesita reposición
+            if caja_chica.necesita_reposicion():
+                messages.warning(
+                    request,
+                    f'⚠️ La caja chica necesita reposición. Umbral: Q. {caja_chica.umbral_reposicion}'
+                )
             
         except Exception as e:
-            messages.error(request, f'Error al registrar movimiento: {str(e)}')
+            messages.error(request, f'❌ Error al registrar movimiento: {str(e)}')
+            logger.error(f"Error en registrar_gasto_caja_chica: {str(e)}")
     
     return redirect('custom_admin:caja_chica_list')
 
@@ -5659,30 +5702,53 @@ def reponer_caja_chica(request, caja_chica_id):
     
     if request.method == 'POST':
         try:
-            # El monto a reponer ya viene calculado
-            monto = caja_chica.monto_a_reponer()
+            # ✅ Obtener el monto del formulario (no calcularlo automáticamente)
+            monto = Decimal(request.POST.get('monto', 0))
+            observaciones = request.POST.get('observaciones', '').strip()
             
-            if monto <= 0:
-                messages.warning(request, 'No se requiere reposición')
+            # Validar estado de la caja
+            if caja_chica.estado != 'ACTIVA':
+                messages.error(request, '❌ La caja chica no está activa')
                 return redirect('custom_admin:caja_chica_list')
             
-            # Registrar movimiento de reposición
-            MovimientoCajaChica.objects.create(
+            # Validar monto
+            if monto <= 0:
+                messages.error(request, '❌ El monto debe ser mayor a cero')
+                return redirect('custom_admin:caja_chica_list')
+            
+            # Calcular saldos
+            saldo_anterior = caja_chica.monto_actual
+            saldo_nuevo = saldo_anterior + monto
+            
+            # Preparar descripción
+            descripcion = f'Reposición de fondo por Q. {monto}'
+            if observaciones:
+                descripcion += f' - {observaciones}'
+            
+            # ✅ Registrar movimiento de reposición CON saldos
+            movimiento = MovimientoCajaChica.objects.create(
                 caja_chica=caja_chica,
-                tipo_movimiento='REPOSICION',
+                tipo_movimiento='REPOSICION',  # ✅ ESTABLECER DIRECTAMENTE
                 monto=monto,
-                descripcion=f'Reposición de fondo - Llevar a ${caja_chica.monto_fondo}',
+                saldo_anterior=saldo_anterior,
+                saldo_nuevo=saldo_nuevo,
+                descripcion=descripcion,
                 usuario=get_authenticated_user(request)
             )
             
-            # Actualizar fecha de última reposición
+            # Actualizar saldo y fecha de última reposición
+            caja_chica.monto_actual = saldo_nuevo
             caja_chica.fecha_ultima_reposicion = timezone.now()
             caja_chica.save()
             
-            messages.success(request, f'Reposición de ${monto:.2f} registrada exitosamente')
+            messages.success(
+                request, 
+                f'✅ Reposición de Q. {monto} registrada exitosamente. Saldo actual: Q. {saldo_nuevo}'
+            )
             
         except Exception as e:
-            messages.error(request, f'Error al reponer caja chica: {str(e)}')
+            messages.error(request, f'❌ Error al reponer caja chica: {str(e)}')
+            logger.error(f"Error en reponer_caja_chica: {str(e)}")
     
     return redirect('custom_admin:caja_chica_list')
 
@@ -5829,4 +5895,59 @@ def producto_imprimir_codigo(request, producto_id):
             'success': False,
             'error': f'Error al procesar la impresión: {str(e)}'
         }, status=500)
-
+@auth_required
+def caja_chica_movimientos_api(request, caja_chica_id):
+    """API para obtener los movimientos de una caja chica"""
+    try:
+        from django.db.models import Sum
+        
+        caja = get_object_or_404(CajaChica, id=caja_chica_id)
+        
+        # Obtener movimientos (últimos 50)
+        movimientos = MovimientoCajaChica.objects.filter(
+            caja_chica=caja
+        ).select_related('usuario').order_by('-fecha_movimiento')[:50]
+        
+        # Calcular total de gastos
+        total_gastos = MovimientoCajaChica.objects.filter(
+            caja_chica=caja,
+            tipo_movimiento='GASTO'
+        ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
+        
+        # Preparar datos de movimientos
+        movimientos_data = []
+        for mov in movimientos:
+            movimientos_data.append({
+                'id': str(mov.id),
+                'fecha_movimiento': mov.fecha_movimiento.isoformat(),
+                'tipo_movimiento': mov.tipo_movimiento,
+                'categoria_gasto': mov.categoria_gasto or '',
+                'descripcion': mov.descripcion,
+                'monto': float(mov.monto),
+                'numero_comprobante': mov.numero_comprobante or '',
+                'comprobante_adjunto': mov.comprobante_adjunto.url if mov.comprobante_adjunto else None,
+                'saldo_anterior': float(mov.saldo_anterior) if mov.saldo_anterior else 0,
+                'saldo_nuevo': float(mov.saldo_nuevo) if mov.saldo_nuevo else 0,
+                'usuario': mov.usuario.get_full_name() if mov.usuario else 'Sistema',
+            })
+        
+        # Preparar respuesta
+        data = {
+            'id': str(caja.id),
+            'nombre': caja.nombre,
+            'codigo': caja.codigo or '',
+            'descripcion': caja.descripcion if hasattr(caja, 'descripcion') else '',
+            'monto_fondo': float(caja.monto_fondo),
+            'monto_inicial': float(caja.monto_fondo),  # Para compatibilidad
+            'monto_actual': float(caja.monto_actual),
+            'total_gastos': float(total_gastos),
+            'estado': caja.estado,
+            'responsable': caja.responsable.get_full_name() if caja.responsable else 'Sin asignar',
+            'movimientos': movimientos_data
+        }
+        
+        return JsonResponse(data)
+        
+    except Exception as e:
+        logger.error(f"Error en caja_chica_movimientos_api: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=400)

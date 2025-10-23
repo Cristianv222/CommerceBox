@@ -23,8 +23,8 @@ urlpatterns = [
     path('cajas/<uuid:pk>/abrir/', views.AperturaCajaView.as_view(), name='caja_abrir'),
     path('cajas/<uuid:pk>/cerrar/', views.CierreCajaView.as_view(), name='caja_cerrar'),
     
-    # Movimientos
-    path('cajas/<uuid:pk>/movimiento/', views.RegistrarMovimientoCajaView.as_view(), name='caja_movimiento'),
+    # Movimientos - CORREGIDO
+    path('cajas/<uuid:pk>/movimiento/', views.RegistrarMovimientoView.as_view(), name='caja_movimiento'),
     
     # ============================================================================
     # ARQUEOS

@@ -200,7 +200,8 @@ urlpatterns = [
     path('finanzas/caja-chica/crear/', views.crear_caja_chica, name='crear_caja_chica'),
     path('finanzas/caja-chica/<uuid:caja_chica_id>/gasto/', views.registrar_gasto_caja_chica, name='registrar_gasto_caja_chica'),
     path('finanzas/caja-chica/<uuid:caja_chica_id>/reponer/', views.reponer_caja_chica, name='reponer_caja_chica'),
-    
+    # Caja Chica
+    path('finanzas/caja-chica/<uuid:caja_chica_id>/movimientos/', views.caja_chica_movimientos_api, name='caja_chica_movimientos_api'),
     # ========================================
     # REPORTES
     # ========================================
