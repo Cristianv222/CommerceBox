@@ -37,7 +37,12 @@ urlpatterns = [
     path('devoluciones/crear/', views.DevolucionCreateView.as_view(), name='devolucion_create'),
     path('devoluciones/<uuid:pk>/', views.DevolucionDetailView.as_view(), name='devolucion_detail'),
     path('devoluciones/<uuid:pk>/aprobar/', views.AprobarDevolucionView.as_view(), name='devolucion_aprobar'),
+    path('api/obtener-productos-venta/',views.ObtenerProductosVentaView.as_view(),name='api_obtener_productos_venta'),
     
+    # Procesar devolución de producto individual
+    path('api/procesar-devolucion/',views.ProcesarDevolucionProductoView.as_view(),name='api_procesar_devolucion'),
+    # Aprobar o rechazar devolución
+    path('api/aprobar-devolucion/<uuid:devolucion_id>/',views.AprobarDevolucionView.as_view(),name='api_aprobar_devolucion'),
     # Reportes
     path('reportes/ventas/', views.ReporteVentasView.as_view(), name='reporte_ventas'),
     path('reportes/diario/', views.ReporteDiarioView.as_view(), name='reporte_diario'),

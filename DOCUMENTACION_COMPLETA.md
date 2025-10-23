@@ -4,10 +4,10 @@
 
 INFORMACIÓN GENERAL
 -------------------
-Fecha de generación: 2025-10-21 07:15:26
+Fecha de generación: 2025-10-23 07:06:08
 Ubicación: C:\Users\godoy\Desktop\CommerceBox
 Python Version: Python 3.13.7
-Pip Version: pip no disponible
+Pip Version: pip 25.2 from C:\Users\godoy\AppData\Local\Programs\Python\Python313\Lib\site-packages\pip (python 3.13)
 Entorno Virtual: ❌ NO ACTIVO
 Sistema Operativo: Windows
 Usuario: Desconocido
@@ -17,7 +17,8 @@ Usuario: Desconocido
 ================================================================================
 
 ├── apps/ (11 elementos)
-│   ├── authentication/ (16 elementos)
+│   ├── authentication/ (18 elementos)
+│   │   ├── __pycache__/ (excluido)
 │   │   ├── management/ (2 elementos)
 │   │   │   ├── commands/ (3 elementos)
 │   │   │   │   ├── __init__.py (0B)
@@ -40,7 +41,8 @@ Usuario: Desconocido
 │   │   ├── serializers.py (19.5KB)
 │   │   ├── signals.py (9.3KB)
 │   │   ├── tests.py (63.0B)
-│   │   ├── urls.py (5.4KB)
+│   │   ├── urls.py (5.7KB)
+│   │   ├── urls.py.backup (5.5KB)
 │   │   ├── utils.py (12.2KB)
 │   │   └── views.py (37.5KB)
 │   ├── custom_admin/ (10 elementos)
@@ -52,21 +54,27 @@ Usuario: Desconocido
 │   │   ├── apps.py (166.0B)
 │   │   ├── models.py (60.0B)
 │   │   ├── tests.py (63.0B)
-│   │   ├── urls.py (13.4KB)
+│   │   ├── urls.py (13.7KB)
 │   │   ├── urls.py.backup (12.8KB)
-│   │   └── views.py (220.4KB)
-│   ├── financial_management/ (19 elementos)
+│   │   └── views.py (235.0KB)
+│   ├── financial_management/ (23 elementos)
 │   │   ├── __pycache__/ (excluido)
 │   │   ├── accounting/ (4 elementos)
 │   │   │   ├── __init__.py (404.0B)
 │   │   │   ├── accounting_service.py (15.1KB)
 │   │   │   ├── cost_calculator.py (15.5KB)
 │   │   │   └── entry_generator.py (13.7KB)
-│   │   ├── cash_management/ (4 elementos)
-│   │   │   ├── __init__.py (352.0B)
+│   │   ├── cash_management/ (5 elementos)
+│   │   │   ├── __init__.py (475.0B)
+│   │   │   ├── auto_cash_service.py (5.2KB)
 │   │   │   ├── cash_calculator.py (12.9KB)
 │   │   │   ├── cash_service.py (12.8KB)
 │   │   │   └── reconciliation_service.py (14.5KB)
+│   │   ├── management/ (2 elementos)
+│   │   │   ├── commands/ (2 elementos)
+│   │   │   │   ├── __init__.py (0B)
+│   │   │   │   └── gestionar_cajas_automaticas.py (1.8KB)
+│   │   │   └── __init__.py (0B)
 │   │   ├── migrations/ (2 elementos)
 │   │   │   ├── 0001_initial.py (23.8KB)
 │   │   │   └── __init__.py (0B)
@@ -77,19 +85,22 @@ Usuario: Desconocido
 │   │   ├── forms.py (15.5KB)
 │   │   ├── mixins.py (5.1KB)
 │   │   ├── mixins.py.backup (3.5KB)
-│   │   ├── models.py (25.6KB)
+│   │   ├── models.py (25.3KB)
 │   │   ├── models.py.backup (22.2KB)
-│   │   ├── signals.py (13.7KB)
+│   │   ├── models.py.backup_before_remove_signal (25.6KB)
+│   │   ├── serializers.py.backup (5.6KB)
+│   │   ├── signals.py (8.2KB)
+│   │   ├── signals.py.backup (13.7KB)
 │   │   ├── tests.py (63.0B)
 │   │   ├── urls.py (3.1KB)
-│   │   ├── views.py (36.1KB)
+│   │   ├── views.py (35.2KB)
 │   │   ├── views.py.backup (33.3KB)
 │   │   └── views.py.backup2 (33.3KB)
 │   ├── hardware_integration/ (11 elementos)
 │   │   ├── api/ (3 elementos)
 │   │   │   ├── __init__.py (676.0B)
-│   │   │   ├── agente_views.py (19.7KB)
-│   │   │   └── urls.py (740.0B)
+│   │   │   ├── agente_views.py (30.9KB)
+│   │   │   └── urls.py (1.0KB)
 │   │   ├── migrations/ (3 elementos)
 │   │   │   ├── 0001_initial.py (38.4KB)
 │   │   │   ├── 0002_trabajoimpresion.py (8.3KB)
@@ -97,17 +108,18 @@ Usuario: Desconocido
 │   │   ├── printers/ (4 elementos)
 │   │   │   ├── __init__.py (0B)
 │   │   │   ├── cash_drawer_service.py (7.0KB)
-│   │   │   ├── printer_service.py (34.8KB)
+│   │   │   ├── printer_service.py (48.2KB)
 │   │   │   └── ticket_printer.py (8.8KB)
 │   │   ├── __init__.py (0B)
-│   │   ├── admin.py (17.8KB)
+│   │   ├── admin.py (32.6KB)
 │   │   ├── apps.py (182.0B)
 │   │   ├── forms.py (14.2KB)
 │   │   ├── middleware.py (820.0B)
 │   │   ├── models.py (33.9KB)
 │   │   ├── tests.py (63.0B)
 │   │   └── views.py (27.9KB)
-│   ├── inventory_management/ (15 elementos)
+│   ├── inventory_management/ (16 elementos)
+│   │   ├── __pycache__/ (excluido)
 │   │   ├── management/ (2 elementos)
 │   │   │   ├── commands/ (4 elementos)
 │   │   │   │   ├── __init__.py (0B)
@@ -158,7 +170,7 @@ Usuario: Desconocido
 │   │   ├── tests.py (63.0B)
 │   │   ├── url.py (471.0B)
 │   │   └── views.py (1.0KB)
-│   ├── reports_analytics/ (11 elementos)
+│   ├── reports_analytics/ (12 elementos)
 │   │   ├── generators/ (6 elementos)
 │   │   │   ├── __init__.py (507.0B)
 │   │   │   ├── dashboard_data.py (16.6KB)
@@ -176,9 +188,11 @@ Usuario: Desconocido
 │   │   ├── models.py (8.0KB)
 │   │   ├── signals.py (9.1KB)
 │   │   ├── tests.py (63.0B)
-│   │   ├── urls.py (6.0KB)
-│   │   └── views.py (31.9KB)
-│   ├── sales_management/ (14 elementos)
+│   │   ├── urls.py (6.1KB)
+│   │   ├── views.py (31.9KB)
+│   │   └── views.py.backup (49.8KB)
+│   ├── sales_management/ (17 elementos)
+│   │   ├── __pycache__/ (excluido)
 │   │   ├── invoicing/ (3 elementos)
 │   │   │   ├── __init__.py (0B)
 │   │   │   ├── invoice_service.py (4.8KB)
@@ -189,22 +203,26 @@ Usuario: Desconocido
 │   │   │   ├── 0003_alter_venta_numero_venta.py (671.0B)
 │   │   │   ├── 0004_alter_devolucion_descripcion.py (486.0B)
 │   │   │   └── __init__.py (0B)
-│   │   ├── pos/ (3 elementos)
+│   │   ├── pos/ (4 elementos)
 │   │   │   ├── __init__.py (0B)
-│   │   │   ├── pos_service.py (24.7KB)
+│   │   │   ├── pos_service.py (24.2KB)
+│   │   │   ├── pos_service.py.backup_duplicados (24.1KB)
 │   │   │   └── pricing_calculator.py (8.4KB)
 │   │   ├── __init__.py (110.0B)
 │   │   ├── admin.py (19.8KB)
 │   │   ├── apps.py (401.0B)
 │   │   ├── forms.py (15.7KB)
-│   │   ├── models.py (22.5KB)
+│   │   ├── models.py (23.3KB)
+│   │   ├── models.py.backup3 (22.5KB)
+│   │   ├── models.py.backup_final (22.5KB)
 │   │   ├── quintal_service.py (2.1KB)
 │   │   ├── signals.py (3.2KB)
 │   │   ├── tasks.py (2.1KB)
 │   │   ├── tests.py (63.0B)
 │   │   ├── urls.py (3.4KB)
 │   │   └── views.py (53.1KB)
-│   ├── stock_alert_system/ (11 elementos)
+│   ├── stock_alert_system/ (12 elementos)
+│   │   ├── __pycache__/ (excluido)
 │   │   ├── management/ (2 elementos)
 │   │   │   ├── commands/ (3 elementos)
 │   │   │   │   ├── __init__.py (0B)
@@ -224,7 +242,8 @@ Usuario: Desconocido
 │   │   ├── tasks.py (19.1KB)
 │   │   ├── tests.py (63.0B)
 │   │   └── views.py (66.0B)
-│   ├── system_configuration/ (11 elementos)
+│   ├── system_configuration/ (12 elementos)
+│   │   ├── __pycache__/ (excluido)
 │   │   ├── management/ (2 elementos)
 │   │   │   ├── commands/ (3 elementos)
 │   │   │   │   ├── __init__.py (0B)
@@ -244,20 +263,25 @@ Usuario: Desconocido
 │   │   ├── urls.py (2.3KB)
 │   │   └── views.py (23.6KB)
 │   └── context_processors.py (544.0B)
-├── commercebox/ (6 elementos)
+├── commercebox/ (8 elementos)
+│   ├── __pycache__/ (excluido)
 │   ├── __init__.py (257.0B)
 │   ├── asgi.py (415.0B)
 │   ├── celery.py (811.0B)
 │   ├── settings.py (18.2KB)
-│   ├── urls.py (1.8KB)
+│   ├── urls.py (2.3KB)
+│   ├── urls.py.backup (2.3KB)
 │   └── wsgi.py (415.0B)
 ├── logs/ (2 elementos)
-│   ├── commercebox.log (6.8MB)
+│   ├── commercebox.log (7.4MB)
 │   └── commercebox_audit.log (0B)
-├── media/ (5 elementos)
+├── media/ (6 elementos)
 │   ├── barcodes/ (2 elementos)
 │   │   ├── productos/ (0 elementos)
 │   │   └── quintales/ (0 elementos)
+│   ├── cajas_chicas/ (1 elementos)
+│   │   └── comprobantes/ (1 elementos)
+│   │       └── acer-predator-logo-4k-wallpaper-uhdpaper.com-4623a.jpg (1.7MB)
 │   ├── invoices/ (0 elementos)
 │   ├── marcas/ (4 elementos)
 │   │   ├── acer-predator-logo-4k-wallpaper-uhdpaper.com-4633a.jpg (1.9MB)
@@ -281,19 +305,19 @@ Usuario: Desconocido
 │   └── js/ (0 elementos)
 ├── templates/ (5 elementos)
 │   ├── authentication/ (1 elementos)
-│   │   └── login.html (22.4KB)
-│   ├── custom_admin/ (11 elementos)
+│   │   └── login.html (22.7KB)
+│   ├── custom_admin/ (13 elementos)
 │   │   ├── finanzas/ (7 elementos)
 │   │   │   ├── arqueo_detalle.html (13.9KB)
 │   │   │   ├── arqueos_list.html (22.8KB)
-│   │   │   ├── caja_chica_list.html (25.5KB)
+│   │   │   ├── caja_chica_list.html (39.1KB)
 │   │   │   ├── cajas_list.html (29.9KB)
 │   │   │   ├── cajas_list.html.backup (28.3KB)
 │   │   │   ├── cajas_list.html.new (5.0KB)
 │   │   │   └── movimientos.html (1.4KB)
 │   │   ├── inventario/ (6 elementos)
 │   │   │   ├── categorias_list.html (51.3KB)
-│   │   │   ├── entrada_inventario.html (90.1KB)
+│   │   │   ├── entrada_inventario.html (97.4KB)
 │   │   │   ├── marcas_list.html (53.0KB)
 │   │   │   ├── movimientos_list.html (42.9KB)
 │   │   │   ├── productos_list.html (77.9KB)
@@ -302,6 +326,7 @@ Usuario: Desconocido
 │   │   │   └── accesos.html (33.8KB)
 │   │   ├── pos/ (1 elementos)
 │   │   │   └── punto_venta.html (78.0KB)
+│   │   ├── reportes/ (0 elementos)
 │   │   ├── roles/ (1 elementos)
 │   │   │   └── list.html (54.0KB)
 │   │   ├── sesiones/ (1 elementos)
@@ -313,15 +338,16 @@ Usuario: Desconocido
 │   │   │   ├── devoluciones_list.html (37.0KB)
 │   │   │   ├── devoluciones_list.html.backup (18.5KB)
 │   │   │   └── list.html (52.0KB)
-│   │   ├── base_admin.html (33.8KB)
+│   │   ├── base_admin.html (38.1KB)
 │   │   ├── base_admin.html.backup (37.4KB)
-│   │   └── dashboard.html (28.9KB)
+│   │   ├── dashboard.html (28.9KB)
+│   │   └── dashboard.html.backup (28.9KB)
 │   ├── errors/ (0 elementos)
 │   ├── base.html (23.9KB)
-│   └── base_login.html (6.1KB)
+│   └── base_login.html (9.9KB)
 ├── .env (2.1KB)
 ├── .gitignore (2.0KB)
-├── celerybeat-schedule (2.5KB)
+├── celerybeat-schedule (6.5KB)
 ├── create_structure.ps1 (2.8KB)
 ├── docker-compose.yml (3.6KB)
 ├── dockerfile (1.3KB)
@@ -354,21 +380,21 @@ setup.cfg                 ❌ Faltante
 
 ESTADÍSTICAS POR EXTENSIÓN
 --------------------------
-.py                   191 archivos ( 76.1%)
-.html                  25 archivos ( 10.0%)
-.backup                 7 archivos (  2.8%)
-.jpg                    5 archivos (  2.0%)
-(sin extensión)         4 archivos (  1.6%)
-.png                    3 archivos (  1.2%)
-.jpeg                   3 archivos (  1.2%)
+.py                   195 archivos ( 73.3%)
+.html                  25 archivos (  9.4%)
+.backup                13 archivos (  4.9%)
+.jpg                    6 archivos (  2.3%)
+(sin extensión)         4 archivos (  1.5%)
+.png                    3 archivos (  1.1%)
+.jpeg                   3 archivos (  1.1%)
 .backup2                2 archivos (  0.8%)
 .log                    2 archivos (  0.8%)
 .md                     2 archivos (  0.8%)
 
 TOTALES
 -------
-Total de archivos: 251
-Total de directorios: 65
+Total de archivos: 266
+Total de directorios: 70
 
 ================================================================================
                            APLICACIONES DJANGO
@@ -380,7 +406,7 @@ App                  Estado     Básicos    Total      Archivos Existentes
 --------------------------------------------------------------------------------
 authentication       Completa   5/5      18         models.py, views.py, urls.py...
 custom_admin         Completa   5/5      6          models.py, views.py, urls.py...
-financial_management Completa   5/5      16         models.py, views.py, urls.py...
+financial_management Completa   5/5      18         models.py, views.py, urls.py...
 hardware_integration Parcial    4/5      14         models.py, views.py, admin.py...
 inventory_management Completa   5/5      24         models.py, views.py, urls.py...
 notifications        Parcial    4/5      9          models.py, views.py, admin.py...
@@ -512,7 +538,7 @@ storage/invoices/pdf/               ❌ Facturas PDF generadas
 storage/invoices/sent/              ❌ Facturas enviadas al SRI 
 storage/logs/                       ❌ Logs del sistema 
 storage/backups/                    ❌ Respaldos de BD 
-media/                              ✅ Archivos de media (19 archivos)
+media/                              ✅ Archivos de media (22 archivos)
 static/                             ✅ Archivos estáticos (1 archivos)
 uploads/                            ❌ Archivos subidos 
 
@@ -563,13 +589,13 @@ Documentación:           ⚠️  Iniciada (60%)
 
 ESTADÍSTICAS GENERALES
 ---------------------
-Total directorios:       65
-Total archivos:          251
+Total directorios:       70
+Total archivos:          266
 Apps Django:             10
-Archivos Python:         191
+Archivos Python:         195
 Paquetes instalados:     0
 
 ================================================================================
-Reporte generado automáticamente el 2025-10-21 07:15:26
+Reporte generado automáticamente el 2025-10-23 07:06:08
 Para actualizar, ejecuta: python documenter.py
 ================================================================================

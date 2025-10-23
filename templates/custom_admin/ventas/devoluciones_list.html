@@ -6,499 +6,117 @@
 {% block extra_css %}
 <style>
     /* ============================================
-       RESET Y CONFIGURACIÓN BASE
+       ESTILOS MEJORADOS PARA DEVOLUCIONES
        ============================================ */
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-
-    /* ============================================
-       TEMA CLARO CON EFECTO MÁRMOL (igual que login)
-       ============================================ */
-    body {
-        font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-        background: #f8fafc !important;
-        min-height: 100vh;
-        overflow-x: hidden;
-        position: relative;
-    }
-
-    /* Efecto mármol refinado con vetas finas - IGUAL QUE LOGIN */
-    body::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: 
-            /* Manchas sutiles de color */
-            radial-gradient(ellipse 800px 600px at 10% 20%, rgba(219, 234, 254, 0.4) 0%, transparent 50%),
-            radial-gradient(ellipse 900px 700px at 90% 80%, rgba(191, 219, 254, 0.35) 0%, transparent 50%),
-            radial-gradient(ellipse 600px 800px at 50% 50%, rgba(147, 197, 253, 0.15) 0%, transparent 50%),
-            
-            /* Vetas finas diagonales */
-            linear-gradient(135deg, transparent 0%, transparent 48%, rgba(96, 165, 250, 0.05) 49%, rgba(96, 165, 250, 0.08) 50%, rgba(96, 165, 250, 0.05) 51%, transparent 52%, transparent 100%),
-            linear-gradient(125deg, transparent 0%, transparent 68%, rgba(147, 197, 253, 0.06) 69%, rgba(147, 197, 253, 0.09) 70%, rgba(147, 197, 253, 0.06) 71%, transparent 72%, transparent 100%),
-            linear-gradient(115deg, transparent 0%, transparent 78%, rgba(191, 219, 254, 0.07) 79%, rgba(191, 219, 254, 0.1) 80%, rgba(191, 219, 254, 0.07) 81%, transparent 82%, transparent 100%),
-            linear-gradient(145deg, transparent 0%, transparent 38%, rgba(59, 130, 246, 0.04) 39%, rgba(59, 130, 246, 0.06) 40%, rgba(59, 130, 246, 0.04) 41%, transparent 42%, transparent 100%),
-            
-            /* Vetas muy finas adicionales */
-            linear-gradient(170deg, transparent 0%, transparent 88%, rgba(96, 165, 250, 0.03) 89%, rgba(96, 165, 250, 0.05) 90%, rgba(96, 165, 250, 0.03) 91%, transparent 92%, transparent 100%),
-            linear-gradient(105deg, transparent 0%, transparent 58%, rgba(147, 197, 253, 0.04) 59%, rgba(147, 197, 253, 0.06) 60%, rgba(147, 197, 253, 0.04) 61%, transparent 62%, transparent 100%),
-            
-            /* Base blanca pura con toque azul */
-            linear-gradient(180deg, #ffffff 0%, #f8fafc 40%, #f0f9ff 70%, #e0f2fe 100%);
-        background-size: 100% 100%;
-        z-index: 0;
-    }
-
-    /* Textura de grano fino - IGUAL QUE LOGIN */
-    body::after {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-image: 
-            repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(59, 130, 246, 0.01) 1px, rgba(59, 130, 246, 0.01) 2px),
-            repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(96, 165, 250, 0.01) 1px, rgba(96, 165, 250, 0.01) 2px);
-        opacity: 0.6;
-        z-index: 0;
-    }
     
-    /* ============================================
-       CARD PRINCIPAL CON GLASSMORPHISM CLARO
-       ============================================ */
-    .admin-card-dark {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(30px) saturate(180%);
-        border: 1px solid rgba(219, 234, 254, 0.5);
-        border-radius: 16px;
-        padding: 1.5rem;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 
-            0 4px 12px rgba(59, 130, 246, 0.08),
-            0 2px 4px rgba(0, 0, 0, 0.02);
-        z-index: 2;
-    }
-    
-    .admin-card-dark::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: 
-            radial-gradient(ellipse 400px 300px at 50% 50%, rgba(59, 130, 246, 0.03) 0%, transparent 60%);
-        pointer-events: none;
-        z-index: 0;
-    }
-    
-    .admin-card-dark::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 3px;
-        background: linear-gradient(90deg, 
-            rgba(96, 165, 250, 0.6) 0%, 
-            rgba(59, 130, 246, 0.8) 50%,
-            rgba(96, 165, 250, 0.6) 100%);
-        border-radius: 16px 16px 0 0;
-    }
-    
-    /* ============================================
-       HEADER
-       ============================================ */
-    .page-title {
-        font-size: 2rem;
-        font-weight: 800;
-        color: #0f172a;
-        margin-bottom: 1.5rem;
-        letter-spacing: -0.5px;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        position: relative;
-        z-index: 2;
-    }
-    
-    /* ============================================
-       TABLA CLARA
-       ============================================ */
-    .table-dark-custom {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-        position: relative;
-        z-index: 2;
-    }
-    
-    .table-dark-custom thead {
-        background: rgba(59, 130, 246, 0.08);
-        border-radius: 12px 12px 0 0;
-    }
-    
-    .table-dark-custom thead th {
-        padding: 1rem 1rem;
-        color: #1e293b;
-        font-weight: 700;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
-        white-space: nowrap;
-    }
-    
-    .table-dark-custom thead th:first-child {
-        border-radius: 12px 0 0 0;
-        width: 40px;
-    }
-    
-    .table-dark-custom thead th:last-child {
-        border-radius: 0 12px 0 0;
-    }
-    
-    .table-dark-custom tbody tr {
-        transition: all 0.2s ease;
-        border-bottom: 1px solid rgba(219, 234, 254, 0.3);
-        background: rgba(255, 255, 255, 0.5);
-    }
-    
-    .table-dark-custom tbody tr:hover {
-        background: rgba(59, 130, 246, 0.05);
-        transform: translateX(2px);
-    }
-    
-    .table-dark-custom tbody td {
-        padding: 1rem 1rem;
-        color: #1e293b;
-        font-size: 0.9rem;
-        vertical-align: middle;
-    }
-    
-    /* ============================================
-       CHECKBOXES PERSONALIZADOS
-       ============================================ */
-    .custom-checkbox {
-        width: 18px;
-        height: 18px;
-        border: 2px solid rgba(100, 116, 139, 0.4);
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s;
-        accent-color: #3b82f6;
-    }
-    
-    .custom-checkbox:checked {
-        background: #3b82f6;
-        border-color: #3b82f6;
-    }
-    
-    /* ============================================
-       NÚMEROS DE DEVOLUCIÓN (LINKS)
-       ============================================ */
-    .devolucion-numero {
-        color: #2563eb;
-        font-weight: 700;
-        text-decoration: none;
-        transition: all 0.2s;
-        cursor: pointer;
-    }
-    
-    .devolucion-numero:hover {
-        color: #3b82f6;
-        text-decoration: underline;
-    }
-    
-    /* ============================================
-       ICONOS DE MOTIVO
-       ============================================ */
-    .motivo-icon {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: #64748b;
-    }
-    
-    /* ============================================
-       MONTO EN ROJO
-       ============================================ */
-    .monto-devolucion {
-        color: #dc2626;
-        font-weight: 700;
-        font-size: 0.95rem;
-    }
-    
-    /* ============================================
-       BADGES DE ESTADO
-       ============================================ */
-    .badge-dark {
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        text-transform: uppercase;
-    }
-    
-    .badge-pendiente {
-        background: rgba(251, 146, 60, 0.15);
-        color: #ea580c;
-        border: 1px solid rgba(251, 146, 60, 0.3);
-    }
-    
-    .badge-aprobada {
-        background: rgba(34, 197, 94, 0.15);
-        color: #16a34a;
-        border: 1px solid rgba(34, 197, 94, 0.3);
-    }
-    
-    .badge-rechazada {
-        background: rgba(239, 68, 68, 0.15);
-        color: #dc2626;
-        border: 1px solid rgba(239, 68, 68, 0.3);
-    }
-    
-    /* ============================================
-       BOTONES
-       ============================================ */
-    .btn-primary-dark {
-        padding: 12px 24px;
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
-        border: none;
-        border-radius: 12px;
-        color: white;
-        font-size: 0.95rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        box-shadow: 
-            0 4px 12px rgba(59, 130, 246, 0.25),
-            0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-    
-    .btn-primary-dark:hover {
-        transform: translateY(-2px);
-        box-shadow: 
-            0 6px 20px rgba(59, 130, 246, 0.3),
-            0 4px 8px rgba(0, 0, 0, 0.08);
-    }
-    
-    .btn-sm-dark {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.85rem;
-        border-radius: 8px;
-        border: none;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-        font-weight: 600;
-    }
-    
-    .btn-info-dark {
-        background: rgba(59, 130, 246, 0.15);
-        color: #2563eb;
-        border: 1px solid rgba(59, 130, 246, 0.3);
-    }
-    
-    .btn-info-dark:hover {
-        background: rgba(59, 130, 246, 0.25);
-        transform: scale(1.05);
-    }
-    
-    .btn-success-dark {
-        background: rgba(34, 197, 94, 0.15);
-        color: #16a34a;
-        border: 1px solid rgba(34, 197, 94, 0.3);
-    }
-    
-    .btn-success-dark:hover {
-        background: rgba(34, 197, 94, 0.25);
-        transform: scale(1.05);
-    }
-    
-    .btn-danger-dark {
-        background: rgba(239, 68, 68, 0.15);
-        color: #dc2626;
-        border: 1px solid rgba(239, 68, 68, 0.3);
-    }
-    
-    .btn-danger-dark:hover {
-        background: rgba(239, 68, 68, 0.25);
-        transform: scale(1.05);
-    }
-    
-    /* ============================================
-       CONTADOR DE DEVOLUCIONES
-       ============================================ */
-    .devolucion-counter {
-        color: #64748b;
-        font-size: 0.9rem;
-        font-weight: 600;
-        padding: 0.5rem 0;
-        position: relative;
-        z-index: 2;
-    }
-    
-    /* ============================================
-       MODALES CLAROS
-       ============================================ */
-    .modal-content-dark {
+    /* Modal mejorado */
+    .modal-content {
         background: rgba(255, 255, 255, 0.98);
-        backdrop-filter: blur(30px);
+        backdrop-filter: blur(20px);
         border: 1px solid rgba(219, 234, 254, 0.5);
         border-radius: 20px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        color: #1e293b;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
     }
     
-    .modal-header-dark {
-        border-bottom: 1px solid rgba(59, 130, 246, 0.15);
-        padding: 1.25rem 1.5rem;
-    }
-    
-    .modal-title-dark {
-        color: #0f172a;
-        font-weight: 700;
-        font-size: 1.25rem;
-    }
-    
-    .modal-body-dark {
+    .modal-header {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(96, 165, 250, 0.05) 100%);
+        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
+        border-radius: 20px 20px 0 0;
         padding: 1.5rem;
     }
     
-    .modal-footer-dark {
-        border-top: 1px solid rgba(59, 130, 246, 0.15);
-        padding: 1rem 1.5rem;
-    }
-    
-    .btn-close-white {
-        filter: none;
-        opacity: 0.6;
-    }
-    
-    .btn-close-white:hover {
-        opacity: 1;
-    }
-    
-    /* ============================================
-       FORM CONTROLS CLAROS
-       ============================================ */
-    .form-control-dark {
-        background: rgba(248, 250, 252, 0.8);
-        border: 1.5px solid rgba(203, 213, 225, 0.5);
-        border-radius: 12px;
-        color: #1e293b;
-        padding: 0.75rem 1rem;
-        transition: all 0.3s;
-    }
-    
-    .form-control-dark:focus {
-        background: white;
-        border-color: rgba(96, 165, 250, 0.6);
-        box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.1);
-        outline: none;
+    .modal-title {
         color: #0f172a;
+        font-weight: 700;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
     }
     
-    .form-control-dark::placeholder {
-        color: #94a3b8;
+    .modal-title i {
+        font-size: 1.75rem;
+        color: #3b82f6;
     }
     
-    .form-label-dark {
-        color: #475569;
+    .modal-body {
+        padding: 2rem;
+    }
+    
+    /* Input group mejorado */
+    .search-input-group {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+    
+    .search-input-group label {
+        color: #1e293b;
         font-weight: 600;
-        font-size: 0.9rem;
+        font-size: 0.95rem;
         margin-bottom: 0.5rem;
         display: block;
     }
     
-    .form-select-dark {
-        background: rgba(248, 250, 252, 0.8);
-        border: 1.5px solid rgba(203, 213, 225, 0.5);
-        border-radius: 12px;
-        color: #1e293b;
-        padding: 0.75rem 1rem;
+    .search-input-wrapper {
+        display: flex;
+        gap: 0.75rem;
     }
     
-    .form-select-dark:focus {
-        background: white;
-        border-color: rgba(96, 165, 250, 0.6);
-        box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.1);
+    .search-input-wrapper input {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.9);
+        border: 2px solid rgba(203, 213, 225, 0.5);
+        border-radius: 12px;
+        padding: 0.875rem 1rem;
+        color: #1e293b;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .search-input-wrapper input:focus {
+        background: rgba(255, 255, 255, 1);
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
         outline: none;
     }
     
-    /* ============================================
-       INFO VENTA
-       ============================================ */
-    .info-venta-dark {
-        background: rgba(248, 250, 252, 0.8);
-        padding: 1rem;
-        border-radius: 10px;
-        border: 1px solid rgba(219, 234, 254, 0.5);
-        margin-top: 1rem;
+    .search-btn {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        border: none;
+        padding: 0.875rem 2rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+    }
+    
+    .search-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    }
+    
+    /* Card de información de venta */
+    .venta-info-card {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(96, 165, 250, 0.05) 100%);
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
         display: none;
+        animation: slideDown 0.3s ease;
     }
     
-    .info-venta-dark h6 {
-        color: #2563eb;
-        font-weight: 700;
-        margin-bottom: 0.75rem;
-    }
-    
-    .info-venta-dark p {
-        color: #475569;
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    /* ============================================
-       DETALLE MODAL
-       ============================================ */
-    .detail-group {
-        margin-bottom: 1rem;
-        padding: 0.75rem;
-        background: rgba(248, 250, 252, 0.6);
-        border-radius: 8px;
-        border-left: 3px solid #3b82f6;
-    }
-    
-    .detail-label {
-        color: #64748b;
-        font-size: 0.8rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 0.3rem;
-    }
-    
-    .detail-value {
-        color: #0f172a;
-        font-size: 1rem;
-        font-weight: 600;
-    }
-    
-    /* ============================================
-       ANIMACIONES
-       ============================================ */
-    @keyframes fadeInUp {
+    @keyframes slideDown {
         from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(-10px);
         }
         to {
             opacity: 1;
@@ -506,29 +124,359 @@
         }
     }
     
-    .admin-card-dark {
-        animation: fadeInUp 0.5s ease-out;
+    .venta-info-card h6 {
+        color: #0f172a;
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
-
-    /* ============================================
-       RESPONSIVE
-       ============================================ */
+    
+    .venta-info-card h6 i {
+        color: #3b82f6;
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+    }
+    
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .info-label {
+        font-weight: 600;
+        color: #64748b;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .info-value {
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 1rem;
+    }
+    
+    .info-value.highlight {
+        color: #3b82f6;
+        font-size: 1.25rem;
+    }
+    
+    /* Form controls mejorados */
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+        color: #1e293b;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    
+    .form-control,
+    .form-select {
+        background: rgba(255, 255, 255, 0.9);
+        border: 2px solid rgba(203, 213, 225, 0.5);
+        border-radius: 12px;
+        padding: 0.875rem 1rem;
+        color: #1e293b;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        width: 100%;
+    }
+    
+    .form-control:focus,
+    .form-select:focus {
+        background: rgba(255, 255, 255, 1);
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        outline: none;
+    }
+    
+    textarea.form-control {
+        resize: vertical;
+        min-height: 100px;
+    }
+    
+    .quantity-helper {
+        color: #64748b;
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .quantity-helper i {
+        color: #3b82f6;
+    }
+    
+    /* Botón de procesar */
+    .btn-procesar {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);
+        width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        cursor: pointer;
+    }
+    
+    .btn-procesar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 24px rgba(34, 197, 94, 0.4);
+        background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    }
+    
+    .btn-procesar i {
+        font-size: 1.25rem;
+    }
+    
+    /* Tabla mejorada */
+    .table-wrapper {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 
+            0 4px 12px rgba(59, 130, 246, 0.08),
+            0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+    
+    .table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .table thead {
+        background: rgba(59, 130, 246, 0.08);
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .table thead th {
+        padding: 1rem;
+        color: #1e293b;
+        font-weight: 700;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
+        white-space: nowrap;
+    }
+    
+    .table thead th:first-child {
+        border-radius: 12px 0 0 0;
+    }
+    
+    .table thead th:last-child {
+        border-radius: 0 12px 0 0;
+    }
+    
+    .table tbody tr {
+        transition: all 0.2s ease;
+        border-bottom: 1px solid rgba(219, 234, 254, 0.3);
+        background: rgba(255, 255, 255, 0.5);
+    }
+    
+    .table tbody tr:hover {
+        background: rgba(59, 130, 246, 0.05);
+        transform: translateX(2px);
+    }
+    
+    .table tbody td {
+        padding: 1rem;
+        color: #1e293b;
+        font-size: 0.9rem;
+        vertical-align: middle;
+    }
+    
+    /* Badges mejorados */
+    .badge {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .badge-pendiente {
+        background: rgba(251, 191, 36, 0.15);
+        color: #b45309;
+        border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+    
+    .badge-aprobada {
+        background: rgba(34, 197, 94, 0.15);
+        color: #15803d;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    
+    .badge-rechazada {
+        background: rgba(239, 68, 68, 0.15);
+        color: #b91c1c;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    
+    /* Botones de acción */
+    .btn-action {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.2s ease;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .btn-info {
+        background: rgba(59, 130, 246, 0.1);
+        color: #1e40af;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    
+    .btn-info:hover {
+        background: rgba(59, 130, 246, 0.2);
+        transform: translateY(-1px);
+    }
+    
+    .btn-success {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        color: white;
+        box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+    }
+    
+    .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+    }
+    
+    .btn-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+    }
+    
+    .btn-danger:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        color: #cbd5e1;
+        margin-bottom: 1rem;
+    }
+    
+    .empty-state p {
+        color: #64748b;
+        font-size: 1.1rem;
+    }
+    
+    /* Page header */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    
+    .page-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.5px;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .page-title i {
+        color: #3b82f6;
+    }
+    
+    .btn-nueva-devolucion {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        border: none;
+        padding: 0.875rem 1.75rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        cursor: pointer;
+    }
+    
+    .btn-nueva-devolucion:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    }
+    
+    /* Responsive */
     @media (max-width: 768px) {
-        .page-title {
-            font-size: 1.5rem;
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
         }
         
-        .admin-card-dark {
-            padding: 1rem;
+        .search-input-wrapper {
+            flex-direction: column;
         }
         
-        .table-dark-custom {
-            font-size: 0.85rem;
+        .info-grid {
+            grid-template-columns: 1fr;
         }
         
-        .table-dark-custom thead th,
-        .table-dark-custom tbody td {
-            padding: 0.75rem 0.5rem;
+        .action-buttons {
+            flex-direction: column;
+            width: 100%;
+        }
+        
+        .btn-action {
+            width: 100%;
+            justify-content: center;
         }
     }
 </style>
@@ -537,119 +485,83 @@
 {% block content %}
 <div class="container-fluid py-4">
     <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <h2 class="page-title">
-                <i class="bi bi-arrow-return-left me-2"></i>
-                Gestión de Devoluciones
-            </h2>
-        </div>
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="bi bi-arrow-return-left"></i>
+            Gestión de Devoluciones
+        </h1>
+        <button class="btn-nueva-devolucion" data-bs-toggle="modal" data-bs-target="#modalNuevaDevolucion">
+            <i class="bi bi-plus-circle"></i>
+            Nueva Devolución
+        </button>
     </div>
 
     <!-- Tabla de Devoluciones -->
-    <div class="admin-card-dark">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h5 class="mb-0" style="color: #f8fafc; font-weight: 700;">
-                <i class="bi bi-list-ul me-2"></i>
-                Lista de Devoluciones
-            </h5>
-            <button class="btn-primary-dark" data-bs-toggle="modal" data-bs-target="#modalNuevaDevolucion">
-                <i class="bi bi-plus-circle"></i>
-                Nueva Devolución
-            </button>
-        </div>
-
+    <div class="table-wrapper">
         <div class="table-responsive">
-            <table class="table-dark-custom">
+            <table class="table">
                 <thead>
                     <tr>
-                        <th><input type="checkbox" class="custom-checkbox" id="selectAll"></th>
-                        <th>NÚMERO DEVOLUCION</th>
-                        <th>FECHA DEVOLUCION</th>
-                        <th>VENTA</th>
-                        <th>PRODUCTO</th>
-                        <th>MOTIVO</th>
-                        <th>MONTO</th>
-                        <th>ESTADO</th>
-                        <th>USUARIO SOLICITA</th>
-                        <th>ACCIONES</th>
+                        <th>Número</th>
+                        <th>Venta Original</th>
+                        <th>Cliente</th>
+                        <th>Fecha</th>
+                        <th>Monto</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for devolucion in devoluciones %}
-                    <tr>
-                        <td><input type="checkbox" class="custom-checkbox row-checkbox"></td>
-                        <td>
-                            <a href="#" class="devolucion-numero" onclick="verDetalle('{{ devolucion.id }}'); return false;">
-                                {{ devolucion.numero_devolucion }}
-                            </a>
-                        </td>
-                        <td>{{ devolucion.fecha_devolucion|date:"d \de F \de Y \a \la\s H:i" }}</td>
-                        <td>{{ devolucion.venta_original.numero_venta }}</td>
-                        <td>{{ devolucion.detalle_venta.producto.nombre|default:"N/A" }}</td>
-                        <td>
-                            <span class="motivo-icon">
-                                {% if devolucion.motivo == 'DEFECTUOSO' %}
-                                    <span style="font-size: 1.1rem;">🔧</span>
-                                {% elif devolucion.motivo == 'EQUIVOCACION' %}
-                                    <span style="font-size: 1.1rem;">❌</span>
-                                {% elif devolucion.motivo == 'NO_SATISFECHO' %}
-                                    <span style="font-size: 1.1rem;">🔴</span>
-                                {% elif devolucion.motivo == 'VENCIDO' %}
-                                    <span style="font-size: 1.1rem;">⏰</span>
-                                {% else %}
-                                    <span style="font-size: 1.1rem;">❓</span>
-                                {% endif %}
-                                {{ devolucion.get_motivo_display }}
-                            </span>
-                        </td>
-                        <td><span class="monto-devolucion">${{ devolucion.monto_devolucion|floatformat:2 }}</span></td>
-                        <td>
-                            {% if devolucion.estado == 'PENDIENTE' %}
-                                <span class="badge-dark badge-pendiente">
-                                    <i class="bi bi-clock-fill"></i> PENDIENTE
-                                </span>
-                            {% elif devolucion.estado == 'APROBADA' %}
-                                <span class="badge-dark badge-aprobada">
-                                    <i class="bi bi-check-circle-fill"></i> APROBADA
-                                </span>
-                            {% else %}
-                                <span class="badge-dark badge-rechazada">
-                                    <i class="bi bi-x-circle-fill"></i> RECHAZADA
-                                </span>
-                            {% endif %}
-                        </td>
-                        <td>{{ devolucion.usuario_solicita.get_full_name|default:"Sistema" }} ({{ devolucion.usuario_solicita.codigo_empleado|default:"1234" }})</td>
-                        <td>
-                            <div class="btn-group" role="group">
-                                <button class="btn-sm-dark btn-info-dark" onclick="verDetalle('{{ devolucion.id }}')">
-                                    <i class="bi bi-eye"></i>
-                                </button>
-                                {% if devolucion.estado == 'PENDIENTE' %}
-                                <button class="btn-sm-dark btn-success-dark" onclick="aprobarDevolucion('{{ devolucion.id }}', '{{ devolucion.numero_devolucion }}')">
-                                    <i class="bi bi-check"></i>
-                                </button>
-                                <button class="btn-sm-dark btn-danger-dark" onclick="rechazarDevolucion('{{ devolucion.id }}', '{{ devolucion.numero_devolucion }}')">
-                                    <i class="bi bi-x"></i>
-                                </button>
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="10" class="text-center py-5" style="color: #64748b;">
-                            <i class="bi bi-inbox display-4"></i>
-                            <p class="mt-3">No hay devoluciones registradas</p>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
+    {% for devolucion in devoluciones %}
+    <tr>
+        <td><strong>{{ devolucion.numero_devolucion }}</strong></td>
+        <td>{{ devolucion.venta_original.numero_venta }}</td>
+        <td>{{ devolucion.venta_original.cliente.nombre_completo|default:"Cliente General" }}</td>
+        <td>{{ devolucion.fecha_devolucion|date:"d/m/Y H:i" }}</td>
+        <td><strong>${{ devolucion.monto_devolucion|floatformat:2 }}</strong></td>
+        <td>
+            {% if devolucion.estado == 'PENDIENTE' %}
+            <span class="badge badge-pendiente">
+                <i class="bi bi-clock-fill"></i> PENDIENTE
+            </span>
+            {% elif devolucion.estado == 'APROBADA' %}
+            <span class="badge badge-aprobada">
+                <i class="bi bi-check-circle-fill"></i> APROBADA
+            </span>
+            {% else %}
+            <span class="badge badge-rechazada">
+                <i class="bi bi-x-circle-fill"></i> RECHAZADA
+            </span>
+            {% endif %}
+        </td>
+        <td>
+            <div class="action-buttons">
+                <button class="btn-action btn-info" onclick="verDetalle('{{ devolucion.id }}')">
+                    <i class="bi bi-eye"></i> Ver
+                </button>
+                {% if devolucion.estado == 'PENDIENTE' %}
+                <button class="btn-action btn-success" onclick="aprobarDevolucion('{{ devolucion.id }}', '{{ devolucion.numero_devolucion }}')">
+                    <i class="bi bi-check-circle"></i> Aprobar
+                </button>
+                <button class="btn-action btn-danger" onclick="rechazarDevolucion('{{ devolucion.id }}', '{{ devolucion.numero_devolucion }}')">
+                    <i class="bi bi-x-circle"></i> Rechazar
+                </button>
+                {% endif %}
+            </div>
+        </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="7">
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p>No hay devoluciones registradas</p>
+            </div>
+        </td>
+    </tr>
+    {% endfor %}
+</tbody>
             </table>
-        </div>
-
-        <div class="devolucion-counter mt-3">
-            {{ devoluciones|length }} Devolucion{{ devoluciones|length|pluralize:"es" }}
         </div>
     </div>
 </div>
@@ -657,97 +569,98 @@
 <!-- Modal Nueva Devolución -->
 <div class="modal fade" id="modalNuevaDevolucion" tabindex="-1">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content modal-content-dark">
-            <div class="modal-header modal-header-dark">
-                <h5 class="modal-title modal-title-dark">
-                    <i class="bi bi-plus-circle me-2"></i>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-arrow-return-left"></i>
                     Nueva Devolución
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{% url 'custom_admin:devolucion_crear' %}" id="formDevolucion">
-                {% csrf_token %}
-                <div class="modal-body modal-body-dark">
-                    <div class="row">
-                        <div class="col-md-8 mb-3">
-                            <label class="form-label-dark">Número de Venta</label>
-                            <input type="text" class="form-control-dark" name="numero_venta" id="numero_venta" 
-                                   placeholder="Ej: VNT-2025-00112" required>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label-dark">&nbsp;</label>
-                            <button type="button" class="btn-primary-dark w-100" onclick="buscarVenta()">
-                                <i class="bi bi-search"></i>Buscar
+            <div class="modal-body">
+                <form id="formDevolucion">
+                    {% csrf_token %}
+                    
+                    <!-- Búsqueda de Venta -->
+                    <div class="search-input-group">
+                        <label>Número de Venta</label>
+                        <div class="search-input-wrapper">
+                            <input type="text" id="numeroVenta" placeholder="Ej: VNT-2025-00112">
+                            <button type="button" class="search-btn" onclick="buscarVenta()">
+                                <i class="bi bi-search"></i> Buscar
                             </button>
                         </div>
                     </div>
 
-                    <!-- Información de la venta -->
-                    <div id="infoVenta" class="info-venta-dark">
-                        <h6><i class="bi bi-info-circle me-2"></i>Información de la Venta</h6>
-                        <div id="ventaDetalles"></div>
+                    <!-- Info de la Venta -->
+                    <div id="infoVenta" class="venta-info-card">
+                        <h6>
+                            <i class="bi bi-receipt"></i>
+                            Información de la Venta
+                        </h6>
+                        <div id="ventaDetalles" class="info-grid"></div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label-dark">Motivo de Devolución</label>
-                            <select class="form-select-dark form-control-dark" name="motivo" required>
-                                <option value="DEFECTUOSO">🔧 Producto Defectuoso</option>
-                                <option value="EQUIVOCACION">❌ Equivocación en venta</option>
-                                <option value="NO_SATISFECHO">🔴 Cliente no satisfecho</option>
-                                <option value="VENCIDO">⏰ Producto vencido</option>
-                                <option value="OTRO">❓ Otro motivo</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label-dark">Devolver al inventario</label>
-                            <div class="form-check form-switch mt-2">
-                                <input class="form-check-input custom-checkbox" type="checkbox" name="devolver_inventario" 
-                                       id="devolver_inventario" checked style="width: 48px; height: 24px;">
-                                <label class="form-check-label" for="devolver_inventario" style="color: #cbd5e1; margin-left: 0.5rem;">
-                                    Sí, devolver al inventario
-                                </label>
-                            </div>
+                    <!-- Selección de Producto -->
+                    <div id="productosSection" style="display: none;" class="form-group">
+                        <label>Producto a Devolver</label>
+                        <select class="form-select" id="productoSelect" onchange="seleccionarProducto()">
+                            <option value="">Seleccione un producto</option>
+                        </select>
+                    </div>
+
+                    <!-- Cantidad a Devolver -->
+                    <div id="cantidadSection" style="display: none;" class="form-group">
+                        <label>Cantidad a Devolver</label>
+                        <input type="number" class="form-control" id="cantidadDevolver" min="1" step="0.001">
+                        <div class="quantity-helper">
+                            <i class="bi bi-info-circle"></i>
+                            Cantidad disponible: <strong id="cantidadDisponible">0</strong>
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label-dark">Descripción / Observaciones</label>
-                        <textarea class="form-control-dark" name="observaciones" rows="3" 
-                                  placeholder="Describa el motivo de la devolución..." required></textarea>
+                    <!-- Motivo -->
+                    <div class="form-group">
+                        <label>Motivo de Devolución</label>
+                        <select class="form-select" name="motivo" required>
+                            <option value="">Seleccione un motivo</option>
+                            <option value="DEFECTUOSO">Producto Defectuoso</option>
+                            <option value="EQUIVOCACION">Equivocación en la Compra</option>
+                            <option value="NO_SATISFECHO">No Satisface Expectativas</option>
+                            <option value="VENCIDO">Producto Vencido</option>
+                            <option value="OTRO">Otro</option>
+                        </select>
                     </div>
-                </div>
-                <div class="modal-footer modal-footer-dark">
-                    <button type="button" class="btn-sm-dark btn-danger-dark" data-bs-dismiss="modal">
-                        <i class="bi bi-x-circle"></i>Cancelar
+
+                    <!-- Observaciones -->
+                    <div class="form-group">
+                        <label>Descripción / Observaciones</label>
+                        <textarea class="form-control" name="observaciones" placeholder="Describa el motivo de la devolución..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-procesar">
+                        <i class="bi bi-check-circle"></i>
+                        Procesar Devolución
                     </button>
-                    <button type="submit" class="btn-primary-dark">
-                        <i class="bi bi-save"></i>Guardar Devolución
-                    </button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Modal Ver Detalle -->
+<!-- Modal Detalle -->
 <div class="modal fade" id="modalDetalle" tabindex="-1">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content modal-content-dark">
-            <div class="modal-header modal-header-dark">
-                <h5 class="modal-title modal-title-dark">
-                    <i class="bi bi-info-circle me-2"></i>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-text"></i>
                     Detalle de Devolución
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body modal-body-dark" id="detalleContent">
-                <!-- Se llenará dinámicamente -->
-            </div>
-            <div class="modal-footer modal-footer-dark">
-                <button type="button" class="btn-sm-dark btn-info-dark" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle"></i>Cerrar
-                </button>
+            <div class="modal-body">
+                <div id="detalleContent"></div>
             </div>
         </div>
     </div>
@@ -756,24 +669,24 @@
 <!-- Modal Aprobar -->
 <div class="modal fade" id="modalAprobar" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content modal-content-dark">
-            <div class="modal-header modal-header-dark">
-                <h5 class="modal-title modal-title-dark">
-                    <i class="bi bi-check-circle me-2"></i>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-check-circle"></i>
                     Aprobar Devolución
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body modal-body-dark">
-                <p style="color: #cbd5e1;">¿Está seguro que desea aprobar la devolución <strong id="numeroAprobar"></strong>?</p>
-                <p style="color: #94a3b8; font-size: 0.9rem;">El producto será devuelto al inventario si corresponde.</p>
+            <div class="modal-body">
+                <p>¿Está seguro que desea aprobar la devolución <strong id="numeroAprobar"></strong>?</p>
+                <p style="color: #64748b; font-size: 0.9rem;">Esta acción reintegrará los productos al inventario y procesará el reembolso.</p>
             </div>
-            <div class="modal-footer modal-footer-dark">
-                <button type="button" class="btn-sm-dark btn-danger-dark" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle"></i>Cancelar
+            <div class="modal-footer">
+                <button type="button" class="btn-action btn-danger" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Cancelar
                 </button>
-                <button type="button" class="btn-primary-dark" onclick="confirmarAprobar()">
-                    <i class="bi bi-check-circle"></i>Sí, Aprobar
+                <button type="button" class="btn-action btn-success" onclick="confirmarAprobar()">
+                    <i class="bi bi-check-circle"></i> Sí, Aprobar
                 </button>
             </div>
         </div>
@@ -783,66 +696,163 @@
 <!-- Modal Rechazar -->
 <div class="modal fade" id="modalRechazar" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content modal-content-dark">
-            <div class="modal-header modal-header-dark">
-                <h5 class="modal-title modal-title-dark">
-                    <i class="bi bi-x-circle me-2"></i>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-x-circle"></i>
                     Rechazar Devolución
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body modal-body-dark">
-                <p style="color: #cbd5e1;">¿Está seguro que desea rechazar la devolución <strong id="numeroRechazar"></strong>?</p>
-                <label class="form-label-dark">Motivo del rechazo</label>
-                <textarea class="form-control-dark" id="motivoRechazo" rows="3" placeholder="Explique por qué se rechaza esta devolución..."></textarea>
+            <div class="modal-body">
+                <p>¿Está seguro que desea rechazar la devolución <strong id="numeroRechazar"></strong>?</p>
+                <div class="form-group">
+                    <label>Motivo del Rechazo</label>
+                    <textarea class="form-control" id="motivoRechazo" placeholder="Explique el motivo del rechazo..." required></textarea>
+                </div>
             </div>
-            <div class="modal-footer modal-footer-dark">
-                <button type="button" class="btn-sm-dark btn-info-dark" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle"></i>Cancelar
+            <div class="modal-footer">
+                <button type="button" class="btn-action btn-info" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Cancelar
                 </button>
-                <button type="button" class="btn-primary-dark" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(220, 38, 38, 0.95) 100%);" onclick="confirmarRechazar()">
-                    <i class="bi bi-x-circle"></i>Sí, Rechazar
+                <button type="button" class="btn-action btn-danger" onclick="confirmarRechazar()">
+                    <i class="bi bi-x-circle"></i> Sí, Rechazar
                 </button>
             </div>
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
 let devolucionIdActual = null;
+let ventaActual = null;
+let productoSeleccionado = null;
 
-// Buscar información de la venta
+// Buscar venta y mostrar sus productos
 async function buscarVenta() {
-    const numeroVenta = document.getElementById('numero_venta').value.trim();
+    const numeroVenta = document.getElementById('numeroVenta').value.trim();
     
     if (!numeroVenta) {
         alert('Por favor ingrese un número de venta');
         return;
     }
-
+    
     try {
-        const response = await fetch(`/panel/api/ventas/buscar/${numeroVenta}/`);
+        const response = await fetch(`/panel/ventas/api/buscar-venta/?numero=${numeroVenta}`);
         const data = await response.json();
-
+        
         if (data.success) {
-            const venta = data.venta;
-            document.getElementById('infoVenta').style.display = 'block';
-            document.getElementById('ventaDetalles').innerHTML = `
-                <p class="mb-1"><strong>Cliente:</strong> ${venta.cliente}</p>
-                <p class="mb-1"><strong>Fecha:</strong> ${venta.fecha}</p>
-                <p class="mb-0"><strong>Total:</strong> $${venta.total}</p>
-            `;
+            ventaActual = data.venta;
+            mostrarInfoVenta(data.venta);
+            mostrarProductos(data.venta.productos);
         } else {
             alert('Venta no encontrada');
-            document.getElementById('infoVenta').style.display = 'none';
         }
     } catch (error) {
         console.error('Error:', error);
         alert('Error al buscar la venta');
     }
 }
+
+// Mostrar información de la venta
+function mostrarInfoVenta(venta) {
+    const ventaDetalles = document.getElementById('ventaDetalles');
+    ventaDetalles.innerHTML = `
+        <div class="info-item">
+            <span class="info-label">Cliente</span>
+            <span class="info-value">${venta.cliente}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Fecha</span>
+            <span class="info-value">${venta.fecha}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Total</span>
+            <span class="info-value highlight">$${venta.total}</span>
+        </div>
+    `;
+    document.getElementById('infoVenta').style.display = 'block';
+}
+
+// Mostrar productos disponibles
+function mostrarProductos(productos) {
+    const select = document.getElementById('productoSelect');
+    select.innerHTML = '<option value="">Seleccione un producto</option>';
+    
+    productos.forEach(producto => {
+        const option = document.createElement('option');
+        option.value = JSON.stringify(producto);
+        option.textContent = `${producto.nombre} - Cant: ${producto.cantidad} - $${producto.precio}`;
+        select.appendChild(option);
+    });
+    
+    document.getElementById('productosSection').style.display = 'block';
+}
+
+// Seleccionar producto
+function seleccionarProducto() {
+    const select = document.getElementById('productoSelect');
+    if (select.value) {
+        productoSeleccionado = JSON.parse(select.value);
+        document.getElementById('cantidadDisponible').textContent = productoSeleccionado.cantidad;
+        document.getElementById('cantidadDevolver').max = productoSeleccionado.cantidad;
+        document.getElementById('cantidadDevolver').value = 1;
+        document.getElementById('cantidadSection').style.display = 'block';
+    } else {
+        document.getElementById('cantidadSection').style.display = 'none';
+    }
+}
+
+// Procesar devolución
+document.getElementById('formDevolucion').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    if (!ventaActual || !productoSeleccionado) {
+        alert('Por favor busque una venta y seleccione un producto');
+        return;
+    }
+    
+    const cantidadDevolver = parseFloat(document.getElementById('cantidadDevolver').value);
+    
+    if (!cantidadDevolver || cantidadDevolver < 0.001 || cantidadDevolver > productoSeleccionado.cantidad) {
+        alert('Cantidad inválida');
+        return;
+    }
+    
+    const formData = {
+        venta_id: ventaActual.id,
+        detalle_venta_id: productoSeleccionado.id,
+        cantidad_devuelta: cantidadDevolver,
+        motivo: document.querySelector('[name="motivo"]').value,
+        descripcion: document.querySelector('[name="observaciones"]').value
+    };
+    
+    try {
+        const response = await fetch('/panel/ventas/api/procesar-devolucion/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`Devolución ${data.numero_devolucion} registrada exitosamente`);
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Error desconocido'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al procesar la devolución');
+    }
+});
 
 // Ver detalle de devolución
 async function verDetalle(id) {
@@ -853,78 +863,89 @@ async function verDetalle(id) {
         if (data.success) {
             const dev = data.devolucion;
             
-            // Determinar icono del motivo
+            // Iconos según motivo
             let motivoIcon = '❓';
             if (dev.motivo === 'DEFECTUOSO') motivoIcon = '🔧';
             else if (dev.motivo === 'EQUIVOCACION') motivoIcon = '❌';
-            else if (dev.motivo === 'NO_SATISFECHO') motivoIcon = '🔴';
+            else if (dev.motivo === 'NO_SATISFECHO') motivoIcon = '😞';
             else if (dev.motivo === 'VENCIDO') motivoIcon = '⏰';
+            else if (dev.motivo === 'OTRO') motivoIcon = '📝';
             
-            // Estado badge
+            // Badge según estado
             let estadoBadge = '';
             if (dev.estado === 'PENDIENTE') {
-                estadoBadge = '<span class="badge-dark badge-pendiente"><i class="bi bi-clock-fill"></i> PENDIENTE</span>';
+                estadoBadge = '<span class="badge badge-pendiente"><i class="bi bi-clock-fill"></i> PENDIENTE</span>';
             } else if (dev.estado === 'APROBADA') {
-                estadoBadge = '<span class="badge-dark badge-aprobada"><i class="bi bi-check-circle-fill"></i> APROBADA</span>';
+                estadoBadge = '<span class="badge badge-aprobada"><i class="bi bi-check-circle-fill"></i> APROBADA</span>';
             } else {
-                estadoBadge = '<span class="badge-dark badge-rechazada"><i class="bi bi-x-circle-fill"></i> RECHAZADA</span>';
+                estadoBadge = '<span class="badge badge-rechazada"><i class="bi bi-x-circle-fill"></i> RECHAZADA</span>';
             }
             
             document.getElementById('detalleContent').innerHTML = `
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="detail-group">
-                            <div class="detail-label">Número Devolución</div>
-                            <div class="detail-value">${dev.numero_devolucion}</div>
+                <div class="venta-info-card" style="display: block;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                        <div class="info-item">
+                            <span class="info-label">Número Devolución</span>
+                            <span class="info-value">${dev.numero_devolucion}</span>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="detail-group">
-                            <div class="detail-label">Estado</div>
-                            <div class="detail-value">${estadoBadge}</div>
+                        <div class="info-item">
+                            <span class="info-label">Estado</span>
+                            <span class="info-value">${estadoBadge}</span>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="detail-group">
-                            <div class="detail-label">Venta Original</div>
-                            <div class="detail-value">${dev.venta_original}</div>
+                        <div class="info-item">
+                            <span class="info-label">Venta Original</span>
+                            <span class="info-value">${dev.venta_original}</span>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="detail-group">
-                            <div class="detail-label">Monto</div>
-                            <div class="detail-value monto-devolucion">$${dev.monto}</div>
+                        <div class="info-item">
+                            <span class="info-label">Cliente</span>
+                            <span class="info-value">${dev.cliente}</span>
                         </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="detail-group">
-                            <div class="detail-label">Motivo</div>
-                            <div class="detail-value">${motivoIcon} ${dev.motivo_display}</div>
+                        <div class="info-item">
+                            <span class="info-label">Producto</span>
+                            <span class="info-value">${dev.producto}</span>
                         </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="detail-group">
-                            <div class="detail-label">Descripción</div>
-                            <div class="detail-value">${dev.descripcion}</div>
+                        <div class="info-item">
+                            <span class="info-label">Cantidad Devuelta</span>
+                            <span class="info-value">${dev.cantidad_devuelta}</span>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="detail-group">
-                            <div class="detail-label">Usuario Solicita</div>
-                            <div class="detail-value">${dev.usuario_solicita}</div>
+                        <div class="info-item">
+                            <span class="info-label">Monto</span>
+                            <span class="info-value highlight">$${dev.monto}</span>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="detail-group">
-                            <div class="detail-label">Fecha Solicitud</div>
-                            <div class="detail-value">${dev.fecha_devolucion}</div>
+                        <div class="info-item">
+                            <span class="info-label">Motivo</span>
+                            <span class="info-value">${motivoIcon} ${dev.motivo_display}</span>
                         </div>
+                        <div class="info-item" style="grid-column: 1 / -1;">
+                            <span class="info-label">Descripción</span>
+                            <span class="info-value">${dev.descripcion}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Usuario Solicita</span>
+                            <span class="info-value">${dev.usuario_solicita}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Fecha Solicitud</span>
+                            <span class="info-value">${dev.fecha_devolucion}</span>
+                        </div>
+                        ${dev.usuario_aprueba ? `
+                        <div class="info-item">
+                            <span class="info-label">Usuario Aprueba</span>
+                            <span class="info-value">${dev.usuario_aprueba}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Fecha Procesado</span>
+                            <span class="info-value">${dev.fecha_procesado}</span>
+                        </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
             
             const modal = new bootstrap.Modal(document.getElementById('modalDetalle'));
             modal.show();
+        } else {
+            alert('Error al cargar el detalle: ' + data.error);
         }
     } catch (error) {
         console.error('Error:', error);
@@ -942,12 +963,13 @@ function aprobarDevolucion(id, numero) {
 
 async function confirmarAprobar() {
     try {
-        const response = await fetch(`/panel/api/devoluciones/${devolucionIdActual}/aprobar/`, {
+        const response = await fetch(`/panel/ventas/api/aprobar-devolucion/${devolucionIdActual}/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            }
+            },
+            body: JSON.stringify({ decision: 'APROBADA' })
         });
         
         const data = await response.json();
@@ -974,21 +996,24 @@ function rechazarDevolucion(id, numero) {
 }
 
 async function confirmarRechazar() {
-    const motivo = document.getElementById('motivoRechazo').value.trim();
+    const observaciones = document.getElementById('motivoRechazo').value.trim();
     
-    if (!motivo) {
+    if (!observaciones) {
         alert('Por favor ingrese el motivo del rechazo');
         return;
     }
     
     try {
-        const response = await fetch(`/panel/api/devoluciones/${devolucionIdActual}/rechazar/`, {
+        const response = await fetch(`/panel/ventas/api/aprobar-devolucion/${devolucionIdActual}/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
             },
-            body: JSON.stringify({ motivo: motivo })
+            body: JSON.stringify({ 
+                decision: 'RECHAZADA',
+                observaciones: observaciones
+            })
         });
         
         const data = await response.json();
@@ -1005,16 +1030,14 @@ async function confirmarRechazar() {
     }
 }
 
-// Select all checkboxes
-document.getElementById('selectAll')?.addEventListener('change', function() {
-    const checkboxes = document.querySelectorAll('.row-checkbox');
-    checkboxes.forEach(cb => cb.checked = this.checked);
-});
-
 // Limpiar formulario al cerrar modal
-document.getElementById('modalNuevaDevolucion').addEventListener('hidden.bs.modal', function () {
+document.getElementById('modalNuevaDevolucion')?.addEventListener('hidden.bs.modal', function () {
     document.getElementById('formDevolucion').reset();
     document.getElementById('infoVenta').style.display = 'none';
+    document.getElementById('productosSection').style.display = 'none';
+    document.getElementById('cantidadSection').style.display = 'none';
+    ventaActual = null;
+    productoSeleccionado = null;
 });
 </script>
 {% endblock %}

@@ -171,7 +171,9 @@ urlpatterns = [
     path('api/devoluciones/', views.api_devoluciones_list, name='api_devoluciones_list'),
     path('api/devoluciones/<uuid:devolucion_id>/', views.devolucion_detalle, name='devolucion_detalle'),
     path('api/ventas/buscar/<str:numero>/', views.api_buscar_venta, name='api_buscar_venta'),
-    
+    path('ventas/api/buscar-venta/', views.buscar_venta_api, name='buscar_venta_api'),
+    path('ventas/api/procesar-devolucion/', views.procesar_devolucion_api, name='procesar_devolucion_api'),
+    path('ventas/api/aprobar-devolucion/<uuid:id>/', views.aprobar_devolucion_api, name='aprobar_devolucion_api'),
     # ========================================
     # FINANZAS - Dashboard
     # ========================================

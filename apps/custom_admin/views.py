@@ -17,6 +17,7 @@ import logging
 import json
 from django.http import JsonResponse
 from django.db.models import Sum, Q
+from apps.sales_management.models import Venta, DetalleVenta, Devolucion
 import logging
 
 logger = logging.getLogger(__name__)
@@ -2554,6 +2555,7 @@ def devolucion_aprobar(request, devolucion_id):
 def devolucion_detalle(request, devolucion_id):
     """Ver detalle de una devolución"""
     from apps.sales_management.models import Devolucion
+    import json
     
     try:
         devolucion = Devolucion.objects.select_related(
@@ -2564,26 +2566,104 @@ def devolucion_detalle(request, devolucion_id):
             'usuario_aprueba'
         ).get(id=devolucion_id)
         
-        return JsonResponse({
+        # Construir el diccionario con todos los valores como strings/números básicos
+        data = {
             'success': True,
             'devolucion': {
-                'numero': devolucion.numero_devolucion,
-                'venta': devolucion.venta_original.numero_venta,
-                'cliente': f"{devolucion.venta_original.cliente.nombres} {devolucion.venta_original.cliente.apellidos}" if devolucion.venta_original.cliente else "N/A",
-                'fecha': devolucion.fecha_devolucion.strftime('%Y-%m-%d %H:%M'),
-                'motivo': devolucion.get_motivo_display(),
-                'descripcion': devolucion.descripcion,
+                'id': str(devolucion.id),
+                'numero_devolucion': str(devolucion.numero_devolucion),
+                'venta_original': str(devolucion.venta_original.numero_venta),
+                'cliente': str(devolucion.venta_original.cliente.nombre_completo if devolucion.venta_original.cliente else 'Cliente General'),
+                'producto': str(devolucion.detalle_venta.producto.nombre),
+                'cantidad_devuelta': float(devolucion.cantidad_devuelta),
                 'monto': float(devolucion.monto_devolucion),
-                'estado': devolucion.estado,
-                'solicitado_por': devolucion.usuario_solicita.username if devolucion.usuario_solicita else 'N/A',
-                'aprobado_por': devolucion.usuario_aprueba.username if hasattr(devolucion, 'usuario_aprueba') and devolucion.usuario_aprueba else 'N/A',
-                'devolver_inventario': devolucion.devolver_inventario if hasattr(devolucion, 'devolver_inventario') else False
+                'motivo': str(devolucion.motivo),
+                'motivo_display': str(devolucion.get_motivo_display()),
+                'descripcion': str(devolucion.descripcion),
+                'estado': str(devolucion.estado),
+                'estado_display': str(devolucion.get_estado_display()),
+                'fecha_devolucion': devolucion.fecha_devolucion.strftime('%d/%m/%Y %H:%M'),
+                'usuario_solicita': str(devolucion.usuario_solicita.username) if devolucion.usuario_solicita else 'N/A',
+                'usuario_aprueba': str(devolucion.usuario_aprueba.username) if devolucion.usuario_aprueba else None,
+                'fecha_procesado': devolucion.fecha_procesado.strftime('%d/%m/%Y %H:%M') if devolucion.fecha_procesado else None
             }
-        })
+        }
+        
+        # Serializar manualmente y retornar como HttpResponse
+        from django.http import HttpResponse
+        json_data = json.dumps(data)
+        return HttpResponse(json_data, content_type='application/json')
+        
+    except Devolucion.DoesNotExist:
+        return HttpResponse(
+            json.dumps({'success': False, 'error': 'Devolución no encontrada'}),
+            content_type='application/json'
+        )
+    except Exception as e:
+        import traceback
+        print(f"❌ Error en devolucion_detalle: {traceback.format_exc()}")
+        return HttpResponse(
+            json.dumps({'success': False, 'error': str(e)}),
+            content_type='application/json'
+        )
+@ensure_csrf_cookie
+@auth_required
+@require_http_methods(["POST"])
+def aprobar_devolucion_api(request, id):
+    """API para aprobar o rechazar una devolución"""
+    import json
+    from apps.sales_management.models import Devolucion
+    
+    try:
+        data = json.loads(request.body)
+        devolucion = Devolucion.objects.get(id=id)
+        
+        if devolucion.estado != 'PENDIENTE':
+            return JsonResponse({
+                'success': False,
+                'error': 'Solo se pueden procesar devoluciones pendientes'
+            })
+        
+        decision = data.get('decision')
+        
+        if decision == 'APROBADA':
+            devolucion.estado = 'APROBADA'
+            devolucion.usuario_aprueba = request.user
+            devolucion.fecha_procesado = timezone.now()
+            devolucion.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Devolución aprobada exitosamente'
+            })
+            
+        elif decision == 'RECHAZADA':
+            devolucion.estado = 'RECHAZADA'
+            devolucion.usuario_aprueba = request.user
+            devolucion.fecha_procesado = timezone.now()
+            
+            if 'observaciones' in data:
+                devolucion.descripcion += f"\n\n--- MOTIVO DE RECHAZO ---\n{data['observaciones']}"
+            
+            devolucion.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Devolución rechazada'
+            })
+        
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'Decisión no válida'
+            })
+        
     except Devolucion.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Devolución no encontrada'})
-
-
+    except Exception as e:
+        import traceback
+        print(f"❌ Error en aprobar_devolucion_api: {traceback.format_exc()}")
+        return JsonResponse({'success': False, 'error': str(e)})
 @ensure_csrf_cookie
 @auth_required
 def ventas_export_excel(request):
@@ -6024,3 +6104,361 @@ def editar_caja_chica(request, caja_chica_id):
         traceback.print_exc()
     
     return redirect('custom_admin:caja_chica_list')
+@require_http_methods(["GET"])
+def buscar_venta_api(request):
+    numero = request.GET.get('numero', '').strip()
+    
+    print(f"🔍 Buscando venta con número: '{numero}'")
+    
+    if not numero:
+        return JsonResponse({'success': False, 'error': 'Número de venta requerido'})
+    
+    try:
+        venta = Venta.objects.get(numero_venta__iexact=numero)
+        print(f"✅ Venta encontrada: {venta.numero_venta}")
+        
+        detalles = venta.detalles.all()
+        print(f"📦 Productos encontrados: {detalles.count()}")
+        
+        productos = []
+        for detalle in detalles:
+            # Debug cada campo
+            print(f"Producto nombre: {type(detalle.producto.nombre)} - {detalle.producto.nombre}")
+            
+            producto_data = {
+                'id': str(detalle.id),
+                'nombre': str(detalle.producto.nombre),  # Forzar a string
+                'cantidad': float(detalle.cantidad_unidades),
+                'precio': float(detalle.precio_unitario),
+                'subtotal': float(detalle.subtotal)
+            }
+            print(f"Producto data: {producto_data}")
+            productos.append(producto_data)
+        
+        # Debug venta
+        print(f"Venta ID: {type(venta.id)} - {venta.id}")
+        print(f"Venta numero: {type(venta.numero_venta)} - {venta.numero_venta}")
+        print(f"Cliente: {type(venta.cliente)} - {venta.cliente}")
+        print(f"Fecha: {type(venta.fecha_venta)} - {venta.fecha_venta}")
+        print(f"Total: {type(venta.total)} - {venta.total}")
+        
+        venta_data = {
+            'success': True,
+            'venta': {
+                'id': str(venta.id),
+                'numero': str(venta.numero_venta),
+                'cliente': str(venta.cliente.nombre_completo) if venta.cliente else 'Cliente General',
+                'fecha': str(venta.fecha_venta.strftime('%d/%m/%Y %H:%M')),
+                'total': float(venta.total),
+                'productos': productos
+            }
+        }
+        
+        print(f"✅ Venta data construida correctamente")
+        return JsonResponse(venta_data)
+        
+    except Venta.DoesNotExist:
+        print(f"❌ Venta no encontrada con número: '{numero}'")
+        return JsonResponse({'success': False, 'error': 'Venta no encontrada'})
+    except Exception as e:
+        import traceback
+        print(f"❌ Error completo: {traceback.format_exc()}")
+        return JsonResponse({'success': False, 'error': f'Error: {str(e)}'})
+
+@require_http_methods(["POST"])
+def procesar_devolucion_api(request):
+    import json
+    from decimal import Decimal
+    
+    data = json.loads(request.body)
+    
+    print(f"📥 Datos recibidos: {data}")
+    
+    try:
+        venta = Venta.objects.get(id=data['venta_id'])
+        print(f"✅ Venta encontrada: {venta.numero_venta}")
+        
+        detalle = DetalleVenta.objects.get(id=data['detalle_venta_id'])
+        print(f"✅ Detalle encontrado: {detalle.producto.nombre}")
+        
+        # Calcular monto de devolución
+        cantidad_devuelta = Decimal(str(data['cantidad_devuelta']))
+        monto_devolucion = cantidad_devuelta * detalle.precio_unitario
+        
+        # Generar número de devolución
+        año = timezone.now().year
+        ultimo = Devolucion.objects.filter(
+            numero_devolucion__startswith=f'DEV-{año}-'
+        ).order_by('-numero_devolucion').first()
+        
+        if ultimo and ultimo.numero_devolucion:
+            try:
+                ultimo_num = int(ultimo.numero_devolucion.split('-')[-1])
+                siguiente_num = ultimo_num + 1
+            except (ValueError, IndexError):
+                siguiente_num = 1
+        else:
+            siguiente_num = 1
+        
+        numero_devolucion = f'DEV-{año}-{siguiente_num:05d}'
+        
+        # Crear la devolución
+        devolucion = Devolucion.objects.create(
+            numero_devolucion=numero_devolucion,
+            venta_original=venta,  # ✅ CORREGIDO
+            detalle_venta=detalle,
+            cantidad_devuelta=cantidad_devuelta,
+            monto_devolucion=monto_devolucion,  # ✅ AGREGADO
+            motivo=data['motivo'],
+            descripcion=data.get('descripcion', ''),
+            usuario_solicita=request.user,
+            estado='PENDIENTE'
+        )
+        
+        print(f"✅ Devolución creada: {devolucion.numero_devolucion}")
+        
+        return JsonResponse({
+            'success': True,
+            'numero_devolucion': devolucion.numero_devolucion,
+            'message': 'Devolución registrada exitosamente'
+        })
+        
+    except Exception as e:
+        import traceback
+        print(f"❌ Error completo: {traceback.format_exc()}")
+        return JsonResponse({'success': False, 'error': str(e)})
+@require_http_methods(["POST"])
+def aprobar_devolucion_api(request, id):
+    import json
+    data = json.loads(request.body)
+    
+    try:
+        devolucion = Devolucion.objects.get(id=id)
+        decision = data.get('decision')
+        
+        if decision == 'APROBADA':
+            devolucion.estado = 'APROBADA'
+            devolucion.usuario_aprueba = request.user
+            # Aquí agregarías lógica para devolver al inventario
+        elif decision == 'RECHAZADA':
+            devolucion.estado = 'RECHAZADA'
+            devolucion.observaciones_rechazo = data.get('observaciones', '')
+        
+        devolucion.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Devolución {decision.lower()} exitosamente'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+    
+# ============================================================================
+@require_http_methods(["GET"])
+def devolucion_detalle_api(request, devolucion_id):
+    """API para obtener detalles de una devolución"""
+    try:
+        devolucion = Devolucion.objects.get(id=devolucion_id)
+        
+        data = {
+            'success': True,
+            'devolucion': {
+                'id': str(devolucion.id),
+                'numero_devolucion': devolucion.numero_devolucion,
+                'venta_original': devolucion.venta_original.numero_venta,
+                'cliente': devolucion.venta_original.cliente.nombre_completo if devolucion.venta_original.cliente else 'Cliente General',
+                'producto': devolucion.detalle_venta.producto.nombre,
+                'cantidad_devuelta': float(devolucion.cantidad_devuelta),
+                'monto': float(devolucion.monto_devolucion),
+                'motivo': devolucion.motivo,
+                'motivo_display': devolucion.get_motivo_display(),
+                'descripcion': devolucion.descripcion,
+                'estado': devolucion.estado,
+                'estado_display': devolucion.get_estado_display(),
+                'fecha_devolucion': devolucion.fecha_devolucion.strftime('%d/%m/%Y %H:%M'),
+                'usuario_solicita': devolucion.usuario_solicita.get_full_name() if hasattr(devolucion.usuario_solicita, 'get_full_name') else str(devolucion.usuario_solicita),
+                'usuario_aprueba': devolucion.usuario_aprueba.get_full_name() if devolucion.usuario_aprueba and hasattr(devolucion.usuario_aprueba, 'get_full_name') else (str(devolucion.usuario_aprueba) if devolucion.usuario_aprueba else None),
+                'fecha_procesado': devolucion.fecha_procesado.strftime('%d/%m/%Y %H:%M') if devolucion.fecha_procesado else None
+            }
+        }
+        
+        return JsonResponse(data)
+        
+    except Devolucion.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Devolución no encontrada'})
+    except Exception as e:
+        import traceback
+        print(f"❌ Error en devolucion_detalle_api: {traceback.format_exc()}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@ensure_csrf_cookie
+@auth_required
+@require_http_methods(["POST"])
+def aprobar_devolucion_api(request, id):
+    """API para aprobar o rechazar una devolución"""
+    import json
+    from django.http import HttpResponse
+    from django.db import transaction
+    from apps.sales_management.models import Devolucion
+    from apps.inventory_management.models import Quintal, MovimientoInventario, MovimientoQuintal, ProductoNormal
+    from django.utils import timezone
+    from decimal import Decimal
+    
+    try:
+        data = json.loads(request.body)
+        print(f"📥 Data recibida: {data}")
+        
+        devolucion = Devolucion.objects.get(id=id)
+        print(f"✅ Devolución encontrada: {devolucion.numero_devolucion}")
+        
+        if devolucion.estado != 'PENDIENTE':
+            return HttpResponse(
+                json.dumps({
+                    'success': False,
+                    'error': 'Solo se pueden procesar devoluciones pendientes'
+                }),
+                content_type='application/json'
+            )
+        
+        decision = data.get('decision')
+        print(f"📋 Decisión: {decision}")
+        
+        if decision == 'APROBADA':
+            with transaction.atomic():
+                devolucion.estado = 'APROBADA'
+                devolucion.usuario_aprueba = request.user
+                devolucion.fecha_procesado = timezone.now()
+                devolucion.save()
+                print(f"✅ Estado actualizado a APROBADA")
+                
+                # ✅ REINTEGRAR AL INVENTARIO
+                producto = devolucion.detalle_venta.producto
+                cantidad_devuelta = devolucion.cantidad_devuelta
+                
+                print(f"🔍 Producto: {producto.nombre}")
+                print(f"🔍 Tipo inventario: {producto.tipo_inventario}")
+                print(f"🔍 Cantidad devuelta: {cantidad_devuelta}")
+                print(f"🔍 Es quintal?: {producto.es_quintal()}")
+                
+                if producto.es_quintal():
+                    print("📦 Procesando producto QUINTAL...")
+                    try:
+                        # Crear nuevo quintal con el producto devuelto
+                        nuevo_quintal = Quintal.objects.create(
+                            producto=producto,
+                            peso_inicial=cantidad_devuelta,
+                            peso_actual=cantidad_devuelta,
+                            unidad_medida=producto.unidad_medida_base,
+                            precio_por_unidad=producto.precio_por_unidad_peso,
+                            costo_por_unidad=producto.precio_por_unidad_peso * Decimal('0.7'),  # Estimado
+                            costo_total=cantidad_devuelta * producto.precio_por_unidad_peso * Decimal('0.7'),
+                            fecha_ingreso=timezone.now(),
+                            estado='DISPONIBLE',
+                            proveedor=producto.proveedor,
+                            usuario_registro=request.user,
+                            observaciones=f'Devolución {devolucion.numero_devolucion} - Venta {devolucion.venta_original.numero_venta}'
+                        )
+                        
+                        print(f"✅ Quintal creado: ID={nuevo_quintal.codigo_unico}, Peso={nuevo_quintal.peso_actual}")
+                        
+                        # El signal post_save de Quintal creará automáticamente el MovimientoQuintal
+                        
+                    except Exception as e:
+                        import traceback
+                        print(f"❌ Error al crear quintal: {traceback.format_exc()}")
+                        raise  # Re-lanzar para que el transaction.atomic haga rollback
+                        
+                else:
+                    print("📦 Procesando producto NORMAL...")
+                    try:
+                        # Obtener o crear el inventario normal del producto
+                        inventario, created = ProductoNormal.objects.get_or_create(
+                            producto=producto,
+                            defaults={
+                                'stock_actual': 0,
+                                'stock_minimo': 10,
+                                'costo_unitario': producto.precio_unitario or Decimal('0')
+                            }
+                        )
+                        
+                        if created:
+                            print(f"📝 Inventario creado para {producto.nombre}")
+                        
+                        # Guardar stock anterior
+                        stock_antes = inventario.stock_actual
+                        
+                        # Reintegrar las unidades devueltas
+                        inventario.stock_actual += int(cantidad_devuelta)
+                        inventario.save()
+                        
+                        print(f"✅ Stock de {producto.nombre} actualizado: {stock_antes} → {inventario.stock_actual}")
+                        
+                        # Registrar movimiento de inventario
+                        MovimientoInventario.objects.create(
+                            producto_normal=inventario,
+                            tipo_movimiento='ENTRADA_AJUSTE',
+                            cantidad=int(cantidad_devuelta),
+                            stock_antes=stock_antes,
+                            stock_despues=inventario.stock_actual,
+                            costo_unitario=inventario.costo_unitario,
+                            costo_total=int(cantidad_devuelta) * inventario.costo_unitario,
+                            usuario=request.user,
+                            observaciones=f'Devolución {devolucion.numero_devolucion}'
+                        )
+                        
+                        print(f"✅ Movimiento de inventario registrado")
+                        
+                    except Exception as e:
+                        import traceback
+                        print(f"❌ Error al actualizar inventario normal: {traceback.format_exc()}")
+                        raise  # Re-lanzar para que el transaction.atomic haga rollback
+            
+            return HttpResponse(
+                json.dumps({
+                    'success': True,
+                    'message': 'Devolución aprobada exitosamente e inventario reintegrado'
+                }),
+                content_type='application/json'
+            )
+            
+        elif decision == 'RECHAZADA':
+            devolucion.estado = 'RECHAZADA'
+            devolucion.usuario_aprueba = request.user
+            devolucion.fecha_procesado = timezone.now()
+            
+            if 'observaciones' in data:
+                devolucion.descripcion += f"\n\n--- MOTIVO DE RECHAZO ---\n{data['observaciones']}"
+            
+            devolucion.save()
+            
+            return HttpResponse(
+                json.dumps({
+                    'success': True,
+                    'message': 'Devolución rechazada'
+                }),
+                content_type='application/json'
+            )
+        
+        else:
+            return HttpResponse(
+                json.dumps({
+                    'success': False,
+                    'error': 'Decisión no válida'
+                }),
+                content_type='application/json'
+            )
+        
+    except Devolucion.DoesNotExist:
+        return HttpResponse(
+            json.dumps({'success': False, 'error': 'Devolución no encontrada'}),
+            content_type='application/json'
+        )
+    except Exception as e:
+        import traceback
+        print(f"❌ Error en aprobar_devolucion_api: {traceback.format_exc()}")
+        return HttpResponse(
+            json.dumps({'success': False, 'error': str(e)}),
+            content_type='application/json'
+        )

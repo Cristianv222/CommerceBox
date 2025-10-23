@@ -757,44 +757,130 @@ class DevolucionDetailView(VentasAccessMixin, DetailView):
     context_object_name = 'devolucion'
 
 
+
 class AprobarDevolucionView(VentasAccessMixin, View):
-    """Aprobar o rechazar devolución"""
+    """
+    Aprueba o rechaza una devolución pendiente
     
-    @transaction.atomic
-    def post(self, request, pk):
-        devolucion = get_object_or_404(Devolucion, pk=pk)
-        
-        if devolucion.estado != 'PENDIENTE':
-            messages.error(request, 'La devolución ya fue procesada.')
-            return redirect('sales_management:devolucion_detail', pk=pk)
-        
-        form = AprobarDevolucionForm(request.POST)
-        if form.is_valid():
-            decision = form.cleaned_data['decision']
-            observaciones = form.cleaned_data.get('observaciones', '')
+    POST /panel/ventas/api/aprobar-devolucion/<devolucion_id>/
+    
+    Request Body:
+    {
+        "decision": "APROBADA" o "RECHAZADA",
+        "observaciones": "Texto opcional"
+    }
+    """
+    
+    def post(self, request, devolucion_id):
+        try:
+            # Verificar permisos (solo supervisores o admins pueden aprobar)
+            if not request.user.rol in ['ADMIN', 'SUPERVISOR']:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'No tienes permisos para aprobar/rechazar devoluciones'
+                }, status=403)
             
-            devolucion.estado = decision
-            devolucion.usuario_aprueba = request.user
-            devolucion.fecha_procesado = timezone.now()
-            devolucion.descripcion += f"\n\nObservaciones: {observaciones}"
-            devolucion.save()
-            
-            # Si se aprueba, procesar la devolución
-            if decision == 'APROBADA':
-                from .pos.pos_service import POSService
-                try:
-                    POSService.procesar_devolucion(devolucion, request.user)
-                    messages.success(request, 'Devolución aprobada y procesada exitosamente.')
-                except Exception as e:
-                    messages.error(request, f'Error al procesar devolución: {str(e)}')
-                    return redirect('sales_management:devolucion_detail', pk=pk)
+            # Parsear datos
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
             else:
-                messages.info(request, 'Devolución rechazada.')
+                data = request.POST.dict()
             
-            return redirect('sales_management:devolucion_detail', pk=pk)
-        
-        messages.error(request, 'Formulario inválido.')
-        return redirect('sales_management:devolucion_detail', pk=pk)
+            decision = data.get('decision')
+            observaciones = data.get('observaciones', '')
+            
+            if decision not in ['APROBADA', 'RECHAZADA']:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Decisión inválida. Debe ser APROBADA o RECHAZADA'
+                }, status=400)
+            
+            # Procesar dentro de transacción
+            with transaction.atomic():
+                # Obtener la devolución
+                try:
+                    devolucion = Devolucion.objects.select_for_update().select_related(
+                        'detalle_venta__producto',
+                        'detalle_venta__quintal',
+                        'venta_original'
+                    ).get(pk=devolucion_id)
+                except Devolucion.DoesNotExist:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Devolución no encontrada'
+                    }, status=404)
+                
+                # Verificar que esté pendiente
+                if devolucion.estado != 'PENDIENTE':
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'La devolución ya fue procesada. Estado actual: {devolucion.get_estado_display()}'
+                    }, status=400)
+                
+                # Actualizar estado de la devolución
+                devolucion.estado = decision
+                devolucion.usuario_aprueba = request.user
+                devolucion.fecha_procesado = timezone.now()
+                
+                # Agregar observaciones a la descripción
+                if observaciones:
+                    devolucion.descripcion += f"\n\n[{decision}] {observaciones}"
+                
+                devolucion.save()
+                
+                # Si fue aprobada, revertir el inventario
+                if decision == 'APROBADA':
+                    detalle = devolucion.detalle_venta
+                    producto = detalle.producto
+                    
+                    if producto.tipo_inventario == 'QUINTAL' and detalle.quintal:
+                        # Revertir peso al quintal
+                        quintal = detalle.quintal
+                        quintal.peso_actual += devolucion.cantidad_devuelta
+                        if quintal.estado == 'AGOTADO' and quintal.peso_actual > 0:
+                            quintal.estado = 'DISPONIBLE'
+                        quintal.save()
+                        
+                        logger.info(
+                            f"📦 Inventario revertido - Quintal {quintal.codigo}: "
+                            f"+{devolucion.cantidad_devuelta}kg"
+                        )
+                        
+                    elif producto.tipo_inventario == 'NORMAL':
+                        # Revertir unidades al inventario normal
+                        try:
+                            from apps.inventory_management.models import ProductoNormal
+                            inventario = ProductoNormal.objects.get(producto=producto)
+                            inventario.stock_actual += int(devolucion.cantidad_devuelta)
+                            inventario.save()
+                            
+                            logger.info(
+                                f"📦 Inventario revertido - {producto.nombre}: "
+                                f"+{int(devolucion.cantidad_devuelta)} unidades"
+                            )
+                        except ProductoNormal.DoesNotExist:
+                            logger.warning(f"No se encontró inventario normal para {producto.nombre}")
+                
+                mensaje = f"Devolución {devolucion.numero_devolucion} {decision.lower()}"
+                if decision == 'APROBADA':
+                    mensaje += f" - Monto: ${devolucion.monto_devolucion}"
+                
+                logger.info(f"✅ {mensaje} por {request.user.username}")
+                
+                return JsonResponse({
+                    'success': True,
+                    'devolucion_id': str(devolucion.id),
+                    'numero_devolucion': devolucion.numero_devolucion,
+                    'estado': decision,
+                    'mensaje': mensaje
+                })
+                
+        except Exception as e:
+            logger.error(f"Error aprobando/rechazando devolución: {e}", exc_info=True)
+            return JsonResponse({
+                'success': False,
+                'error': f'Error del servidor: {str(e)}'
+            }, status=500)
 
 
 # ============================================================================
@@ -1394,3 +1480,343 @@ class ReimprimirTicketView(VentasAPIAccessMixin, View):
                 'success': False,
                 'error': f'Error del servidor: {str(e)}'
             }, status=500)
+        
+class ObtenerProductosVentaView(VentasAPIAccessMixin, View):
+    """
+    Obtiene los productos/detalles de una venta específica por número de venta o factura
+    
+    GET /panel/ventas/api/obtener-productos-venta/?numero=<numero>
+    
+    Response:
+    {
+        "success": true,
+        "venta": {
+            "id": "uuid",
+            "numero_venta": "VNT-2025-00001",
+            "numero_factura": "001-001-00000123",
+            "fecha_venta": "2025-01-15T10:30:00",
+            "total": 150.50,
+            "estado": "COMPLETADA"
+        },
+        "productos": [
+            {
+                "id": "uuid-detalle",
+                "producto_id": "uuid-producto",
+                "producto_nombre": "Arroz Premium",
+                "cantidad": 2.5,
+                "unidad": "kg",
+                "precio_unitario": 25.50,
+                "subtotal": 63.75,
+                "es_quintal": true,
+                "quintal_id": "uuid-quintal",
+                "puede_devolver": true,
+                "cantidad_ya_devuelta": 0.5
+            }
+        ]
+    }
+    """
+    
+    def get(self, request):
+        try:
+            numero = request.GET.get('numero', '').strip()
+            
+            if not numero:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Debe proporcionar un número de venta o factura'
+                }, status=400)
+            
+            # Buscar la venta por número de venta o número de factura
+            venta = None
+            try:
+                # Intentar buscar por número de venta primero
+                venta = Venta.objects.filter(
+                    Q(numero_venta__iexact=numero) | Q(numero_factura__iexact=numero)
+                ).select_related('cliente', 'vendedor').first()
+                
+                if not venta:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'No se encontró ninguna venta con el número: {numero}'
+                    }, status=404)
+                
+                # Verificar que la venta esté completada
+                if venta.estado != 'COMPLETADA':
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'La venta está en estado {venta.get_estado_display()}. Solo se pueden hacer devoluciones de ventas completadas.'
+                    }, status=400)
+                
+            except Exception as e:
+                logger.error(f"Error buscando venta: {e}", exc_info=True)
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Error al buscar la venta'
+                }, status=500)
+            
+            # Obtener los detalles de la venta con sus productos
+            detalles = venta.detalles.select_related(
+                'producto', 
+                'producto__categoria',
+                'producto__unidad_medida',
+                'quintal'
+            ).all()
+            
+            # Construir la lista de productos
+            productos = []
+            for detalle in detalles:
+                # Calcular cantidad ya devuelta de este detalle
+                cantidad_ya_devuelta = Devolucion.objects.filter(
+                    detalle_venta=detalle,
+                    estado__in=['PENDIENTE', 'APROBADA']
+                ).aggregate(
+                    total=Sum('cantidad_devuelta')
+                )['total'] or Decimal('0')
+                
+                # Determinar la cantidad disponible para devolver
+                if detalle.peso_vendido:  # Es quintal
+                    cantidad_total = detalle.peso_vendido
+                    unidad = 'kg'
+                else:  # Es producto normal
+                    cantidad_total = detalle.cantidad_unidades
+                    unidad = detalle.producto.unidad_medida.abreviatura if detalle.producto.unidad_medida else 'und'
+                
+                cantidad_disponible = cantidad_total - cantidad_ya_devuelta
+                puede_devolver = cantidad_disponible > 0
+                
+                producto_data = {
+                    'id': str(detalle.id),
+                    'producto_id': str(detalle.producto.id),
+                    'producto_nombre': detalle.producto.nombre,
+                    'producto_codigo': detalle.producto.codigo,
+                    'categoria': detalle.producto.categoria.nombre if detalle.producto.categoria else 'Sin categoría',
+                    'cantidad_total': float(cantidad_total),
+                    'cantidad_disponible': float(cantidad_disponible),
+                    'cantidad_ya_devuelta': float(cantidad_ya_devuelta),
+                    'unidad': unidad,
+                    'precio_unitario': float(detalle.precio_unitario),
+                    'descuento': float(detalle.descuento),
+                    'subtotal': float(detalle.subtotal),
+                    'total': float(detalle.total),
+                    'es_quintal': bool(detalle.peso_vendido),
+                    'quintal_id': str(detalle.quintal.id) if detalle.quintal else None,
+                    'quintal_codigo': detalle.quintal.codigo if detalle.quintal else None,
+                    'puede_devolver': puede_devolver
+                }
+                
+                productos.append(producto_data)
+            
+            # Información de la venta
+            venta_data = {
+                'id': str(venta.id),
+                'numero_venta': venta.numero_venta,
+                'numero_factura': venta.numero_factura or '',
+                'fecha_venta': venta.fecha_venta.isoformat(),
+                'cliente': {
+                    'nombre': str(venta.cliente) if venta.cliente else 'Cliente General',
+                    'documento': venta.cliente.numero_documento if venta.cliente else ''
+                },
+                'vendedor': venta.vendedor.get_full_name() or venta.vendedor.username,
+                'subtotal': float(venta.subtotal),
+                'descuento': float(venta.descuento),
+                'impuestos': float(venta.impuestos),
+                'total': float(venta.total),
+                'estado': venta.estado
+            }
+            
+            return JsonResponse({
+                'success': True,
+                'venta': venta_data,
+                'productos': productos,
+                'total_productos': len(productos),
+                'mensaje': f'Se encontraron {len(productos)} productos en la venta'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo productos de venta: {e}", exc_info=True)
+            return JsonResponse({
+                'success': False,
+                'error': f'Error del servidor: {str(e)}'
+            }, status=500)
+# apps/sales_management/views.py
+# AGREGAR ESTA VISTA AL ARCHIVO EXISTENTE
+
+class ProcesarDevolucionProductoView(VentasAPIAccessMixin, View):
+    """
+    Procesa la devolución de un producto específico de una venta
+    
+    POST /panel/ventas/api/procesar-devolucion/
+    
+    Request Body:
+    {
+        "venta_id": "uuid",
+        "detalle_venta_id": "uuid",
+        "cantidad_devuelta": 2.5,
+        "motivo": "DEFECTUOSO",
+        "descripcion": "El producto llegó en mal estado"
+    }
+    
+    Response:
+    {
+        "success": true,
+        "devolucion_id": "uuid",
+        "numero_devolucion": "DEV-2025-00001",
+        "monto_devolucion": 63.75,
+        "mensaje": "Devolución registrada exitosamente"
+    }
+    """
+    
+    def post(self, request):
+        try:
+            # Parsear datos del request
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+            else:
+                data = request.POST.dict()
+            
+            venta_id = data.get('venta_id')
+            detalle_venta_id = data.get('detalle_venta_id')
+            cantidad_devuelta = data.get('cantidad_devuelta')
+            motivo = data.get('motivo')
+            descripcion = data.get('descripcion', '')
+            
+            # Validar datos requeridos
+            if not all([venta_id, detalle_venta_id, cantidad_devuelta, motivo]):
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Faltan datos requeridos: venta_id, detalle_venta_id, cantidad_devuelta, motivo'
+                }, status=400)
+            
+            # Convertir cantidad a Decimal
+            try:
+                cantidad_devuelta = Decimal(str(cantidad_devuelta))
+                if cantidad_devuelta <= 0:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'La cantidad a devolver debe ser mayor a 0'
+                    }, status=400)
+            except (ValueError, TypeError):
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Cantidad inválida'
+                }, status=400)
+            
+            # Procesar dentro de una transacción
+            with transaction.atomic():
+                # Obtener la venta
+                try:
+                    venta = Venta.objects.select_for_update().get(pk=venta_id)
+                except Venta.DoesNotExist:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Venta no encontrada'
+                    }, status=404)
+                
+                # Verificar que la venta esté completada
+                if venta.estado != 'COMPLETADA':
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Solo se pueden hacer devoluciones de ventas completadas'
+                    }, status=400)
+                
+                # Obtener el detalle de venta
+                try:
+                    detalle_venta = DetalleVenta.objects.select_related(
+                        'producto', 'quintal'
+                    ).get(pk=detalle_venta_id, venta=venta)
+                except DetalleVenta.DoesNotExist:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Producto no encontrado en esta venta'
+                    }, status=404)
+                
+                # Calcular cantidad disponible para devolver
+                cantidad_ya_devuelta = Devolucion.objects.filter(
+                    detalle_venta=detalle_venta,
+                    estado__in=['PENDIENTE', 'APROBADA']
+                ).aggregate(
+                    total=Sum('cantidad_devuelta')
+                )['total'] or Decimal('0')
+                
+                if detalle_venta.peso_vendido:  # Es quintal
+                    cantidad_total = detalle_venta.peso_vendido
+                else:  # Es producto normal
+                    cantidad_total = Decimal(str(detalle_venta.cantidad_unidades))
+                
+                cantidad_disponible = cantidad_total - cantidad_ya_devuelta
+                
+                # Validar que no se exceda la cantidad disponible
+                if cantidad_devuelta > cantidad_disponible:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'La cantidad a devolver ({cantidad_devuelta}) excede la cantidad disponible ({cantidad_disponible})'
+                    }, status=400)
+                
+                # Calcular el monto de la devolución proporcionalmente
+                monto_devolucion = (detalle_venta.total / cantidad_total) * cantidad_devuelta
+                
+                # Generar número de devolución
+                # Obtener el último número de devolución del año actual
+                año_actual = timezone.now().year
+                ultima_devolucion = Devolucion.objects.filter(
+                    numero_devolucion__startswith=f'DEV-{año_actual}-'
+                ).order_by('-numero_devolucion').first()
+                
+                if ultima_devolucion:
+                    # Extraer el número secuencial
+                    try:
+                        ultimo_numero = int(ultima_devolucion.numero_devolucion.split('-')[-1])
+                        nuevo_numero = ultimo_numero + 1
+                    except (ValueError, IndexError):
+                        nuevo_numero = 1
+                else:
+                    nuevo_numero = 1
+                
+                numero_devolucion = f'DEV-{año_actual}-{nuevo_numero:05d}'
+                
+                # Crear la devolución
+                devolucion = Devolucion.objects.create(
+                    numero_devolucion=numero_devolucion,
+                    venta_original=venta,
+                    detalle_venta=detalle_venta,
+                    cantidad_devuelta=cantidad_devuelta,
+                    monto_devolucion=monto_devolucion,
+                    motivo=motivo,
+                    descripcion=descripcion,
+                    estado='PENDIENTE',  # Por defecto queda pendiente de aprobación
+                    usuario_solicita=request.user,
+                    fecha_devolucion=timezone.now()
+                )
+                
+                logger.info(
+                    f"✅ Devolución {devolucion.numero_devolucion} creada - "
+                    f"Producto: {detalle_venta.producto.nombre}, "
+                    f"Cantidad: {cantidad_devuelta}, "
+                    f"Monto: ${monto_devolucion}"
+                )
+                
+                return JsonResponse({
+                    'success': True,
+                    'devolucion_id': str(devolucion.id),
+                    'numero_devolucion': devolucion.numero_devolucion,
+                    'monto_devolucion': float(monto_devolucion),
+                    'producto': detalle_venta.producto.nombre,
+                    'cantidad_devuelta': float(cantidad_devuelta),
+                    'estado': 'PENDIENTE',
+                    'mensaje': 'Devolución registrada exitosamente. Pendiente de aprobación.'
+                })
+                
+        except ValidationError as e:
+            logger.warning(f"Validación fallida al procesar devolución: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+            
+        except Exception as e:
+            logger.error(f"Error procesando devolución: {e}", exc_info=True)
+            return JsonResponse({
+                'success': False,
+                'error': f'Error del servidor: {str(e)}'
+            }, status=500)
+
