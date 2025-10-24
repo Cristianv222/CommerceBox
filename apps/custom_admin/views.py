@@ -266,8 +266,8 @@ def producto_crear(request):
 @ensure_csrf_cookie
 @auth_required
 def producto_editar(request, producto_id):
-    """Editar producto existente"""
-    from apps.inventory_management.models import Producto
+    """Editar producto existente - VERSIÓN CORREGIDA"""
+    from apps.inventory_management.models import Producto, ProductoNormal, Quintal
     from apps.authentication.models import Usuario
     from decimal import Decimal
     
@@ -284,6 +284,9 @@ def producto_editar(request, producto_id):
                 messages.error(request, 'No hay usuarios en el sistema.')
                 return redirect('custom_admin:productos')
             
+            # ============================================
+            # 1. DATOS BÁSICOS DEL PRODUCTO
+            # ============================================
             nombre = request.POST.get('nombre', '').strip()
             if not nombre:
                 messages.error(request, 'El nombre del producto es obligatorio')
@@ -292,21 +295,45 @@ def producto_editar(request, producto_id):
             producto.nombre = nombre
             producto.descripcion = request.POST.get('descripcion', '').strip()
             
+            # Categoría
             categoria_id = request.POST.get('categoria', '').strip()
             producto.categoria_id = categoria_id if categoria_id else None
             
-            # ✅ ACTUALIZAR MARCA
+            # ✅ MARCA
             marca_id = request.POST.get('marca', '').strip()
             producto.marca_id = marca_id if marca_id else None
             
-            # ✅ ACTUALIZAR IVA
-            iva_value = request.POST.get('iva', '0').strip()
-            producto.iva = Decimal(iva_value) if iva_value else Decimal('0.00')
+            # ============================================
+            # 2. ✅ FIX CRÍTICO: IVA
+            # ============================================
+            # El problema es que cuando tiene_iva es False, no se envía el valor
+            # Necesitamos verificar ambos campos
+            tiene_iva = request.POST.get('tiene_iva') == 'on'
             
-            # ✅ ACTUALIZAR IMAGEN SI SE SUBE UNA NUEVA
+            if tiene_iva:
+                iva_value = request.POST.get('iva', '0').strip()
+                try:
+                    iva_decimal = Decimal(iva_value) if iva_value else Decimal('0.00')
+                    # Asegurar que el IVA esté entre 0 y 100
+                    if iva_decimal < 0:
+                        iva_decimal = Decimal('0.00')
+                    elif iva_decimal > 100:
+                        iva_decimal = Decimal('100.00')
+                    producto.iva = iva_decimal
+                except:
+                    producto.iva = Decimal('0.00')
+            else:
+                producto.iva = Decimal('0.00')
+            
+            print(f"🔧 IVA actualizado: {producto.iva}")  # Debug
+            
+            # ✅ IMAGEN
             if 'imagen' in request.FILES:
                 producto.imagen = request.FILES['imagen']
             
+            # ============================================
+            # 3. TIPO DE INVENTARIO Y PRECIOS
+            # ============================================
             tipo_inventario = request.POST.get('tipo_inventario', 'NORMAL')
             producto.tipo_inventario = tipo_inventario
             
@@ -324,7 +351,46 @@ def producto_editar(request, producto_id):
             if hasattr(producto, 'usuario_modificacion'):
                 producto.usuario_modificacion = usuario
             
+            # Guardar cambios del producto
             producto.save()
+            
+            # ============================================
+            # 4. ✅ FIX CRÍTICO: ACTUALIZAR STOCK
+            # ============================================
+            if tipo_inventario == 'NORMAL':
+                # Actualizar o crear ProductoNormal
+                stock_actual_str = request.POST.get('stock_actual', '0').strip()
+                
+                try:
+                    stock_actual = int(stock_actual_str) if stock_actual_str else 0
+                    
+                    # Verificar si existe ProductoNormal
+                    try:
+                        producto_normal = producto.inventario_normal
+                        stock_anterior = producto_normal.stock_actual
+                        producto_normal.stock_actual = stock_actual
+                        producto_normal.save()
+                        print(f"✅ Stock actualizado: {stock_anterior} → {stock_actual}")
+                        
+                    except ProductoNormal.DoesNotExist:
+                        # Crear nuevo registro de ProductoNormal
+                        producto_normal = ProductoNormal.objects.create(
+                            producto=producto,
+                            stock_actual=stock_actual,
+                            stock_minimo=10,
+                            stock_maximo=1000,
+                            costo_unitario=Decimal('0.00')
+                        )
+                        print(f"✅ ProductoNormal creado con stock: {stock_actual}")
+                
+                except ValueError as e:
+                    print(f"❌ Error al convertir stock: {e}")
+                    messages.warning(request, f'El stock debe ser un número entero')
+            
+            elif tipo_inventario == 'QUINTAL':
+                # Para quintales, aquí podrías actualizar si es necesario
+                # Por ahora los quintales se manejan en otro lado
+                print(f"ℹ️ Producto tipo QUINTAL, stock se maneja en módulo de quintales")
             
             messages.success(request, f'✅ Producto "{producto.nombre}" actualizado exitosamente')
             return redirect('custom_admin:productos')
@@ -336,6 +402,8 @@ def producto_editar(request, producto_id):
         messages.error(request, f'Error en los datos numéricos: {str(e)}')
         return redirect('custom_admin:productos')
     except Exception as e:
+        import traceback
+        print(f"❌ ERROR COMPLETO: {traceback.format_exc()}")
         messages.error(request, f'Error al editar producto: {str(e)}')
     
     return redirect('custom_admin:productos')

@@ -977,9 +977,9 @@
                             data-nombre="{{ producto.nombre }}"
                             data-codigo="{{ producto.codigo_barras }}"
                             data-descripcion="{{ producto.descripcion|default:'' }}"
-                            data-categoria="{{ producto.categoria.id|default:'' }}"
+                            data-categoria-id="{{ producto.categoria.id|default:'' }}"
                             data-categoria-nombre="{{ producto.categoria.nombre|default:'Sin categoría' }}"
-                            data-marca="{{ producto.marca.id|default:'' }}"
+                            data-marca-id="{{ producto.marca.id|default:'' }}"
                             data-marca-nombre="{{ producto.marca.nombre|default:'Sin marca' }}"
                             data-tipo="{{ producto.tipo_inventario }}"
                             data-iva="{{ producto.iva|floatformat:2 }}"
@@ -987,6 +987,10 @@
                             data-precio-peso="{{ producto.precio_por_unidad_peso|floatformat:2|default:'0.00' }}"
                             data-activo="{{ producto.activo|yesno:'true,false' }}"
                             data-imagen-url="{% if producto.imagen %}{{ producto.imagen.url }}{% endif %}"
+                            data-unidad-medida-id="{% if producto.unidad_medida_base %}{{ producto.unidad_medida_base.id }}{% endif %}"
+                            data-stock-actual="{% if producto.inventario_normal %}{{ producto.inventario_normal.stock_actual|default:'0' }}{% else %}0{% endif %}"
+                            data-quintales="{% with quintales=producto.quintales.all %}{% if quintales %}{{ quintales.0.peso_actual|floatformat:0|default:'0' }}{% else %}0{% endif %}{% endwith %}"
+                            data-libras="0"
                         >
                             <td>
                                 {% if producto.imagen %}
@@ -1381,6 +1385,57 @@
     </div>
 </div>
 
+<!-- ✅ NUEVA SECCIÓN DE STOCK -->
+<div style="margin-top: 1.5rem; padding: 1.5rem; background: rgba(251, 191, 36, 0.08); border: 2px solid rgba(251, 191, 36, 0.3); border-radius: 12px;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+        <i class="bi bi-box-seam-fill" style="color: #f59e0b; font-size: 1.3rem;"></i>
+        <h6 style="margin: 0; font-weight: 700; color: #92400e;">Inventario de Stock</h6>
+    </div>
+    
+    <div style="background: rgba(254, 249, 195, 0.4); border-left: 4px solid #f59e0b; padding: 0.85rem; border-radius: 8px; margin-bottom: 1rem;">
+        <p style="margin: 0; color: #78350f; font-size: 0.875rem; font-weight: 500;">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            <strong>Importante:</strong> Define el stock inicial del producto. Para productos tipo Quintal, ingresa quintales y libras.
+        </p>
+    </div>
+
+    <!-- Stock Normal -->
+    <div id="stock_normal_group">
+        <div class="form-group-admin" style="margin-bottom: 0;">
+            <label class="form-label-admin">
+                <i class="bi bi-box"></i>Stock Actual (Unidades)
+            </label>
+            <input type="number" class="form-control-admin" id="stock_actual" name="stock_actual" min="0" step="1" placeholder="Ej: 100" value="0">
+            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
+                <i class="bi bi-info-circle me-1"></i>
+                Cantidad de unidades disponibles en inventario
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Quintal -->
+    <div id="stock_quintal_group" style="display: none;">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group-admin" style="margin-bottom: 0;">
+                    <label class="form-label-admin">
+                        <i class="bi bi-box-seam"></i>Quintales
+                    </label>
+                    <input type="number" class="form-control-admin" id="quintales" name="quintales" min="0" step="1" placeholder="Ej: 5" value="0">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group-admin" style="margin-bottom: 0;">
+                    <label class="form-label-admin">
+                        <i class="bi bi-box"></i>Libras
+                    </label>
+                    <input type="number" class="form-control-admin" id="libras" name="libras" min="0" max="99" step="0.01" placeholder="Ej: 25.5" value="0">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
                     <div class="form-group-admin">
                         <label class="form-label-admin d-flex align-items-center" style="cursor: pointer;">
                             <input type="checkbox" id="activo" name="activo" checked style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer; accent-color: #3b82f6;">
@@ -1578,6 +1633,26 @@
     document.addEventListener('DOMContentLoaded', function() {
         loadStats();
         updateIVAInfo();
+        
+        // ✅ Agregar listener al formulario para debug
+        const form = document.getElementById('productoForm');
+        form.addEventListener('submit', function(e) {
+            console.log('📤 Enviando formulario...');
+            console.log('📝 Datos del formulario:');
+            
+            const formData = new FormData(form);
+            for (let pair of formData.entries()) {
+                console.log(`  ${pair[0]}: ${pair[1]}`);
+            }
+            
+            // Verificar campos específicos
+            console.log('🔍 Verificación de campos críticos:');
+            console.log('  IVA:', document.getElementById('iva').value);
+            console.log('  Stock Actual:', document.getElementById('stock_actual').value);
+            console.log('  Quintales:', document.getElementById('quintales').value);
+            console.log('  Libras:', document.getElementById('libras').value);
+            console.log('  Tipo Inventario:', document.getElementById('tipo_inventario').value);
+        });
     });
 
     function loadStats() {
@@ -1633,17 +1708,29 @@
         const tipo = document.getElementById('tipo_inventario').value;
         const camposNormal = document.getElementById('camposNormal');
         const camposQuintal = document.getElementById('camposQuintal');
+        const stockNormalGroup = document.getElementById('stock_normal_group');
+        const stockQuintalGroup = document.getElementById('stock_quintal_group');
     
         if (tipo === 'QUINTAL') {
+            // Mostrar campos de quintal
             camposNormal.style.display = 'none';
             camposQuintal.style.display = 'block';
             document.getElementById('precio_unitario').removeAttribute('required');
             document.getElementById('precio_por_unidad_peso').setAttribute('required', 'required');
+            
+            // Mostrar campos de stock quintal
+            stockNormalGroup.style.display = 'none';
+            stockQuintalGroup.style.display = 'block';
         } else {
+            // Mostrar campos normales
             camposNormal.style.display = 'block';
             camposQuintal.style.display = 'none';
             document.getElementById('precio_unitario').setAttribute('required', 'required');
             document.getElementById('precio_por_unidad_peso').removeAttribute('required');
+            
+            // Mostrar campos de stock normal
+            stockNormalGroup.style.display = 'block';
+            stockQuintalGroup.style.display = 'none';
         }
     }
 
@@ -1659,8 +1746,13 @@
         document.getElementById('iva').value = IVA_DEFAULT;
         updateIVAInfo();
     
-        // ✅ AGREGAR ESTA LÍNEA:
+        // Resetear unidad de medida
         document.getElementById('unidad_medida_base').value = '';
+        
+        // Resetear campos de stock
+        document.getElementById('stock_actual').value = '0';
+        document.getElementById('quintales').value = '0';
+        document.getElementById('libras').value = '0';
     
         toggleTipoInventario();
     
@@ -1677,79 +1769,92 @@
     // ✅✅✅ FUNCIÓN EDITAR - VERSIÓN DEFINITIVA 100% FUNCIONAL ✅✅✅
     // ✅✅✅ FUNCIÓN EDITAR - VERSIÓN CON CONVERSIÓN DE NÚMERO ✅✅✅
 function editProducto(productoId) {
-    console.log('🔍 Iniciando edición del producto:', productoId);
+    console.log('🔧 Editando producto:', productoId);
     
     const row = document.querySelector(`tr[data-id="${productoId}"]`);
     
     if (!row) {
         showNotification('error', 'No se pudo encontrar el producto');
-        console.error('❌ No se encontró el row con ID:', productoId);
         return;
     }
     
-    // ✅ Función helper para limpiar y convertir precios
+    const modalElement = document.getElementById('productoModal');
+    const form = document.getElementById('productoForm');
+    
+    document.getElementById('productoModalTitle').innerHTML = '<i class="bi bi-pencil-square me-2"></i>Editar Producto';
+    
+    // ✅ FUNCIÓN HELPER PARA LIMPIAR PRECIOS
     const limpiarPrecio = (valor) => {
-        if (!valor) return '0.00';
-        // Remover cualquier carácter que no sea número, punto o coma
+        if (!valor || valor === 'None' || valor === 'null' || valor === '') return '0.00';
         let limpio = String(valor).replace(/[^\d.,]/g, '');
-        // Reemplazar coma por punto (por si acaso)
         limpio = limpio.replace(',', '.');
-        // Convertir a número y volver a string con 2 decimales
         const numero = parseFloat(limpio) || 0;
         return numero.toFixed(2);
     };
     
-    // ✅ Extraer TODOS los datos del row con limpieza de precios
+    // Obtener datos del row
     const datos = {
         id: productoId,
-        nombre: row.getAttribute('data-nombre') || '',
-        codigo: row.getAttribute('data-codigo') || '',
-        descripcion: row.getAttribute('data-descripcion') || '',
-        categoriaId: row.getAttribute('data-categoria') || '',
-        marcaId: row.getAttribute('data-marca') || '',
-        iva: row.getAttribute('data-iva') || '0',
-        tipo: row.getAttribute('data-tipo') || 'NORMAL',
+        nombre: row.getAttribute('data-nombre'),
+        codigo: row.getAttribute('data-codigo'),
+        descripcion: row.getAttribute('data-descripcion'),
+        categoriaId: row.getAttribute('data-categoria-id'),
+        marcaId: row.getAttribute('data-marca-id'),
+        tipo: row.getAttribute('data-tipo'),
+        iva: parseFloat(row.getAttribute('data-iva')) || 0,
         precioUnitario: limpiarPrecio(row.getAttribute('data-precio-unitario')),
         precioPeso: limpiarPrecio(row.getAttribute('data-precio-peso')),
+        stockActual: parseInt(row.getAttribute('data-stock-actual')) || 0,
+        quintales: parseInt(row.getAttribute('data-quintales')) || 0,
+        libras: parseFloat(row.getAttribute('data-libras')) || 0,
         activo: row.getAttribute('data-activo') === 'true',
-        imagenUrl: row.getAttribute('data-imagen-url') || ''
+        imagenUrl: row.getAttribute('data-imagen-url'),
+        unidadMedidaId: row.getAttribute('data-unidad-medida-id')
     };
     
-    console.log('📦 Datos extraídos y limpiados:', datos);
-    console.log('💰 Precio unitario limpio:', datos.precioUnitario);
-    console.log('💰 Precio peso limpio:', datos.precioPeso);
+    console.log('📊 Datos cargados:', datos);
+    console.log('💰 Precio Unitario:', datos.precioUnitario);
+    console.log('💰 Precio Peso:', datos.precioPeso);
     
-    const form = document.getElementById('productoForm');
-    const modalElement = document.getElementById('productoModal');
+    // ✅ CRITICAL: Resetear el formulario primero
+    form.reset();
     
-    // Cambiar título
-    document.getElementById('productoModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Producto';
+    // Poblar campos básicos
     document.getElementById('productoId').value = datos.id;
-    
-    // ✅ Cargar campos básicos
     document.getElementById('nombre').value = datos.nombre;
     document.getElementById('codigo_barras').value = datos.codigo;
-    document.getElementById('descripcion').value = datos.descripcion;
+    document.getElementById('descripcion').value = datos.descripcion || '';
+    document.getElementById('categoria').value = datos.categoriaId || '';
+    document.getElementById('marca').value = datos.marcaId || '';
     
-    // ✅ Cargar selects
-    if (datos.categoriaId) {
-        document.getElementById('categoria').value = datos.categoriaId;
-    }
+    // ✅ FIX CRÍTICO 1: IVA
+    const ivaSelect = document.getElementById('iva');
     
-    if (datos.marcaId) {
-        document.getElementById('marca').value = datos.marcaId;
+    if (datos.iva > 0) {
+        // Buscar la opción que corresponda al IVA
+        let optionFound = false;
+        for (let option of ivaSelect.options) {
+            if (parseFloat(option.value) === datos.iva) {
+                ivaSelect.value = option.value;
+                optionFound = true;
+                break;
+            }
+        }
+        
+        // Si no se encontró la opción exacta, usar la del IVA_DEFAULT
+        if (!optionFound && datos.iva > 0) {
+            ivaSelect.value = IVA_DEFAULT.toString();
+        }
     } else {
-        document.getElementById('marca').value = '';
+        ivaSelect.value = '0';
     }
     
-    // ✅ Cargar IVA
-    document.getElementById('iva').value = datos.iva;
+    console.log('✅ IVA configurado en select:', ivaSelect.value);
     updateIVAInfo();
     
-    // ✅ Cargar activo
     document.getElementById('activo').checked = datos.activo;
     
-    // ✅ Cargar imagen
+    // Configurar imagen
     if (datos.imagenUrl) {
         const preview = document.getElementById('imagePreview');
         const placeholder = document.getElementById('imagePlaceholder');
@@ -1765,9 +1870,6 @@ function editProducto(productoId) {
     
     // ✅ Configurar tipo de inventario
     document.getElementById('tipo_inventario').value = datos.tipo;
-    console.log('🔄 Tipo configurado:', datos.tipo);
-    
-    // Hacer toggle inicial
     toggleTipoInventario();
     
     // Configurar formulario
@@ -1777,26 +1879,35 @@ function editProducto(productoId) {
     saveBtn.disabled = false;
     saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Actualizar';
     
-    // 🎯 SOLUCIÓN: Usar el evento 'shown.bs.modal' para cargar precios
+    // 🎯 SOLUCIÓN: Usar el evento 'shown.bs.modal' para cargar precios y stock
     modalElement.addEventListener('shown.bs.modal', function cargarPreciosHandler() {
-        console.log('🎬 Modal visible, cargando precios...');
+        console.log('🎬 Modal visible, cargando precios y stock...');
         
-        // Remover el listener
+        // Remover el listener para que solo se ejecute una vez
         modalElement.removeEventListener('shown.bs.modal', cargarPreciosHandler);
         
-        // ✅ CARGAR PRECIOS CON CONVERSIÓN EXPLÍCITA A STRING
+        // ✅ CARGAR PRECIOS Y STOCK
         if (datos.tipo === 'QUINTAL') {
             const inputPrecioPeso = document.getElementById('precio_por_unidad_peso');
-            // Asignar directamente el string limpio
             inputPrecioPeso.value = datos.precioPeso;
             console.log('✅ Precio por peso cargado:', inputPrecioPeso.value);
-            console.log('🔍 Verificando input:', inputPrecioPeso);
+            
+            if (datos.unidadMedidaId) {
+                document.getElementById('unidad_medida_base').value = datos.unidadMedidaId;
+            }
+            
+            // ✅ FIX CRÍTICO 2: CARGAR STOCK QUINTAL
+            document.getElementById('quintales').value = datos.quintales;
+            document.getElementById('libras').value = datos.libras;
+            console.log('📦 Stock Quintal cargado');
         } else {
             const inputPrecioUnitario = document.getElementById('precio_unitario');
-            // Asignar directamente el string limpio
             inputPrecioUnitario.value = datos.precioUnitario;
-            console.log('✅ Precio de venta cargado:', inputPrecioUnitario.value);
-            console.log('🔍 Verificando input:', inputPrecioUnitario);
+            console.log('✅ Precio unitario cargado:', inputPrecioUnitario.value);
+            
+            // ✅ FIX CRÍTICO 3: CARGAR STOCK NORMAL
+            document.getElementById('stock_actual').value = datos.stockActual;
+            console.log('📦 Stock Normal cargado:', datos.stockActual);
         }
         
         console.log('🎉 Todos los datos cargados correctamente');
@@ -1805,9 +1916,7 @@ function editProducto(productoId) {
     // Mostrar modal
     const modal = new bootstrap.Modal(modalElement);
     modal.show();
-    console.log('📤 Mostrando modal...');
 }
-
     // ✅ FUNCIÓN VER DETALLES
     function viewProducto(productoId) {
         const row = document.querySelector(`tr[data-id="${productoId}"]`);
