@@ -1,4 +1,5 @@
 # apps/custom_admin/urls.py
+# ARCHIVO ACTUALIZADO CON RUTAS PARA CUENTAS POR COBRAR Y CUENTAS POR PAGAR
 
 from django.urls import path
 from . import views
@@ -74,23 +75,24 @@ urlpatterns = [
     # INVENTARIO - Marcas
     # ========================================
     path('inventario/marcas/', views.marcas_list, name='marcas'),
-    path('inventario/marcas/crear/', views.marca_crear, name='marca_crear'),  # ← Corregido: marca_crear (sin _view)
+    path('inventario/marcas/crear/', views.marca_crear, name='marca_crear'),
     path('inventario/marcas/<uuid:pk>/editar/', views.marca_editar, name='marca_editar'),
     path('inventario/marcas/<uuid:pk>/eliminar/', views.marca_eliminar, name='marca_eliminar'),
     
     # API para crear marca desde modal (JSON)
-    path('api/marcas/crear/', views.marca_crear_api, name='marca_crear_api'),  # ← Nombre único
+    path('api/marcas/crear/', views.marca_crear_api, name='marca_crear_api'),
     path('api/marcas/crear-formdata/', views.marca_crear_formdata, name='marca_crear_formdata'),
+    
     # ========================================
     # INVENTARIO - Proveedores
     # ========================================
     path('inventario/proveedores/', views.proveedores_view, name='proveedores'),
-    path('inventario/proveedores/crear/', views.proveedor_crear, name='proveedor_crear'),  # ← Corregido: proveedor_crear (sin _view)
+    path('inventario/proveedores/crear/', views.proveedor_crear, name='proveedor_crear'),
     path('inventario/proveedores/<uuid:pk>/editar/', views.proveedor_editar, name='proveedor_editar'),
     path('inventario/proveedores/<uuid:pk>/eliminar/', views.proveedor_eliminar, name='proveedor_eliminar'),
     
     # API para crear proveedor desde modal (JSON)
-    path('api/proveedores/crear/', views.proveedor_crear_api, name='proveedor_crear_api'),  # ← Nombre único
+    path('api/proveedores/crear/', views.proveedor_crear_api, name='proveedor_crear_api'),
     
     # API para proveedores
     path('api/proveedores/<uuid:pk>/detalle/', views.proveedor_detalle_api, name='proveedor_detalle_api'),
@@ -219,6 +221,30 @@ urlpatterns = [
     path('finanzas/caja-chica/<uuid:caja_chica_id>/reponer/', views.reponer_caja_chica, name='reponer_caja_chica'),
     path('finanzas/caja-chica/<uuid:caja_chica_id>/movimientos/', views.caja_chica_movimientos_api, name='caja_chica_movimientos_api'),
     path('finanzas/caja-chica/<uuid:caja_chica_id>/editar/', views.editar_caja_chica, name='editar_caja_chica'),
+    
+    # ========================================
+    # FINANZAS - CUENTAS POR COBRAR (NUEVO)
+    # ========================================
+    path('finanzas/cuentas-por-cobrar/', views.cuentas_por_cobrar_list, name='cuentas_por_cobrar_list'),
+    path('finanzas/cuentas-por-cobrar/<uuid:cuenta_id>/', views.cuenta_por_cobrar_detalle, name='cuenta_por_cobrar_detalle'),
+    path('finanzas/cuentas-por-cobrar/<uuid:cuenta_id>/registrar-pago/', views.registrar_pago_cobrar, name='registrar_pago_cobrar'),
+    
+    # APIs Cuentas por Cobrar
+    path('api/finanzas/cuentas-por-cobrar/', views.api_cuentas_por_cobrar_list, name='api_cuentas_por_cobrar_list'),
+    path('api/finanzas/cuentas-por-cobrar/registrar-pago/', views.api_registrar_pago_cobrar, name='api_registrar_pago_cobrar'),
+    path('api/finanzas/cuentas-por-cobrar/<uuid:cuenta_id>/', views.api_obtener_cuenta_cobrar, name='api_obtener_cuenta_cobrar'),
+    
+    # ========================================
+    # FINANZAS - CUENTAS POR PAGAR (NUEVO)
+    # ========================================
+    path('finanzas/cuentas-por-pagar/', views.cuentas_por_pagar_list, name='cuentas_por_pagar_list'),
+    path('finanzas/cuentas-por-pagar/<uuid:cuenta_id>/', views.cuenta_por_pagar_detalle, name='cuenta_por_pagar_detalle'),
+    path('finanzas/cuentas-por-pagar/<uuid:cuenta_id>/registrar-pago/', views.registrar_pago_pagar, name='registrar_pago_pagar'),
+    
+    # APIs Cuentas por Pagar
+    path('api/finanzas/cuentas-por-pagar/', views.api_cuentas_por_pagar_list, name='api_cuentas_por_pagar_list'),
+    path('api/finanzas/cuentas-por-pagar/registrar-pago/', views.api_registrar_pago_pagar, name='api_registrar_pago_pagar'),
+    path('api/finanzas/cuentas-por-pagar/<uuid:cuenta_id>/', views.api_obtener_cuenta_pagar, name='api_obtener_cuenta_pagar'),
     
     # ========================================
     # REPORTES

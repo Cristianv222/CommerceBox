@@ -811,3 +811,895 @@ def arqueo_pre_save(sender, instance, **kwargs):
     Antes de guardar arqueo, calcular diferencia
     """
     instance.calcular_diferencia()
+
+class CuentaPorCobrar(models.Model):
+    """
+    Registro de ventas a crédito a clientes
+    Se genera automáticamente cuando una venta es de tipo CREDITO
+    """
+    ESTADO_CHOICES = [
+        ('PENDIENTE', '🟡 Pendiente'),
+        ('PARCIAL', '🟠 Pago Parcial'),
+        ('PAGADA', '🟢 Pagada'),
+        ('VENCIDA', '🔴 Vencida'),
+        ('CANCELADA', '⚫ Cancelada'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Relaciones
+    cliente = models.ForeignKey(
+        'sales_management.Cliente',
+        on_delete=models.PROTECT,
+        related_name='cuentas_por_cobrar',
+        help_text="Cliente que debe el pago"
+    )
+    venta = models.OneToOneField(
+        'sales_management.Venta',
+        on_delete=models.PROTECT,
+        related_name='cuenta_credito',
+        help_text="Venta asociada a esta cuenta"
+    )
+    
+    # Información de la cuenta
+    numero_cuenta = models.CharField(
+        max_length=20,
+        unique=True,
+        blank=True,
+        help_text="Número único de la cuenta (CXC-000001)"
+    )
+    descripcion = models.TextField(
+        blank=True,
+        help_text="Descripción adicional de la cuenta"
+    )
+    
+    # Montos
+    monto_total = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01)],
+        help_text="Monto total de la venta a crédito"
+    )
+    monto_pagado = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Total pagado hasta la fecha"
+    )
+    saldo_pendiente = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Saldo que aún debe el cliente"
+    )
+    
+    # Fechas
+    fecha_emision = models.DateField(
+        default=timezone.now,
+        db_index=True,
+        help_text="Fecha de emisión de la cuenta"
+    )
+    fecha_vencimiento = models.DateField(
+        db_index=True,
+        help_text="Fecha de vencimiento del crédito"
+    )
+    fecha_pago_completo = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Fecha en que se pagó completamente"
+    )
+    
+    # Estado
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default='PENDIENTE',
+        db_index=True
+    )
+    dias_vencidos = models.IntegerField(
+        default=0,
+        help_text="Días transcurridos desde el vencimiento (si aplica)"
+    )
+    
+    # Observaciones
+    observaciones = models.TextField(blank=True)
+    
+    # Auditoría
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    usuario_registro = models.ForeignKey(
+        'authentication.Usuario',
+        on_delete=models.PROTECT,
+        related_name='cuentas_cobrar_registradas'
+    )
+    
+    class Meta:
+        verbose_name = 'Cuenta por Cobrar'
+        verbose_name_plural = 'Cuentas por Cobrar'
+        ordering = ['-fecha_emision']
+        db_table = 'fin_cuenta_por_cobrar'
+        indexes = [
+            models.Index(fields=['numero_cuenta']),
+            models.Index(fields=['cliente', 'estado']),
+            models.Index(fields=['fecha_vencimiento', 'estado']),
+            models.Index(fields=['estado', '-fecha_emision']),
+        ]
+    
+    def __str__(self):
+        return f"{self.numero_cuenta} - {self.cliente.nombre_completo()} - ${self.saldo_pendiente}"
+    
+    def save(self, *args, **kwargs):
+        """
+        Al guardar:
+        - Generar número de cuenta si no existe
+        - Calcular saldo pendiente
+        - Actualizar estado
+        - Calcular días vencidos
+        """
+        # Generar número de cuenta
+        if not self.numero_cuenta:
+            self.numero_cuenta = self._generar_numero_cuenta()
+        
+        # Calcular saldo pendiente
+        self.saldo_pendiente = self.monto_total - self.monto_pagado
+        
+        # Actualizar estado según saldo y fecha
+        self._actualizar_estado()
+        
+        # Calcular días vencidos
+        self._calcular_dias_vencidos()
+        
+        super().save(*args, **kwargs)
+        
+        # Actualizar crédito disponible del cliente
+        if self.cliente:
+            self._actualizar_credito_cliente()
+    
+    def _generar_numero_cuenta(self):
+        """Genera un número único de cuenta por cobrar"""
+        from datetime import datetime
+        
+        # Formato: CXC-AÑO-NUMERO
+        año_actual = datetime.now().year
+        ultimo = CuentaPorCobrar.objects.filter(
+            numero_cuenta__startswith=f'CXC-{año_actual}-'
+        ).order_by('-numero_cuenta').first()
+        
+        if ultimo and ultimo.numero_cuenta:
+            try:
+                ultimo_num = int(ultimo.numero_cuenta.split('-')[2])
+                nuevo_num = ultimo_num + 1
+            except:
+                nuevo_num = 1
+        else:
+            nuevo_num = 1
+        
+        return f"CXC-{año_actual}-{nuevo_num:06d}"
+    
+    def _actualizar_estado(self):
+        """Actualiza el estado de la cuenta según pagos y fecha"""
+        if self.saldo_pendiente <= 0:
+            self.estado = 'PAGADA'
+            if not self.fecha_pago_completo:
+                self.fecha_pago_completo = timezone.now().date()
+        elif self.monto_pagado > 0:
+            # Hay pago parcial
+            if timezone.now().date() > self.fecha_vencimiento:
+                self.estado = 'VENCIDA'
+            else:
+                self.estado = 'PARCIAL'
+        else:
+            # Sin pagos
+            if timezone.now().date() > self.fecha_vencimiento:
+                self.estado = 'VENCIDA'
+            else:
+                self.estado = 'PENDIENTE'
+    
+    def _calcular_dias_vencidos(self):
+        """Calcula los días vencidos si la cuenta está vencida"""
+        if timezone.now().date() > self.fecha_vencimiento and self.saldo_pendiente > 0:
+            self.dias_vencidos = (timezone.now().date() - self.fecha_vencimiento).days
+        else:
+            self.dias_vencidos = 0
+    
+    def _actualizar_credito_cliente(self):
+        """Actualiza el crédito disponible del cliente"""
+        from django.db.models import Sum
+        
+        # Calcular total de deuda pendiente del cliente
+        total_deuda = CuentaPorCobrar.objects.filter(
+            cliente=self.cliente,
+            estado__in=['PENDIENTE', 'PARCIAL', 'VENCIDA']
+        ).aggregate(
+            total=Sum('saldo_pendiente')
+        )['total'] or Decimal('0')
+        
+        # Actualizar crédito disponible
+        self.cliente.credito_disponible = self.cliente.limite_credito - total_deuda
+        self.cliente.save(update_fields=['credito_disponible'])
+    
+    def registrar_pago(self, monto, metodo_pago, usuario, observaciones="", numero_comprobante=""):
+        """
+        Registra un pago a la cuenta
+        
+        Args:
+            monto: Monto del pago
+            metodo_pago: Método de pago (EFECTIVO, TRANSFERENCIA, etc)
+            usuario: Usuario que registra el pago
+            observaciones: Observaciones del pago
+            numero_comprobante: Número de comprobante/voucher
+        
+        Returns:
+            PagoCuentaPorCobrar: Objeto del pago creado
+        """
+        if monto <= 0:
+            raise ValueError("El monto debe ser mayor a cero")
+        
+        if monto > self.saldo_pendiente:
+            raise ValueError(f"El monto (${monto}) excede el saldo pendiente (${self.saldo_pendiente})")
+        
+        # Crear registro de pago
+        pago = PagoCuentaPorCobrar.objects.create(
+            cuenta=self,
+            monto=monto,
+            metodo_pago=metodo_pago,
+            usuario=usuario,
+            observaciones=observaciones,
+            numero_comprobante=numero_comprobante
+        )
+        
+        # Actualizar montos
+        self.monto_pagado += monto
+        self.save()
+        
+        return pago
+    
+    def esta_vencida(self):
+        """Verifica si la cuenta está vencida"""
+        return timezone.now().date() > self.fecha_vencimiento and self.saldo_pendiente > 0
+    
+    def dias_para_vencer(self):
+        """Retorna los días que faltan para vencer (negativo si ya venció)"""
+        diferencia = (self.fecha_vencimiento - timezone.now().date()).days
+        return diferencia
+    
+    def puede_cancelarse(self):
+        """Verifica si la cuenta puede cancelarse"""
+        return self.estado in ['PENDIENTE', 'PARCIAL', 'VENCIDA'] and self.monto_pagado == 0
+
+
+# ============================================================================
+# PAGOS DE CUENTAS POR COBRAR
+# ============================================================================
+
+class PagoCuentaPorCobrar(models.Model):
+    """
+    Registro de pagos realizados a cuentas por cobrar
+    Permite pagos parciales o totales
+    """
+    METODO_PAGO_CHOICES = [
+        ('EFECTIVO', '💵 Efectivo'),
+        ('TRANSFERENCIA', '🏦 Transferencia Bancaria'),
+        ('TARJETA_DEBITO', '💳 Tarjeta de Débito'),
+        ('TARJETA_CREDITO', '💳 Tarjeta de Crédito'),
+        ('CHEQUE', '📝 Cheque'),
+        ('DEPOSITO', '🏦 Depósito Bancario'),
+        ('OTRO', '📦 Otro'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Relación
+    cuenta = models.ForeignKey(
+        'CuentaPorCobrar',
+        on_delete=models.PROTECT,
+        related_name='pagos'
+    )
+    
+    # Información del pago
+    numero_pago = models.CharField(
+        max_length=20,
+        unique=True,
+        blank=True,
+        help_text="Número único del pago (PCX-000001)"
+    )
+    monto = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01)]
+    )
+    metodo_pago = models.CharField(
+        max_length=20,
+        choices=METODO_PAGO_CHOICES
+    )
+    
+    # Información adicional del pago
+    numero_comprobante = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Número de comprobante, voucher, cheque, etc."
+    )
+    banco = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Banco (para transferencias, cheques, etc.)"
+    )
+    numero_cuenta_banco = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Número de cuenta bancaria"
+    )
+    
+    # Observaciones
+    observaciones = models.TextField(blank=True)
+    
+    # Auditoría
+    fecha_pago = models.DateTimeField(
+        default=timezone.now,
+        db_index=True
+    )
+    usuario = models.ForeignKey(
+        'authentication.Usuario',
+        on_delete=models.PROTECT,
+        related_name='pagos_cuentas_cobrar_registrados'
+    )
+    
+    class Meta:
+        verbose_name = 'Pago de Cuenta por Cobrar'
+        verbose_name_plural = 'Pagos de Cuentas por Cobrar'
+        ordering = ['-fecha_pago']
+        db_table = 'fin_pago_cuenta_por_cobrar'
+        indexes = [
+            models.Index(fields=['numero_pago']),
+            models.Index(fields=['cuenta', '-fecha_pago']),
+            models.Index(fields=['-fecha_pago']),
+        ]
+    
+    def __str__(self):
+        return f"{self.numero_pago} - ${self.monto} ({self.get_metodo_pago_display()})"
+    
+    def save(self, *args, **kwargs):
+        """Al guardar, generar número de pago si no existe"""
+        if not self.numero_pago:
+            self.numero_pago = self._generar_numero_pago()
+        
+        super().save(*args, **kwargs)
+    
+    def _generar_numero_pago(self):
+        """Genera un número único de pago"""
+        from datetime import datetime
+        
+        # Formato: PCX-AÑO-NUMERO
+        año_actual = datetime.now().year
+        ultimo = PagoCuentaPorCobrar.objects.filter(
+            numero_pago__startswith=f'PCX-{año_actual}-'
+        ).order_by('-numero_pago').first()
+        
+        if ultimo and ultimo.numero_pago:
+            try:
+                ultimo_num = int(ultimo.numero_pago.split('-')[2])
+                nuevo_num = ultimo_num + 1
+            except:
+                nuevo_num = 1
+        else:
+            nuevo_num = 1
+        
+        return f"PCX-{año_actual}-{nuevo_num:06d}"
+
+
+# ============================================================================
+# CUENTAS POR PAGAR (Compras a Crédito)
+# ============================================================================
+
+class CuentaPorPagar(models.Model):
+    """
+    Registro de compras a crédito a proveedores
+    Se genera cuando se compra inventario a crédito
+    """
+    ESTADO_CHOICES = [
+        ('PENDIENTE', '🟡 Pendiente'),
+        ('PARCIAL', '🟠 Pago Parcial'),
+        ('PAGADA', '🟢 Pagada'),
+        ('VENCIDA', '🔴 Vencida'),
+        ('CANCELADA', '⚫ Cancelada'),
+    ]
+    
+    TIPO_COMPRA_CHOICES = [
+        ('QUINTAL', 'Compra de Quintales'),
+        ('NORMAL', 'Compra de Productos Normales'),
+        ('MIXTA', 'Compra Mixta'),
+        ('SERVICIO', 'Servicio'),
+        ('OTRO', 'Otro'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Relaciones
+    proveedor = models.ForeignKey(
+        'inventory_management.Proveedor',
+        on_delete=models.PROTECT,
+        related_name='cuentas_por_pagar',
+        help_text="Proveedor al que se le debe"
+    )
+    
+    # Información de la cuenta
+    numero_cuenta = models.CharField(
+        max_length=20,
+        unique=True,
+        blank=True,
+        help_text="Número único de la cuenta (CXP-000001)"
+    )
+    numero_factura_proveedor = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Número de factura del proveedor"
+    )
+    tipo_compra = models.CharField(
+        max_length=20,
+        choices=TIPO_COMPRA_CHOICES,
+        default='MIXTA'
+    )
+    descripcion = models.TextField(
+        help_text="Descripción detallada de la compra"
+    )
+    
+    # Montos
+    monto_total = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01)],
+        help_text="Monto total de la compra a crédito"
+    )
+    monto_pagado = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Total pagado hasta la fecha"
+    )
+    saldo_pendiente = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Saldo que aún debemos al proveedor"
+    )
+    
+    # Fechas
+    fecha_emision = models.DateField(
+        default=timezone.now,
+        db_index=True,
+        help_text="Fecha de emisión de la cuenta"
+    )
+    fecha_factura = models.DateField(
+        help_text="Fecha de la factura del proveedor"
+    )
+    fecha_vencimiento = models.DateField(
+        db_index=True,
+        help_text="Fecha de vencimiento del crédito"
+    )
+    fecha_pago_completo = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Fecha en que se pagó completamente"
+    )
+    
+    # Estado
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default='PENDIENTE',
+        db_index=True
+    )
+    dias_vencidos = models.IntegerField(
+        default=0,
+        help_text="Días transcurridos desde el vencimiento (si aplica)"
+    )
+    
+    # Observaciones
+    observaciones = models.TextField(blank=True)
+    
+    # Auditoría
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    usuario_registro = models.ForeignKey(
+        'authentication.Usuario',
+        on_delete=models.PROTECT,
+        related_name='cuentas_pagar_registradas'
+    )
+    
+    class Meta:
+        verbose_name = 'Cuenta por Pagar'
+        verbose_name_plural = 'Cuentas por Pagar'
+        ordering = ['-fecha_emision']
+        db_table = 'fin_cuenta_por_pagar'
+        indexes = [
+            models.Index(fields=['numero_cuenta']),
+            models.Index(fields=['proveedor', 'estado']),
+            models.Index(fields=['fecha_vencimiento', 'estado']),
+            models.Index(fields=['estado', '-fecha_emision']),
+        ]
+    
+    def __str__(self):
+        return f"{self.numero_cuenta} - {self.proveedor.nombre_comercial} - ${self.saldo_pendiente}"
+    
+    def save(self, *args, **kwargs):
+        """
+        Al guardar:
+        - Generar número de cuenta si no existe
+        - Calcular saldo pendiente
+        - Actualizar estado
+        - Calcular días vencidos
+        """
+        # Generar número de cuenta
+        if not self.numero_cuenta:
+            self.numero_cuenta = self._generar_numero_cuenta()
+        
+        # Calcular saldo pendiente
+        self.saldo_pendiente = self.monto_total - self.monto_pagado
+        
+        # Actualizar estado según saldo y fecha
+        self._actualizar_estado()
+        
+        # Calcular días vencidos
+        self._calcular_dias_vencidos()
+        
+        super().save(*args, **kwargs)
+    
+    def _generar_numero_cuenta(self):
+        """Genera un número único de cuenta por pagar"""
+        from datetime import datetime
+        
+        # Formato: CXP-AÑO-NUMERO
+        año_actual = datetime.now().year
+        ultimo = CuentaPorPagar.objects.filter(
+            numero_cuenta__startswith=f'CXP-{año_actual}-'
+        ).order_by('-numero_cuenta').first()
+        
+        if ultimo and ultimo.numero_cuenta:
+            try:
+                ultimo_num = int(ultimo.numero_cuenta.split('-')[2])
+                nuevo_num = ultimo_num + 1
+            except:
+                nuevo_num = 1
+        else:
+            nuevo_num = 1
+        
+        return f"CXP-{año_actual}-{nuevo_num:06d}"
+    
+    def _actualizar_estado(self):
+        """Actualiza el estado de la cuenta según pagos y fecha"""
+        if self.saldo_pendiente <= 0:
+            self.estado = 'PAGADA'
+            if not self.fecha_pago_completo:
+                self.fecha_pago_completo = timezone.now().date()
+        elif self.monto_pagado > 0:
+            # Hay pago parcial
+            if timezone.now().date() > self.fecha_vencimiento:
+                self.estado = 'VENCIDA'
+            else:
+                self.estado = 'PARCIAL'
+        else:
+            # Sin pagos
+            if timezone.now().date() > self.fecha_vencimiento:
+                self.estado = 'VENCIDA'
+            else:
+                self.estado = 'PENDIENTE'
+    
+    def _calcular_dias_vencidos(self):
+        """Calcula los días vencidos si la cuenta está vencida"""
+        if timezone.now().date() > self.fecha_vencimiento and self.saldo_pendiente > 0:
+            self.dias_vencidos = (timezone.now().date() - self.fecha_vencimiento).days
+        else:
+            self.dias_vencidos = 0
+    
+    def registrar_pago(self, monto, metodo_pago, usuario, observaciones="", numero_comprobante=""):
+        """
+        Registra un pago a la cuenta
+        
+        Args:
+            monto: Monto del pago
+            metodo_pago: Método de pago
+            usuario: Usuario que registra el pago
+            observaciones: Observaciones del pago
+            numero_comprobante: Número de comprobante/voucher
+        
+        Returns:
+            PagoCuentaPorPagar: Objeto del pago creado
+        """
+        if monto <= 0:
+            raise ValueError("El monto debe ser mayor a cero")
+        
+        if monto > self.saldo_pendiente:
+            raise ValueError(f"El monto (${monto}) excede el saldo pendiente (${self.saldo_pendiente})")
+        
+        # Crear registro de pago
+        pago = PagoCuentaPorPagar.objects.create(
+            cuenta=self,
+            monto=monto,
+            metodo_pago=metodo_pago,
+            usuario=usuario,
+            observaciones=observaciones,
+            numero_comprobante=numero_comprobante
+        )
+        
+        # Actualizar montos
+        self.monto_pagado += monto
+        self.save()
+        
+        return pago
+    
+    def esta_vencida(self):
+        """Verifica si la cuenta está vencida"""
+        return timezone.now().date() > self.fecha_vencimiento and self.saldo_pendiente > 0
+    
+    def dias_para_vencer(self):
+        """Retorna los días que faltan para vencer (negativo si ya venció)"""
+        diferencia = (self.fecha_vencimiento - timezone.now().date()).days
+        return diferencia
+
+
+# ============================================================================
+# PAGOS DE CUENTAS POR PAGAR
+# ============================================================================
+
+class PagoCuentaPorPagar(models.Model):
+    """
+    Registro de pagos realizados a cuentas por pagar (proveedores)
+    Permite pagos parciales o totales
+    """
+    METODO_PAGO_CHOICES = [
+        ('EFECTIVO', '💵 Efectivo'),
+        ('TRANSFERENCIA', '🏦 Transferencia Bancaria'),
+        ('CHEQUE', '📝 Cheque'),
+        ('DEPOSITO', '🏦 Depósito Bancario'),
+        ('TARJETA_CREDITO', '💳 Tarjeta de Crédito'),
+        ('OTRO', '📦 Otro'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Relación
+    cuenta = models.ForeignKey(
+        'CuentaPorPagar',
+        on_delete=models.PROTECT,
+        related_name='pagos'
+    )
+    
+    # Información del pago
+    numero_pago = models.CharField(
+        max_length=20,
+        unique=True,
+        blank=True,
+        help_text="Número único del pago (PPX-000001)"
+    )
+    monto = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01)]
+    )
+    metodo_pago = models.CharField(
+        max_length=20,
+        choices=METODO_PAGO_CHOICES
+    )
+    
+    # Información adicional del pago
+    numero_comprobante = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Número de comprobante, voucher, cheque, etc."
+    )
+    banco = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Banco (para transferencias, cheques, etc.)"
+    )
+    numero_cuenta_banco = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Número de cuenta bancaria"
+    )
+    
+    # Observaciones
+    observaciones = models.TextField(blank=True)
+    
+    # Auditoría
+    fecha_pago = models.DateTimeField(
+        default=timezone.now,
+        db_index=True
+    )
+    usuario = models.ForeignKey(
+        'authentication.Usuario',
+        on_delete=models.PROTECT,
+        related_name='pagos_cuentas_pagar_registrados'
+    )
+    
+    class Meta:
+        verbose_name = 'Pago de Cuenta por Pagar'
+        verbose_name_plural = 'Pagos de Cuentas por Pagar'
+        ordering = ['-fecha_pago']
+        db_table = 'fin_pago_cuenta_por_pagar'
+        indexes = [
+            models.Index(fields=['numero_pago']),
+            models.Index(fields=['cuenta', '-fecha_pago']),
+            models.Index(fields=['-fecha_pago']),
+        ]
+    
+    def __str__(self):
+        return f"{self.numero_pago} - ${self.monto} ({self.get_metodo_pago_display()})"
+    
+    def save(self, *args, **kwargs):
+        """Al guardar, generar número de pago si no existe"""
+        if not self.numero_pago:
+            self.numero_pago = self._generar_numero_pago()
+        
+        super().save(*args, **kwargs)
+    
+    def _generar_numero_pago(self):
+        """Genera un número único de pago"""
+        from datetime import datetime
+        
+        # Formato: PPX-AÑO-NUMERO
+        año_actual = datetime.now().year
+        ultimo = PagoCuentaPorPagar.objects.filter(
+            numero_pago__startswith=f'PPX-{año_actual}-'
+        ).order_by('-numero_pago').first()
+        
+        if ultimo and ultimo.numero_pago:
+            try:
+                ultimo_num = int(ultimo.numero_pago.split('-')[2])
+                nuevo_num = ultimo_num + 1
+            except:
+                nuevo_num = 1
+        else:
+            nuevo_num = 1
+        
+        return f"PPX-{año_actual}-{nuevo_num:06d}"
+
+
+# ============================================================================
+# SIGNALS - Automatización de procesos
+# ============================================================================
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+@receiver(post_save, sender='sales_management.Venta')
+def crear_cuenta_por_cobrar_automatico(sender, instance, created, **kwargs):
+    """
+    Cuando se crea una venta a CREDITO, crear automáticamente
+    la cuenta por cobrar
+    """
+    if created and instance.tipo_venta == 'CREDITO' and instance.cliente:
+        # Verificar que no exista ya una cuenta por cobrar para esta venta
+        if not hasattr(instance, 'cuenta_credito'):
+            from datetime import timedelta
+            
+            # Calcular fecha de vencimiento
+            dias_credito = instance.cliente.dias_credito or 30
+            fecha_vencimiento = instance.fecha_venta.date() + timedelta(days=dias_credito)
+            
+            # Crear cuenta por cobrar
+            CuentaPorCobrar.objects.create(
+                cliente=instance.cliente,
+                venta=instance,
+                monto_total=instance.total,
+                fecha_emision=instance.fecha_venta.date(),
+                fecha_vencimiento=fecha_vencimiento,
+                descripcion=f"Venta {instance.numero_venta} a crédito",
+                usuario_registro=instance.vendedor
+            )
+
+
+# ============================================================================
+# MÉTODOS AUXILIARES PARA REPORTES
+# ============================================================================
+
+class ReporteCuentasPorCobrar:
+    """Clase helper para generar reportes de cuentas por cobrar"""
+    
+    @staticmethod
+    def resumen_general():
+        """Genera un resumen general de cuentas por cobrar"""
+        return {
+            'total_pendiente': CuentaPorCobrar.objects.filter(
+                estado__in=['PENDIENTE', 'PARCIAL', 'VENCIDA']
+            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+            
+            'total_vencidas': CuentaPorCobrar.objects.filter(
+                estado='VENCIDA'
+            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+            
+            'cantidad_vencidas': CuentaPorCobrar.objects.filter(
+                estado='VENCIDA'
+            ).count(),
+            
+            'total_cobrado_mes': PagoCuentaPorCobrar.objects.filter(
+                fecha_pago__year=timezone.now().year,
+                fecha_pago__month=timezone.now().month
+            ).aggregate(total=Sum('monto'))['total'] or Decimal('0'),
+        }
+    
+    @staticmethod
+    def antiguedad_saldos():
+        """Reporte de antigüedad de saldos por cobrar"""
+        from datetime import timedelta
+        hoy = timezone.now().date()
+        
+        return {
+            'corriente': CuentaPorCobrar.objects.filter(
+                estado__in=['PENDIENTE', 'PARCIAL'],
+                fecha_vencimiento__gte=hoy
+            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+            
+            'vencido_1_30': CuentaPorCobrar.objects.filter(
+                estado__in=['PARCIAL', 'VENCIDA'],
+                fecha_vencimiento__lt=hoy,
+                fecha_vencimiento__gte=hoy - timedelta(days=30)
+            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+            
+            'vencido_31_60': CuentaPorCobrar.objects.filter(
+                estado__in=['PARCIAL', 'VENCIDA'],
+                fecha_vencimiento__lt=hoy - timedelta(days=30),
+                fecha_vencimiento__gte=hoy - timedelta(days=60)
+            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+            
+            'vencido_mas_60': CuentaPorCobrar.objects.filter(
+                estado__in=['PARCIAL', 'VENCIDA'],
+                fecha_vencimiento__lt=hoy - timedelta(days=60)
+            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+        }
+
+
+class ReporteCuentasPorPagar:
+    """Clase helper para generar reportes de cuentas por pagar"""
+    
+    @staticmethod
+    def resumen_general():
+        """Genera un resumen general de cuentas por pagar"""
+        return {
+            'total_pendiente': CuentaPorPagar.objects.filter(
+                estado__in=['PENDIENTE', 'PARCIAL', 'VENCIDA']
+            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+            
+            'total_vencidas': CuentaPorPagar.objects.filter(
+                estado='VENCIDA'
+            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+            
+            'cantidad_vencidas': CuentaPorPagar.objects.filter(
+                estado='VENCIDA'
+            ).count(),
+            
+            'total_pagado_mes': PagoCuentaPorPagar.objects.filter(
+                fecha_pago__year=timezone.now().year,
+                fecha_pago__month=timezone.now().month
+            ).aggregate(total=Sum('monto'))['total'] or Decimal('0'),
+        }
+    
+    @staticmethod
+    def antiguedad_saldos():
+        """Reporte de antigüedad de saldos por pagar"""
+        from datetime import timedelta
+        hoy = timezone.now().date()
+        
+        return {
+            'corriente': CuentaPorPagar.objects.filter(
+                estado__in=['PENDIENTE', 'PARCIAL'],
+                fecha_vencimiento__gte=hoy
+            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+            
+            'vencido_1_30': CuentaPorPagar.objects.filter(
+                estado__in=['PARCIAL', 'VENCIDA'],
+                fecha_vencimiento__lt=hoy,
+                fecha_vencimiento__gte=hoy - timedelta(days=30)
+            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+            
+            'vencido_31_60': CuentaPorPagar.objects.filter(
+                estado__in=['PARCIAL', 'VENCIDA'],
+                fecha_vencimiento__lt=hoy - timedelta(days=30),
+                fecha_vencimiento__gte=hoy - timedelta(days=60)
+            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+            
+            'vencido_mas_60': CuentaPorPagar.objects.filter(
+                estado__in=['PARCIAL', 'VENCIDA'],
+                fecha_vencimiento__lt=hoy - timedelta(days=60)
+            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+        }
