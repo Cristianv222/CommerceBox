@@ -173,7 +173,8 @@ def productos_view(request):
     
     # ✅ OBTENER IVA DEFAULT DEL SISTEMA
     config = ConfiguracionSistema.get_config()
-    iva_default = config.iva_default
+    iva_activo = config.iva_activo
+    porcentaje_iva = config.porcentaje_iva
     
     # Paginación
     paginator = Paginator(productos, 20)
@@ -189,7 +190,8 @@ def productos_view(request):
         'search': search,
         'categoria_selected': categoria_id,
         'tipo_selected': tipo,
-        'iva_default': iva_default,
+        'iva_activo': iva_activo,
+        'porcentaje_iva': porcentaje_iva
     }
     
     return render(request, 'custom_admin/inventario/productos_list.html', context)

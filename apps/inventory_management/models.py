@@ -704,6 +704,8 @@ class Quintal(models.Model):
         max_length=20,
         unique=True,
         db_index=True,
+        blank=True,
+        default='',
         help_text="Código único del quintal (ej: QNT-00001)"
     )
     
