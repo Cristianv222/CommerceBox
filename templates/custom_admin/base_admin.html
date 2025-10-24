@@ -95,11 +95,15 @@
         border-radius: 10px; font-weight: 600;
     }
 
+    /* ========================================
+       🆕 DROPDOWN DE USUARIO
+       ======================================== */
     .user-dropdown {
         display: flex; align-items: center; gap: 0.8rem;
         padding: 0.6rem 1.2rem; background: rgba(248, 250, 252, 0.8);
         border: 1.5px solid var(--border-color); border-radius: 12px;
         cursor: pointer; transition: all 0.3s ease;
+        position: relative;
     }
     .user-dropdown:hover { background: rgba(219, 234, 254, 0.5); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
     .user-avatar {
@@ -107,6 +111,96 @@
         background: linear-gradient(135deg, rgba(96, 165, 250, 0.9), rgba(59, 130, 246, 0.9));
         display: flex; align-items: center; justify-content: center;
         font-weight: 600; font-size: 0.95rem; color: white;
+    }
+
+    /* Menú desplegable del usuario */
+    .user-dropdown-menu {
+        position: absolute;
+        top: calc(100% + 10px);
+        right: 0;
+        min-width: 260px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1.5px solid var(--border-color);
+        border-radius: 12px;
+        box-shadow: var(--shadow-lg);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 2000;
+        overflow: hidden;
+    }
+
+    .user-dropdown-menu.show {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .dropdown-menu-header {
+        padding: 1rem 1.2rem;
+        border-bottom: 1px solid var(--border-color);
+        background: rgba(219, 234, 254, 0.3);
+    }
+
+    .dropdown-menu-header .user-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: var(--text-dark);
+        margin-bottom: 0.2rem;
+    }
+
+    .dropdown-menu-header .user-email {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .dropdown-menu-body {
+        padding: 0.5rem 0;
+    }
+
+    .dropdown-menu-item {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        padding: 0.85rem 1.2rem;
+        color: var(--text-dark);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        width: 100%;
+        text-align: left;
+    }
+
+    .dropdown-menu-item:hover {
+        background: rgba(219, 234, 254, 0.4);
+    }
+
+    .dropdown-menu-item i {
+        font-size: 1.1rem;
+        color: var(--primary-color);
+        min-width: 20px;
+    }
+
+    .dropdown-menu-item.logout-item {
+        border-top: 1px solid var(--border-color);
+        margin-top: 0.3rem;
+    }
+
+    .dropdown-menu-item.logout-item:hover {
+        background: rgba(239, 68, 68, 0.1);
+    }
+
+    .dropdown-menu-item.logout-item i {
+        color: #ef4444;
+    }
+
+    .dropdown-menu-item.logout-item span {
+        color: #ef4444;
+        font-weight: 500;
     }
 
     /* SIDEBAR */
@@ -168,13 +262,13 @@
         border-left: 3px solid var(--primary-color); font-weight: 600;
     }
     .menu-item-icon { min-width: 20px; font-size: 0.95rem; margin-right: 0.7rem; }
-    .menu-item-single .menu-item-icon { min-width: 24px; font-size: 1.1rem; margin-right: 0.8rem; color: var(--primary-color); }
-    .sidebar.collapsed .menu-item-single .menu-item-icon { margin-right: 0; }
-    .sidebar.collapsed .menu-item-single .menu-item-text { display: none; }
-    .menu-item-text { white-space: nowrap; flex: 1; }
-    .menu-item-badge { margin-left: auto; background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 8px; font-weight: 600; }
+    .sidebar.collapsed .menu-item-icon { margin-right: 0; }
+    .menu-item-text { flex: 1; white-space: nowrap; }
+    .sidebar.collapsed .menu-item-text { display: none; }
+    .menu-item-badge { background: #ef4444; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 8px; font-weight: 600; }
+    .sidebar.collapsed .menu-item-badge { display: none; }
 
-    .menu-divider { height: 1px; background: var(--border-color); margin: 0.8rem 1rem; }
+    .menu-divider { height: 1px; background: var(--border-color); margin: 0.8rem 1.2rem; }
 
     /* MAIN CONTENT */
     .main-content {
@@ -250,18 +344,10 @@
     .alert-info-admin { border-left-color: #3b82f6; color: #2563eb; background: rgba(59, 130, 246, 0.1); }
 
     /* SCROLLBAR */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: rgba(248, 250, 252, 0.5); }
-    ::-webkit-scrollbar-thumb { background: rgba(147, 197, 253, 0.6); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(96, 165, 250, 0.8); }
-
-    /* RESPONSIVE */
-    @media (max-width: 768px) {
-        .sidebar { transform: translateX(-100%); }
-        .sidebar.mobile-open { transform: translateX(0); }
-        .topbar { left: 0; }
-        .main-content { margin-left: 0; }
-    }
+    ::-webkit-scrollbar-thumb { background: rgba(203, 213, 225, 0.8); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--primary-color); }
 </style>
 
     {% block extra_css %}{% endblock %}
@@ -341,28 +427,6 @@
                 </div>
             </div>
 
-            <div class="menu-group" id="group-finanzas">
-                <div class="menu-group-header" onclick="toggleMenuGroup('group-finanzas')">
-                    <i class="bi bi-cash-coin menu-group-icon"></i>
-                    <span class="menu-group-title">Finanzas</span>
-                    <i class="bi bi-chevron-right menu-group-arrow"></i>
-                </div>
-                <div class="menu-group-items">
-                    <a href="/panel/finanzas/cajas/" class="menu-item {% if '/finanzas/cajas/' in request.path %}active{% endif %}">
-                        <i class="bi bi-box menu-item-icon"></i>
-                        <span class="menu-item-text">Cajas</span>
-                    </a>
-                    <a href="/panel/finanzas/arqueos/" class="menu-item {% if '/finanzas/arqueos/' in request.path %}active{% endif %}">
-                        <i class="bi bi-calculator menu-item-icon"></i>
-                        <span class="menu-item-text">Arqueos de Caja</span>
-                    </a>
-                    <a href="/panel/finanzas/caja-chica/" class="menu-item {% if '/finanzas/caja-chica/' in request.path %}active{% endif %}">
-                        <i class="bi bi-wallet2 menu-item-icon"></i>
-                        <span class="menu-item-text">Caja Chica</span>
-                    </a>
-                </div>
-            </div>
-
             <div class="menu-group" id="group-inventario">
                 <div class="menu-group-header" onclick="toggleMenuGroup('group-inventario')">
                     <i class="bi bi-box-seam menu-group-icon"></i>
@@ -395,7 +459,29 @@
                         <span class="menu-item-text">Movimientos</span>
                         <span class="menu-item-badge" id="badge-inventario" style="display:none;">0</span>
                     </a>
-                    </div>
+                </div>
+            </div>
+
+            <div class="menu-group" id="group-finanzas">
+                <div class="menu-group-header" onclick="toggleMenuGroup('group-finanzas')">
+                    <i class="bi bi-cash-coin menu-group-icon"></i>
+                    <span class="menu-group-title">Finanzas</span>
+                    <i class="bi bi-chevron-right menu-group-arrow"></i>
+                </div>
+                <div class="menu-group-items">
+                    <a href="/panel/finanzas/cajas/" class="menu-item {% if '/finanzas/cajas/' in request.path %}active{% endif %}">
+                        <i class="bi bi-box menu-item-icon"></i>
+                        <span class="menu-item-text">Cajas</span>
+                    </a>
+                    <a href="/panel/finanzas/arqueos/" class="menu-item {% if '/finanzas/arqueos/' in request.path %}active{% endif %}">
+                        <i class="bi bi-calculator menu-item-icon"></i>
+                        <span class="menu-item-text">Arqueos de Caja</span>
+                    </a>
+                    <a href="/panel/finanzas/caja-chica/" class="menu-item {% if '/finanzas/caja-chica/' in request.path %}active{% endif %}">
+                        <i class="bi bi-wallet2 menu-item-icon"></i>
+                        <span class="menu-item-text">Caja Chica</span>
+                    </a>
+                </div>
             </div>
 
             <div class="menu-group" id="group-reportes">
@@ -412,38 +498,17 @@
                 </div>
             </div>
 
+            <div class="menu-divider"></div>
+
             <a href="/panel/alertas/" class="menu-item-single {% if '/alertas/' in request.path %}active{% endif %}">
                 <i class="bi bi-bell-fill menu-item-icon"></i>
                 <span class="menu-item-text">Alertas de Stock</span>
                 <span class="menu-item-badge" id="badge-alertas" style="display:none;">0</span>
             </a>
 
-            <div class="menu-divider"></div>
-
-            <div class="menu-group" id="group-sistema">
-                <div class="menu-group-header" onclick="toggleMenuGroup('group-sistema')">
-                    <i class="bi bi-gear-fill menu-group-icon"></i>
-                    <span class="menu-group-title">Sistema</span>
-                    <i class="bi bi-chevron-right menu-group-arrow"></i>
-                </div>
-                <div class="menu-group-items">
-                    <a href="/panel/logs/" class="menu-item {% if '/logs/' in request.path and '/logs/accesos/' not in request.path %}active{% endif %}">
-                        <i class="bi bi-file-text-fill menu-item-icon"></i>
-                        <span class="menu-item-text">Auditoría</span>
-                    </a>
-                    <a href="/panel/configuracion/" class="menu-item {% if '/configuracion/' in request.path %}active{% endif %}">
-                        <i class="bi bi-sliders menu-item-icon"></i>
-                        <span class="menu-item-text">Configuración</span>
-                    </a>
-                </div>
-            </div>
-
-            <div class="menu-divider"></div>
-
-            <!-- ✅ Cerrar sesión con manejo mejorado -->
-            <a href="javascript:void(0)" onclick="handleLogout(event)" class="menu-item-single">
-                <i class="bi bi-box-arrow-right menu-item-icon"></i>
-                <span class="menu-item-text">Cerrar Sesión</span>
+            <a href="/panel/hardware/" class="menu-item-single {% if '/hardware/' in request.path %}active{% endif %}">
+                <i class="bi bi-printer-fill menu-item-icon"></i>
+                <span class="menu-item-text">Hardware</span>
             </a>
         </div>
     </div>
@@ -466,13 +531,32 @@
                 <span class="badge" id="alert-count" style="display:none;">0</span>
             </div>
 
-            <div class="user-dropdown" onclick="toggleUserMenu()">
+            <!-- 🆕 DROPDOWN DE USUARIO MEJORADO -->
+            <div class="user-dropdown" onclick="toggleUserMenu(event)">
                 <div class="user-avatar" id="userAvatar">A</div>
                 <div class="d-none d-md-block">
                     <div style="font-weight: 600; font-size: 0.95rem;" id="userName">Admin</div>
                     <div style="font-size: 0.75rem; color: #64748b;" id="userRole">Administrador</div>
                 </div>
                 <i class="bi bi-chevron-down" style="color: #64748b;"></i>
+                
+                <!-- Menú desplegable -->
+                <div class="user-dropdown-menu" id="userDropdownMenu">
+                    <div class="dropdown-menu-header">
+                        <div class="user-name" id="dropdownUserName">Admin</div>
+                        <div class="user-email" id="dropdownUserEmail">admin@commercebox.com</div>
+                    </div>
+                    <div class="dropdown-menu-body">
+                        <a href="/panel/configuracion/" class="dropdown-menu-item">
+                            <i class="bi bi-gear-fill"></i>
+                            <span>Configuración del Sistema</span>
+                        </a>
+                        <button class="dropdown-menu-item logout-item" onclick="handleLogout(event)">
+                            <i class="bi bi-box-arrow-right"></i>
+                            <span>Cerrar Sesión</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -518,6 +602,16 @@
             loadUserData();
             loadAlertCounts();
             initExpandedGroups();
+
+            // 🆕 Cerrar dropdown al hacer clic fuera
+            document.addEventListener('click', function(e) {
+                const userDropdown = document.querySelector('.user-dropdown');
+                const dropdownMenu = document.getElementById('userDropdownMenu');
+                
+                if (!userDropdown.contains(e.target) && dropdownMenu.classList.contains('show')) {
+                    dropdownMenu.classList.remove('show');
+                }
+            });
         });
 
         // ========================================
@@ -532,54 +626,71 @@
             topbar.classList.toggle('sidebar-collapsed');
             mainContent.classList.toggle('sidebar-collapsed');
             
-            const icon = document.querySelector('.sidebar-toggle i');
-            icon.className = sidebar.classList.contains('collapsed') ? 'bi bi-chevron-right' : 'bi bi-chevron-left';
+            const toggleIcon = document.querySelector('.sidebar-toggle i');
+            if (sidebar.classList.contains('collapsed')) {
+                toggleIcon.className = 'bi bi-chevron-right';
+            } else {
+                toggleIcon.className = 'bi bi-chevron-left';
+            }
+            
+            localStorage.setItem('sidebarState', sidebar.classList.contains('collapsed') ? 'collapsed' : 'expanded');
         }
 
         function toggleMenuGroup(groupId) {
             const group = document.getElementById(groupId);
             const wasExpanded = group.classList.contains('expanded');
             
-            if (wasExpanded) {
-                group.classList.remove('expanded');
-                localStorage.removeItem(groupId);
-            } else {
+            document.querySelectorAll('.menu-group').forEach(g => {
+                g.classList.remove('expanded');
+                localStorage.removeItem('menu_' + g.id);
+            });
+            
+            if (!wasExpanded) {
                 group.classList.add('expanded');
-                localStorage.setItem(groupId, 'expanded');
+                localStorage.setItem('menu_' + groupId, 'expanded');
             }
         }
 
         function initExpandedGroups() {
-            // Restaurar grupos expandidos
             document.querySelectorAll('.menu-group').forEach(group => {
-                if (localStorage.getItem(group.id) === 'expanded') {
+                if (localStorage.getItem('menu_' + group.id) === 'expanded') {
                     group.classList.add('expanded');
                 }
             });
             
-            // Expandir grupo del item activo
-            const activeItem = document.querySelector('.menu-item.active');
-            if (activeItem) {
-                const parentGroup = activeItem.closest('.menu-group');
-                if (parentGroup) {
-                    parentGroup.classList.add('expanded');
-                }
+            const sidebarState = localStorage.getItem('sidebarState');
+            if (sidebarState === 'collapsed') {
+                toggleSidebar();
             }
         }
 
         // ========================================
-        // FUNCIONES DE DATOS
+        // 🆕 FUNCIONES DEL DROPDOWN DE USUARIO
         // ========================================
-        async function loadUserData() {
-            const userData = localStorage.getItem('user_data');
-            if (userData) {
+        function toggleUserMenu(event) {
+            event.stopPropagation();
+            const dropdownMenu = document.getElementById('userDropdownMenu');
+            dropdownMenu.classList.toggle('show');
+        }
+
+        // ========================================
+        // CARGA DE DATOS DE USUARIO
+        // ========================================
+        function loadUserData() {
+            const userDataStr = localStorage.getItem('user_data');
+            if (userDataStr) {
                 try {
-                    const user = JSON.parse(userData);
+                    const user = JSON.parse(userDataStr);
                     const userName = user.nombres || user.username || 'Admin';
+                    const userEmail = user.email || user.username + '@commercebox.com';
                     
                     document.getElementById('userName').textContent = userName;
                     document.getElementById('userRole').textContent = user.rol || 'Administrador';
                     document.getElementById('userAvatar').textContent = userName.charAt(0).toUpperCase();
+                    
+                    // 🆕 Actualizar también el dropdown
+                    document.getElementById('dropdownUserName').textContent = userName;
+                    document.getElementById('dropdownUserEmail').textContent = userEmail;
                 } catch (e) {
                     console.error('Error parsing user data:', e);
                 }
@@ -619,17 +730,14 @@
             }
         }
 
-        function toggleUserMenu() {
-            if (confirm('¿Desea cerrar sesión?')) {
-                handleLogout(null);
-            }
-        }
-
         // ========================================
         // ✅ FUNCIÓN DE LOGOUT MEJORADA
         // ========================================
         async function handleLogout(event) {
-            if (event) event.preventDefault();
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
             
             if (!confirm('¿Está seguro que desea cerrar sesión?')) {
                 return false;

@@ -4,7 +4,7 @@
 
 INFORMACIÓN GENERAL
 -------------------
-Fecha de generación: 2025-10-23 07:06:08
+Fecha de generación: 2025-10-23 21:16:53
 Ubicación: C:\Users\godoy\Desktop\CommerceBox
 Python Version: Python 3.13.7
 Pip Version: pip 25.2 from C:\Users\godoy\AppData\Local\Programs\Python\Python313\Lib\site-packages\pip (python 3.13)
@@ -54,9 +54,9 @@ Usuario: Desconocido
 │   │   ├── apps.py (166.0B)
 │   │   ├── models.py (60.0B)
 │   │   ├── tests.py (63.0B)
-│   │   ├── urls.py (13.7KB)
+│   │   ├── urls.py (16.7KB)
 │   │   ├── urls.py.backup (12.8KB)
-│   │   └── views.py (235.0KB)
+│   │   └── views.py (292.1KB)
 │   ├── financial_management/ (23 elementos)
 │   │   ├── __pycache__/ (excluido)
 │   │   ├── accounting/ (4 elementos)
@@ -75,17 +75,18 @@ Usuario: Desconocido
 │   │   │   │   ├── __init__.py (0B)
 │   │   │   │   └── gestionar_cajas_automaticas.py (1.8KB)
 │   │   │   └── __init__.py (0B)
-│   │   ├── migrations/ (2 elementos)
+│   │   ├── migrations/ (3 elementos)
 │   │   │   ├── 0001_initial.py (23.8KB)
+│   │   │   ├── 0002_cuentaporcobrar_cuentaporpagar_pagocuentaporpagar_and_more.py (21.8KB)
 │   │   │   └── __init__.py (0B)
 │   │   ├── __init__.py (0B)
-│   │   ├── admin.py (9.5KB)
+│   │   ├── admin.py (30.7KB)
 │   │   ├── admin.py.backup2 (8.6KB)
 │   │   ├── apps.py (467.0B)
 │   │   ├── forms.py (15.5KB)
 │   │   ├── mixins.py (5.1KB)
 │   │   ├── mixins.py.backup (3.5KB)
-│   │   ├── models.py (25.3KB)
+│   │   ├── models.py (56.5KB)
 │   │   ├── models.py.backup (22.2KB)
 │   │   ├── models.py.backup_before_remove_signal (25.6KB)
 │   │   ├── serializers.py.backup (5.6KB)
@@ -219,8 +220,8 @@ Usuario: Desconocido
 │   │   ├── signals.py (3.2KB)
 │   │   ├── tasks.py (2.1KB)
 │   │   ├── tests.py (63.0B)
-│   │   ├── urls.py (3.4KB)
-│   │   └── views.py (53.1KB)
+│   │   ├── urls.py (3.8KB)
+│   │   └── views.py (71.5KB)
 │   ├── stock_alert_system/ (12 elementos)
 │   │   ├── __pycache__/ (excluido)
 │   │   ├── management/ (2 elementos)
@@ -273,7 +274,7 @@ Usuario: Desconocido
 │   ├── urls.py.backup (2.3KB)
 │   └── wsgi.py (415.0B)
 ├── logs/ (2 elementos)
-│   ├── commercebox.log (7.4MB)
+│   ├── commercebox.log (7.6MB)
 │   └── commercebox_audit.log (0B)
 ├── media/ (6 elementos)
 │   ├── barcodes/ (2 elementos)
@@ -283,9 +284,13 @@ Usuario: Desconocido
 │   │   └── comprobantes/ (1 elementos)
 │   │       └── acer-predator-logo-4k-wallpaper-uhdpaper.com-4623a.jpg (1.7MB)
 │   ├── invoices/ (0 elementos)
-│   ├── marcas/ (4 elementos)
+│   ├── marcas/ (8 elementos)
+│   │   ├── acer-predator-logo-4k-wallpaper-uhdpaper.com-4623a.jpg (1.7MB)
 │   │   ├── acer-predator-logo-4k-wallpaper-uhdpaper.com-4633a.jpg (1.9MB)
 │   │   ├── IMG_1862.png (857.8KB)
+│   │   ├── Predator_Wallpaper_01_3840x2400.jpg (6.4MB)
+│   │   ├── Predator_Wallpaper_02_3840x2400_-_Copy.jpg (3.4MB)
+│   │   ├── Predator_Wallpaper_03_3840x2400.jpg (9.3MB)
 │   │   ├── senal-satelital.png (38.5KB)
 │   │   └── WhatsApp_Image_2025-04-01_at_15.16.02.jpeg (41.2KB)
 │   ├── productos/ (8 elementos)
@@ -301,8 +306,9 @@ Usuario: Desconocido
 ├── scripts/ (2 elementos)
 │   ├── init_db.sql/ (0 elementos)
 │   └── test_financial_module.py (10.7KB)
-├── static/ (1 elementos)
-│   └── js/ (0 elementos)
+├── static/ (2 elementos)
+│   ├── js/ (0 elementos)
+│   └── devoluciones.js (5.3KB)
 ├── templates/ (5 elementos)
 │   ├── authentication/ (1 elementos)
 │   │   └── login.html (22.7KB)
@@ -317,7 +323,7 @@ Usuario: Desconocido
 │   │   │   └── movimientos.html (1.4KB)
 │   │   ├── inventario/ (6 elementos)
 │   │   │   ├── categorias_list.html (51.3KB)
-│   │   │   ├── entrada_inventario.html (97.4KB)
+│   │   │   ├── entrada_inventario.html (125.7KB)
 │   │   │   ├── marcas_list.html (53.0KB)
 │   │   │   ├── movimientos_list.html (42.9KB)
 │   │   │   ├── productos_list.html (77.9KB)
@@ -335,7 +341,7 @@ Usuario: Desconocido
 │   │   │   └── usuarios.html (66.6KB)
 │   │   ├── ventas/ (4 elementos)
 │   │   │   ├── clientes_list.html (21.5KB)
-│   │   │   ├── devoluciones_list.html (37.0KB)
+│   │   │   ├── devoluciones_list.html (33.7KB)
 │   │   │   ├── devoluciones_list.html.backup (18.5KB)
 │   │   │   └── list.html (52.0KB)
 │   │   ├── base_admin.html (38.1KB)
@@ -380,20 +386,20 @@ setup.cfg                 ❌ Faltante
 
 ESTADÍSTICAS POR EXTENSIÓN
 --------------------------
-.py                   195 archivos ( 73.3%)
-.html                  25 archivos (  9.4%)
-.backup                13 archivos (  4.9%)
-.jpg                    6 archivos (  2.3%)
+.py                   196 archivos ( 72.1%)
+.html                  25 archivos (  9.2%)
+.backup                13 archivos (  4.8%)
+.jpg                   10 archivos (  3.7%)
 (sin extensión)         4 archivos (  1.5%)
 .png                    3 archivos (  1.1%)
 .jpeg                   3 archivos (  1.1%)
-.backup2                2 archivos (  0.8%)
-.log                    2 archivos (  0.8%)
-.md                     2 archivos (  0.8%)
+.backup2                2 archivos (  0.7%)
+.log                    2 archivos (  0.7%)
+.md                     2 archivos (  0.7%)
 
 TOTALES
 -------
-Total de archivos: 266
+Total de archivos: 272
 Total de directorios: 70
 
 ================================================================================
@@ -406,7 +412,7 @@ App                  Estado     Básicos    Total      Archivos Existentes
 --------------------------------------------------------------------------------
 authentication       Completa   5/5      18         models.py, views.py, urls.py...
 custom_admin         Completa   5/5      6          models.py, views.py, urls.py...
-financial_management Completa   5/5      18         models.py, views.py, urls.py...
+financial_management Completa   5/5      19         models.py, views.py, urls.py...
 hardware_integration Parcial    4/5      14         models.py, views.py, admin.py...
 inventory_management Completa   5/5      24         models.py, views.py, urls.py...
 notifications        Parcial    4/5      9          models.py, views.py, admin.py...
@@ -538,8 +544,8 @@ storage/invoices/pdf/               ❌ Facturas PDF generadas
 storage/invoices/sent/              ❌ Facturas enviadas al SRI 
 storage/logs/                       ❌ Logs del sistema 
 storage/backups/                    ❌ Respaldos de BD 
-media/                              ✅ Archivos de media (22 archivos)
-static/                             ✅ Archivos estáticos (1 archivos)
+media/                              ✅ Archivos de media (26 archivos)
+static/                             ✅ Archivos estáticos (2 archivos)
 uploads/                            ❌ Archivos subidos 
 
 ================================================================================
@@ -590,12 +596,12 @@ Documentación:           ⚠️  Iniciada (60%)
 ESTADÍSTICAS GENERALES
 ---------------------
 Total directorios:       70
-Total archivos:          266
+Total archivos:          272
 Apps Django:             10
-Archivos Python:         195
+Archivos Python:         196
 Paquetes instalados:     0
 
 ================================================================================
-Reporte generado automáticamente el 2025-10-23 07:06:08
+Reporte generado automáticamente el 2025-10-23 21:16:53
 Para actualizar, ejecuta: python documenter.py
 ================================================================================
