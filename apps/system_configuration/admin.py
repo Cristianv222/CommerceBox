@@ -2,6 +2,7 @@
 
 """
 Admin para el módulo de configuración del sistema
+✅ CORREGIDO: Referencias a iva_default → porcentaje_iva + iva_activo
 """
 
 from django.contrib import admin
@@ -42,9 +43,10 @@ def format_bytes(bytes_value):
 class ConfiguracionSistemaAdmin(admin.ModelAdmin):
     """Admin para la configuración única del sistema"""
     
+    # ✅ CORREGIDO: iva_default → porcentaje_iva + iva_activo
     list_display = [
         'nombre_empresa', 'ruc_empresa', 'logo_preview', 
-        'iva_default', 'moneda', 'ultima_actualizacion'
+        'porcentaje_iva', 'iva_activo', 'moneda', 'ultima_actualizacion'
     ]
     
     fieldsets = (
@@ -69,10 +71,12 @@ class ConfiguracionSistemaAdmin(admin.ModelAdmin):
         ('💰 Configuración de Ventas e IVA', {
             'fields': (
                 'prefijo_numero_factura', 'prefijo_numero_venta',
-                'iva_default', 'max_descuento_sin_autorizacion',
+                # ✅ CORREGIDO: iva_default → iva_activo + porcentaje_iva
+                'iva_activo', 'porcentaje_iva',
+                'max_descuento_sin_autorizacion',
                 'permitir_ventas_credito', 'dias_credito_default'
             ),
-            'description': '⚠️ El IVA configurado aquí se aplicará automáticamente en todas las ventas del sistema'
+            'description': '⚠️ El IVA configurado aquí se aplicará automáticamente en todas las ventas del sistema. Use "IVA Activo" para activar/desactivar el cálculo.'
         }),
         ('💵 Configuración Financiera', {
             'fields': (
@@ -208,15 +212,11 @@ class ConfiguracionSistemaAdmin(admin.ModelAdmin):
         """No se puede eliminar la configuración"""
         return False
     
-    def save_model(self, request, obj, form, change):
-        """Guardar el usuario que realizó el cambio"""
-        obj.actualizado_por = request.user
-        super().save_model(request, obj, form, change)
-    
     class Media:
         css = {
-            'all': ('admin/css/custom_admin.css',)
+            'all': ('admin/css/configuracion-sistema.css',)
         }
+        js = ('admin/js/configuracion-sistema.js',)
 
 
 # ============================================================================
@@ -225,70 +225,93 @@ class ConfiguracionSistemaAdmin(admin.ModelAdmin):
 
 @admin.register(ParametroSistema)
 class ParametroSistemaAdmin(admin.ModelAdmin):
-    """Admin para parámetros configurables del sistema"""
+    """Admin para parámetros personalizados del sistema"""
     
     list_display = [
-        'clave', 'nombre', 'modulo', 'tipo_dato', 
-        'valor_preview', 'grupo', 'activo_badge'
+        'clave', 'tipo_dato_badge', 'valor_display', 
+        'descripcion_corta', 'activo', 'fecha_actualizacion'
     ]
-    list_filter = ['modulo', 'tipo_dato', 'activo', 'grupo', 'requerido', 'editable']
-    search_fields = ['clave', 'nombre', 'descripcion', 'modulo']
-    ordering = ['modulo', 'grupo', 'orden', 'clave']
+    list_filter = ['tipo_dato', 'activo', 'fecha_creacion']
+    search_fields = ['clave', 'descripcion', 'valor_texto']
+    ordering = ['clave']
+    list_editable = ['activo']
     list_per_page = 50
     
     fieldsets = (
-        ('📌 Identificación', {
-            'fields': ('modulo', 'clave', 'nombre', 'descripcion')
+        ('🔑 Identificación', {
+            'fields': ('clave', 'descripcion', 'tipo_dato')
         }),
-        ('💾 Valor', {
-            'fields': ('tipo_dato', 'valor', 'valor_default'),
-            'description': 'El valor se almacena como texto y se convierte según el tipo de dato'
+        ('📝 Valor', {
+            'fields': (
+                'valor_texto', 'valor_numero', 'valor_boolean',
+                'valor_fecha', 'valor_json'
+            ),
+            'description': 'Configure el valor según el tipo de dato seleccionado'
         }),
         ('⚙️ Configuración', {
-            'fields': ('requerido', 'editable', 'validacion_regex')
-        }),
-        ('📂 Organización', {
-            'fields': ('grupo', 'orden', 'activo')
+            'fields': ('activo', 'solo_lectura'),
+            'classes': ('collapse',)
         }),
         ('👤 Auditoría', {
-            'fields': ('fecha_creacion', 'fecha_actualizacion', 'actualizado_por'),
+            'fields': (
+                'fecha_creacion', 'actualizado_por', 'fecha_actualizacion'
+            ),
             'classes': ('collapse',)
         }),
     )
     
-    readonly_fields = ['fecha_creacion', 'fecha_actualizacion']
+    readonly_fields = [
+        'fecha_creacion', 'fecha_actualizacion', 'actualizado_por'
+    ]
     
-    def valor_preview(self, obj):
-        """Muestra una vista previa del valor"""
-        valor = str(obj.valor)
-        if obj.tipo_dato == 'BOOLEAN':
-            if obj.get_valor_typed():
-                return format_html('<span style="color: green; font-weight: bold;">✓ True</span>')
-            else:
-                return format_html('<span style="color: red;">✗ False</span>')
+    def tipo_dato_badge(self, obj):
+        """Muestra el tipo de dato con badge"""
+        tipos_config = {
+            'TEXTO': ('#007bff', '📝', 'TEXTO'),
+            'NUMERO': ('#28a745', '🔢', 'NÚMERO'),
+            'BOOLEAN': ('#17a2b8', '✓', 'BOOLEAN'),
+            'FECHA': ('#ffc107', '📅', 'FECHA'),
+            'JSON': ('#6f42c1', '{}', 'JSON'),
+        }
+        color, icono, texto = tipos_config.get(obj.tipo_dato, ('#000', '●', obj.tipo_dato))
+        return format_html(
+            '<span style="background: {}; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px;">{} {}</span>',
+            color, icono, texto
+        )
+    tipo_dato_badge.short_description = 'Tipo'
+    tipo_dato_badge.admin_order_field = 'tipo_dato'
+    
+    def valor_display(self, obj):
+        """Muestra el valor configurado"""
+        valor = obj.get_valor()
+        if valor is None:
+            return format_html('<span style="color: #999; font-style: italic;">Sin valor</span>')
         
-        if len(valor) > 60:
+        if obj.tipo_dato == 'JSON':
+            return format_html('<code style="font-size: 11px;">{}</code>', str(valor)[:50])
+        elif obj.tipo_dato == 'BOOLEAN':
+            return format_html(
+                '<span style="color: {};">{}</span>',
+                'green' if valor else 'red',
+                '✓ Sí' if valor else '✗ No'
+            )
+        else:
+            return str(valor)[:50]
+    valor_display.short_description = 'Valor'
+    
+    def descripcion_corta(self, obj):
+        """Muestra una descripción corta"""
+        if len(obj.descripcion) > 50:
             return format_html(
                 '<span title="{}">{}</span>',
-                valor,
-                f"{valor[:60]}..."
+                obj.descripcion,
+                f"{obj.descripcion[:50]}..."
             )
-        return valor
-    valor_preview.short_description = 'Valor'
-    
-    def activo_badge(self, obj):
-        """Muestra el estado activo con badge"""
-        if obj.activo:
-            return format_html(
-                '<span style="background: #28a745; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px;">ACTIVO</span>'
-            )
-        return format_html(
-            '<span style="background: #dc3545; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px;">INACTIVO</span>'
-        )
-    activo_badge.short_description = 'Estado'
+        return obj.descripcion
+    descripcion_corta.short_description = 'Descripción'
     
     def save_model(self, request, obj, form, change):
-        """Guardar el usuario que realizó el cambio"""
+        """Guarda el modelo registrando quién lo modificó"""
         obj.actualizado_por = request.user
         super().save_model(request, obj, form, change)
 
@@ -299,56 +322,61 @@ class ParametroSistemaAdmin(admin.ModelAdmin):
 
 @admin.register(RegistroBackup)
 class RegistroBackupAdmin(admin.ModelAdmin):
-    """Admin para registro de backups"""
+    """Admin para registros de backups"""
     
     list_display = [
-        'nombre_archivo', 'tipo_backup', 'estado_badge',
-        'tamaño_display', 'fecha_inicio', 'duracion_display',
-        'restaurado_badge'
+        'fecha_inicio', 'tipo_backup_badge', 'estado_badge',
+        'tamano_display', 'tiempo_duracion'
     ]
-    list_filter = ['estado', 'tipo_backup', 'restaurado', 'fecha_inicio']
-    search_fields = ['nombre_archivo', 'ruta_archivo']
+    list_filter = ['tipo_backup', 'estado', 'fecha_inicio']
+    search_fields = ['nombre_archivo', 'ruta_archivo', 'mensaje_error']
     ordering = ['-fecha_inicio']
     date_hierarchy = 'fecha_inicio'
-    list_per_page = 30
+    list_per_page = 50
     
     fieldsets = (
-        ('📦 Información del Backup', {
-            'fields': ('nombre_archivo', 'ruta_archivo', 'tipo_backup')
+        ('📋 Información del Backup', {
+            'fields': ('tipo_backup', 'nombre_archivo', 'ruta_archivo')
         }),
         ('📊 Detalles', {
             'fields': (
-                'tamaño_bytes', 'tamaño_comprimido_bytes',
-                'tablas_incluidas', 'total_registros'
+                'tamaño_bytes', 'estado', 'fecha_inicio',
+                'fecha_finalizacion', 'duracion_segundos', 'mensaje_error'
             )
         }),
-        ('✅ Estado', {
-            'fields': ('estado', 'mensaje_error')
-        }),
-        ('⏱️ Tiempos', {
-            'fields': (
-                'fecha_inicio', 'fecha_finalizacion', 'duracion_segundos'
-            )
-        }),
-        ('👤 Usuario y Restauración', {
-            'fields': ('usuario', 'restaurado', 'fecha_restauracion')
+        ('👤 Usuario', {
+            'fields': ('usuario',),
+            'classes': ('collapse',)
         }),
     )
     
     readonly_fields = [
-        'nombre_archivo', 'ruta_archivo', 'tipo_backup', 'tamaño_bytes',
-        'tamaño_comprimido_bytes', 'tablas_incluidas', 'total_registros',
-        'estado', 'mensaje_error', 'fecha_inicio', 'fecha_finalizacion',
-        'duracion_segundos', 'usuario', 'restaurado', 'fecha_restauracion'
+        'nombre_archivo', 'ruta_archivo', 'tamaño_bytes',
+        'estado', 'fecha_inicio', 'fecha_finalizacion', 
+        'duracion_segundos', 'mensaje_error', 'usuario'
     ]
     
+    def tipo_backup_badge(self, obj):
+        """Muestra el tipo de backup con badge"""
+        tipos_config = {
+            'COMPLETO': ('#007bff', '💾', 'COMPLETO'),
+            'INCREMENTAL': ('#28a745', '📦', 'INCREMENTAL'),
+            'MANUAL': ('#ffc107', '👤', 'MANUAL'),
+        }
+        color, icono, texto = tipos_config.get(obj.tipo_backup, ('#000', '●', obj.tipo_backup))
+        return format_html(
+            '<span style="background: {}; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px;">{} {}</span>',
+            color, icono, texto
+        )
+    tipo_backup_badge.short_description = 'Tipo'
+    tipo_backup_badge.admin_order_field = 'tipo_backup'
+    
     def estado_badge(self, obj):
-        """Muestra el estado con badge y colores"""
+        """Muestra el estado del backup con badge"""
         estados_config = {
             'EXITOSO': ('#28a745', '✓', 'EXITOSO'),
-            'FALLIDO': ('#dc3545', '✗', 'FALLIDO'),
             'EN_PROCESO': ('#ffc107', '⏳', 'EN PROCESO'),
-            'CANCELADO': ('#6c757d', '⊗', 'CANCELADO'),
+            'FALLIDO': ('#dc3545', '✗', 'FALLIDO'),
         }
         color, icono, texto = estados_config.get(obj.estado, ('#000', '●', obj.estado))
         return format_html(
@@ -358,43 +386,46 @@ class RegistroBackupAdmin(admin.ModelAdmin):
     estado_badge.short_description = 'Estado'
     estado_badge.admin_order_field = 'estado'
     
-    def tamaño_display(self, obj):
-        """Muestra el tamaño en formato legible"""
-        tamaño = format_bytes(obj.tamaño_bytes)
-        if obj.tamaño_comprimido_bytes and obj.tamaño_comprimido_bytes > 0:
-            comprimido = format_bytes(obj.tamaño_comprimido_bytes)
-            ratio = (obj.tamaño_comprimido_bytes / obj.tamaño_bytes) * 100
-            return format_html(
-                '<span title="Original: {} | Comprimido: {} | Ratio: {:.1f}%">{}</span>',
-                tamaño, comprimido, ratio, comprimido
-            )
-        return tamaño
-    tamaño_display.short_description = 'Tamaño'
-    
-    def duracion_display(self, obj):
-        """Muestra la duración del backup"""
-        if obj.duracion_segundos:
-            if obj.duracion_segundos < 60:
-                return format_html('<span>{} seg</span>', obj.duracion_segundos)
-            else:
-                minutos = obj.duracion_segundos // 60
-                segundos = obj.duracion_segundos % 60
-                return format_html('<span>{}m {}s</span>', minutos, segundos)
+    def tamano_display(self, obj):
+        """Muestra el tamaño del archivo de forma legible"""
+        if obj.tamaño_bytes:
+            return format_bytes(obj.tamaño_bytes)
         return '-'
-    duracion_display.short_description = 'Duración'
+    tamano_display.short_description = 'Tamaño'
+    tamano_display.admin_order_field = 'tamaño_bytes'
     
-    def restaurado_badge(self, obj):
-        """Indica si el backup fue restaurado"""
-        if obj.restaurado:
-            return format_html(
-                '<span style="color: #28a745; font-weight: bold;" title="Restaurado el {}">✓ SÍ</span>',
-                obj.fecha_restauracion.strftime('%Y-%m-%d %H:%M') if obj.fecha_restauracion else ''
-            )
-        return format_html('<span style="color: #999;">-</span>')
-    restaurado_badge.short_description = 'Restaurado'
+    def tiempo_duracion(self, obj):
+        """Calcula y muestra la duración del backup"""
+        if obj.duracion_segundos:
+            segundos = obj.duracion_segundos
+            
+            if segundos < 60:
+                return f"{segundos}s"
+            elif segundos < 3600:
+                minutos = segundos // 60
+                return f"{minutos}m {segundos % 60}s"
+            else:
+                horas = segundos // 3600
+                minutos = (segundos % 3600) // 60
+                return f"{horas}h {minutos}m"
+        elif obj.fecha_inicio and obj.fecha_finalizacion:
+            duracion = obj.fecha_finalizacion - obj.fecha_inicio
+            segundos = int(duracion.total_seconds())
+            
+            if segundos < 60:
+                return f"{segundos}s"
+            elif segundos < 3600:
+                minutos = segundos // 60
+                return f"{minutos}m {segundos % 60}s"
+            else:
+                horas = segundos // 3600
+                minutos = (segundos % 3600) // 60
+                return f"{horas}h {minutos}m"
+        return '-'
+    tiempo_duracion.short_description = 'Duración'
     
     def has_add_permission(self, request):
-        """Los backups se crean automáticamente"""
+        """Los backups se crean desde el proceso automático o manual"""
         return False
     
     def has_delete_permission(self, request, obj=None):

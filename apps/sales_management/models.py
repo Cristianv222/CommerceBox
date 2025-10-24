@@ -127,6 +127,7 @@ class Cliente(models.Model):
 class Venta(models.Model):
     """
     Registro de ventas - puede incluir quintales y productos normales
+    ✅ CORREGIDO: Incluye manejo de IVA dinámico
     """
     ESTADO_CHOICES = [
         ('PENDIENTE', 'Pendiente'),
@@ -187,11 +188,39 @@ class Venta(models.Model):
         default='CONTADO'
     )
     
-    # Montos
-    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    descuento = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    impuestos = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    # ✅ CORREGIDO: Montos con campo para porcentaje de IVA aplicado
+    subtotal = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0,
+        help_text="Suma de subtotales de detalles (SIN IVA, después de descuentos por item)"
+    )
+    descuento = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0,
+        help_text="Descuento adicional a nivel de venta"
+    )
+    impuestos = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0,
+        help_text="Monto total de IVA calculado"
+    )
+    total = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0,
+        help_text="Total final = subtotal - descuento + impuestos"
+    )
+    
+    # ✅ NUEVO: Campo para registrar el % de IVA aplicado en esta venta
+    porcentaje_iva_aplicado = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        help_text="Porcentaje de IVA aplicado al momento de la venta (%)"
+    )
     
     # Pagos
     monto_pagado = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -274,12 +303,26 @@ class Venta(models.Model):
         super().save(*args, **kwargs)
     
     def calcular_totales(self):
-        """Recalcula los totales de la venta basándose en los detalles"""
+        """
+        ✅ CORREGIDO: Recalcula los totales de la venta basándose en los detalles
+        Incluye el cálculo correcto de IVA
+        """
         detalles = self.detalles.all()
         
+        # Subtotal = suma de subtotales de detalles (ya con descuentos aplicados, SIN IVA)
         self.subtotal = sum(d.subtotal for d in detalles)
-        # El descuento puede ser aplicado a nivel de venta o detalles
+        
+        # Impuestos = suma de montos de IVA de cada detalle
+        self.impuestos = sum(d.monto_iva for d in detalles)
+        
+        # Obtener el porcentaje de IVA desde la configuración
+        from apps.system_configuration.models import ConfiguracionSistema
+        config = ConfiguracionSistema.get_config()
+        self.porcentaje_iva_aplicado = config.porcentaje_iva
+        
+        # Total = subtotal - descuento adicional de venta + impuestos
         self.total = self.subtotal - self.descuento + self.impuestos
+        
         self.save()
     
     def esta_pagada(self):
@@ -299,6 +342,7 @@ class DetalleVenta(models.Model):
     """
     Detalle de cada item vendido
     Puede ser quintal (por peso) o producto normal (por unidad)
+    ✅ CORREGIDO: Incluye campos y lógica para calcular IVA
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
@@ -310,7 +354,8 @@ class DetalleVenta(models.Model):
     )
     producto = models.ForeignKey(
         'inventory_management.Producto',
-        on_delete=models.PROTECT
+        on_delete=models.PROTECT,
+        related_name='detalles_venta'
     )
     
     # Para QUINTALES (venta por peso)
@@ -339,7 +384,7 @@ class DetalleVenta(models.Model):
         decimal_places=4,
         null=True,
         blank=True,
-        help_text="Precio por unidad de peso al momento de la venta"
+        help_text="Precio por unidad de peso al momento de la venta (SIN IVA)"
     )
     
     # Para PRODUCTOS NORMALES (venta por unidad)
@@ -353,7 +398,7 @@ class DetalleVenta(models.Model):
         decimal_places=2,
         null=True,
         blank=True,
-        help_text="Precio por unidad al momento de la venta"
+        help_text="Precio por unidad al momento de la venta (SIN IVA)"
     )
     
     # Común para ambos
@@ -368,15 +413,30 @@ class DetalleVenta(models.Model):
         decimal_places=2,
         default=0
     )
+    
+    # ✅ NUEVO: Campo para indicar si este item aplica IVA
+    aplica_iva = models.BooleanField(
+        default=False,
+        help_text="Indica si este producto graba IVA (copiado de producto al momento de la venta)"
+    )
+    
+    # ✅ NUEVO: Campo para guardar el monto de IVA calculado para este item
+    monto_iva = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Monto de IVA calculado para este item"
+    )
+    
     subtotal = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        help_text="Monto antes del descuento"
+        help_text="Monto ANTES del descuento (SIN IVA)"
     )
     total = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        help_text="Monto después del descuento"
+        help_text="Monto DESPUÉS del descuento + IVA"
     )
     
     # Costo para cálculo de rentabilidad
@@ -402,6 +462,7 @@ class DetalleVenta(models.Model):
         indexes = [
             models.Index(fields=['venta', 'orden']),
             models.Index(fields=['producto']),
+            models.Index(fields=['aplica_iva']),  # ✅ NUEVO índice
         ]
     
     def __str__(self):
@@ -417,10 +478,14 @@ class DetalleVenta(models.Model):
                 return f"Detalle de venta"
         except:
             return f"Detalle de venta"
+    
     def save(self, *args, **kwargs):
         """Validar stock antes de guardar"""
         if not self.pk:  # Solo validar al crear (no al editar)
             producto = self.producto
+            
+            # ✅ Copiar el flag de aplica_impuestos del producto
+            self.aplica_iva = producto.aplica_impuestos
             
             # Validar stock para productos normales
             if producto.tipo_inventario == 'NORMAL' and self.cantidad_unidades:
@@ -450,20 +515,41 @@ class DetalleVenta(models.Model):
         super().save(*args, **kwargs)
     
     def calcular_totales(self):
-        """Calcula subtotal, descuento y total"""
+        """
+        ✅ CORREGIDO: Calcula subtotal, descuento, IVA y total
+        """
+        # 1. Calcular subtotal base (SIN IVA, SIN descuento)
         if self.producto.es_quintal():
             # Cálculo para quintales
-            self.subtotal = self.peso_vendido * self.precio_por_unidad_peso
+            subtotal_base = self.peso_vendido * self.precio_por_unidad_peso
         else:
             # Cálculo para productos normales
-            self.subtotal = self.cantidad_unidades * self.precio_unitario
+            subtotal_base = self.cantidad_unidades * self.precio_unitario
         
-        # Aplicar descuento
+        # 2. Aplicar descuento sobre el subtotal base
         if self.descuento_porcentaje > 0:
-            self.descuento_monto = self.subtotal * (self.descuento_porcentaje / 100)
+            self.descuento_monto = subtotal_base * (self.descuento_porcentaje / Decimal('100'))
+        else:
+            self.descuento_monto = Decimal('0')
         
-        self.total = self.subtotal - self.descuento_monto
+        # 3. Subtotal después de descuento (pero todavía SIN IVA)
+        self.subtotal = subtotal_base - self.descuento_monto
         
+        # 4. ✅ NUEVO: Calcular IVA si el producto lo requiere
+        if self.aplica_iva:
+            # Obtener porcentaje de IVA desde configuración
+            from apps.system_configuration.models import ConfiguracionSistema
+            config = ConfiguracionSistema.get_config()
+            porcentaje_iva = config.porcentaje_iva
+            
+            # Calcular monto de IVA sobre el subtotal (después de descuento)
+            self.monto_iva = self.subtotal * (porcentaje_iva / Decimal('100'))
+        else:
+            self.monto_iva = Decimal('0')
+        
+        # 5. Total = Subtotal (después de descuento) + IVA
+        self.total = self.subtotal + self.monto_iva
+    
     def utilidad(self):
         """Calcula la utilidad de este item"""
         return self.total - self.costo_total
@@ -637,42 +723,6 @@ def detalle_venta_pre_save(sender, instance, **kwargs):
     instance.calcular_totales()
 
 
-#def detalle_venta_post_save(sender, instance, created, **kwargs):
-    """
-    Después de guardar un detalle de venta:
-    1. Descontar del inventario
-    2. Recalcular totales de la venta
-    """
-    if created:  # Solo al crear un nuevo detalle
-        # Descontar del inventario
-        with transaction.atomic():
-            producto = instance.producto
-            
-            if producto.tipo_inventario == 'QUINTAL' and instance.quintal:
-                # Descontar peso del quintal
-                quintal = instance.quintal
-                quintal.peso_actual -= instance.peso_vendido
-                if quintal.peso_actual <= 0:
-                    quintal.peso_actual = 0
-                    quintal.estado = 'AGOTADO'
-                quintal.save()
-                
-            elif producto.tipo_inventario == 'NORMAL' and instance.cantidad_unidades:
-                # Descontar unidades del inventario normal
-                try:
-                    inventario = producto.inventario_normal
-                    if inventario:
-                        inventario.stock_actual -= instance.cantidad_unidades
-                        if inventario.stock_actual < 0:
-                            inventario.stock_actual = 0
-                        inventario.save()
-                except Exception as e:
-                    print(f"Error al actualizar inventario: {e}")
-    
-    # Recalcular totales de la venta
-    instance.venta.calcular_totales()
-
-
 def pago_post_save(sender, instance, created, **kwargs):
     """Actualizar monto pagado en la venta"""
     venta = instance.venta
@@ -713,5 +763,3 @@ def venta_anulada_revertir_stock(sender, instance, **kwargs):
                             inventario.save()
                     except Exception as e:
                         print(f"Error al revertir inventario: {e}")
-# Agregar al modelo DetalleVenta si no existe
-# unidad_medida = models.ForeignKey('inventory_management.UnidadMedida', on_delete=models.SET_NULL, null=True, blank=True)

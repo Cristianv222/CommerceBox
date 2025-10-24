@@ -2,6 +2,7 @@
 
 from django.db import models
 from django.core.validators import MinValueValidator, RegexValidator
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db.models import Manager, Sum, Q, F, Count
 from decimal import Decimal
@@ -228,6 +229,7 @@ class UnidadMedida(models.Model):
     es_sistema_metrico = models.BooleanField(default=True)
     orden_display = models.IntegerField(default=0)
     activa = models.BooleanField(default=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
     
     class Meta:
         verbose_name = 'Unidad de Medida'
@@ -266,7 +268,9 @@ class Producto(models.Model):
         ('NORMAL', 'Normal - Unidades completas'),
     ]
     
-    # Identificadores
+    # ============================================================================
+    # IDENTIFICADORES
+    # ============================================================================
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     codigo_barras = models.CharField(
         max_length=50,
@@ -275,11 +279,15 @@ class Producto(models.Model):
         help_text="Código de barras o código interno (CBX-PRD-XXXX)"
     )
     
-    # Información básica
+    # ============================================================================
+    # INFORMACIÓN BÁSICA
+    # ============================================================================
     nombre = models.CharField(max_length=200)
     descripcion = models.TextField(blank=True)
     
-    # Relaciones
+    # ============================================================================
+    # RELACIONES
+    # ============================================================================
     categoria = models.ForeignKey(
         'Categoria',
         on_delete=models.PROTECT,
@@ -293,15 +301,10 @@ class Producto(models.Model):
         blank=True,
         help_text="Marca del producto"
     )
-    proveedor = models.ForeignKey(
-        'Proveedor',
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name='productos'
-    )
     
-    # ⚖️ TIPO DE INVENTARIO
+    # ============================================================================
+    # TIPO DE INVENTARIO
+    # ============================================================================
     tipo_inventario = models.CharField(
         max_length=20,
         choices=TIPO_INVENTARIO_CHOICES,
@@ -309,9 +312,9 @@ class Producto(models.Model):
         db_index=True
     )
     
-    # ==========================================
-    # CAMPOS PARA QUINTALES
-    # ==========================================
+    # ============================================================================
+    # CAMPOS PARA QUINTALES (A GRANEL)
+    # ============================================================================
     unidad_medida_base = models.ForeignKey(
         'UnidadMedida',
         on_delete=models.PROTECT,
@@ -324,7 +327,8 @@ class Producto(models.Model):
         decimal_places=2,
         null=True,
         blank=True,
-        help_text="Precio por unidad de peso (ej: $2.50/lb)"
+        validators=[MinValueValidator(Decimal('0.01'))],
+        help_text="Precio por unidad de peso (ej: $2.50/lb) - Para quintales"
     )
     peso_base_quintal = models.DecimalField(
         max_digits=10,
@@ -334,28 +338,43 @@ class Producto(models.Model):
         help_text="Peso estándar de un quintal (ej: 100 lb)"
     )
     
-    # ==========================================
-    # CAMPOS PARA PRODUCTOS NORMALES
-    # ==========================================
-    precio_unitario = models.DecimalField(
+    # ============================================================================
+    # CAMPOS PARA PRODUCTOS NORMALES (UNIDADES)
+    # ============================================================================
+    precio_venta = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        help_text="Precio por unidad completa"
+        validators=[MinValueValidator(Decimal('0.01'))],
+        help_text="Precio de venta por unidad - Para productos normales (SIN IVA)"
     )
     
-    # Imagen
+    # ============================================================================
+    # IMPUESTOS (IVA) - ✅ CAMPO NUEVO Y CRÍTICO
+    # ============================================================================
+    aplica_impuestos = models.BooleanField(
+        default=True,
+        help_text="¿Este producto grava IVA? El porcentaje se obtiene de Configuración del Sistema"
+    )
+    
+    # ============================================================================
+    # IMAGEN
+    # ============================================================================
     imagen = models.ImageField(
         upload_to='productos/',
         null=True,
         blank=True
     )
     
-    # Control
+    # ============================================================================
+    # CONTROL
+    # ============================================================================
     activo = models.BooleanField(default=True)
     
-    # Auditoría
+    # ============================================================================
+    # AUDITORÍA
+    # ============================================================================
     usuario_registro = models.ForeignKey(
         'authentication.Usuario',
         on_delete=models.PROTECT,
@@ -374,12 +393,17 @@ class Producto(models.Model):
             models.Index(fields=['tipo_inventario', 'activo']),
             models.Index(fields=['categoria', 'activo']),
             models.Index(fields=['marca', 'activo']),
+            models.Index(fields=['aplica_impuestos', 'activo']),
         ]
     
     def __str__(self):
         tipo_icon = "🌾" if self.tipo_inventario == 'QUINTAL' else "📦"
         marca_texto = f" - {self.marca.nombre}" if self.marca else ""
         return f"{tipo_icon} {self.nombre}{marca_texto} ({self.codigo_barras})"
+    
+    # ============================================================================
+    # MÉTODOS DE UTILIDAD BÁSICOS
+    # ============================================================================
     
     def es_quintal(self):
         """Verifica si es producto a granel"""
@@ -389,11 +413,192 @@ class Producto(models.Model):
         """Verifica si es producto normal"""
         return self.tipo_inventario == 'NORMAL'
     
-    def get_precio_venta(self):
-        """Retorna el precio según el tipo"""
+    def get_precio_base(self):
+        """
+        Retorna el precio base según el tipo (SIN IVA)
+        - Quintales: precio por unidad de peso
+        - Normales: precio de venta por unidad
+        """
         if self.es_quintal():
-            return self.precio_por_unidad_peso
-        return self.precio_unitario
+            return self.precio_por_unidad_peso or Decimal('0')
+        return self.precio_venta or Decimal('0')
+    
+    # ============================================================================
+    # MÉTODOS PARA MANEJO DE IVA - ✅ NUEVO
+    # ============================================================================
+    
+    def obtener_porcentaje_iva(self):
+        """
+        Obtiene el porcentaje de IVA desde configuración del sistema
+        SOLO si este producto aplica impuestos
+        
+        Returns:
+            Decimal: Porcentaje de IVA (ej: 15.00) o 0 si no aplica
+        """
+        if not self.aplica_impuestos:
+            return Decimal('0')
+        
+        try:
+            from apps.system_configuration.models import ConfiguracionSistema
+            
+            config = ConfiguracionSistema.objects.first()
+            if config and config.iva_activo:
+                return config.porcentaje_iva
+        except Exception as e:
+            print(f"⚠️ Error al obtener IVA desde configuración: {e}")
+        
+        return Decimal('0')
+    
+    def calcular_precio_con_iva(self, cantidad_peso=None):
+        """
+        Calcula el precio con IVA incluido
+        
+        Args:
+            cantidad_peso (Decimal, optional): Para quintales, la cantidad de peso a calcular
+        
+        Returns:
+            Decimal: Precio con IVA incluido
+        """
+        precio_base = self.get_precio_base()
+        
+        # Si es quintal y se especifica cantidad, calcular sobre esa cantidad
+        if self.es_quintal() and cantidad_peso:
+            precio_base = precio_base * Decimal(str(cantidad_peso))
+        
+        porcentaje_iva = self.obtener_porcentaje_iva()
+        
+        if porcentaje_iva > 0:
+            iva_decimal = porcentaje_iva / Decimal('100')
+            precio_con_iva = precio_base * (Decimal('1') + iva_decimal)
+            return precio_con_iva.quantize(Decimal('0.01'))
+        
+        return precio_base.quantize(Decimal('0.01'))
+    
+    def calcular_monto_iva(self, cantidad_peso=None):
+        """
+        Calcula solo el monto del IVA
+        
+        Args:
+            cantidad_peso (Decimal, optional): Para quintales, la cantidad de peso a calcular
+        
+        Returns:
+            Decimal: Monto del IVA
+        """
+        precio_base = self.get_precio_base()
+        
+        # Si es quintal y se especifica cantidad, calcular sobre esa cantidad
+        if self.es_quintal() and cantidad_peso:
+            precio_base = precio_base * Decimal(str(cantidad_peso))
+        
+        porcentaje_iva = self.obtener_porcentaje_iva()
+        
+        if porcentaje_iva > 0:
+            iva_decimal = porcentaje_iva / Decimal('100')
+            monto_iva = precio_base * iva_decimal
+            return monto_iva.quantize(Decimal('0.01'))
+        
+        return Decimal('0.00')
+    
+    def get_info_precio_completa(self, cantidad_peso=None):
+        """
+        Retorna información completa sobre precios e impuestos
+        Útil para serializers, API y punto de venta
+        
+        Args:
+            cantidad_peso (Decimal, optional): Para quintales, la cantidad de peso a calcular
+        
+        Returns:
+            dict: Información completa de precios
+        """
+        precio_base = self.get_precio_base()
+        
+        # Si es quintal y se especifica cantidad
+        if self.es_quintal() and cantidad_peso:
+            precio_total_base = precio_base * Decimal(str(cantidad_peso))
+        else:
+            precio_total_base = precio_base
+        
+        porcentaje_iva = self.obtener_porcentaje_iva()
+        monto_iva = self.calcular_monto_iva(cantidad_peso)
+        precio_con_iva = self.calcular_precio_con_iva(cantidad_peso)
+        
+        return {
+            'tipo_producto': self.tipo_inventario,
+            'aplica_impuestos': self.aplica_impuestos,
+            'porcentaje_iva': float(porcentaje_iva),
+            'precio_base_unitario': float(precio_base),
+            'precio_base_total': float(precio_total_base),
+            'monto_iva': float(monto_iva),
+            'precio_final_con_iva': float(precio_con_iva),
+            'cantidad_peso': float(cantidad_peso) if cantidad_peso else None,
+            'unidad_medida': self.unidad_medida_base.abreviatura if self.unidad_medida_base else 'unidad'
+        }
+    
+    # ============================================================================
+    # MÉTODOS ADICIONALES ÚTILES
+    # ============================================================================
+    
+    def get_precio_venta(self):
+        """
+        Retorna el precio de venta (SIN IVA) según el tipo
+        Mantiene compatibilidad con código existente
+        """
+        return self.get_precio_base()
+    
+    def get_precio_venta_display(self):
+        """
+        Retorna el precio de venta formateado para mostrar
+        """
+        precio = self.get_precio_base()
+        if self.es_quintal():
+            unidad = self.unidad_medida_base.abreviatura if self.unidad_medida_base else 'kg'
+            return f"${precio:.2f}/{unidad}"
+        return f"${precio:.2f}"
+    
+    # ============================================================================
+    # VALIDACIÓN DEL MODELO
+    # ============================================================================
+    
+    def clean(self):
+        """
+        Validación del modelo
+        """
+        if self.tipo_inventario == 'QUINTAL':
+            if not self.unidad_medida_base:
+                raise ValidationError({
+                    'unidad_medida_base': 'Los productos tipo QUINTAL requieren una unidad de medida'
+                })
+            if not self.precio_por_unidad_peso:
+                raise ValidationError({
+                    'precio_por_unidad_peso': 'Los productos tipo QUINTAL requieren un precio por unidad de peso'
+                })
+        
+        if self.tipo_inventario == 'NORMAL':
+            if not self.precio_venta:
+                raise ValidationError({
+                    'precio_venta': 'Los productos tipo NORMAL requieren un precio de venta'
+                })
+    
+    def save(self, *args, **kwargs):
+        """
+        Sobrescribir save para generar código de barras si no existe
+        """
+        if not self.codigo_barras:
+            # Generar código único
+            import random
+            import string
+            codigo = ''.join(random.choices(string.digits, k=8))
+            self.codigo_barras = f"CBX{codigo}"
+            
+            # Verificar que sea único
+            while Producto.objects.filter(codigo_barras=self.codigo_barras).exists():
+                codigo = ''.join(random.choices(string.digits, k=8))
+                self.codigo_barras = f"CBX{codigo}"
+        
+        # Validar antes de guardar
+        self.clean()
+        
+        super().save(*args, **kwargs)
 
 
 # ============================================================================
@@ -418,7 +623,7 @@ class QuintalManager(Manager):
         """Quintales ordenados por FIFO (más antiguos primero)"""
         return self.disponibles().filter(
             producto=producto
-        ).order_by('fecha_recepcion')
+        ).order_by('fecha_ingreso')
     
     def peso_total_disponible(self, producto):
         """Calcula el peso total disponible de un producto"""
@@ -489,17 +694,17 @@ class Quintal(models.Model):
     
     ESTADO_CHOICES = [
         ('DISPONIBLE', '🟢 Disponible - Tiene peso disponible'),
+        ('RESERVADO', '🟡 Reservado - En proceso de venta'),
         ('AGOTADO', '⚫ Agotado - Peso en cero'),
-        ('DAÑADO', '🔴 Dañado - Producto no vendible'),
     ]
     
     # Identificadores
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    codigo_unico = models.CharField(
+    codigo_quintal = models.CharField(
         max_length=20,
         unique=True,
         db_index=True,
-        help_text="Código único del quintal (ej: CBX-QNT-00001)"
+        help_text="Código único del quintal (ej: QNT-00001)"
     )
     
     # Relaciones
@@ -511,7 +716,16 @@ class Quintal(models.Model):
     )
     proveedor = models.ForeignKey(
         'Proveedor',
-        on_delete=models.PROTECT
+        on_delete=models.PROTECT,
+        related_name='quintales'
+    )
+    compra = models.ForeignKey(
+        'Compra',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='quintales',
+        help_text="Compra asociada a este quintal"
     )
     
     # ⚖️ CONTROL DE PESO (Núcleo del sistema)
@@ -553,7 +767,7 @@ class Quintal(models.Model):
     )
     
     # 📅 TRAZABILIDAD
-    fecha_recepcion = models.DateTimeField(
+    fecha_ingreso = models.DateTimeField(
         default=timezone.now,
         db_index=True,
         help_text="Fecha de ingreso al inventario (importante para FIFO)"
@@ -562,20 +776,6 @@ class Quintal(models.Model):
         null=True,
         blank=True,
         help_text="Fecha de vencimiento del producto"
-    )
-    lote_proveedor = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="Número de lote del proveedor"
-    )
-    numero_factura_compra = models.CharField(
-        max_length=50,
-        blank=True
-    )
-    origen = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text="Origen del producto (ej: Productor local, Importado de USA)"
     )
     
     # Auditoría
@@ -593,16 +793,17 @@ class Quintal(models.Model):
     class Meta:
         verbose_name = 'Quintal'
         verbose_name_plural = 'Quintales'
-        ordering = ['fecha_recepcion']  # FIFO: Primero el más antiguo
+        ordering = ['fecha_ingreso']  # FIFO: Primero el más antiguo
         db_table = 'inv_quintal'
         indexes = [
-            models.Index(fields=['codigo_unico']),
-            models.Index(fields=['producto', 'estado', 'fecha_recepcion']),
+            models.Index(fields=['codigo_quintal']),
+            models.Index(fields=['producto', 'estado', 'fecha_ingreso']),
             models.Index(fields=['estado', 'peso_actual']),
+            models.Index(fields=['fecha_vencimiento']),
         ]
     
     def __str__(self):
-        return f"{self.codigo_unico} - {self.producto.nombre} ({self.peso_actual}/{self.peso_inicial} {self.unidad_medida.abreviatura})"
+        return f"{self.codigo_quintal} - {self.producto.nombre} ({self.peso_actual}/{self.peso_inicial} {self.unidad_medida.abreviatura})"
     
     def porcentaje_restante(self):
         """Calcula el porcentaje de peso restante"""
@@ -618,17 +819,16 @@ class Quintal(models.Model):
         """Verifica si el quintal está en estado crítico (menos del X% restante)"""
         return self.porcentaje_restante() <= umbral_critico
     
-    def save(self, *args, **kwargs):
-        # Calcular costo por unidad automáticamente si no existe
-        if not self.costo_por_unidad and self.peso_inicial > 0:
-            self.costo_por_unidad = self.costo_total / self.peso_inicial
-        
-        # Actualizar estado automáticamente según peso
-        if self.peso_actual <= 0:
-            self.estado = 'AGOTADO'
-            self.peso_actual = Decimal('0.000')
-        
-        super().save(*args, **kwargs)
+    def dias_almacenamiento(self):
+        """Calcula días desde el ingreso"""
+        return (timezone.now() - self.fecha_ingreso).days
+    
+    def dias_para_vencer(self):
+        """Calcula días restantes para vencimiento"""
+        if self.fecha_vencimiento:
+            delta = self.fecha_vencimiento - timezone.now().date()
+            return delta.days
+        return None
 
 
 class MovimientoQuintal(models.Model):
@@ -639,11 +839,11 @@ class MovimientoQuintal(models.Model):
     
     TIPO_MOVIMIENTO_CHOICES = [
         ('ENTRADA', '📥 Entrada inicial (recepción)'),
-        ('VENTA', '🛒 Salida por venta'),
-        ('AJUSTE_POSITIVO', '➕ Ajuste positivo (corrección suma)'),
-        ('AJUSTE_NEGATIVO', '➖ Ajuste negativo (corrección resta)'),
+        ('SALIDA', '📤 Salida por venta'),
+        ('AJUSTE_ENTRADA', '➕ Ajuste positivo (corrección suma)'),
+        ('AJUSTE_SALIDA', '➖ Ajuste negativo (corrección resta)'),
         ('MERMA', '💔 Merma/Pérdida'),
-        ('DEVOLUCION', '↩️ Devolución de cliente'),
+        ('ENTRADA_DEVOLUCION', '↩️ Entrada por devolución'),
     ]
     
     # Identificadores
@@ -832,6 +1032,13 @@ class ProductoNormal(models.Model):
         if self.stock_maximo and self.stock_maximo > 0:
             return (self.stock_actual / self.stock_maximo) * 100
         return 0
+    
+    def dias_para_vencer(self):
+        """Calcula días restantes para vencimiento"""
+        if self.fecha_vencimiento:
+            delta = self.fecha_vencimiento - timezone.now().date()
+            return delta.days
+        return None
 
 
 class MovimientoInventario(models.Model):
@@ -902,7 +1109,7 @@ class MovimientoInventario(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        help_text="Referencia a compra (si se implementa módulo de compras)"
+        help_text="Referencia a compra"
     )
     
     # Auditoría
@@ -941,7 +1148,7 @@ class MovimientoInventario(models.Model):
 
 
 # ============================================================================
-# MODELO DE COMPRAS (Opcional - Para registro de compras a proveedores)
+# MODELO DE COMPRAS
 # ============================================================================
 
 class Compra(models.Model):
@@ -1007,6 +1214,9 @@ class Compra(models.Model):
         db_index=True
     )
     
+    # Observaciones
+    observaciones = models.TextField(blank=True)
+    
     # Auditoría
     usuario_registro = models.ForeignKey(
         'authentication.Usuario',
@@ -1015,12 +1225,11 @@ class Compra(models.Model):
     )
     usuario_recepcion = models.ForeignKey(
         'authentication.Usuario',
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='compras_recibidas'
     )
-    observaciones = models.TextField(blank=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
     
@@ -1037,26 +1246,14 @@ class Compra(models.Model):
     
     def __str__(self):
         return f"{self.numero_compra} - {self.proveedor.nombre_comercial} - ${self.total}"
-    
-    def calcular_totales(self):
-        """Recalcula los totales de la compra basado en los detalles"""
-        self.subtotal = self.detalles.aggregate(
-            total=Sum('subtotal')
-        )['total'] or Decimal('0')
-        self.total = self.subtotal - self.descuento + self.impuestos
-        self.save()
 
 
 class DetalleCompra(models.Model):
     """
-    Detalle de cada producto en una compra
-    Puede ser quintal o producto normal
+    Detalle de productos en una compra
     """
-    
-    # Identificadores
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
-    # Relaciones
     compra = models.ForeignKey(
         'Compra',
         on_delete=models.CASCADE,
@@ -1073,7 +1270,7 @@ class DetalleCompra(models.Model):
         decimal_places=3,
         null=True,
         blank=True,
-        help_text="Peso comprado si es quintal"
+        help_text="Peso comprado (para quintales)"
     )
     unidad_medida = models.ForeignKey(
         'UnidadMedida',
@@ -1082,39 +1279,24 @@ class DetalleCompra(models.Model):
         blank=True
     )
     
-    # Para PRODUCTOS NORMALES
+    # Para NORMALES
     cantidad_unidades = models.IntegerField(
         null=True,
         blank=True,
-        help_text="Cantidad de unidades si es producto normal"
+        help_text="Cantidad de unidades (para productos normales)"
     )
     
-    # 💰 PRECIOS
+    # Costos
     costo_unitario = models.DecimalField(
         max_digits=10,
-        decimal_places=4,
-        help_text="Costo por unidad de peso o por unidad completa"
+        decimal_places=2,
+        help_text="Costo unitario o por unidad de peso"
     )
     subtotal = models.DecimalField(
         max_digits=10,
-        decimal_places=2
+        decimal_places=2,
+        help_text="Subtotal de esta línea"
     )
-    
-    # Referencias creadas al recibir
-    quintal_creado = models.ForeignKey(
-        'Quintal',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        help_text="Quintal creado al recibir esta compra"
-    )
-    
-    # Control
-    recibido = models.BooleanField(
-        default=False,
-        help_text="Indica si este detalle ya fue recibido en inventario"
-    )
-    fecha_recepcion = models.DateTimeField(null=True, blank=True)
     
     class Meta:
         verbose_name = 'Detalle de Compra'
@@ -1122,29 +1304,14 @@ class DetalleCompra(models.Model):
         db_table = 'inv_detalle_compra'
     
     def __str__(self):
-        if self.producto.es_quintal():
-            return f"{self.producto.nombre} - {self.peso_comprado} {self.unidad_medida.abreviatura}"
-        return f"{self.producto.nombre} - {self.cantidad_unidades} unidades"
-    
-    def save(self, *args, **kwargs):
-        # Calcular subtotal según tipo de producto
-        if self.producto.es_quintal() and self.peso_comprado:
-            self.subtotal = self.peso_comprado * self.costo_unitario
-        elif self.producto.es_normal() and self.cantidad_unidades:
-            self.subtotal = self.cantidad_unidades * self.costo_unitario
-        super().save(*args, **kwargs)
+        return f"{self.producto.nombre} - {self.subtotal}"
 
-
-# ============================================================================
-# MODELOS PARA CONVERSIÓN DE UNIDADES (Helper)
-# ============================================================================
 
 class ConversionUnidad(models.Model):
     """
-    Tabla de conversiones predefinidas para facilitar cálculos
-    Ejemplos: 1 quintal = 100 libras, 1 arroba = 25 libras
+    Tabla de conversión entre unidades de medida
+    Facilita conversiones rápidas sin cálculos complejos
     """
-    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
     # Unidades
@@ -1264,7 +1431,8 @@ def get_stock_total(self):
     """
     if self.es_quintal():
         peso_total = Quintal.objects.peso_total_disponible(self)
-        return f"{peso_total} {self.unidad_medida_base.abreviatura}"
+        unidad = self.unidad_medida_base.abreviatura if self.unidad_medida_base else 'kg'
+        return f"{peso_total} {unidad}"
     else:
         try:
             return f"{self.inventario_normal.stock_actual} unidades"

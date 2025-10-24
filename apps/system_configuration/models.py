@@ -131,12 +131,17 @@ class ConfiguracionSistema(models.Model):
         default='VNT',
         help_text='Prefijo para números de venta'
     )
-    iva_default = models.DecimalField(
+    # ✅ CORREGIDO: Control de IVA
+    iva_activo = models.BooleanField(
+        default=True,
+        help_text='Activar cálculo automático de IVA en ventas'
+    )
+    porcentaje_iva = models.DecimalField(
         max_digits=5,
         decimal_places=2,
         default=15.00,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
-        help_text='IVA por defecto (%)'
+        help_text='Porcentaje de IVA (%)'
     )
     max_descuento_sin_autorizacion = models.DecimalField(
         max_digits=5,
@@ -923,7 +928,7 @@ def get_iva_default():
         monto_iva = subtotal * (iva_porcentaje / 100)
     """
     config = ConfiguracionSistema.get_config()
-    return config.iva_default
+    return config.porcentaje_iva
 
 
 def calcular_iva(subtotal):
@@ -944,3 +949,39 @@ def calcular_iva(subtotal):
     """
     iva_porcentaje = get_iva_default()
     return subtotal * (iva_porcentaje / Decimal('100'))
+
+def iva_esta_activo():
+    """
+    ✅ NUEVO: Verifica si el cálculo de IVA está activo en el sistema
+    
+    Returns:
+        bool: True si el IVA está activo, False en caso contrario
+    
+    Usage:
+        from apps.system_configuration.models import iva_esta_activo
+        
+        if iva_esta_activo():
+            # Calcular y aplicar IVA
+            monto_iva = calcular_iva(subtotal)
+        else:
+            # No aplicar IVA
+            monto_iva = Decimal('0')
+    """
+    config = ConfiguracionSistema.get_config()
+    return config.iva_activo
+
+
+def get_porcentaje_iva():
+    """
+    ✅ NUEVO: Alias más descriptivo para get_iva_default()
+    Obtiene el porcentaje de IVA configurado en el sistema
+    
+    Returns:
+        Decimal: Porcentaje de IVA (ej: Decimal('15.00'))
+    
+    Usage:
+        from apps.system_configuration.models import get_porcentaje_iva
+        
+        porcentaje = get_porcentaje_iva()  # Ej: 15.00
+    """
+    return get_iva_default()
