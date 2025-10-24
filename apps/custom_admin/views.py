@@ -4831,8 +4831,56 @@ def exportar_movimientos_pdf_general(request):
 @ensure_csrf_cookie
 @auth_required
 def finanzas_dashboard_view(request):
-    """Dashboard financiero"""
-    return render(request, 'custom_admin/finanzas/dashboard.html')
+    """Dashboard general de finanzas con resumen de cuentas por cobrar y pagar"""
+    
+    from apps.financial_management.models import ReporteCuentasPorCobrar, ReporteCuentasPorPagar
+    
+    # Resúmenes generales
+    resumen_cobrar = ReporteCuentasPorCobrar.resumen_general()
+    resumen_pagar = ReporteCuentasPorPagar.resumen_general()
+    
+    # Antigüedad de saldos
+    antiguedad_cobrar = ReporteCuentasPorCobrar.antiguedad_saldos()
+    antiguedad_pagar = ReporteCuentasPorPagar.antiguedad_saldos()
+    
+    # Cuentas más urgentes (próximas a vencer en 7 días)
+    hoy = timezone.now().date()
+    fecha_limite = hoy + timedelta(days=7)
+    
+    cuentas_cobrar_urgentes = CuentaPorCobrar.objects.filter(
+        estado__in=['PENDIENTE', 'PARCIAL'],
+        fecha_vencimiento__lte=fecha_limite,
+        fecha_vencimiento__gte=hoy
+    ).select_related('cliente').order_by('fecha_vencimiento')[:10]
+    
+    cuentas_pagar_urgentes = CuentaPorPagar.objects.filter(
+        estado__in=['PENDIENTE', 'PARCIAL'],
+        fecha_vencimiento__lte=fecha_limite,
+        fecha_vencimiento__gte=hoy
+    ).select_related('proveedor').order_by('fecha_vencimiento')[:10]
+    
+    # Cuentas vencidas
+    cuentas_cobrar_vencidas = CuentaPorCobrar.objects.filter(
+        estado='VENCIDA'
+    ).select_related('cliente').order_by('fecha_vencimiento')[:10]
+    
+    cuentas_pagar_vencidas = CuentaPorPagar.objects.filter(
+        estado='VENCIDA'
+    ).select_related('proveedor').order_by('fecha_vencimiento')[:10]
+    
+    context = {
+        'resumen_cobrar': resumen_cobrar,
+        'resumen_pagar': resumen_pagar,
+        'antiguedad_cobrar': antiguedad_cobrar,
+        'antiguedad_pagar': antiguedad_pagar,
+        'cuentas_cobrar_urgentes': cuentas_cobrar_urgentes,
+        'cuentas_pagar_urgentes': cuentas_pagar_urgentes,
+        'cuentas_cobrar_vencidas': cuentas_cobrar_vencidas,
+        'cuentas_pagar_vencidas': cuentas_pagar_vencidas,
+    }
+    
+    return render(request, 'custom_admin/finanzas/dashboard.html', context)
+
 
 
 @ensure_csrf_cookie
@@ -6925,7 +6973,7 @@ def proveedor_crear_api(request):
         }, status=500)
 
 @ensure_csrf_cookie
-@login_required
+@auth_required
 def cuentas_por_cobrar_list(request):
     """Vista principal: Listado de cuentas por cobrar con filtros"""
     
@@ -6944,7 +6992,7 @@ def cuentas_por_cobrar_list(request):
     fecha_desde = request.GET.get('fecha_desde', '')
     fecha_hasta = request.GET.get('fecha_hasta', '')
     search = request.GET.get('search', '')
-    vencimiento = request.GET.get('vencimiento', '')  # 'vencidas', 'por_vencer', 'corrientes'
+    vencimiento = request.GET.get('vencimiento', '')
     
     if estado:
         cuentas = cuentas.filter(estado=estado)
@@ -6975,7 +7023,6 @@ def cuentas_por_cobrar_list(request):
             fecha_vencimiento__lt=hoy
         )
     elif vencimiento == 'por_vencer':
-        # Próximas a vencer (7 días)
         fecha_limite = hoy + timedelta(days=7)
         cuentas = cuentas.filter(
             estado__in=['PENDIENTE', 'PARCIAL'],
@@ -7063,9 +7110,36 @@ def cuenta_por_cobrar_detalle(request, cuenta_id):
     
     return render(request, 'custom_admin/finanzas/cuenta_por_cobrar_detalle.html', context)
 
+@ensure_csrf_cookie
+@auth_required
+def cuenta_por_cobrar_detalle(request, cuenta_id):
+    """Vista de detalle de una cuenta por cobrar específica"""
+    
+    cuenta = get_object_or_404(
+        CuentaPorCobrar.objects.select_related('cliente', 'venta', 'usuario_registro'),
+        pk=cuenta_id
+    )
+    
+    # Obtener todos los pagos de esta cuenta
+    pagos = cuenta.pagos.all().order_by('-fecha_pago')
+    
+    # Calcular días de mora
+    if cuenta.estado in ['VENCIDA', 'PARCIAL']:
+        dias_mora = (timezone.now().date() - cuenta.fecha_vencimiento).days
+    else:
+        dias_mora = 0
+    
+    context = {
+        'cuenta': cuenta,
+        'pagos': pagos,
+        'dias_mora': dias_mora,
+    }
+    
+    return render(request, 'custom_admin/finanzas/cuenta_por_cobrar_detalle.html', context)
+
 
 @ensure_csrf_cookie
-@login_required
+@auth_required
 def registrar_pago_cobrar(request, cuenta_id):
     """Vista para registrar un nuevo pago a una cuenta por cobrar"""
     
@@ -7078,12 +7152,13 @@ def registrar_pago_cobrar(request, cuenta_id):
         return render(request, 'custom_admin/finanzas/registrar_pago_cobrar.html', context)
 
 
+
 # ============================================================================
 # CUENTAS POR PAGAR - VISTAS HTML
 # ============================================================================
 
 @ensure_csrf_cookie
-@login_required
+@auth_required
 def cuentas_por_pagar_list(request):
     """Vista principal: Listado de cuentas por pagar con filtros"""
     
@@ -7193,7 +7268,7 @@ def cuentas_por_pagar_list(request):
 
 
 @ensure_csrf_cookie
-@login_required
+@auth_required
 def cuenta_por_pagar_detalle(request, cuenta_id):
     """Vista de detalle de una cuenta por pagar específica"""
     
@@ -7219,9 +7294,8 @@ def cuenta_por_pagar_detalle(request, cuenta_id):
     
     return render(request, 'custom_admin/finanzas/cuenta_por_pagar_detalle.html', context)
 
-
 @ensure_csrf_cookie
-@login_required
+@auth_required
 def registrar_pago_pagar(request, cuenta_id):
     """Vista para registrar un nuevo pago a una cuenta por pagar"""
     
@@ -7234,11 +7308,13 @@ def registrar_pago_pagar(request, cuenta_id):
         return render(request, 'custom_admin/finanzas/registrar_pago_pagar.html', context)
 
 
+
 # ============================================================================
 # APIs JSON - CUENTAS POR COBRAR
 # ============================================================================
 
-@login_required
+@ensure_csrf_cookie
+@auth_required
 @require_http_methods(["POST"])
 def api_registrar_pago_cobrar(request):
     """API para registrar un pago de cuenta por cobrar"""
@@ -7276,6 +7352,9 @@ def api_registrar_pago_cobrar(request):
                 'error': f'El monto (${monto}) excede el saldo pendiente (${cuenta.saldo_pendiente})'
             }, status=400)
         
+        # Obtener usuario autenticado
+        usuario = get_authenticated_user(request)
+        
         # Crear el pago
         pago = PagoCuentaPorCobrar.objects.create(
             cuenta=cuenta,
@@ -7285,7 +7364,7 @@ def api_registrar_pago_cobrar(request):
             banco=banco,
             numero_cuenta_banco=numero_cuenta_banco,
             observaciones=observaciones,
-            usuario=request.user
+            usuario=usuario
         )
         
         # Registrar el pago en la cuenta (esto actualiza el saldo automáticamente)
@@ -7314,13 +7393,16 @@ def api_registrar_pago_cobrar(request):
         }, status=404)
     except Exception as e:
         logger.error(f"Error al registrar pago: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return JsonResponse({
             'success': False,
             'error': f'Error al registrar pago: {str(e)}'
         }, status=500)
 
 
-@login_required
+@ensure_csrf_cookie
+@auth_required
 @require_http_methods(["GET"])
 def api_obtener_cuenta_cobrar(request, cuenta_id):
     """API para obtener los detalles de una cuenta por cobrar"""
@@ -7357,6 +7439,7 @@ def api_obtener_cuenta_cobrar(request, cuenta_id):
             }
         })
     except Exception as e:
+        logger.error(f"Error al obtener cuenta: {str(e)}")
         return JsonResponse({
             'success': False,
             'error': str(e)
@@ -7367,7 +7450,8 @@ def api_obtener_cuenta_cobrar(request, cuenta_id):
 # APIs JSON - CUENTAS POR PAGAR
 # ============================================================================
 
-@login_required
+@ensure_csrf_cookie
+@auth_required
 @require_http_methods(["POST"])
 def api_registrar_pago_pagar(request):
     """API para registrar un pago de cuenta por pagar"""
@@ -7405,6 +7489,9 @@ def api_registrar_pago_pagar(request):
                 'error': f'El monto (${monto}) excede el saldo pendiente (${cuenta.saldo_pendiente})'
             }, status=400)
         
+        # Obtener usuario autenticado
+        usuario = get_authenticated_user(request)
+        
         # Crear el pago
         pago = PagoCuentaPorPagar.objects.create(
             cuenta=cuenta,
@@ -7414,7 +7501,7 @@ def api_registrar_pago_pagar(request):
             banco=banco,
             numero_cuenta_banco=numero_cuenta_banco,
             observaciones=observaciones,
-            usuario=request.user
+            usuario=usuario
         )
         
         # Registrar el pago en la cuenta
@@ -7443,13 +7530,16 @@ def api_registrar_pago_pagar(request):
         }, status=404)
     except Exception as e:
         logger.error(f"Error al registrar pago: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return JsonResponse({
             'success': False,
             'error': f'Error al registrar pago: {str(e)}'
         }, status=500)
 
 
-@login_required
+@ensure_csrf_cookie
+@auth_required
 @require_http_methods(["GET"])
 def api_obtener_cuenta_pagar(request, cuenta_id):
     """API para obtener los detalles de una cuenta por pagar"""
@@ -7486,12 +7576,56 @@ def api_obtener_cuenta_pagar(request, cuenta_id):
             }
         })
     except Exception as e:
+        logger.error(f"Error al obtener cuenta: {str(e)}")
         return JsonResponse({
             'success': False,
             'error': str(e)
         }, status=500)
 
-
+@ensure_csrf_cookie
+@auth_required
+@require_http_methods(["GET"])
+def api_cuentas_por_pagar_list(request):
+    """API para obtener listado de cuentas por pagar (para uso en JavaScript)"""
+    try:
+        cuentas = CuentaPorPagar.objects.select_related(
+            'proveedor', 'compra'
+        ).all().order_by('-fecha_emision')
+        
+        # Aplicar filtros si existen
+        estado = request.GET.get('estado', '')
+        if estado:
+            cuentas = cuentas.filter(estado=estado)
+        
+        proveedor_id = request.GET.get('proveedor_id', '')
+        if proveedor_id:
+            cuentas = cuentas.filter(proveedor_id=proveedor_id)
+        
+        # Serializar las cuentas
+        cuentas_data = []
+        for cuenta in cuentas:
+            cuentas_data.append({
+                'id': str(cuenta.id),
+                'numero_cuenta': cuenta.numero_cuenta,
+                'proveedor': cuenta.proveedor.nombre_comercial,
+                'monto_total': float(cuenta.monto_total),
+                'saldo_pendiente': float(cuenta.saldo_pendiente),
+                'estado': cuenta.estado,
+                'fecha_emision': cuenta.fecha_emision.strftime('%Y-%m-%d'),
+                'fecha_vencimiento': cuenta.fecha_vencimiento.strftime('%Y-%m-%d'),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'cuentas': cuentas_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error al listar cuentas: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 # ============================================================================
 # REPORTES Y DASHBOARDS
 # ============================================================================
@@ -7537,3 +7671,47 @@ def finanzas_dashboard(request):
     }
     
     return render(request, 'custom_admin/finanzas/dashboard.html', context)
+@ensure_csrf_cookie
+@auth_required
+@require_http_methods(["GET"])
+def api_cuentas_por_cobrar_list(request):
+    """API para obtener listado de cuentas por cobrar (para uso en JavaScript)"""
+    try:
+        cuentas = CuentaPorCobrar.objects.select_related(
+            'cliente', 'venta'
+        ).all().order_by('-fecha_emision')
+        
+        # Aplicar filtros si existen
+        estado = request.GET.get('estado', '')
+        if estado:
+            cuentas = cuentas.filter(estado=estado)
+        
+        cliente_id = request.GET.get('cliente_id', '')
+        if cliente_id:
+            cuentas = cuentas.filter(cliente_id=cliente_id)
+        
+        # Serializar las cuentas
+        cuentas_data = []
+        for cuenta in cuentas:
+            cuentas_data.append({
+                'id': str(cuenta.id),
+                'numero_cuenta': cuenta.numero_cuenta,
+                'cliente': cuenta.cliente.nombre or cuenta.cliente.razon_social,
+                'monto_total': float(cuenta.monto_total),
+                'saldo_pendiente': float(cuenta.saldo_pendiente),
+                'estado': cuenta.estado,
+                'fecha_emision': cuenta.fecha_emision.strftime('%Y-%m-%d'),
+                'fecha_vencimiento': cuenta.fecha_vencimiento.strftime('%Y-%m-%d'),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'cuentas': cuentas_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error al listar cuentas: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
