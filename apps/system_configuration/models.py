@@ -195,33 +195,6 @@ class ConfiguracionSistema(models.Model):
     )
     
     # ==========================================
-    # FACTURACIÓN ELECTRÓNICA
-    # ==========================================
-    facturacion_electronica_activa = models.BooleanField(
-        default=False,
-        help_text='Activar facturación electrónica'
-    )
-    ambiente_facturacion = models.CharField(
-        max_length=20,
-        choices=[
-            ('PRUEBAS', 'Pruebas'),
-            ('PRODUCCION', 'Producción'),
-        ],
-        default='PRUEBAS',
-        help_text='Ambiente de facturación electrónica'
-    )
-    certificado_digital_path = models.CharField(
-        max_length=500,
-        blank=True,
-        help_text='Ruta del certificado digital'
-    )
-    clave_certificado = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text='Clave del certificado (encriptada)'
-    )
-    
-    # ==========================================
     # NOTIFICACIONES
     # ==========================================
     notificaciones_email_activas = models.BooleanField(

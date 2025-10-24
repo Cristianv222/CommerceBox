@@ -244,7 +244,7 @@ class ProductoForm(forms.ModelForm):
         model = Producto
         fields = [
             'codigo_barras', 'nombre', 'descripcion', 'categoria',
-            'marca', 'proveedor', 'tipo_inventario', 'imagen', 'iva', 'activo',
+            'marca', 'proveedor', 'tipo_inventario', 'imagen', 'activo',
             # Para quintales
             'unidad_medida_base', 'precio_por_unidad_peso', 'peso_base_quintal',
             # Para normales
@@ -299,13 +299,6 @@ class ProductoForm(forms.ModelForm):
                 'min': '0',
                 'placeholder': '0.00'
             }),
-            'iva': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'step': '0.01',
-                'min': '0',
-                'max': '100',
-                'value': '15.00'
-            }),
             'imagen': forms.FileInput(attrs={
                 'class': 'form-control',
                 'accept': 'image/*'
@@ -315,8 +308,7 @@ class ProductoForm(forms.ModelForm):
             })
         }
         labels = {
-            'marca': 'Marca (opcional)',
-            'iva': 'IVA (%)'
+            'marca': 'Marca (opcional)'
         }
     
     def __init__(self, *args, **kwargs):
@@ -338,29 +330,27 @@ class ProductoForm(forms.ModelForm):
         tipo_inventario = cleaned_data.get('tipo_inventario')
         generar_auto = cleaned_data.get('generar_codigo_automatico')
         
-        # Generar código automático si está marcado
+        # Generar código automáticamente si se solicita
         if generar_auto and not self.instance.pk:
-            categoria = cleaned_data.get('categoria')
-            cleaned_data['codigo_barras'] = BarcodeGenerator.generar_codigo_producto(
-                categoria=categoria,
-                tipo_inventario=tipo_inventario
-            )
+            codigo = BarcodeGenerator.generar_codigo_producto()
+            cleaned_data['codigo_barras'] = codigo
+            self.instance.codigo_barras = codigo
         
-        # Validar campos según tipo
+        # Validar campos según tipo de inventario
         if tipo_inventario == 'QUINTAL':
             if not cleaned_data.get('unidad_medida_base'):
                 raise ValidationError({
-                    'unidad_medida_base': 'La unidad de medida es requerida para quintales'
+                    'unidad_medida_base': 'Este campo es requerido para productos tipo QUINTAL'
                 })
             if not cleaned_data.get('precio_por_unidad_peso'):
                 raise ValidationError({
-                    'precio_por_unidad_peso': 'El precio por peso es requerido para quintales'
+                    'precio_por_unidad_peso': 'Este campo es requerido para productos tipo QUINTAL'
                 })
         
         elif tipo_inventario == 'NORMAL':
             if not cleaned_data.get('precio_unitario'):
                 raise ValidationError({
-                    'precio_unitario': 'El precio unitario es requerido para productos normales'
+                    'precio_unitario': 'Este campo es requerido para productos tipo NORMAL'
                 })
         
         return cleaned_data
@@ -371,35 +361,16 @@ class ProductoForm(forms.ModelForm):
 # ============================================================================
 
 class QuintalForm(forms.ModelForm):
-    """Formulario para registrar entrada de quintal"""
-    
-    generar_codigo_automatico = forms.BooleanField(
-        required=False,
-        initial=True,
-        label='Generar código de quintal automáticamente',
-        widget=forms.CheckboxInput(attrs={
-            'class': 'form-check-input'
-        })
-    )
+    """Formulario para registrar un quintal (entrada de producto a granel)"""
     
     class Meta:
         model = Quintal
         fields = [
-            'codigo_unico', 'producto', 'proveedor',
-            'peso_inicial', 'unidad_medida', 'costo_total',
-            'fecha_recepcion', 'fecha_vencimiento',
-            'lote_proveedor', 'numero_factura_compra', 'origen'
+            'producto', 'peso_inicial', 'unidad_medida', 'costo_total',
+            'proveedor', 'lote_proveedor', 'fecha_vencimiento', 'origen'
         ]
         widgets = {
-            'codigo_unico': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'CBX-QNT-00001',
-                'readonly': 'readonly'
-            }),
             'producto': forms.Select(attrs={
-                'class': 'form-select'
-            }),
-            'proveedor': forms.Select(attrs={
                 'class': 'form-select'
             }),
             'peso_inicial': forms.NumberInput(attrs={
@@ -417,56 +388,49 @@ class QuintalForm(forms.ModelForm):
                 'min': '0.01',
                 'placeholder': '0.00'
             }),
-            'fecha_recepcion': forms.DateTimeInput(attrs={
+            'proveedor': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'lote_proveedor': forms.TextInput(attrs={
                 'class': 'form-control',
-                'type': 'datetime-local'
+                'placeholder': 'LT-2025-001'
             }),
             'fecha_vencimiento': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date'
             }),
-            'lote_proveedor': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Lote del proveedor'
-            }),
-            'numero_factura_compra': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'No. Factura'
-            }),
             'origen': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Origen del producto'
+                'placeholder': 'Ej: Productor local, Importado de USA'
             })
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        # Filtrar solo productos tipo QUINTAL
+        # Filtrar solo productos tipo QUINTAL activos
         self.fields['producto'].queryset = Producto.objects.filter(
             tipo_inventario='QUINTAL',
             activo=True
         )
         
-        # Si es edición, no generar automático
-        if self.instance and self.instance.pk:
-            self.fields['generar_codigo_automatico'].initial = False
-            self.fields['codigo_unico'].widget.attrs.pop('readonly', None)
+        # Filtrar proveedores activos
+        self.fields['proveedor'].queryset = Proveedor.objects.filter(activo=True)
     
     def clean(self):
         cleaned_data = super().clean()
-        generar_auto = cleaned_data.get('generar_codigo_automatico')
+        peso_inicial = cleaned_data.get('peso_inicial')
+        costo_total = cleaned_data.get('costo_total')
         
-        # Generar código automático si está marcado
-        if generar_auto and not self.instance.pk:
-            producto = cleaned_data.get('producto')
-            cleaned_data['codigo_unico'] = BarcodeGenerator.generar_codigo_quintal(
-                producto=producto
-            )
+        if peso_inicial and peso_inicial <= 0:
+            raise ValidationError({
+                'peso_inicial': 'El peso debe ser mayor a 0'
+            })
         
-        # El peso_actual es igual al peso_inicial al crear
-        if not self.instance.pk:
-            cleaned_data['peso_actual'] = cleaned_data.get('peso_inicial')
+        if costo_total and costo_total <= 0:
+            raise ValidationError({
+                'costo_total': 'El costo debe ser mayor a 0'
+            })
         
         return cleaned_data
 
@@ -476,7 +440,7 @@ class QuintalForm(forms.ModelForm):
 # ============================================================================
 
 class ProductoNormalForm(forms.ModelForm):
-    """Formulario para gestionar inventario de productos normales"""
+    """Formulario para registrar inventario de producto normal (unidades)"""
     
     class Meta:
         model = ProductoNormal

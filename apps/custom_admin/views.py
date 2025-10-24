@@ -20,12 +20,20 @@ from django.http import JsonResponse
 from django.db.models import Sum, Q
 from apps.sales_management.models import Venta, DetalleVenta, Devolucion,Cliente
 from django.db import IntegrityError
-import logging
+from django.core.paginator import Paginator
 from apps.financial_management.models import (
     CuentaPorCobrar, 
     PagoCuentaPorCobrar,
     CuentaPorPagar,
     PagoCuentaPorPagar
+)
+from apps.system_configuration.models import (
+    ConfiguracionSistema,
+    ParametroSistema,
+    LogConfiguracion,
+    HealthCheck,
+    get_parametro,
+    set_parametro
 )
 
 logger = logging.getLogger(__name__)
@@ -7783,3 +7791,767 @@ def api_cuentas_por_cobrar_list(request):
             'success': False,
             'error': str(e)
         }, status=500)
+
+# ============================================================================
+# VIEWS PARA SYSTEM CONFIGURATION
+# Agregar estas views al archivo apps/custom_admin/views.py
+# ============================================================================
+@ensure_csrf_cookie
+@auth_required
+def configuracion_sistema_view(request):
+    """
+    Vista principal de configuración del sistema
+    Muestra todos los parámetros configurables
+    """
+    config = ConfiguracionSistema.get_config()
+    
+    context = {
+        'config': config,
+        'active_menu': 'system',
+        'active_submenu': 'configuracion',
+    }
+    
+    return render(request, 'custom_admin/system/configuracion.html', context)
+
+
+@ensure_csrf_cookie
+@auth_required
+@require_http_methods(["POST"])
+def configuracion_sistema_actualizar(request):
+    """
+    API para actualizar la configuración general del sistema
+    """
+    try:
+        config = ConfiguracionSistema.get_config()
+        usuario = get_authenticated_user(request)
+        
+        # Información General
+        if 'nombre_empresa' in request.POST:
+            config.nombre_empresa = request.POST.get('nombre_empresa', '').strip()
+        if 'ruc_empresa' in request.POST:
+            config.ruc_empresa = request.POST.get('ruc_empresa', '').strip()
+        if 'direccion_empresa' in request.POST:
+            config.direccion_empresa = request.POST.get('direccion_empresa', '').strip()
+        if 'telefono_empresa' in request.POST:
+            config.telefono_empresa = request.POST.get('telefono_empresa', '').strip()
+        if 'email_empresa' in request.POST:
+            config.email_empresa = request.POST.get('email_empresa', '').strip()
+        if 'sitio_web' in request.POST:
+            config.sitio_web = request.POST.get('sitio_web', '').strip()
+        
+        # Logo de la empresa
+        if 'logo_empresa' in request.FILES:
+            config.logo_empresa = request.FILES['logo_empresa']
+        
+        # Configuración de Inventario
+        if 'prefijo_codigo_quintal' in request.POST:
+            config.prefijo_codigo_quintal = request.POST.get('prefijo_codigo_quintal', '').strip()
+        if 'prefijo_codigo_producto' in request.POST:
+            config.prefijo_codigo_producto = request.POST.get('prefijo_codigo_producto', '').strip()
+        if 'longitud_codigo_secuencial' in request.POST:
+            config.longitud_codigo_secuencial = int(request.POST.get('longitud_codigo_secuencial', 5))
+        if 'umbral_stock_critico_porcentaje' in request.POST:
+            config.umbral_stock_critico_porcentaje = Decimal(request.POST.get('umbral_stock_critico_porcentaje', '10.00'))
+        if 'umbral_stock_bajo_porcentaje' in request.POST:
+            config.umbral_stock_bajo_porcentaje = Decimal(request.POST.get('umbral_stock_bajo_porcentaje', '25.00'))
+        if 'stock_minimo_default' in request.POST:
+            config.stock_minimo_default = int(request.POST.get('stock_minimo_default', 10))
+        if 'dias_alerta_vencimiento' in request.POST:
+            config.dias_alerta_vencimiento = int(request.POST.get('dias_alerta_vencimiento', 30))
+        if 'peso_minimo_quintal_critico' in request.POST:
+            config.peso_minimo_quintal_critico = Decimal(request.POST.get('peso_minimo_quintal_critico', '5.000'))
+        
+        # Configuración de Ventas
+        if 'prefijo_numero_factura' in request.POST:
+            config.prefijo_numero_factura = request.POST.get('prefijo_numero_factura', '').strip()
+        if 'prefijo_numero_venta' in request.POST:
+            config.prefijo_numero_venta = request.POST.get('prefijo_numero_venta', '').strip()
+        if 'iva_default' in request.POST:
+            config.iva_default = Decimal(request.POST.get('iva_default', '15.00'))
+        if 'max_descuento_sin_autorizacion' in request.POST:
+            config.max_descuento_sin_autorizacion = Decimal(request.POST.get('max_descuento_sin_autorizacion', '10.00'))
+        if 'permitir_ventas_credito' in request.POST:
+            config.permitir_ventas_credito = request.POST.get('permitir_ventas_credito') == 'true'
+        if 'dias_credito_default' in request.POST:
+            config.dias_credito_default = int(request.POST.get('dias_credito_default', 30))
+        
+        # Configuración Financiera
+        if 'moneda' in request.POST:
+            config.moneda = request.POST.get('moneda', '').strip()
+        if 'simbolo_moneda' in request.POST:
+            config.simbolo_moneda = request.POST.get('simbolo_moneda', '').strip()
+        if 'decimales_moneda' in request.POST:
+            config.decimales_moneda = int(request.POST.get('decimales_moneda', 2))
+        if 'monto_inicial_caja' in request.POST:
+            config.monto_inicial_caja = Decimal(request.POST.get('monto_inicial_caja', '100.00'))
+        if 'monto_fondo_caja_chica' in request.POST:
+            config.monto_fondo_caja_chica = Decimal(request.POST.get('monto_fondo_caja_chica', '50.00'))
+        if 'alerta_diferencia_caja' in request.POST:
+            config.alerta_diferencia_caja = Decimal(request.POST.get('alerta_diferencia_caja', '5.00'))
+        
+        # Notificaciones
+        if 'notificaciones_email_activas' in request.POST:
+            config.notificaciones_email_activas = request.POST.get('notificaciones_email_activas') == 'true'
+        if 'email_notificaciones' in request.POST:
+            config.email_notificaciones = request.POST.get('email_notificaciones', '').strip()
+        if 'notificar_stock_bajo' in request.POST:
+            config.notificar_stock_bajo = request.POST.get('notificar_stock_bajo') == 'true'
+        if 'notificar_vencimientos' in request.POST:
+            config.notificar_vencimientos = request.POST.get('notificar_vencimientos') == 'true'
+        if 'notificar_cierre_caja' in request.POST:
+            config.notificar_cierre_caja = request.POST.get('notificar_cierre_caja') == 'true'
+        
+        # Backups
+        if 'backup_automatico_activo' in request.POST:
+            config.backup_automatico_activo = request.POST.get('backup_automatico_activo') == 'true'
+        if 'frecuencia_backup' in request.POST:
+            config.frecuencia_backup = request.POST.get('frecuencia_backup', 'DIARIO')
+        if 'dias_retencion_backup' in request.POST:
+            config.dias_retencion_backup = int(request.POST.get('dias_retencion_backup', 30))
+        
+        # Mantenimiento y Sistema
+        if 'modo_mantenimiento' in request.POST:
+            config.modo_mantenimiento = request.POST.get('modo_mantenimiento') == 'true'
+        if 'mensaje_mantenimiento' in request.POST:
+            config.mensaje_mantenimiento = request.POST.get('mensaje_mantenimiento', '').strip()
+        if 'timezone' in request.POST:
+            config.timezone = request.POST.get('timezone', '').strip()
+        if 'idioma_default' in request.POST:
+            config.idioma_default = request.POST.get('idioma_default', 'es')
+        
+        config.actualizado_por = usuario
+        config.save()
+        
+        # Registrar en log
+        LogConfiguracion.objects.create(
+            tabla='ConfiguracionSistema',
+            registro_id='1',
+            tipo_cambio='MODIFICACION',
+            descripcion='Actualización de configuración general del sistema',
+            usuario=usuario,
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Configuración actualizada exitosamente'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error al actualizar configuración: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al actualizar configuración: {str(e)}'
+        }, status=500)
+
+
+# ============================================================================
+# PARÁMETROS DEL SISTEMA
+# ============================================================================
+
+@ensure_csrf_cookie
+@auth_required
+def parametros_sistema_view(request):
+    """
+    Lista de parámetros del sistema con filtros
+    """
+    parametros = ParametroSistema.objects.all().order_by('categoria', 'modulo', 'clave')
+    
+    # Filtros
+    search = request.GET.get('search', '')
+    categoria = request.GET.get('categoria', '')
+    modulo = request.GET.get('modulo', '')
+    activo = request.GET.get('activo', '')
+    
+    if search:
+        parametros = parametros.filter(
+            Q(nombre_display__icontains=search) |
+            Q(clave__icontains=search) |
+            Q(descripcion__icontains=search)
+        )
+    
+    if categoria:
+        parametros = parametros.filter(categoria=categoria)
+    
+    if modulo:
+        parametros = parametros.filter(modulo=modulo)
+    
+    if activo:
+        parametros = parametros.filter(activo=(activo == 'true'))
+    
+    # Obtener categorías y módulos únicos para filtros
+    categorias = ParametroSistema.objects.values_list('categoria', flat=True).distinct().order_by('categoria')
+    modulos = ParametroSistema.objects.values_list('modulo', flat=True).distinct().order_by('modulo')
+    
+    # Paginación
+    paginator = Paginator(parametros, 20)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'parametros': page_obj,
+        'page_obj': page_obj,
+        'categorias': categorias,
+        'modulos': modulos,
+        'search': search,
+        'categoria_selected': categoria,
+        'modulo_selected': modulo,
+        'activo_selected': activo,
+        'active_menu': 'system',
+        'active_submenu': 'parametros',
+    }
+    
+    return render(request, 'custom_admin/system/parametros_list.html', context)
+
+
+@ensure_csrf_cookie
+@auth_required
+@require_http_methods(["GET"])
+def api_parametro_obtener(request, parametro_id):
+    """
+    API para obtener los detalles de un parámetro
+    """
+    try:
+        parametro = get_object_or_404(ParametroSistema, pk=parametro_id)
+        
+        return JsonResponse({
+            'success': True,
+            'parametro': {
+                'id': str(parametro.id),
+                'modulo': parametro.modulo,
+                'clave': parametro.clave,
+                'nombre_display': parametro.nombre_display,
+                'descripcion': parametro.descripcion,
+                'categoria': parametro.categoria,
+                'tipo_dato': parametro.tipo_dato,
+                'valor': parametro.valor,
+                'valor_default': parametro.valor_default,
+                'validacion_regex': parametro.validacion_regex,
+                'valor_minimo': parametro.valor_minimo,
+                'valor_maximo': parametro.valor_maximo,
+                'opciones_validas': parametro.opciones_validas,
+                'activo': parametro.activo,
+                'editable': parametro.editable,
+                'requiere_reinicio': parametro.requiere_reinicio,
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error al obtener parámetro: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required
+@require_http_methods(["POST"])
+def api_parametro_actualizar(request, parametro_id):
+    """
+    API para actualizar un parámetro del sistema
+    """
+    try:
+        parametro = get_object_or_404(ParametroSistema, pk=parametro_id)
+        usuario = get_authenticated_user(request)
+        
+        if not parametro.editable:
+            return JsonResponse({
+                'success': False,
+                'error': 'Este parámetro no es editable'
+            }, status=400)
+        
+        data = json.loads(request.body)
+        
+        valor_anterior = parametro.valor
+        nuevo_valor = data.get('valor', '')
+        
+        # Usar el helper para establecer el valor con el tipo correcto
+        parametro.set_valor_typed(nuevo_valor)
+        parametro.actualizado_por = usuario
+        parametro.save()
+        
+        # Registrar cambio en log
+        LogConfiguracion.objects.create(
+            tabla='ParametroSistema',
+            registro_id=str(parametro.id),
+            tipo_cambio='MODIFICACION',
+            campo_modificado='valor',
+            valor_anterior=valor_anterior,
+            valor_nuevo=parametro.valor,
+            usuario=usuario,
+            descripcion=f"Cambio de parámetro {parametro.modulo}.{parametro.clave}",
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Parámetro actualizado exitosamente',
+            'parametro': {
+                'id': str(parametro.id),
+                'valor': parametro.valor,
+                'requiere_reinicio': parametro.requiere_reinicio,
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error al actualizar parámetro: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al actualizar parámetro: {str(e)}'
+        }, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required
+@require_http_methods(["POST"])
+def api_parametro_crear(request):
+    """
+    API para crear un nuevo parámetro del sistema
+    """
+    try:
+        usuario = get_authenticated_user(request)
+        data = json.loads(request.body)
+        
+        parametro = ParametroSistema.objects.create(
+            modulo=data.get('modulo', '').strip(),
+            clave=data.get('clave', '').strip(),
+            nombre_display=data.get('nombre_display', '').strip(),
+            descripcion=data.get('descripcion', '').strip(),
+            categoria=data.get('categoria', 'SYSTEM'),
+            tipo_dato=data.get('tipo_dato', 'STRING'),
+            valor=data.get('valor', ''),
+            valor_default=data.get('valor_default', ''),
+            validacion_regex=data.get('validacion_regex', ''),
+            valor_minimo=data.get('valor_minimo', ''),
+            valor_maximo=data.get('valor_maximo', ''),
+            opciones_validas=data.get('opciones_validas', []),
+            activo=data.get('activo', True),
+            editable=data.get('editable', True),
+            requiere_reinicio=data.get('requiere_reinicio', False),
+            actualizado_por=usuario
+        )
+        
+        # Registrar en log
+        LogConfiguracion.objects.create(
+            tabla='ParametroSistema',
+            registro_id=str(parametro.id),
+            tipo_cambio='CREACION',
+            descripcion=f"Creación de parámetro {parametro.modulo}.{parametro.clave}",
+            usuario=usuario,
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Parámetro creado exitosamente',
+            'parametro': {
+                'id': str(parametro.id),
+                'modulo': parametro.modulo,
+                'clave': parametro.clave,
+                'nombre_display': parametro.nombre_display,
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error al crear parámetro: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al crear parámetro: {str(e)}'
+        }, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required
+@require_http_methods(["DELETE"])
+def api_parametro_eliminar(request, parametro_id):
+    """
+    API para eliminar un parámetro del sistema
+    """
+    try:
+        parametro = get_object_or_404(ParametroSistema, pk=parametro_id)
+        usuario = get_authenticated_user(request)
+        
+        if not parametro.editable:
+            return JsonResponse({
+                'success': False,
+                'error': 'Este parámetro no se puede eliminar'
+            }, status=400)
+        
+        # Registrar en log antes de eliminar
+        LogConfiguracion.objects.create(
+            tabla='ParametroSistema',
+            registro_id=str(parametro.id),
+            tipo_cambio='ELIMINACION',
+            descripcion=f"Eliminación de parámetro {parametro.modulo}.{parametro.clave}",
+            usuario=usuario,
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        parametro.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Parámetro eliminado exitosamente'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error al eliminar parámetro: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# ============================================================================
+# LOGS DE CONFIGURACIÓN
+# ============================================================================
+
+@ensure_csrf_cookie
+@auth_required
+def logs_configuracion_view(request):
+    """
+    Vista de logs de cambios en la configuración
+    """
+    logs = LogConfiguracion.objects.select_related('usuario').all().order_by('-fecha_cambio')
+    
+    # Filtros
+    tabla = request.GET.get('tabla', '')
+    tipo_cambio = request.GET.get('tipo_cambio', '')
+    usuario_id = request.GET.get('usuario_id', '')
+    fecha_desde = request.GET.get('fecha_desde', '')
+    fecha_hasta = request.GET.get('fecha_hasta', '')
+    
+    if tabla:
+        logs = logs.filter(tabla=tabla)
+    
+    if tipo_cambio:
+        logs = logs.filter(tipo_cambio=tipo_cambio)
+    
+    if usuario_id:
+        logs = logs.filter(usuario_id=usuario_id)
+    
+    if fecha_desde:
+        logs = logs.filter(fecha_cambio__date__gte=fecha_desde)
+    
+    if fecha_hasta:
+        logs = logs.filter(fecha_cambio__date__lte=fecha_hasta)
+    
+    # Obtener valores únicos para filtros
+    from apps.authentication.models import Usuario
+    tablas = LogConfiguracion.objects.values_list('tabla', flat=True).distinct().order_by('tabla')
+    usuarios = Usuario.objects.filter(
+        id__in=LogConfiguracion.objects.values_list('usuario_id', flat=True).distinct()
+    ).order_by('username')
+    
+    # Paginación
+    paginator = Paginator(logs, 50)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'logs': page_obj,
+        'page_obj': page_obj,
+        'tablas': tablas,
+        'usuarios': usuarios,
+        'tabla_selected': tabla,
+        'tipo_cambio_selected': tipo_cambio,
+        'usuario_selected': usuario_id,
+        'fecha_desde': fecha_desde,
+        'fecha_hasta': fecha_hasta,
+        'active_menu': 'system',
+        'active_submenu': 'logs',
+    }
+    
+    return render(request, 'custom_admin/system/logs_list.html', context)
+
+
+@ensure_csrf_cookie
+@auth_required
+@require_http_methods(["GET"])
+def api_log_detalle(request, log_id):
+    """
+    API para obtener los detalles de un log
+    """
+    try:
+        log = get_object_or_404(
+            LogConfiguracion.objects.select_related('usuario'),
+            pk=log_id
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'log': {
+                'id': str(log.id),
+                'tabla': log.tabla,
+                'registro_id': log.registro_id,
+                'tipo_cambio': log.tipo_cambio,
+                'tipo_cambio_display': log.get_tipo_cambio_display(),
+                'campo_modificado': log.campo_modificado,
+                'valor_anterior': log.valor_anterior,
+                'valor_nuevo': log.valor_nuevo,
+                'descripcion': log.descripcion,
+                'ip_address': log.ip_address,
+                'usuario': log.usuario.get_full_name() if log.usuario else 'Sistema',
+                'fecha_cambio': log.fecha_cambio.strftime('%Y-%m-%d %H:%M:%S'),
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error al obtener log: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# ============================================================================
+# HEALTH CHECK DEL SISTEMA
+# ============================================================================
+
+@ensure_csrf_cookie
+@auth_required
+def health_check_view(request):
+    """
+    Vista de health checks del sistema
+    """
+    checks = HealthCheck.objects.all().order_by('-fecha_check')[:50]
+    
+    # Último health check
+    ultimo_check = checks.first() if checks else None
+    
+    # Estadísticas de los últimos 30 días
+    from django.db.models import Count
+    from datetime import timedelta
+    
+    fecha_inicio = timezone.now() - timedelta(days=30)
+    
+    estadisticas = HealthCheck.objects.filter(
+        fecha_check__gte=fecha_inicio
+    ).values('estado_general').annotate(
+        total=Count('id')
+    )
+    
+    context = {
+        'checks': checks,
+        'ultimo_check': ultimo_check,
+        'estadisticas': estadisticas,
+        'active_menu': 'system',
+        'active_submenu': 'health',
+    }
+    
+    return render(request, 'custom_admin/system/health_check.html', context)
+
+
+@ensure_csrf_cookie
+@auth_required
+@require_http_methods(["POST"])
+def api_ejecutar_health_check(request):
+    """
+    API para ejecutar un health check manual del sistema
+    """
+    try:
+        import psutil
+        from django.db import connection
+        from django.core.cache import cache
+        import time
+        
+        errores = []
+        advertencias = []
+        detalles = {}
+        
+        # Check Base de Datos
+        try:
+            start_time = time.time()
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            tiempo_respuesta_db = int((time.time() - start_time) * 1000)
+            base_datos_ok = True
+            detalles['base_datos'] = 'Conectado correctamente'
+        except Exception as e:
+            tiempo_respuesta_db = None
+            base_datos_ok = False
+            errores.append(f"Error en base de datos: {str(e)}")
+        
+        # Check Redis/Cache
+        try:
+            cache.set('health_check_test', 'ok', 10)
+            test_value = cache.get('health_check_test')
+            redis_ok = test_value == 'ok'
+            detalles['redis'] = 'Funcionando correctamente' if redis_ok else 'No responde'
+        except Exception as e:
+            redis_ok = False
+            advertencias.append(f"Redis no disponible: {str(e)}")
+        
+        # Check Disco
+        try:
+            disk = psutil.disk_usage('/')
+            espacio_libre_gb = disk.free / (1024**3)
+            disco_ok = espacio_libre_gb > 5  # Al menos 5GB libres
+            detalles['disco'] = f"{espacio_libre_gb:.2f} GB libres de {disk.total / (1024**3):.2f} GB"
+            
+            if not disco_ok:
+                advertencias.append(f"Poco espacio en disco: {espacio_libre_gb:.2f} GB")
+        except Exception as e:
+            espacio_libre_gb = None
+            disco_ok = False
+            advertencias.append(f"No se pudo verificar espacio en disco: {str(e)}")
+        
+        # Check Memoria
+        try:
+            memory = psutil.virtual_memory()
+            uso_memoria = memory.percent
+            memoria_ok = uso_memoria < 90
+            detalles['memoria'] = f"Uso: {uso_memoria:.2f}%"
+            
+            if not memoria_ok:
+                advertencias.append(f"Uso alto de memoria: {uso_memoria:.2f}%")
+        except Exception as e:
+            uso_memoria = None
+            memoria_ok = False
+            advertencias.append(f"No se pudo verificar memoria: {str(e)}")
+        
+        # Check Celery (opcional)
+        try:
+            from celery.app.control import Inspect
+            from apps.commercebox.celery import app
+            
+            inspect = Inspect(app=app)
+            active_workers = inspect.active()
+            celery_ok = active_workers is not None and len(active_workers) > 0
+            detalles['celery'] = f"{len(active_workers) if active_workers else 0} workers activos"
+        except Exception as e:
+            celery_ok = False
+            detalles['celery'] = 'No configurado o no disponible'
+        
+        # Determinar estado general
+        if errores:
+            estado_general = 'CRITICO'
+        elif advertencias:
+            estado_general = 'ADVERTENCIA'
+        else:
+            estado_general = 'SALUDABLE'
+        
+        # Crear registro de health check
+        health_check = HealthCheck.objects.create(
+            estado_general=estado_general,
+            base_datos_ok=base_datos_ok,
+            redis_ok=redis_ok,
+            celery_ok=celery_ok,
+            disco_ok=disco_ok,
+            memoria_ok=memoria_ok,
+            espacio_disco_libre_gb=espacio_libre_gb,
+            uso_memoria_porcentaje=uso_memoria,
+            tiempo_respuesta_db_ms=tiempo_respuesta_db,
+            detalles=detalles,
+            errores=errores,
+            advertencias=advertencias
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'health_check': {
+                'id': str(health_check.id),
+                'estado_general': estado_general,
+                'estado_general_display': health_check.get_estado_general_display(),
+                'base_datos_ok': base_datos_ok,
+                'redis_ok': redis_ok,
+                'celery_ok': celery_ok,
+                'disco_ok': disco_ok,
+                'memoria_ok': memoria_ok,
+                'detalles': detalles,
+                'errores': errores,
+                'advertencias': advertencias,
+                'fecha_check': health_check.fecha_check.strftime('%Y-%m-%d %H:%M:%S'),
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error al ejecutar health check: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al ejecutar health check: {str(e)}'
+        }, status=500)
+
+
+# ============================================================================
+# DASHBOARD DE CONFIGURACIÓN
+# ============================================================================
+
+@ensure_csrf_cookie
+@auth_required
+def system_dashboard_view(request):
+    """
+    Dashboard principal del módulo de configuración del sistema
+    """
+    config = ConfiguracionSistema.get_config()
+    
+    # Estadísticas de parámetros
+    total_parametros = ParametroSistema.objects.count()
+    parametros_activos = ParametroSistema.objects.filter(activo=True).count()
+    parametros_por_categoria = ParametroSistema.objects.values('categoria').annotate(
+        total=Count('id')
+    ).order_by('-total')
+    
+    # Últimos logs
+    ultimos_logs = LogConfiguracion.objects.select_related('usuario').order_by('-fecha_cambio')[:10]
+    
+    # Último health check
+    ultimo_health_check = HealthCheck.objects.order_by('-fecha_check').first()
+    
+    # Alertas del sistema
+    alertas = []
+    
+    # Verificar si hay parámetros que requieren reinicio
+    parametros_requieren_reinicio = ParametroSistema.objects.filter(
+        requiere_reinicio=True,
+        activo=True
+    ).exists()
+    
+    if parametros_requieren_reinicio:
+        alertas.append({
+            'tipo': 'warning',
+            'mensaje': 'Hay parámetros que requieren reiniciar el sistema para aplicar cambios'
+        })
+    
+    # Verificar modo mantenimiento
+    if config.modo_mantenimiento:
+        alertas.append({
+            'tipo': 'info',
+            'mensaje': 'El sistema está en modo mantenimiento'
+        })
+    
+    # Verificar health check
+    if ultimo_health_check:
+        if ultimo_health_check.estado_general == 'CRITICO':
+            alertas.append({
+                'tipo': 'danger',
+                'mensaje': 'El último health check detectó problemas críticos'
+            })
+        elif ultimo_health_check.estado_general == 'ADVERTENCIA':
+            alertas.append({
+                'tipo': 'warning',
+                'mensaje': 'El último health check detectó advertencias'
+            })
+    
+    context = {
+        'config': config,
+        'total_parametros': total_parametros,
+        'parametros_activos': parametros_activos,
+        'parametros_por_categoria': parametros_por_categoria,
+        'ultimos_logs': ultimos_logs,
+        'ultimo_health_check': ultimo_health_check,
+        'alertas': alertas,
+        'active_menu': 'system',
+        'active_submenu': 'dashboard',
+    }
+    
+    return render(request, 'custom_admin/system/dashboard.html', context)

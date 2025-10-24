@@ -345,14 +345,6 @@ class Producto(models.Model):
         help_text="Precio por unidad completa"
     )
     
-    # ✅ CAMPO IVA
-    iva = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        default=0.00,
-        help_text="Porcentaje de IVA aplicado (%)"
-    )
-    
     # Imagen
     imagen = models.ImageField(
         upload_to='productos/',

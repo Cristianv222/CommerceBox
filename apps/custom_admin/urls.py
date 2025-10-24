@@ -294,4 +294,30 @@ urlpatterns = [
     # HEALTH CHECK
     # ========================================
     path('health/', views.health_check_view, name='health_check'),
+
+    # ============================================================================
+    # CONFIGURACIÓN DEL SISTEMA
+    # ============================================================================
+    
+    # Dashboard principal
+    path('system/dashboard/', views.system_dashboard_view, name='system_dashboard'),
+    
+    # Configuración general
+    path('system/configuracion/', views.configuracion_sistema_view, name='configuracion_sistema'),
+    path('system/configuracion/actualizar/', views.configuracion_sistema_actualizar, name='configuracion_sistema_actualizar'),
+
+    # Parámetros del sistema
+    path('system/parametros/', views.parametros_sistema_view, name='parametros_sistema'),
+    path('system/parametros/crear/', views.api_parametro_crear, name='parametro_crear'),
+    path('system/parametros/<uuid:parametro_id>/', views.api_parametro_obtener, name='parametro_obtener'),
+    path('system/parametros/<uuid:parametro_id>/actualizar/', views.api_parametro_actualizar, name='parametro_actualizar'),
+    path('system/parametros/<uuid:parametro_id>/eliminar/', views.api_parametro_eliminar, name='parametro_eliminar'),
+
+    # Logs de configuración
+    path('system/logs/', views.logs_configuracion_view, name='logs_configuracion'),
+    path('system/logs/<uuid:log_id>/', views.api_log_detalle, name='log_detalle'),
+
+    # Health Check
+    path('system/health/', views.health_check_view, name='health_check'),
+    path('system/health/ejecutar/', views.api_ejecutar_health_check, name='ejecutar_health_check'),
 ]
