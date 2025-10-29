@@ -1205,6 +1205,10 @@
                         <span>Descuento:</span>
                         <strong id="descuentoDisplay" style="color: #dc2626;">-$0.00</strong>
                     </div>
+                    <div class="total-row" id="ivaDisplay" style="display: none;">
+                        <span>IVA:</span>
+                        <strong class="summary-value" style="color: #0ea5e9;">+$0.00</strong>
+                    </div>
                     <div class="total-row total-final">
                         <span>TOTAL:</span>
                         <strong id="totalDisplay">$0.00</strong>
@@ -1361,6 +1365,10 @@ let ventaIdActual = null;
 let montoRecibido = 0;
 let cambio = 0;
 
+// ✅ AGREGAR VARIABLE IVA (viene de Django)
+const IVA_DEFAULT = parseFloat("{{ iva_porcentaje|default:'0' }}") || 0;
+console.log('🧾 IVA configurado:', IVA_DEFAULT, '%');
+
 // ============================================
 // SISTEMA DE ALERTAS
 // ============================================
@@ -1501,6 +1509,7 @@ window.cargarTodosLosProductos = function() {
     })
         .then(response => response.json())
         .then(data => {
+            console.log('📡 Productos recibidos del servidor:', data.productos);
             mostrarProductos(data.productos);
         })
         .catch(error => {
@@ -1548,6 +1557,7 @@ function buscarProductos() {
     })
         .then(response => response.json())
         .then(data => {
+            console.log('📡 Productos encontrados:', data.productos);
             mostrarProductos(data.productos);
         })
         .catch(error => {
@@ -1562,6 +1572,9 @@ function buscarProductos() {
         });
 }
 
+// ============================================
+// ✅ MOSTRAR PRODUCTOS - CORREGIDO
+// ============================================
 window.mostrarProductos = function(productos) {
     const lista = document.getElementById('productosLista');
     
@@ -1591,11 +1604,40 @@ window.mostrarProductos = function(productos) {
             stockBadge = `<span class="stock-badge disponible"><i class="fas fa-weight"></i> ${stock.toFixed(2)}kg</span>`;
         }
         
-        const precio = producto.precio_unitario || producto.precio_por_unidad_peso;
-        const onclick = stock > 0 ? `onclick='agregarAlCarrito(${JSON.stringify(producto).replace(/'/g, "&apos;")})'` : '';
+        // ✅ CORRECCIÓN CRÍTICA: Obtener precio con todos los fallbacks posibles
+        const precio = parseFloat(
+            producto.precio || 
+            producto.precio_unitario || 
+            producto.precio_venta || 
+            producto.precio_por_unidad_peso || 
+            0
+        );
+        
+        // ✅ DEBUG: Mostrar información completa del producto
+        console.log('📦 Renderizando:', {
+            nombre: producto.nombre,
+            precio_usado: precio,
+            campos_disponibles: {
+                precio: producto.precio,
+                precio_unitario: producto.precio_unitario,
+                precio_venta: producto.precio_venta,
+                precio_por_unidad_peso: producto.precio_por_unidad_peso
+            }
+        });
+        
+        if (precio === 0) {
+            console.warn('⚠️ Producto sin precio válido:', producto);
+        }
+        
+        // ✅ SOLUCIÓN: Codificar producto en Base64 para evitar problemas con comillas
+        const productoJSON = JSON.stringify(producto);
+        const productoEncoded = btoa(encodeURIComponent(productoJSON));
+        const onclick = stock > 0 ? `onclick='agregarProductoPorData(this)'` : '';
         
         return `
-            <div class="producto-item ${itemClass}" ${onclick}>
+            <div class="producto-item ${itemClass}" 
+                 ${onclick}
+                 data-producto='${productoEncoded}'>
                 <div class="producto-info">
                     <div class="producto-nombre">${producto.nombre}</div>
                     <div class="producto-codigo">
@@ -1610,9 +1652,32 @@ window.mostrarProductos = function(productos) {
 }
 
 // ============================================
-// GESTIÓN DEL CARRITO
+// ✅ NUEVA FUNCIÓN: DECODIFICAR Y AGREGAR PRODUCTO
+// ============================================
+window.agregarProductoPorData = function(elemento) {
+    try {
+        const productoEncoded = elemento.getAttribute('data-producto');
+        const productoJSON = decodeURIComponent(atob(productoEncoded));
+        const producto = JSON.parse(productoJSON);
+        
+        console.log('🎯 Producto decodificado:', producto);
+        agregarAlCarrito(producto);
+    } catch (error) {
+        console.error('❌ Error al decodificar producto:', error);
+        mostrarAlerta('error', 'Error', 'No se pudo agregar el producto al carrito');
+    }
+}
+
+// ============================================
+// ✅ AGREGAR AL CARRITO - CORREGIDO
 // ============================================
 window.agregarAlCarrito = function(producto) {
+    // Verificar si es un quintal
+    if (producto.tipo_inventario === 'QUINTAL') {
+        window.mostrarModalQuintales(producto);
+        return;
+    }
+    
     const stockDisponible = producto.stock_actual || 0;
     
     if (stockDisponible <= 0) {
@@ -1636,12 +1701,35 @@ window.agregarAlCarrito = function(producto) {
         itemExistente.total = itemExistente.subtotal - itemExistente.descuento;
         mostrarAlerta('info', '✓ Cantidad Actualizada', `${producto.nombre} x ${nuevaCantidad}`);
     } else {
-        const precio = producto.precio_unitario || producto.precio_por_unidad_peso;
+        // ✅ CORRECCIÓN CRÍTICA: Obtener precio con fallbacks y parseFloat
+        const precio = parseFloat(
+            producto.precio || 
+            producto.precio_unitario || 
+            producto.precio_venta || 
+            producto.precio_por_unidad_peso || 
+            0
+        );
+        
+        // ✅ DEBUG DETALLADO
+        console.log('➕ Agregando al carrito:', {
+            nombre: producto.nombre,
+            precio_final: precio,
+            todos_los_campos: producto
+        });
+        
+        // ✅ VALIDACIÓN: No agregar productos sin precio
+        if (precio === 0 || isNaN(precio)) {
+            console.error('❌ PRECIO INVÁLIDO:', producto);
+            mostrarAlerta('error', '❌ Error de Precio', 
+                `${producto.nombre} no tiene un precio válido configurado`);
+            return;
+        }
+        
         carrito.push({
             producto_id: producto.id,
             nombre: producto.nombre,
             codigo: producto.codigo_barras || 'Sin código',
-            tipo_inventario: producto.tipo_inventario,
+            tipo_inventario: producto.tipo_inventario || 'NORMAL',
             unidad_medida: producto.unidad_medida || 'und',
             precio: precio,
             cantidad: 1,
@@ -1651,12 +1739,16 @@ window.agregarAlCarrito = function(producto) {
             subtotal: precio,
             total: precio,
         });
+        
         mostrarAlerta('success', '✓ Producto Agregado', `${producto.nombre} agregado al carrito`);
     }
     
     actualizarCarrito();
 }
 
+// ============================================
+// GESTIÓN DEL CARRITO
+// ============================================
 function eliminarDelCarrito(index) {
     const item = carrito[index];
     carrito.splice(index, 1);
@@ -1718,6 +1810,9 @@ function actualizarDescuento(index, valor) {
     actualizarCarrito();
 }
 
+// ============================================
+// ✅ ACTUALIZAR CARRITO - CON IVA CORREGIDO
+// ============================================
 window.actualizarCarrito = function() {
     const container = document.getElementById('carritoItems');
     
@@ -1827,13 +1922,51 @@ window.actualizarCarrito = function() {
         `).join('');
     }
     
+    // ✅ CÁLCULO DE TOTALES CON IVA
     subtotal = carrito.reduce((sum, item) => sum + item.subtotal, 0);
     descuentoTotal = carrito.reduce((sum, item) => sum + item.descuento, 0);
-    total = subtotal - descuentoTotal;
     
+    // Subtotal después de descuentos
+    let subtotalConDescuento = subtotal - descuentoTotal;
+    
+    // Calcular IVA
+    let ivaCalculado = 0;
+    if (IVA_DEFAULT > 0) {
+        ivaCalculado = subtotalConDescuento * (IVA_DEFAULT / 100);
+    }
+    
+    // Total final con IVA
+    total = subtotalConDescuento + ivaCalculado;
+    
+    // ✅ DEBUG: Ver cálculos
+    console.log('💰 Cálculos:', {
+        subtotal: subtotal.toFixed(2),
+        descuento: descuentoTotal.toFixed(2),
+        subtotal_con_desc: subtotalConDescuento.toFixed(2),
+        iva_porcentaje: IVA_DEFAULT,
+        iva_monto: ivaCalculado.toFixed(2),
+        total_final: total.toFixed(2)
+    });
+    
+    // Actualizar displays
     document.getElementById('carritoCount').textContent = carrito.length;
     document.getElementById('subtotalDisplay').textContent = `$${subtotal.toFixed(2)}`;
     document.getElementById('descuentoDisplay').textContent = `-$${descuentoTotal.toFixed(2)}`;
+    
+    // Mostrar IVA si existe
+    const ivaDisplay = document.getElementById('ivaDisplay');
+    if (ivaDisplay) {
+        if (IVA_DEFAULT > 0) {
+            ivaDisplay.style.display = 'flex';
+            const ivaValue = ivaDisplay.querySelector('.summary-value');
+            if (ivaValue) {
+                ivaValue.textContent = `+$${ivaCalculado.toFixed(2)}`;
+            }
+        } else {
+            ivaDisplay.style.display = 'none';
+        }
+    }
+    
     document.getElementById('totalDisplay').textContent = `$${total.toFixed(2)}`;
     
     actualizarCamposPago();
@@ -1847,7 +1980,6 @@ function limpiarCarrito() {
     if (confirm('¿Deseas limpiar el carrito?')) {
         carrito = [];
         
-        // ✅ RESETEAR COMPLETAMENTE EL INPUT USANDO removeAttribute
         const inputMontoRecibido = document.getElementById('montoRecibido');
         inputMontoRecibido.removeAttribute('disabled');
         inputMontoRecibido.removeAttribute('readonly');
@@ -1863,7 +1995,7 @@ function limpiarCarrito() {
 }
 
 // ============================================
-// PROCESAR VENTA - ✅ CORREGIDO CON removeAttribute
+// PROCESAR VENTA
 // ============================================
 function procesarVenta() {
     if (carrito.length === 0) {
@@ -1905,10 +2037,8 @@ function procesarVenta() {
             
             actualizarStockDespuesDeVenta();
             
-            // ✅ RESETEAR TODO CORRECTAMENTE
             carrito = [];
             
-            // ✅ RESETEAR COMPLETAMENTE EL INPUT USANDO removeAttribute
             const inputMontoRecibido = document.getElementById('montoRecibido');
             inputMontoRecibido.removeAttribute('disabled');
             inputMontoRecibido.removeAttribute('readonly');
@@ -1969,26 +2099,22 @@ function mostrarModalVentaExitosa(data) {
     document.getElementById('modalVentaExitosa').classList.add('show');
 }
 
-// ✅ CERRAR MODAL - CORREGIDO CON removeAttribute
 function cerrarModalVenta() {
     document.getElementById('modalVentaExitosa').classList.remove('show');
     ventaIdActual = null;
     
-    // ✅ RESETEAR COMPLETAMENTE EL INPUT USANDO removeAttribute
     const inputMontoRecibido = document.getElementById('montoRecibido');
     inputMontoRecibido.removeAttribute('disabled');
     inputMontoRecibido.removeAttribute('readonly');
     inputMontoRecibido.value = '0.00';
     
-    // ✅ RESETEAR VARIABLES
     montoRecibido = 0;
     cambio = 0;
     calcularCambio();
 }
 
-
 // ============================================
-// 🖨️ FUNCIÓN: IMPRIMIR TICKET - VERSIÓN CORREGIDA
+// IMPRIMIR TICKET
 // ============================================
 function imprimirTicket() {
     if (!ventaIdActual) {
@@ -1996,7 +2122,6 @@ function imprimirTicket() {
         return;
     }
     
-    // Obtener el botón
     const btnImprimir = document.querySelector('#modalVentaExitosa .btn-modal-primary');
     let textoOriginal = '';
     
@@ -2006,7 +2131,6 @@ function imprimirTicket() {
         btnImprimir.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando a impresora...';
     }
     
-    // ✅ ENDPOINT CORREGIDO
     fetch(`/panel/api/ventas/${ventaIdActual}/reimprimir-ticket/`, {
         method: 'POST',
         credentials: "include",
@@ -2015,7 +2139,7 @@ function imprimirTicket() {
             'X-CSRFToken': '{{ csrf_token }}',
         },
         body: JSON.stringify({
-            abrir_gaveta: false  // En reimpresión normalmente NO se abre gaveta
+            abrir_gaveta: false
         })
     })
     .then(response => {
@@ -2027,11 +2151,8 @@ function imprimirTicket() {
     .then(data => {
         if (data.success) {
             mostrarAlerta('success', '🖨️ Ticket Enviado', 
-                data.mensaje || 'Ticket enviado a la impresora. El agente lo procesará automáticamente.');
+                data.mensaje || 'Ticket enviado a la impresora');
             
-            console.log('✅ Trabajo de impresión creado:', data.trabajo_id);
-            
-            // Cerrar modal después de 2 segundos
             setTimeout(() => {
                 cerrarModalVenta();
             }, 2000);
@@ -2043,7 +2164,7 @@ function imprimirTicket() {
     .catch(error => {
         console.error('❌ Error imprimiendo ticket:', error);
         mostrarAlerta('error', '❌ Error de Conexión', 
-            'No se pudo conectar con el servidor. Verifica que Django esté ejecutándose.');
+            'No se pudo conectar con el servidor');
     })
     .finally(() => {
         if (btnImprimir) {
@@ -2052,8 +2173,6 @@ function imprimirTicket() {
         }
     });
 }
-
-
 
 function debounce(func, wait) {
     let timeout;
@@ -2074,248 +2193,194 @@ window.onclick = function(event) {
     }
 }
 
-    // ========================================
-    // FUNCIONES PARA MANEJO DE QUINTALES
-    // ========================================
-    
-    window.mostrarModalQuintales = function(producto) {
-        // Verificar si el producto es tipo QUINTAL
-        if (producto.tipo_inventario !== 'QUINTAL') {
-            (producto.tipo_inventario === "QUINTAL" ? window.mostrarModalQuintales(producto) : window.agregarAlCarrito(producto));
-            return;
-        }
-        
-        // Obtener quintales disponibles
-        fetch(`/panel/api/productos/${producto.id}/quintales/`)
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success || data.quintales.length === 0) {
-                    alert('No hay quintales disponibles para este producto');
-                    return;
-                }
-                
-                // Crear modal
-                let modalHtml = `
-                    <div class="modal fade" id="modalQuintalVenta" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Vender ${producto.nombre} (Quintal)</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <div class="mb-3">
-                                        <label>Seleccione Quintal:</label>
-                                        <select id="quintalSelect" class="form-control">
-                                            ${data.quintales.map(q => 
-                                                `<option value="${q.id}" data-peso="${q.peso_actual}" data-precio="${q.precio_por_unidad}" data-unidad="${q.unidad}">
-                                                    ${q.codigo} - ${q.peso_actual} ${q.unidad} disponibles
-                                                </option>`
-                                            ).join('')}
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <label>Tipo de venta:</label>
-                                        <div class="btn-group w-100" role="group">
-                                            <input type="radio" class="btn-check" name="tipoVenta" id="ventaPeso" value="peso" checked>
-                                            <label class="btn btn-outline-primary" for="ventaPeso">Por Peso</label>
-                                            
-                                            <input type="radio" class="btn-check" name="tipoVenta" id="ventaDinero" value="dinero">
-                                            <label class="btn btn-outline-primary" for="ventaDinero">Por Dinero</label>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <label id="labelCantidad">Cantidad en peso:</label>
-                                        <input type="number" id="cantidadQuintal" class="form-control" step="0.01" min="0.01">
-                                        <small id="helpText" class="form-text text-muted"></small>
-                                    </div>
-                                    
-                                    <div class="alert alert-info">
-                                        <strong>Resumen:</strong>
-                                        <div id="resumenVenta">Seleccione cantidad</div>
-                                    </div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                    <button type="button" class="btn btn-primary" onclick="confirmarVentaQuintal('${producto.id}', '${producto.nombre}')">
-                                        Agregar al Carrito
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                // Remover modal anterior si existe
-                let oldModal = document.getElementById('modalQuintalVenta');
-                if (oldModal) {
-                    oldModal.remove();
-                }
-                
-                // Agregar modal al body
-                document.body.insertAdjacentHTML('beforeend', modalHtml);
-                
-                // Configurar eventos
-                document.getElementById('ventaPeso').addEventListener('change', () => {
-                    document.getElementById('labelCantidad').innerText = 'Cantidad en peso:';
-                    actualizarResumenQuintal();
-                });
-                
-                document.getElementById('ventaDinero').addEventListener('change', () => {
-                    document.getElementById('labelCantidad').innerText = 'Cantidad en dinero ($):';
-                    actualizarResumenQuintal();
-                });
-                
-                document.getElementById('cantidadQuintal').addEventListener('input', actualizarResumenQuintal);
-                document.getElementById('quintalSelect').addEventListener('change', actualizarResumenQuintal);
-                
-                // Mostrar modal
-                let modal = new bootstrap.Modal(document.getElementById('modalQuintalVenta'));
-                modal.show();
-            });
-    }
-    
-    function actualizarResumenQuintal() {
-        const quintalSelect = document.getElementById('quintalSelect');
-        const selectedOption = quintalSelect.options[quintalSelect.selectedIndex];
-        const cantidad = parseFloat(document.getElementById('cantidadQuintal').value) || 0;
-        const tipoVenta = document.querySelector('input[name="tipoVenta"]:checked').value;
-        
-        if (cantidad <= 0) {
-            document.getElementById('resumenVenta').innerHTML = 'Ingrese una cantidad';
-            return;
-        }
-        
-        const pesoDisponible = parseFloat(selectedOption.dataset.peso);
-        const precioPorUnidad = parseFloat(selectedOption.dataset.precio);
-        const unidad = selectedOption.dataset.unidad;
-        
-        if (tipoVenta === 'peso') {
-            if (cantidad > pesoDisponible) {
-                document.getElementById('resumenVenta').innerHTML = 
-                    `<span class="text-danger">Excede disponible (máx: ${pesoDisponible} ${unidad})</span>`;
-            } else {
-                const total = cantidad * precioPorUnidad;
-                document.getElementById('resumenVenta').innerHTML = 
-                    `${cantidad} ${unidad} = $${total.toFixed(2)}`;
-            }
-        } else {
-            const pesoCalculado = cantidad / precioPorUnidad;
-            if (pesoCalculado > pesoDisponible) {
-                document.getElementById('resumenVenta').innerHTML = 
-                    `<span class="text-danger">$${cantidad} excede disponible (máx: $${(pesoDisponible * precioPorUnidad).toFixed(2)})</span>`;
-            } else {
-                document.getElementById('resumenVenta').innerHTML = 
-                    `$${cantidad} = ${pesoCalculado.toFixed(3)} ${unidad}`;
-            }
-        }
-    }
-    
-    function confirmarVentaQuintal(productoId, productoNombre) {
-        const quintalId = document.getElementById('quintalSelect').value;
-        const cantidad = parseFloat(document.getElementById('cantidadQuintal').value);
-        const tipoVenta = document.querySelector('input[name="tipoVenta"]:checked').value;
-        
-        if (!cantidad || cantidad <= 0) {
-            alert('Ingrese una cantidad válida');
-            return;
-        }
-        
-        // Agregar al carrito con información de quintal
-        const quintalSelect = document.getElementById('quintalSelect');
-        const selectedOption = quintalSelect.options[quintalSelect.selectedIndex];
-        const precioPorUnidad = parseFloat(selectedOption.dataset.precio);
-        const unidad = selectedOption.dataset.unidad;
-        
-        let pesoVenta, precioTotal;
-        
-        if (tipoVenta === 'peso') {
-            pesoVenta = cantidad;
-            precioTotal = cantidad * precioPorUnidad;
-        } else {
-            pesoVenta = cantidad / precioPorUnidad;
-            precioTotal = cantidad;
-        }
-        
-        // Agregar al carrito global
-        if (!window.carrito) window.carrito = [];
-        
-        carrito.push({
-            producto_id: productoId,
-            nombre: `${productoNombre} (${pesoVenta.toFixed(3)} ${unidad})`,
-            precio: precioTotal,
-            cantidad: 1,
-            es_quintal: true,
-            quintal_id: quintalId,
-            peso_vendido: pesoVenta,
-            codigo: selectedOption.dataset.codigo || "QUINTAL",
-            stock_disponible: parseFloat(selectedOption.dataset.peso) || 100,
-            subtotal: precioTotal,
-            total: precioTotal,
-            descuento: 0,
-            descuento_porcentaje: 0
-        });
-        
-        // Actualizar vista
-        if (typeof actualizarCarrito === 'function') {
-            actualizarCarrito();
-        }
-        
-        // Cerrar modal
-        bootstrap.Modal.getInstance(document.getElementById('modalQuintalVenta')).hide();
-        
-        alert(`Agregado: ${pesoVenta.toFixed(3)} ${unidad} de ${productoNombre} por $${precioTotal.toFixed(2)}`);
-    }
-    
-
-window.agregarAlCarrito = function(producto) {
-    // Verificar si es un quintal
-    if (producto.tipo_inventario === 'QUINTAL') {
-        window.mostrarModalQuintales(producto);
+// ========================================
+// FUNCIONES PARA MANEJO DE QUINTALES
+// ========================================
+window.mostrarModalQuintales = function(producto) {
+    if (producto.tipo_inventario !== 'QUINTAL') {
+        agregarAlCarrito(producto);
         return;
     }
     
-    // Para productos normales
-    if (!window.carrito) window.carrito = [];
-    
-    const itemExistente = carrito.find(item => item.producto_id === producto.id);
-    
-    if (itemExistente) {
-        itemExistente.cantidad++;
-        itemExistente.subtotal = itemExistente.cantidad * itemExistente.precio;
-        itemExistente.total = itemExistente.subtotal - itemExistente.descuento;
-        
-        if (typeof mostrarAlerta === 'function') {
-            mostrarAlerta('info', '✓ Actualizado', `${producto.nombre} x ${itemExistente.cantidad}`);
-        }
-    } else {
-        const precio = producto.precio_unitario || producto.precio_venta || 0;
-        
-        carrito.push({
-            producto_id: producto.id,
-            nombre: producto.nombre,
-            codigo: producto.codigo_barras || '',
-            precio: precio,
-            cantidad: 1,
-            stock_disponible: producto.stock_actual || 0,
-            descuento: 0,
-            descuento_porcentaje: 0,
-            subtotal: precio,
-            total: precio
+    fetch(`/panel/api/productos/${producto.id}/quintales/`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('📦 Quintales recibidos:', data);
+            
+            if (!data.success || !data.quintales || data.quintales.length === 0) {
+                alert('No hay quintales disponibles para este producto');
+                return;
+            }
+            
+            let modalHtml = `
+                <div class="modal fade" id="modalQuintalVenta" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Vender ${producto.nombre} (Quintal)</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label>Seleccione Quintal:</label>
+                                    <select id="quintalSelect" class="form-control">
+                                        ${data.quintales.map(q => 
+                                            `<option value="${q.id}" 
+                                                     data-peso="${q.peso_actual}" 
+                                                     data-precio="${q.costo_por_unidad}" 
+                                                     data-unidad="${q.unidad_medida}" 
+                                                     data-codigo="${q.codigo_unico}">
+                                                ${q.codigo_unico} - ${q.peso_actual} ${q.unidad_medida} disponibles - $${q.costo_por_unidad}/${q.unidad_medida}
+                                            </option>`
+                                        ).join('')}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label>Tipo de venta:</label>
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="tipoVenta" id="ventaPeso" value="peso" checked>
+                                        <label class="btn btn-outline-primary" for="ventaPeso">Por Peso</label>
+                                        
+                                        <input type="radio" class="btn-check" name="tipoVenta" id="ventaDinero" value="dinero">
+                                        <label class="btn btn-outline-primary" for="ventaDinero">Por Dinero</label>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label id="labelCantidad">Cantidad en peso:</label>
+                                    <input type="number" id="cantidadQuintal" class="form-control" step="0.01" min="0.01">
+                                    <small id="helpText" class="form-text text-muted"></small>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <strong>Resumen:</strong>
+                                    <div id="resumenVenta">Seleccione cantidad</div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn btn-primary" onclick="confirmarVentaQuintal('${producto.id}', '${producto.nombre}')">
+                                    Agregar al Carrito
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            let oldModal = document.getElementById('modalQuintalVenta');
+            if (oldModal) {
+                oldModal.remove();
+            }
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            document.getElementById('ventaPeso').addEventListener('change', () => {
+                document.getElementById('labelCantidad').innerText = 'Cantidad en peso:';
+                actualizarResumenQuintal();
+            });
+            
+            document.getElementById('ventaDinero').addEventListener('change', () => {
+                document.getElementById('labelCantidad').innerText = 'Cantidad en dinero ($):';
+                actualizarResumenQuintal();
+            });
+            
+            document.getElementById('cantidadQuintal').addEventListener('input', actualizarResumenQuintal);
+            document.getElementById('quintalSelect').addEventListener('change', actualizarResumenQuintal);
+            
+            let modal = new bootstrap.Modal(document.getElementById('modalQuintalVenta'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('❌ Error cargando quintales:', error);
+            alert('Error al cargar quintales: ' + error.message);
         });
-        
-        if (typeof mostrarAlerta === 'function') {
-            mostrarAlerta('success', '✓ Agregado', `${producto.nombre} agregado al carrito`);
-        }
+}
+
+function actualizarResumenQuintal() {
+    const quintalSelect = document.getElementById('quintalSelect');
+    const selectedOption = quintalSelect.options[quintalSelect.selectedIndex];
+    const cantidad = parseFloat(document.getElementById('cantidadQuintal').value) || 0;
+    const tipoVenta = document.querySelector('input[name="tipoVenta"]:checked').value;
+    
+    if (cantidad <= 0) {
+        document.getElementById('resumenVenta').innerHTML = 'Ingrese una cantidad';
+        return;
     }
     
-    // Actualizar vista del carrito
-    if (typeof actualizarCarrito === 'function') {
-        actualizarCarrito();
+    const pesoDisponible = parseFloat(selectedOption.dataset.peso);
+    const precioPorUnidad = parseFloat(selectedOption.dataset.precio);
+    const unidad = selectedOption.dataset.unidad;
+    
+    if (tipoVenta === 'peso') {
+        if (cantidad > pesoDisponible) {
+            document.getElementById('resumenVenta').innerHTML = 
+                `<span class="text-danger">Excede disponible (máx: ${pesoDisponible} ${unidad})</span>`;
+        } else {
+            const total = cantidad * precioPorUnidad;
+            document.getElementById('resumenVenta').innerHTML = 
+                `${cantidad} ${unidad} = $${total.toFixed(2)}`;
+        }
+    } else {
+        const pesoCalculado = cantidad / precioPorUnidad;
+        if (pesoCalculado > pesoDisponible) {
+            document.getElementById('resumenVenta').innerHTML = 
+                `<span class="text-danger">$${cantidad} excede disponible (máx: $${(pesoDisponible * precioPorUnidad).toFixed(2)})</span>`;
+        } else {
+            document.getElementById('resumenVenta').innerHTML = 
+                `$${cantidad} = ${pesoCalculado.toFixed(3)} ${unidad}`;
+        }
     }
 }
 
+function confirmarVentaQuintal(productoId, productoNombre) {
+    const quintalId = document.getElementById('quintalSelect').value;
+    const cantidad = parseFloat(document.getElementById('cantidadQuintal').value);
+    const tipoVenta = document.querySelector('input[name="tipoVenta"]:checked').value;
+    
+    if (!cantidad || cantidad <= 0) {
+        alert('Ingrese una cantidad válida');
+        return;
+    }
+    
+    const quintalSelect = document.getElementById('quintalSelect');
+    const selectedOption = quintalSelect.options[quintalSelect.selectedIndex];
+    const precioPorUnidad = parseFloat(selectedOption.dataset.precio);
+    const unidad = selectedOption.dataset.unidad;
+    
+    let pesoVenta, precioTotal;
+    
+    if (tipoVenta === 'peso') {
+        pesoVenta = cantidad;
+        precioTotal = cantidad * precioPorUnidad;
+    } else {
+        pesoVenta = cantidad / precioPorUnidad;
+        precioTotal = cantidad;
+    }
+    
+    carrito.push({
+        producto_id: productoId,
+        nombre: `${productoNombre} (${pesoVenta.toFixed(3)} ${unidad})`,
+        precio: precioTotal,
+        cantidad: 1,
+        es_quintal: true,
+        quintal_id: quintalId,
+        peso_vendido: pesoVenta,
+        codigo: selectedOption.dataset.codigo || "QUINTAL",
+        stock_disponible: parseFloat(selectedOption.dataset.peso) || 100,
+        subtotal: precioTotal,
+        total: precioTotal,
+        descuento: 0,
+        descuento_porcentaje: 0
+    });
+    
+    actualizarCarrito();
+    
+    bootstrap.Modal.getInstance(document.getElementById('modalQuintalVenta')).hide();
+    
+    mostrarAlerta('success', '✓ Quintal Agregado', 
+        `${pesoVenta.toFixed(3)} ${unidad} de ${productoNombre} por $${precioTotal.toFixed(2)}`);
+}
 </script>
 {% endblock %}

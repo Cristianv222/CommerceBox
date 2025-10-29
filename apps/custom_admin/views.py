@@ -129,21 +129,23 @@ def inventario_dashboard_view(request):
 @auth_required
 def productos_view(request):
     """Lista de productos con datos reales - VERSIÓN CORREGIDA"""
-    from apps.inventory_management.models import Producto, Categoria, Marca, Quintal, UnidadMedida  # ✅ AGREGAR UnidadMedida
+    from apps.inventory_management.models import Producto, Categoria, Marca, Quintal, UnidadMedida
     from apps.system_configuration.models import ConfiguracionSistema
     from django.db.models import Q, Prefetch
     from django.core.paginator import Paginator
     
-    # ✅ SOLUCIÓN: Usar prefetch_related para cargar quintales e inventario normal
+    # ✅ CORRECCIÓN: Eliminar 'proveedor' del select_related
     productos = Producto.objects.select_related(
-        'categoria', 
-        'proveedor', 
+        'categoria',
         'unidad_medida_base', 
-        'marca'
+        'marca',
+        'usuario_registro'  # ✅ Agregado para optimizar
     ).prefetch_related(
         Prefetch(
             'quintales',
-            queryset=Quintal.objects.filter(estado='DISPONIBLE').order_by('fecha_recepcion')
+            queryset=Quintal.objects.select_related('proveedor', 'unidad_medida').filter(
+                estado='DISPONIBLE'
+            ).order_by('-fecha_ingreso')  # ✅ Agregado select_related para proveedores de quintales
         ),
         'inventario_normal'
     ).filter(activo=True).order_by('nombre')
@@ -166,15 +168,15 @@ def productos_view(request):
     if tipo:
         productos = productos.filter(tipo_inventario=tipo)
     
-    # Obtener todas las categorías, marcas y ✅ UNIDADES DE MEDIDA para los filtros
+    # Obtener todas las categorías, marcas y unidades de medida para los filtros
     categorias = Categoria.objects.filter(activa=True).order_by('nombre')
     marcas = Marca.objects.filter(activa=True).order_by('nombre')
-    unidades_medida = UnidadMedida.objects.filter(activa=True).order_by('orden_display')  # ✅ AGREGAR ESTA LÍNEA
+    unidades_medida = UnidadMedida.objects.filter(activa=True).order_by('orden_display')
     
     # ✅ OBTENER IVA DEFAULT DEL SISTEMA
     config = ConfiguracionSistema.get_config()
-    iva_activo = config.iva_activo
-    porcentaje_iva = config.porcentaje_iva
+    iva_activo = config.iva_activo if config else False
+    porcentaje_iva = config.porcentaje_iva if config else 0
     
     # Paginación
     paginator = Paginator(productos, 20)
@@ -186,7 +188,7 @@ def productos_view(request):
         'page_obj': page_obj,
         'marcas': marcas,
         'categorias': categorias,
-        'unidades_medida': unidades_medida,  # ✅ AGREGAR ESTA LÍNEA AL CONTEXTO
+        'unidades_medida': unidades_medida,
         'search': search,
         'categoria_selected': categoria_id,
         'tipo_selected': tipo,
@@ -2774,13 +2776,21 @@ def pos_view(request):
     """Punto de Venta principal"""
     from apps.sales_management.models import Cliente
     from apps.inventory_management.models import Categoria
+    from apps.system_configuration.models import ConfiguracionSistema  # ✅ AGREGAR IMPORT
     
     clientes = Cliente.objects.filter(activo=True).order_by('apellidos', 'nombres')
     categorias = Categoria.objects.filter(activa=True).order_by('nombre')
     
+    # ✅ OBTENER CONFIGURACIÓN DE IVA
+    config = ConfiguracionSistema.get_config()
+    iva_porcentaje = float(config.porcentaje_iva) if config else 0
+    iva_activo = config.iva_activo if config else False
+    
     context = {
         'clientes': clientes,
         'categorias': categorias,
+        'iva_porcentaje': iva_porcentaje,  # ✅ AGREGAR AL CONTEXTO
+        'iva_activo': iva_activo,  # ✅ OPCIONAL: para mostrar/ocultar IVA en UI
     }
     
     return render(request, 'custom_admin/pos/punto_venta.html', context)
@@ -2799,7 +2809,7 @@ def api_buscar_productos(request):
     if not query and not categoria_id and not cargar_todos:
         return JsonResponse({'productos': []})
     
-    productos = Producto.objects.select_related('categoria', 'unidad_medida_base').filter(activo=True)
+    productos = Producto.objects.select_related('categoria', 'unidad_medida_base', 'marca').filter(activo=True)
     
     if query:
         productos = productos.filter(
@@ -2828,7 +2838,6 @@ def api_buscar_productos(request):
             except ProductoNormal.DoesNotExist:
                 stock_actual = 0
         elif p.tipo_inventario == 'QUINTAL':
-            # Sumar el peso actual de todos los quintales disponibles
             stock_actual = float(
                 Quintal.objects.filter(
                     producto=p,
@@ -2838,16 +2847,25 @@ def api_buscar_productos(request):
                 )['total'] or 0
             )
         
+        # ✅ UNIFICAR PRECIO - siempre devolver 'precio' como campo principal
+        if p.tipo_inventario == 'NORMAL':
+            precio = float(p.precio_venta) if p.precio_venta else 0
+        else:  # QUINTAL
+            precio = float(p.precio_por_unidad_peso) if p.precio_por_unidad_peso else 0
+        
         data.append({
             'id': str(p.id),
             'nombre': p.nombre,
             'codigo_barras': p.codigo_barras or '',
             'categoria': p.categoria.nombre if p.categoria else '',
+            'marca': p.marca.nombre if p.marca else '',
             'tipo_inventario': p.tipo_inventario,
-            'precio_unitario': float(p.precio_unitario) if p.precio_unitario else 0,
-            'precio_por_unidad_peso': float(p.precio_por_unidad_peso) if p.precio_por_unidad_peso else 0,
+            'precio': precio,  # ✅ CAMPO UNIFICADO
+            'precio_unitario': precio,  # ✅ MANTENER POR COMPATIBILIDAD
+            'precio_por_unidad_peso': precio if p.tipo_inventario == 'QUINTAL' else 0,
             'stock_actual': stock_actual,
             'unidad_medida': p.unidad_medida_base.abreviatura if p.unidad_medida_base else 'und',
+            'aplica_impuestos': p.aplica_impuestos,
         })
     
     return JsonResponse({'productos': data})
@@ -2883,7 +2901,7 @@ def api_obtener_producto(request, producto_id):
 def api_procesar_venta(request):
     """
     API para procesar y guardar la venta con impresión térmica
-    VERSIÓN CORREGIDA - Error de Pago solucionado
+    VERSIÓN CON IVA CORREGIDO
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
@@ -2894,6 +2912,7 @@ def api_procesar_venta(request):
     from apps.inventory_management.models import Producto
     from apps.authentication.models import Usuario
     from apps.hardware_integration.models import TrabajoImpresion, Impresora
+    from apps.system_configuration.models import ConfiguracionSistema  # ✅ AGREGAR
     from decimal import Decimal
     from django.utils import timezone
     from django.db import transaction
@@ -2934,20 +2953,49 @@ def api_procesar_venta(request):
             except Cliente.DoesNotExist:
                 pass
         
+        # ============================================================================
+        # ✅ OBTENER CONFIGURACIÓN DE IVA
+        # ============================================================================
+        config = ConfiguracionSistema.get_config()
+        iva_activo = config.iva_activo if config else False
+        porcentaje_iva = config.porcentaje_iva if config else Decimal('0')
+        
+        logger.info(f"💰 IVA Activo: {iva_activo}, Porcentaje: {porcentaje_iva}%")
+        
+        # ============================================================================
+        # ✅ CALCULAR TOTALES CON IVA
+        # ============================================================================
         subtotal = Decimal('0')
         descuento_total = Decimal('0')
+        impuestos_total = Decimal('0')  # ✅ NUEVO
         
         for item in items:
             try:
                 item_subtotal = Decimal(str(item.get('subtotal', '0')))
                 item_descuento = Decimal(str(item.get('descuento', '0')))
+                
                 subtotal += item_subtotal
                 descuento_total += item_descuento
+                
+                # ✅ CALCULAR IVA DEL ITEM SI APLICA
+                producto_id = item.get('producto_id')
+                if producto_id and iva_activo:
+                    try:
+                        producto = Producto.objects.get(id=producto_id)
+                        if producto.aplica_impuestos:
+                            base_imponible = item_subtotal - item_descuento
+                            iva_item = base_imponible * (porcentaje_iva / Decimal('100'))
+                            impuestos_total += iva_item
+                    except Producto.DoesNotExist:
+                        pass
             except:
                 continue
         
-        total = subtotal - descuento_total
+        # ✅ TOTAL CON IVA
+        total = subtotal - descuento_total + impuestos_total
         cambio = monto_recibido - total if monto_recibido >= total else Decimal('0')
+        
+        logger.info(f"📊 Subtotal: ${subtotal}, Descuento: ${descuento_total}, IVA: ${impuestos_total}, Total: ${total}")
         
         with transaction.atomic():
             # Generar número de venta
@@ -2958,7 +3006,7 @@ def api_procesar_venta(request):
             siguiente = ventas_año + 1
             numero_venta_generado = 'VNT-{}-{:05d}'.format(año, siguiente)
             
-            # Crear venta
+            # ✅ CREAR VENTA CON IMPUESTOS
             venta = Venta.objects.create(
                 numero_venta=numero_venta_generado,
                 cliente=cliente,
@@ -2966,14 +3014,14 @@ def api_procesar_venta(request):
                 tipo_venta=tipo_venta,
                 subtotal=subtotal,
                 descuento=descuento_total,
-                impuestos=Decimal('0'),
+                impuestos=impuestos_total,  # ✅ CORRECTO
                 total=total,
                 estado='COMPLETADA',
                 monto_pagado=monto_recibido,
                 cambio=cambio,
             )
             
-            logger.info(f"✅ Venta creada: {venta.numero_venta} - Total: ${total}")
+            logger.info(f"✅ Venta creada: {venta.numero_venta} - Total: ${total} (IVA: ${impuestos_total})")
             
             # Crear detalles
             orden = 1
@@ -2989,7 +3037,15 @@ def api_procesar_venta(request):
                     costo_unitario = precio * Decimal('0.7')
                     costo_total = cantidad * costo_unitario
                     item_subtotal = cantidad * precio
-                    item_total = item_subtotal - descuento
+                    
+                    # ✅ CALCULAR IVA DEL DETALLE
+                    base_imponible = item_subtotal - descuento
+                    iva_detalle = Decimal('0')
+                    
+                    if producto.aplica_impuestos and iva_activo:
+                        iva_detalle = base_imponible * (porcentaje_iva / Decimal('100'))
+                    
+                    item_total = base_imponible + iva_detalle
                     
                     detalle_data = {
                         'venta': venta,
@@ -2999,6 +3055,8 @@ def api_procesar_venta(request):
                         'costo_total': costo_total,
                         'descuento_porcentaje': descuento_porcentaje,
                         'descuento_monto': descuento,
+                        'impuesto_porcentaje': porcentaje_iva if producto.aplica_impuestos else Decimal('0'),  # ✅ NUEVO
+                        'impuesto_monto': iva_detalle,  # ✅ NUEVO
                         'subtotal': item_subtotal,
                         'total': item_total,
                     }
@@ -3032,16 +3090,16 @@ def api_procesar_venta(request):
                     continue
             
             # ============================================================================
-            # ✅ REGISTRAR PAGO - VERSIÓN CORREGIDA
+            # REGISTRAR PAGO
             # ============================================================================
             if monto_recibido > 0:
                 Pago.objects.create(
                     venta=venta,
-                    forma_pago=metodo_pago,  # ✅ CORRECTO
+                    forma_pago=metodo_pago,
                     monto=monto_recibido,
-                    numero_referencia=f"Pago {metodo_pago} - {venta.numero_venta}",  # ✅ CORRECTO
-                    banco='',  # Campo opcional
-                    usuario=usuario  # ✅ AGREGAR USUARIO
+                    numero_referencia=f"Pago {metodo_pago} - {venta.numero_venta}",
+                    banco='',
+                    usuario=usuario
                 )
                 logger.info(f"✅ Pago registrado: {metodo_pago} - ${monto_recibido}")
             
@@ -3083,8 +3141,6 @@ def api_procesar_venta(request):
                     )
                     
                     logger.info(f"✅ Trabajo de impresión creado: {trabajo.id}")
-                    logger.info(f"   Impresora: {impresora.nombre}")
-                    logger.info(f"   Abrir gaveta: {trabajo.abrir_gaveta}")
                 else:
                     logger.warning("⚠️ No hay impresora configurada para tickets")
                     
@@ -3095,6 +3151,9 @@ def api_procesar_venta(request):
             'success': True,
             'venta_id': str(venta.id),
             'numero_venta': venta.numero_venta,
+            'subtotal': float(subtotal),  # ✅ AGREGADO
+            'descuento': float(descuento_total),  # ✅ AGREGADO
+            'impuestos': float(impuestos_total),  # ✅ AGREGADO
             'total': float(total),
             'cambio': float(cambio),
             'monto_recibido': float(monto_recibido),
@@ -3106,6 +3165,60 @@ def api_procesar_venta(request):
             'success': False,
             'error': f'Error: {str(e)}'
         }, status=500)
+
+@ensure_csrf_cookie
+def api_calcular_precio_iva(request):
+    """API para calcular el precio con IVA de un producto"""
+    from apps.inventory_management.models import Producto
+    from apps.system_configuration.models import ConfiguracionSistema
+    from decimal import Decimal
+    from django.http import JsonResponse
+    
+    producto_id = request.GET.get('producto_id')
+    cantidad = Decimal(str(request.GET.get('cantidad', '1')))
+    
+    if not producto_id:
+        return JsonResponse({'success': False, 'error': 'ID de producto requerido'})
+    
+    try:
+        producto = Producto.objects.get(id=producto_id)
+        
+        # Obtener precio base según tipo
+        if producto.tipo_inventario == 'NORMAL':
+            precio_base = producto.precio_venta or Decimal('0')
+        else:  # QUINTAL
+            precio_base = producto.precio_por_unidad_peso or Decimal('0')
+        
+        # Calcular subtotal
+        subtotal = precio_base * cantidad
+        
+        # Calcular IVA si aplica
+        monto_iva = Decimal('0')
+        porcentaje_iva = Decimal('0')
+        
+        if producto.aplica_impuestos:
+            config = ConfiguracionSistema.get_config()
+            if config and config.iva_activo:
+                porcentaje_iva = config.porcentaje_iva
+                monto_iva = subtotal * (porcentaje_iva / Decimal('100'))
+        
+        total_con_iva = subtotal + monto_iva
+        
+        return JsonResponse({
+            'success': True,
+            'precio_base': float(precio_base),
+            'subtotal': float(subtotal),
+            'aplica_iva': producto.aplica_impuestos,
+            'porcentaje_iva': float(porcentaje_iva),
+            'monto_iva': float(monto_iva),
+            'total': float(total_con_iva)
+        })
+        
+    except Producto.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Producto no encontrado'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+    
 @ensure_csrf_cookie
 def api_reimprimir_ticket(request, venta_id):
     """
@@ -3429,14 +3542,14 @@ def entrada_inventario_view(request):
     
     # ✅ OBTENER IVA DESDE CONFIGURACIÓN
     config = ConfiguracionSistema.get_config()
-    iva_default = float(config.iva_default)
+    iva_porcentaje = config.porcentaje_iva
     
     context = {
         'categorias': categorias,
         'proveedores': proveedores,
         'marcas': marcas,
         'unidades_medida': unidades_medida,
-        'iva_default': iva_default,  # ✅ PASAR IVA AL TEMPLATE
+        'iva_porcentaje': iva_porcentaje,
     }
     
     return render(request, 'custom_admin/inventario/entrada_inventario.html', context)
@@ -3538,7 +3651,7 @@ def api_procesar_entrada_masiva(request):
                             unidad_medida=unidad_medida,
                             costo_total=costo_total,
                             costo_por_unidad=costo_total / peso_inicial,
-                            fecha_recepcion=timezone.now(),
+                            fecha_ingreso=timezone.now(),
                             fecha_vencimiento=entrada.get('fecha_vencimiento') or None,
                             lote_proveedor=entrada.get('lote_proveedor', ''),
                             numero_factura_compra=numero_factura,
@@ -3681,7 +3794,7 @@ def api_generar_pdf_codigos(request):
             peso_unitario = 1.0
             unidad = quintal.unidad_medida.abreviatura
             precio = float(quintal.producto.precio_por_unidad_peso or 0)
-            fecha = quintal.fecha_recepcion.strftime('%d/%m/%Y')
+            fecha = quintal.fecha_ingreso.strftime('%d/%m/%Y')
             filename = f'etiquetas_{quintal.codigo_unico}.pdf'
             
             etiqueta_num = 0
@@ -3854,7 +3967,7 @@ def api_quintales_disponibles(request):
             'producto',
             'proveedor',
             'unidad_medida'
-        ).order_by('fecha_recepcion')  # FIFO: primero los más antiguos
+        ).order_by('fecha_ingreso')  # FIFO: primero los más antiguos
         
         # Construir lista de quintales para respuesta
         quintales_data = []
@@ -3866,7 +3979,7 @@ def api_quintales_disponibles(request):
                 'peso_actual': float(quintal.peso_actual),
                 'unidad_medida': quintal.unidad_medida.abreviatura if quintal.unidad_medida else 'lb',
                 'costo_por_unidad': float(quintal.costo_por_unidad),
-                'fecha_recepcion': quintal.fecha_recepcion.strftime('%d/%m/%Y'),
+                'fecha_ingreso': quintal.fecha_ingreso.strftime('%d/%m/%Y'),
                 'proveedor': quintal.proveedor.nombre_comercial if quintal.proveedor else 'Sin proveedor',
                 'lote': quintal.lote_proveedor or 'Sin lote',
             })
@@ -3901,6 +4014,16 @@ def api_procesar_entrada_unificada(request):
     from apps.authentication.models import Usuario
     from decimal import Decimal
     from django.utils import timezone
+    
+    # ✅ FUNCIÓN HELPER PARA CONVERTIR VALORES A DECIMAL DE FORMA SEGURA
+    def safe_decimal(value, default='0.00'):
+        """Convierte un valor a Decimal de forma segura, manejando None, '', 'None', etc."""
+        if value is None or value == '' or value == 'None':
+            return Decimal(default)
+        try:
+            return Decimal(str(value))
+        except (ValueError, TypeError):
+            return Decimal(default)
     
     try:
         # Leer datos del FormData
@@ -4040,9 +4163,11 @@ def api_procesar_entrada_unificada(request):
                             errores.append(error_msg)
                             continue
                         
-                        peso_inicial = Decimal(str(prod_data.get('cantidad', 0)))
-                        costo_total = Decimal(str(prod_data.get('costo_unitario', 0))) * peso_inicial
-                        precio_por_unidad_peso = Decimal(str(prod_data.get('precio_venta', 0)))
+                        # ✅ USAR safe_decimal PARA CONVERSIONES
+                        peso_inicial = safe_decimal(prod_data.get('cantidad', 0))
+                        costo_unitario_base = safe_decimal(prod_data.get('costo_unitario', 0))
+                        costo_total = costo_unitario_base * peso_inicial
+                        precio_por_unidad_peso = safe_decimal(prod_data.get('precio_venta', 0))
                         
                         # ✅ BUSCAR SI EL PRODUCTO YA EXISTE
                         nombre_producto = prod_data['nombre'].strip()
@@ -4073,11 +4198,10 @@ def api_procesar_entrada_unificada(request):
                                 'descripcion': prod_data.get('descripcion', ''),
                                 'marca': marca,
                                 'categoria': categoria,
-                                'proveedor': proveedor,
                                 'tipo_inventario': 'QUINTAL',
                                 'unidad_medida_base': unidad_medida,
                                 'precio_por_unidad_peso': precio_por_unidad_peso,
-                                'iva': Decimal(str(prod_data.get('iva', '0.00'))),
+                                'aplica_impuestos': True,  # ✅ CAMBIADO: usar aplica_impuestos en vez de iva
                                 'activo': True,
                                 'usuario_registro': usuario
                             }
@@ -4104,7 +4228,7 @@ def api_procesar_entrada_unificada(request):
                         codigo_quintal = BarcodeGenerator.generar_codigo_quintal(producto)
                         
                         quintal = Quintal.objects.create(
-                            codigo_unico=codigo_quintal,
+                            codigo_quintal=codigo_quintal,
                             producto=producto,
                             proveedor=proveedor,
                             peso_inicial=peso_inicial,
@@ -4112,15 +4236,13 @@ def api_procesar_entrada_unificada(request):
                             unidad_medida=unidad_medida,
                             costo_total=costo_total,
                             costo_por_unidad=costo_total / peso_inicial if peso_inicial > 0 else Decimal('0'),
-                            fecha_recepcion=timezone.now(),
+                            fecha_ingreso=timezone.now(),
                             fecha_vencimiento=prod_data.get('fecha_vencimiento') or None,
-                            lote_proveedor=prod_data.get('lote', ''),
-                            numero_factura_compra='',
                             usuario_registro=usuario,
                             estado='DISPONIBLE'
                         )
                         
-                        print(f"✅ QUINTAL CREADO: {quintal.codigo_unico}")
+                        print(f"✅ QUINTAL CREADO: {quintal.codigo_quintal}")
                         print(f"   Peso: {quintal.peso_inicial} {quintal.unidad_medida.abreviatura}")
                         print(f"   Costo: ${quintal.costo_total}")
                         quintales_creados += 1
@@ -4131,7 +4253,7 @@ def api_procesar_entrada_unificada(request):
                         codigos_generados.append({
                             'producto_id': str(producto.id),
                             'tipo': 'QUINTAL',
-                            'codigo_base': quintal.codigo_unico,
+                            'codigo_base': quintal.codigo_quintal,
                             'producto_nombre': producto.nombre,
                             'cantidad_codigos': cantidad_etiquetas,
                             'cantidad_stock': float(peso_inicial),
@@ -4155,9 +4277,10 @@ def api_procesar_entrada_unificada(request):
                             activo=True
                         ).first()
                         
+                        # ✅ USAR safe_decimal PARA TODAS LAS CONVERSIONES
                         cantidad = int(prod_data.get('cantidad', 0))
-                        costo_unitario = Decimal(str(prod_data.get('costo_unitario', '0')))
-                        precio_venta = Decimal(str(prod_data.get('precio_venta', '0')))
+                        costo_unitario = safe_decimal(prod_data.get('costo_unitario', '0'))
+                        precio_venta = safe_decimal(prod_data.get('precio_venta', '0'))
                         
                         # Obtener imagen
                         imagen_file = None
@@ -4170,8 +4293,8 @@ def api_procesar_entrada_unificada(request):
                             # REABASTECER
                             producto = producto_existente
                             
-                            if producto.precio_unitario != precio_venta:
-                                producto.precio_unitario = precio_venta
+                            if producto.precio_venta != precio_venta:
+                                producto.precio_venta = precio_venta
                             
                             if imagen_file:
                                 if producto.imagen:
@@ -4256,10 +4379,9 @@ def api_procesar_entrada_unificada(request):
                                 'descripcion': prod_data.get('descripcion', ''),
                                 'marca': marca,
                                 'categoria': categoria,
-                                'proveedor': proveedor,
                                 'tipo_inventario': 'NORMAL',
-                                'precio_unitario': precio_venta,
-                                'iva': Decimal(str(prod_data.get('iva', '0.00'))),
+                                'precio_venta': precio_venta,
+                                'aplica_impuestos': True,  # ✅ CAMBIADO: usar aplica_impuestos en vez de iva
                                 'activo': True,
                                 'usuario_registro': usuario
                             }
@@ -5220,29 +5342,40 @@ from apps.sales_management.quintal_service import QuintalSalesService
 from decimal import Decimal
 import json
 
-@csrf_exempt
 def api_quintales_por_producto(request, producto_id):
-    """Obtiene quintales disponibles de un producto"""
+    """Obtiene quintales disponibles de un producto - VERSIÓN CORREGIDA"""
     try:
+        from apps.inventory_management.models import Quintal
+        
         quintales = Quintal.objects.filter(
             producto_id=producto_id,
             estado='DISPONIBLE',
             peso_actual__gt=0
-        ).order_by('fecha_recepcion')  # FIFO
+        ).select_related('producto', 'unidad_medida', 'proveedor').order_by('fecha_ingreso')  # FIFO
         
         data = []
         for q in quintales:
             data.append({
                 'id': str(q.id),
-                'codigo': q.codigo_unico,
+                'codigo_unico': q.codigo_quintal,  # ✅ CORRECTO: es codigo_quintal, NO codigo_unico
                 'peso_actual': float(q.peso_actual),
-                'unidad': q.unidad_medida.abreviatura,
-                'precio_por_unidad': float(q.producto.precio_por_unidad_peso)
+                'unidad_medida': q.unidad_medida.abreviatura if q.unidad_medida else 'lb',
+                'costo_por_unidad': float(q.costo_por_unidad),
             })
         
-        return JsonResponse({'success': True, 'quintales': data})
+        return JsonResponse({
+            'success': True, 
+            'quintales': data,
+            'total': len(data)
+        })
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+        import traceback
+        print(f"❌ Error en api_quintales_por_producto: {str(e)}")
+        print(traceback.format_exc())
+        return JsonResponse({
+            'success': False, 
+            'error': str(e)
+        }, status=500)
 
 @csrf_exempt
 def api_calcular_quintal(request):
