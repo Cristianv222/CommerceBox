@@ -128,24 +128,23 @@ def inventario_dashboard_view(request):
 @ensure_csrf_cookie
 @auth_required
 def productos_view(request):
-    """Lista de productos con datos reales - VERSIÓN CORREGIDA"""
+    """Lista de productos con datos reales - VERSIÓN ACTUALIZADA"""
     from apps.inventory_management.models import Producto, Categoria, Marca, Quintal, UnidadMedida
     from apps.system_configuration.models import ConfiguracionSistema
     from django.db.models import Q, Prefetch
     from django.core.paginator import Paginator
     
-    # ✅ CORRECCIÓN: Eliminar 'proveedor' del select_related
     productos = Producto.objects.select_related(
         'categoria',
         'unidad_medida_base', 
         'marca',
-        'usuario_registro'  # ✅ Agregado para optimizar
+        'usuario_registro'
     ).prefetch_related(
         Prefetch(
             'quintales',
             queryset=Quintal.objects.select_related('proveedor', 'unidad_medida').filter(
                 estado='DISPONIBLE'
-            ).order_by('-fecha_ingreso')  # ✅ Agregado select_related para proveedores de quintales
+            ).order_by('-fecha_ingreso')
         ),
         'inventario_normal'
     ).filter(activo=True).order_by('nombre')
@@ -168,7 +167,6 @@ def productos_view(request):
     if tipo:
         productos = productos.filter(tipo_inventario=tipo)
     
-    # Obtener todas las categorías, marcas y unidades de medida para los filtros
     categorias = Categoria.objects.filter(activa=True).order_by('nombre')
     marcas = Marca.objects.filter(activa=True).order_by('nombre')
     unidades_medida = UnidadMedida.objects.filter(activa=True).order_by('orden_display')
@@ -193,7 +191,7 @@ def productos_view(request):
         'categoria_selected': categoria_id,
         'tipo_selected': tipo,
         'iva_activo': iva_activo,
-        'porcentaje_iva': porcentaje_iva
+        'porcentaje_iva': porcentaje_iva  # ✅ Pasamos el porcentaje al template
     }
     
     return render(request, 'custom_admin/inventario/productos_list.html', context)
@@ -204,33 +202,35 @@ def producto_detail_view(request, pk):
     """Detalle de producto"""
     return render(request, 'custom_admin/inventario/producto_detail.html', {'producto_id': pk})
 
-
 @ensure_csrf_cookie
 @auth_required
 def producto_crear(request):
-    """Crear nuevo producto"""
-    from apps.inventory_management.models import Producto
+    """Crear nuevo producto - SISTEMA IVA SIMPLIFICADO"""
+    from apps.inventory_management.models import Producto, ProductoNormal
     from apps.authentication.models import Usuario
+    from apps.system_configuration.models import ConfiguracionSistema
     from decimal import Decimal
     
     if request.method == 'POST':
         try:
             usuario = Usuario.objects.filter(rol__codigo='ADMIN').first()
-            
             if not usuario:
                 usuario = Usuario.objects.first()
-            
             if not usuario:
                 messages.error(request, 'No hay usuarios en el sistema.')
                 return redirect('custom_admin:productos')
             
+            # Datos básicos
             nombre = request.POST.get('nombre', '').strip()
             descripcion = request.POST.get('descripcion', '').strip()
             categoria_id = request.POST.get('categoria', '').strip()
-            marca_id = request.POST.get('marca', '').strip()  # ✅ AGREGAR MARCA
+            marca_id = request.POST.get('marca', '').strip()
+            codigo_barras = request.POST.get('codigo_barras', '').strip()
             tipo_inventario = request.POST.get('tipo_inventario', 'NORMAL')
             activo = request.POST.get('activo') == 'on'
-            iva_value = request.POST.get('iva', '0').strip()  # ✅ OBTENER IVA
+            
+            # ✅ NUEVO: IVA simplificado - solo checkbox
+            aplica_iva = request.POST.get('aplica_iva') == 'on'
             
             if not nombre:
                 messages.error(request, 'El nombre del producto es obligatorio')
@@ -242,34 +242,60 @@ def producto_crear(request):
                 'tipo_inventario': tipo_inventario,
                 'activo': activo,
                 'usuario_registro': usuario,
-                'iva': Decimal(iva_value) if iva_value else Decimal('0.00'),  # ✅ AGREGAR IVA
             }
+            
+            # ✅ Obtener IVA de la configuración si aplica
+            if aplica_iva:
+                config = ConfiguracionSistema.get_config()
+                producto_data['iva'] = config.porcentaje_iva
+            else:
+                producto_data['iva'] = Decimal('0.00')
             
             if categoria_id:
                 producto_data['categoria_id'] = categoria_id
-            
-            # ✅ AGREGAR MARCA SI EXISTE
             if marca_id:
                 producto_data['marca_id'] = marca_id
-            
-            # ✅ MANEJAR IMAGEN
+            if codigo_barras:
+                producto_data['codigo_barras'] = codigo_barras
             if 'imagen' in request.FILES:
                 producto_data['imagen'] = request.FILES['imagen']
             
+            # Precios según tipo
             if tipo_inventario == 'QUINTAL':
                 precio_peso = request.POST.get('precio_por_unidad_peso', '0').strip()
+                unidad_medida_id = request.POST.get('unidad_medida_base', '').strip()
+                
                 producto_data['precio_por_unidad_peso'] = Decimal(precio_peso) if precio_peso else Decimal('0.00')
-            else:
-                precio_unit = request.POST.get('precio_unitario', '0').strip()
-                producto_data['precio_unitario'] = Decimal(precio_unit) if precio_unit else Decimal('0.00')
+                producto_data['precio_unitario'] = None
+                
+                if unidad_medida_id:
+                    producto_data['unidad_medida_base_id'] = unidad_medida_id
+                else:
+                    precio_unit = request.POST.get('precio_unitario', '0').strip()  # El input sigue siendo precio_unitario
+                    producto_data['precio_venta'] = Decimal(precio_unit) if precio_unit else Decimal('0.00')  # Pero se guarda como precio_venta
+                    producto_data['precio_por_unidad_peso'] = None
             
+            # Crear producto
             producto = Producto.objects.create(**producto_data)
+            
+            # Stock inicial para productos normales
+            if tipo_inventario == 'NORMAL':
+                stock_inicial = request.POST.get('stock_actual', '0').strip()
+                ProductoNormal.objects.create(
+                    producto=producto,
+                    stock_actual=int(stock_inicial) if stock_inicial else 0,
+                    stock_minimo=10,
+                    stock_maximo=1000,
+                    costo_unitario=Decimal('0.00')
+                )
             
             messages.success(request, f'✅ Producto "{producto.nombre}" creado exitosamente')
             
         except ValueError as e:
             messages.error(request, f'Error en los datos numéricos: {str(e)}')
         except Exception as e:
+            import traceback
+            print(f"❌ Error: {traceback.format_exc()}")
             messages.error(request, f'Error al crear producto: {str(e)}')
     
     return redirect('custom_admin:productos')
@@ -278,9 +304,10 @@ def producto_crear(request):
 @ensure_csrf_cookie
 @auth_required
 def producto_editar(request, producto_id):
-    """Editar producto existente - VERSIÓN CORREGIDA"""
+    """Editar producto - SISTEMA IVA SIMPLIFICADO"""
     from apps.inventory_management.models import Producto, ProductoNormal, Quintal
     from apps.authentication.models import Usuario
+    from apps.system_configuration.models import ConfiguracionSistema
     from decimal import Decimal
     
     try:
@@ -288,17 +315,13 @@ def producto_editar(request, producto_id):
         
         if request.method == 'POST':
             usuario = Usuario.objects.filter(rol__codigo='ADMIN').first()
-            
             if not usuario:
                 usuario = Usuario.objects.first()
-            
             if not usuario:
                 messages.error(request, 'No hay usuarios en el sistema.')
                 return redirect('custom_admin:productos')
             
-            # ============================================
-            # 1. DATOS BÁSICOS DEL PRODUCTO
-            # ============================================
+            # Datos básicos
             nombre = request.POST.get('nombre', '').strip()
             if not nombre:
                 messages.error(request, 'El nombre del producto es obligatorio')
@@ -307,45 +330,32 @@ def producto_editar(request, producto_id):
             producto.nombre = nombre
             producto.descripcion = request.POST.get('descripcion', '').strip()
             
-            # Categoría
+            # Categoría y marca
             categoria_id = request.POST.get('categoria', '').strip()
             producto.categoria_id = categoria_id if categoria_id else None
             
-            # ✅ MARCA
             marca_id = request.POST.get('marca', '').strip()
             producto.marca_id = marca_id if marca_id else None
             
-            # ============================================
-            # 2. ✅ FIX CRÍTICO: IVA
-            # ============================================
-            # El problema es que cuando tiene_iva es False, no se envía el valor
-            # Necesitamos verificar ambos campos
-            tiene_iva = request.POST.get('tiene_iva') == 'on'
+            codigo_barras = request.POST.get('codigo_barras', '').strip()
+            if codigo_barras:
+                producto.codigo_barras = codigo_barras
             
-            if tiene_iva:
-                iva_value = request.POST.get('iva', '0').strip()
-                try:
-                    iva_decimal = Decimal(iva_value) if iva_value else Decimal('0.00')
-                    # Asegurar que el IVA esté entre 0 y 100
-                    if iva_decimal < 0:
-                        iva_decimal = Decimal('0.00')
-                    elif iva_decimal > 100:
-                        iva_decimal = Decimal('100.00')
-                    producto.iva = iva_decimal
-                except:
-                    producto.iva = Decimal('0.00')
+            # ✅ IVA simplificado
+            aplica_iva = request.POST.get('aplica_iva') == 'on'
+            if aplica_iva:
+                config = ConfiguracionSistema.get_config()
+                producto.iva = config.porcentaje_iva
             else:
                 producto.iva = Decimal('0.00')
             
-            print(f"🔧 IVA actualizado: {producto.iva}")  # Debug
+            print(f"🔧 IVA actualizado: {producto.iva}")
             
-            # ✅ IMAGEN
+            # Imagen
             if 'imagen' in request.FILES:
                 producto.imagen = request.FILES['imagen']
             
-            # ============================================
-            # 3. TIPO DE INVENTARIO Y PRECIOS
-            # ============================================
+            # Tipo de inventario y precios
             tipo_inventario = request.POST.get('tipo_inventario', 'NORMAL')
             producto.tipo_inventario = tipo_inventario
             
@@ -353,6 +363,10 @@ def producto_editar(request, producto_id):
                 precio_peso = request.POST.get('precio_por_unidad_peso', '0').strip()
                 producto.precio_por_unidad_peso = Decimal(precio_peso) if precio_peso else Decimal('0.00')
                 producto.precio_unitario = None
+                
+                unidad_medida_id = request.POST.get('unidad_medida_base', '').strip()
+                if unidad_medida_id:
+                    producto.unidad_medida_base_id = unidad_medida_id
             else:
                 precio_unit = request.POST.get('precio_unitario', '0').strip()
                 producto.precio_unitario = Decimal(precio_unit) if precio_unit else Decimal('0.00')
@@ -363,30 +377,23 @@ def producto_editar(request, producto_id):
             if hasattr(producto, 'usuario_modificacion'):
                 producto.usuario_modificacion = usuario
             
-            # Guardar cambios del producto
+            # Guardar producto
             producto.save()
             
-            # ============================================
-            # 4. ✅ FIX CRÍTICO: ACTUALIZAR STOCK
-            # ============================================
+            # ✅ Actualizar stock
             if tipo_inventario == 'NORMAL':
-                # Actualizar o crear ProductoNormal
                 stock_actual_str = request.POST.get('stock_actual', '0').strip()
                 
                 try:
                     stock_actual = int(stock_actual_str) if stock_actual_str else 0
                     
-                    # Verificar si existe ProductoNormal
                     try:
                         producto_normal = producto.inventario_normal
-                        stock_anterior = producto_normal.stock_actual
                         producto_normal.stock_actual = stock_actual
                         producto_normal.save()
-                        print(f"✅ Stock actualizado: {stock_anterior} → {stock_actual}")
-                        
+                        print(f"✅ Stock actualizado: {stock_actual}")
                     except ProductoNormal.DoesNotExist:
-                        # Crear nuevo registro de ProductoNormal
-                        producto_normal = ProductoNormal.objects.create(
+                        ProductoNormal.objects.create(
                             producto=producto,
                             stock_actual=stock_actual,
                             stock_minimo=10,
@@ -397,12 +404,7 @@ def producto_editar(request, producto_id):
                 
                 except ValueError as e:
                     print(f"❌ Error al convertir stock: {e}")
-                    messages.warning(request, f'El stock debe ser un número entero')
-            
-            elif tipo_inventario == 'QUINTAL':
-                # Para quintales, aquí podrías actualizar si es necesario
-                # Por ahora los quintales se manejan en otro lado
-                print(f"ℹ️ Producto tipo QUINTAL, stock se maneja en módulo de quintales")
+                    messages.warning(request, 'El stock debe ser un número entero')
             
             messages.success(request, f'✅ Producto "{producto.nombre}" actualizado exitosamente')
             return redirect('custom_admin:productos')
@@ -415,7 +417,7 @@ def producto_editar(request, producto_id):
         return redirect('custom_admin:productos')
     except Exception as e:
         import traceback
-        print(f"❌ ERROR COMPLETO: {traceback.format_exc()}")
+        print(f"❌ ERROR: {traceback.format_exc()}")
         messages.error(request, f'Error al editar producto: {str(e)}')
     
     return redirect('custom_admin:productos')
@@ -4201,7 +4203,7 @@ def api_procesar_entrada_unificada(request):
                                 'tipo_inventario': 'QUINTAL',
                                 'unidad_medida_base': unidad_medida,
                                 'precio_por_unidad_peso': precio_por_unidad_peso,
-                                'aplica_impuestos': True,  # ✅ CAMBIADO: usar aplica_impuestos en vez de iva
+                                'aplica_impuestos': prod_data.get('aplica_impuestos', False),  # ✅ CAMBIADO: usar aplica_impuestos en vez de iva
                                 'activo': True,
                                 'usuario_registro': usuario
                             }
@@ -4381,7 +4383,7 @@ def api_procesar_entrada_unificada(request):
                                 'categoria': categoria,
                                 'tipo_inventario': 'NORMAL',
                                 'precio_venta': precio_venta,
-                                'aplica_impuestos': True,  # ✅ CAMBIADO: usar aplica_impuestos en vez de iva
+                                'aplica_impuestos': prod_data.get('aplica_impuestos', False),  # ✅ CAMBIADO: usar aplica_impuestos en vez de iva
                                 'activo': True,
                                 'usuario_registro': usuario
                             }

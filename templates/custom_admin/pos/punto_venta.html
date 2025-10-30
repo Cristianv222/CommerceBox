@@ -1365,7 +1365,7 @@ let ventaIdActual = null;
 let montoRecibido = 0;
 let cambio = 0;
 
-// ✅ AGREGAR VARIABLE IVA (viene de Django)
+// ✅ IVA desde configuración
 const IVA_DEFAULT = parseFloat("{{ iva_porcentaje|default:'0' }}") || 0;
 console.log('🧾 IVA configurado:', IVA_DEFAULT, '%');
 
@@ -1573,7 +1573,7 @@ function buscarProductos() {
 }
 
 // ============================================
-// ✅ MOSTRAR PRODUCTOS - CORREGIDO
+// ✅ MOSTRAR PRODUCTOS
 // ============================================
 window.mostrarProductos = function(productos) {
     const lista = document.getElementById('productosLista');
@@ -1604,32 +1604,13 @@ window.mostrarProductos = function(productos) {
             stockBadge = `<span class="stock-badge disponible"><i class="fas fa-weight"></i> ${stock.toFixed(2)}kg</span>`;
         }
         
-        // ✅ CORRECCIÓN CRÍTICA: Obtener precio con todos los fallbacks posibles
-        const precio = parseFloat(
-            producto.precio || 
-            producto.precio_unitario || 
-            producto.precio_venta || 
-            producto.precio_por_unidad_peso || 
-            0
-        );
+        const precio = parseFloat(producto.precio || 0);
         
-        // ✅ DEBUG: Mostrar información completa del producto
-        console.log('📦 Renderizando:', {
-            nombre: producto.nombre,
-            precio_usado: precio,
-            campos_disponibles: {
-                precio: producto.precio,
-                precio_unitario: producto.precio_unitario,
-                precio_venta: producto.precio_venta,
-                precio_por_unidad_peso: producto.precio_por_unidad_peso
-            }
-        });
+        // ✅ Badge de IVA
+        const ivaBadge = producto.aplica_impuestos 
+            ? '<span class="badge bg-primary" style="font-size: 0.6rem; margin-left: 0.25rem; padding: 0.2rem 0.4rem;">+IVA</span>'
+            : '';
         
-        if (precio === 0) {
-            console.warn('⚠️ Producto sin precio válido:', producto);
-        }
-        
-        // ✅ SOLUCIÓN: Codificar producto en Base64 para evitar problemas con comillas
         const productoJSON = JSON.stringify(producto);
         const productoEncoded = btoa(encodeURIComponent(productoJSON));
         const onclick = stock > 0 ? `onclick='agregarProductoPorData(this)'` : '';
@@ -1639,7 +1620,7 @@ window.mostrarProductos = function(productos) {
                  ${onclick}
                  data-producto='${productoEncoded}'>
                 <div class="producto-info">
-                    <div class="producto-nombre">${producto.nombre}</div>
+                    <div class="producto-nombre">${producto.nombre}${ivaBadge}</div>
                     <div class="producto-codigo">
                         <i class="fas fa-barcode"></i> ${producto.codigo_barras || 'Sin código'}
                         ${stockBadge}
@@ -1652,7 +1633,7 @@ window.mostrarProductos = function(productos) {
 }
 
 // ============================================
-// ✅ NUEVA FUNCIÓN: DECODIFICAR Y AGREGAR PRODUCTO
+// ✅ DECODIFICAR Y AGREGAR PRODUCTO
 // ============================================
 window.agregarProductoPorData = function(elemento) {
     try {
@@ -1669,10 +1650,9 @@ window.agregarProductoPorData = function(elemento) {
 }
 
 // ============================================
-// ✅ AGREGAR AL CARRITO - CORREGIDO
+// ✅ AGREGAR AL CARRITO - CON CAMPO aplica_impuestos
 // ============================================
 window.agregarAlCarrito = function(producto) {
-    // Verificar si es un quintal
     if (producto.tipo_inventario === 'QUINTAL') {
         window.mostrarModalQuintales(producto);
         return;
@@ -1692,7 +1672,7 @@ window.agregarAlCarrito = function(producto) {
         
         if (nuevaCantidad > stockDisponible) {
             mostrarAlerta('warning', '⚠️ Stock Insuficiente', 
-                `Solo hay ${stockDisponible} ${producto.tipo_inventario === 'QUINTAL' ? 'kg' : 'unidades'} disponibles de ${producto.nombre}`);
+                `Solo hay ${stockDisponible} unidades disponibles de ${producto.nombre}`);
             return;
         }
         
@@ -1701,23 +1681,14 @@ window.agregarAlCarrito = function(producto) {
         itemExistente.total = itemExistente.subtotal - itemExistente.descuento;
         mostrarAlerta('info', '✓ Cantidad Actualizada', `${producto.nombre} x ${nuevaCantidad}`);
     } else {
-        // ✅ CORRECCIÓN CRÍTICA: Obtener precio con fallbacks y parseFloat
-        const precio = parseFloat(
-            producto.precio || 
-            producto.precio_unitario || 
-            producto.precio_venta || 
-            producto.precio_por_unidad_peso || 
-            0
-        );
+        const precio = parseFloat(producto.precio || 0);
         
-        // ✅ DEBUG DETALLADO
         console.log('➕ Agregando al carrito:', {
             nombre: producto.nombre,
-            precio_final: precio,
-            todos_los_campos: producto
+            precio: precio,
+            aplica_impuestos: producto.aplica_impuestos
         });
         
-        // ✅ VALIDACIÓN: No agregar productos sin precio
         if (precio === 0 || isNaN(precio)) {
             console.error('❌ PRECIO INVÁLIDO:', producto);
             mostrarAlerta('error', '❌ Error de Precio', 
@@ -1738,6 +1709,7 @@ window.agregarAlCarrito = function(producto) {
             descuento: 0,
             subtotal: precio,
             total: precio,
+            aplica_impuestos: producto.aplica_impuestos || false, // ✅ NUEVO CAMPO
         });
         
         mostrarAlerta('success', '✓ Producto Agregado', `${producto.nombre} agregado al carrito`);
@@ -1811,7 +1783,7 @@ function actualizarDescuento(index, valor) {
 }
 
 // ============================================
-// ✅ ACTUALIZAR CARRITO - CON IVA CORREGIDO
+// ✅ ACTUALIZAR CARRITO - CON IVA SELECTIVO
 // ============================================
 window.actualizarCarrito = function() {
     const container = document.getElementById('carritoItems');
@@ -1825,11 +1797,17 @@ window.actualizarCarrito = function() {
             </div>
         `;
     } else {
-        container.innerHTML = carrito.map((item, index) => `
+        container.innerHTML = carrito.map((item, index) => {
+            // ✅ Badge de IVA
+            const ivaBadge = item.aplica_impuestos 
+                ? '<span class="badge bg-primary" style="font-size: 0.65rem; margin-left: 0.5rem;">+IVA</span>'
+                : '';
+            
+            return `
             <div class="carrito-item">
                 <div class="carrito-item-header">
                     <div class="carrito-item-info">
-                        <div class="carrito-item-nombre">${item.nombre}</div>
+                        <div class="carrito-item-nombre">${item.nombre}${ivaBadge}</div>
                         <div class="carrito-item-codigo">
                             <i class="fas fa-barcode"></i> ${item.codigo}
                             <span class="carrito-item-unidad">${item.unidad_medida}</span>
@@ -1919,32 +1897,47 @@ window.actualizarCarrito = function() {
                     </div>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
     
-    // ✅ CÁLCULO DE TOTALES CON IVA
+    // ✅ CÁLCULO DE TOTALES CON IVA SELECTIVO
     subtotal = carrito.reduce((sum, item) => sum + item.subtotal, 0);
     descuentoTotal = carrito.reduce((sum, item) => sum + item.descuento, 0);
     
     // Subtotal después de descuentos
     let subtotalConDescuento = subtotal - descuentoTotal;
     
-    // Calcular IVA
+    // ✅ CALCULAR IVA SOLO SOBRE PRODUCTOS QUE LO TIENEN
+    let subtotalConIVA = 0;
+    let subtotalSinIVA = 0;
+    
+    carrito.forEach(item => {
+        const totalItem = item.subtotal - item.descuento;
+        if (item.aplica_impuestos) {
+            subtotalConIVA += totalItem;
+        } else {
+            subtotalSinIVA += totalItem;
+        }
+    });
+    
+    // Calcular IVA solo sobre productos que lo aplican
     let ivaCalculado = 0;
-    if (IVA_DEFAULT > 0) {
-        ivaCalculado = subtotalConDescuento * (IVA_DEFAULT / 100);
+    if (IVA_DEFAULT > 0 && subtotalConIVA > 0) {
+        ivaCalculado = subtotalConIVA * (IVA_DEFAULT / 100);
     }
     
-    // Total final con IVA
+    // Total final
     total = subtotalConDescuento + ivaCalculado;
     
-    // ✅ DEBUG: Ver cálculos
-    console.log('💰 Cálculos:', {
-        subtotal: subtotal.toFixed(2),
+    // ✅ DEBUG
+    console.log('💰 Cálculos detallados:', {
+        subtotal_total: subtotal.toFixed(2),
         descuento: descuentoTotal.toFixed(2),
-        subtotal_con_desc: subtotalConDescuento.toFixed(2),
+        subtotal_con_iva: subtotalConIVA.toFixed(2),
+        subtotal_sin_iva: subtotalSinIVA.toFixed(2),
         iva_porcentaje: IVA_DEFAULT,
-        iva_monto: ivaCalculado.toFixed(2),
+        iva_calculado: ivaCalculado.toFixed(2),
         total_final: total.toFixed(2)
     });
     
@@ -1956,7 +1949,7 @@ window.actualizarCarrito = function() {
     // Mostrar IVA si existe
     const ivaDisplay = document.getElementById('ivaDisplay');
     if (ivaDisplay) {
-        if (IVA_DEFAULT > 0) {
+        if (IVA_DEFAULT > 0 && ivaCalculado > 0) {
             ivaDisplay.style.display = 'flex';
             const ivaValue = ivaDisplay.querySelector('.summary-value');
             if (ivaValue) {
@@ -1994,9 +1987,8 @@ function limpiarCarrito() {
     }
 }
 
-// ============================================
-// PROCESAR VENTA
-// ============================================
+// [... EL RESTO DEL CÓDIGO SE MANTIENE IGUAL: procesarVenta, imprimirTicket, quintales, etc ...]
+
 function procesarVenta() {
     if (carrito.length === 0) {
         mostrarAlerta('warning', 'Carrito Vacío', 'Agrega productos antes de procesar la venta');
@@ -2113,9 +2105,6 @@ function cerrarModalVenta() {
     calcularCambio();
 }
 
-// ============================================
-// IMPRIMIR TICKET
-// ============================================
 function imprimirTicket() {
     if (!ventaIdActual) {
         mostrarAlerta('error', 'Error', 'No hay venta para imprimir');
@@ -2260,7 +2249,7 @@ window.mostrarModalQuintales = function(producto) {
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                <button type="button" class="btn btn-primary" onclick="confirmarVentaQuintal('${producto.id}', '${producto.nombre}')">
+                                <button type="button" class="btn btn-primary" onclick="confirmarVentaQuintal('${producto.id}', '${producto.nombre}', ${producto.aplica_impuestos})">
                                     Agregar al Carrito
                                 </button>
                             </div>
@@ -2334,7 +2323,7 @@ function actualizarResumenQuintal() {
     }
 }
 
-function confirmarVentaQuintal(productoId, productoNombre) {
+function confirmarVentaQuintal(productoId, productoNombre, aplicaImpuestos) {
     const quintalId = document.getElementById('quintalSelect').value;
     const cantidad = parseFloat(document.getElementById('cantidadQuintal').value);
     const tipoVenta = document.querySelector('input[name="tipoVenta"]:checked').value;
@@ -2372,7 +2361,8 @@ function confirmarVentaQuintal(productoId, productoNombre) {
         subtotal: precioTotal,
         total: precioTotal,
         descuento: 0,
-        descuento_porcentaje: 0
+        descuento_porcentaje: 0,
+        aplica_impuestos: aplicaImpuestos || false // ✅ AGREGAR CAMPO
     });
     
     actualizarCarrito();

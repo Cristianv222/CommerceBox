@@ -848,7 +848,15 @@
 
 <!-- Mostrar mensajes de Django si existen -->
 {% if messages %}
-
+<div class="container-fluid mt-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
 {% endif %}
 
 <div class="container-fluid">
@@ -975,21 +983,21 @@
                         <tr 
                             data-id="{{ producto.id }}"
                             data-nombre="{{ producto.nombre }}"
-                            data-codigo="{{ producto.codigo_barras }}"
+                            data-codigo="{{ producto.codigo_barras|default:'' }}"
                             data-descripcion="{{ producto.descripcion|default:'' }}"
                             data-categoria-id="{{ producto.categoria.id|default:'' }}"
                             data-categoria-nombre="{{ producto.categoria.nombre|default:'Sin categoría' }}"
                             data-marca-id="{{ producto.marca.id|default:'' }}"
                             data-marca-nombre="{{ producto.marca.nombre|default:'Sin marca' }}"
                             data-tipo="{{ producto.tipo_inventario }}"
-                            data-iva="{{ producto.iva|floatformat:2 }}"
-                            data-precio-unitario="{{ producto.precio_unitario|floatformat:2|default:'0.00' }}"
-                            data-precio-peso="{{ producto.precio_por_unidad_peso|floatformat:2|default:'0.00' }}"
+                            data-iva="{{ producto.aplica_impuestos|yesno:'true,false' }}"
+                            data-precio-unitario="{{ producto.precio_venta|default:'0.00' }}"
+                            data-precio-peso="{{ producto.precio_por_unidad_peso|default:'0.00' }}"
                             data-activo="{{ producto.activo|yesno:'true,false' }}"
                             data-imagen-url="{% if producto.imagen %}{{ producto.imagen.url }}{% endif %}"
                             data-unidad-medida-id="{% if producto.unidad_medida_base %}{{ producto.unidad_medida_base.id }}{% endif %}"
                             data-stock-actual="{% if producto.inventario_normal %}{{ producto.inventario_normal.stock_actual|default:'0' }}{% else %}0{% endif %}"
-                            data-quintales="{% with quintales=producto.quintales.all %}{% if quintales %}{{ quintales.0.peso_actual|floatformat:0|default:'0' }}{% else %}0{% endif %}{% endwith %}"
+                            data-quintales="0"
                             data-libras="0"
                         >
                             <td>
@@ -1022,7 +1030,7 @@
                                     {% endif %}
                                 </div>
                             </td>
-                            <td><span class="badge-admin badge-info">{{ producto.codigo_barras }}</span></td>
+                            <td><span class="badge-admin badge-info">{{ producto.codigo_barras|default:"Sin código" }}</span></td>
                             <td>{{ producto.categoria.nombre|default:"Sin categoría" }}</td>
                             <td>
                                 {% if producto.marca %}
@@ -1045,9 +1053,9 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if producto.iva > 0 %}
+                                {% if producto.aplica_impuestos %}
                                     <span class="badge-admin badge-iva">
-                                        <i class="bi bi-check-circle-fill me-1"></i>{{ producto.iva }}%
+                                        <i class="bi bi-check-circle-fill me-1"></i>{{ porcentaje_iva }}%
                                     </span>
                                 {% else %}
                                     <span class="badge-admin badge-no-iva">
@@ -1107,11 +1115,23 @@
                                     {% endif %}
                                 {% endif %}
                             </td>
-                            <td style="font-weight: 600;">
+                            <td style="font-weight: 700; font-size: 1.1rem; color: #059669;">
                                 {% if producto.tipo_inventario == 'QUINTAL' %}
-                                    ${{ producto.precio_por_unidad_peso|default:"0.00" }}/{{ producto.unidad_medida_base.abreviatura|default:"kg" }}
+                                    {% if producto.precio_por_unidad_peso %}
+                                        ${{ producto.precio_por_unidad_peso|floatformat:2 }}/{{ producto.unidad_medida_base.abreviatura|default:"kg" }}
+                                    {% else %}
+                                        <span style="color: #ef4444; font-weight: 600; font-size: 0.85rem;">
+                                            <i class="bi bi-exclamation-triangle-fill me-1"></i>Sin precio
+                                        </span>
+                                    {% endif %}
                                 {% else %}
-                                    ${{ producto.precio_unitario|default:"0.00" }}
+                                    {% if producto.precio_venta %}
+                                        ${{ producto.precio_venta|floatformat:2 }}
+                                    {% else %}
+                                        <span style="color: #ef4444; font-weight: 600; font-size: 0.85rem;">
+                                            <i class="bi bi-exclamation-triangle-fill me-1"></i>Sin precio
+                                        </span>
+                                    {% endif %}
                                 {% endif %}
                             </td>
                             <td>
@@ -1262,7 +1282,7 @@
                                 <label class="form-label-admin">
                                     <i class="bi bi-upc"></i>Código de Barras
                                 </label>
-                                <input type="text" class="form-control-admin" id="codigo_barras" name="codigo_barras" placeholder="Auto-generado" readonly>
+                                <input type="text" class="form-control-admin" id="codigo_barras" name="codigo_barras" placeholder="Opcional">
                             </div>
                         </div>
                     </div>
@@ -1303,24 +1323,29 @@
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="form-group-admin">
-                                <label class="form-label-admin">
-                                    <i class="bi bi-percent"></i>Impuesto IVA
-                                </label>
-                                <select class="form-control-admin" id="iva" name="iva" onchange="updateIVAInfo()">
-                                    <option value="0">Sin IVA (0%)</option>
-                                    <option value="{{ iva_default }}" selected>Aplicar IVA ({{ iva_default }}%)</option>
-                                </select>
-                                <div id="ivaInfo" style="margin-top: 0.75rem; background: rgba(34, 197, 94, 0.1); border: 2px solid rgba(34, 197, 94, 0.3); border-radius: 10px; padding: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                                    <i class="bi bi-info-circle-fill" style="color: #16a34a; font-size: 1.2rem;"></i>
-                                    <span style="color: #16a34a; font-weight: 600; font-size: 0.9rem;">
-                                        Se aplicará <strong>{{ iva_default }}%</strong> de IVA al precio del producto
-                                    </span>
-                                </div>
+                    <!-- ✅ CAMPO IVA - CHECKBOX -->
+                    <div class="form-group-admin">
+                        <label class="form-label-admin" style="font-weight: 600; color: #334155; margin-bottom: 0.75rem;">
+                            <i class="bi bi-percent me-2"></i>Impuesto (IVA)
+                        </label>
+                        
+                        <div class="form-check" style="padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <input 
+                                class="form-check-input" 
+                                type="checkbox" 
+                                id="aplica_iva" 
+                                name="aplica_iva"
+                                onchange="updateIVAInfo()"
+                                style="width: 20px; height: 20px; margin-top: 0.25rem; cursor: pointer;">
+                            <label class="form-check-label" for="aplica_iva" style="margin-left: 0.5rem; font-weight: 600; cursor: pointer;">
+                                <i class="bi bi-check-circle me-2"></i>Este producto aplica IVA
+                            </label>
+                            <div style="font-size: 0.85rem; color: #64748b; margin-left: 2rem; margin-top: 0.25rem;">
+                                Se aplicará el <strong>{{ porcentaje_iva }}%</strong> de IVA configurado en el sistema
                             </div>
                         </div>
+                        
+                        <div id="ivaInfo" style="margin-top: 0.75rem; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid; display: none; align-items: center; gap: 0.75rem;"></div>
                     </div>
 
                     <div class="row">
@@ -1337,7 +1362,7 @@
                         </div>
                     </div>
 
-                    <!-- ✅ CAMPOS PARA PRODUCTO NORMAL -->
+                    <!-- Campos para producto NORMAL -->
                     <div id="camposNormal">
                         <div class="form-group-admin">
                             <label class="form-label-admin">
@@ -1350,91 +1375,80 @@
                             </div>
                         </div>
                     </div>
-<!-- ✅ CAMPOS PARA QUINTAL -->
-<div id="camposQuintal" style="display: none;">
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group-admin">
-                <label class="form-label-admin">
-                    <i class="bi bi-rulers"></i>Unidad de Medida *
-                </label>
-                <select class="form-control-admin" id="unidad_medida_base" name="unidad_medida_base">
-                    <option value="">Seleccionar...</option>
-                    {% for unidad in unidades_medida %}
-                    <option value="{{ unidad.id }}">{{ unidad.nombre }} ({{ unidad.abreviatura }})</option>
-                    {% endfor %}
-                </select>
-                <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Unidad en la que se mide el producto (kg, lb, etc.)
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="form-group-admin">
-                <label class="form-label-admin">
-                    <i class="bi bi-cash"></i>Precio de Venta por Peso *
-                </label>
-                <input type="number" class="form-control-admin" id="precio_por_unidad_peso" name="precio_por_unidad_peso" step="0.01" min="0" placeholder="0.00">
-                <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Precio de venta por unidad de peso
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- ✅ NUEVA SECCIÓN DE STOCK -->
-<div style="margin-top: 1.5rem; padding: 1.5rem; background: rgba(251, 191, 36, 0.08); border: 2px solid rgba(251, 191, 36, 0.3); border-radius: 12px;">
-    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
-        <i class="bi bi-box-seam-fill" style="color: #f59e0b; font-size: 1.3rem;"></i>
-        <h6 style="margin: 0; font-weight: 700; color: #92400e;">Inventario de Stock</h6>
-    </div>
-    
-    <div style="background: rgba(254, 249, 195, 0.4); border-left: 4px solid #f59e0b; padding: 0.85rem; border-radius: 8px; margin-bottom: 1rem;">
-        <p style="margin: 0; color: #78350f; font-size: 0.875rem; font-weight: 500;">
-            <i class="bi bi-info-circle-fill me-2"></i>
-            <strong>Importante:</strong> Define el stock inicial del producto. Para productos tipo Quintal, ingresa quintales y libras.
-        </p>
-    </div>
+                    <!-- Campos para QUINTAL -->
+                    <div id="camposQuintal" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group-admin">
+                                    <label class="form-label-admin">
+                                        <i class="bi bi-rulers"></i>Unidad de Medida *
+                                    </label>
+                                    <select class="form-control-admin" id="unidad_medida_base" name="unidad_medida_base">
+                                        <option value="">Seleccionar...</option>
+                                        {% for unidad in unidades_medida %}
+                                        <option value="{{ unidad.id }}">{{ unidad.nombre }} ({{ unidad.abreviatura }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group-admin">
+                                    <label class="form-label-admin">
+                                        <i class="bi bi-cash"></i>Precio por Peso *
+                                    </label>
+                                    <input type="number" class="form-control-admin" id="precio_por_unidad_peso" name="precio_por_unidad_peso" step="0.01" min="0" placeholder="0.00">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-    <!-- Stock Normal -->
-    <div id="stock_normal_group">
-        <div class="form-group-admin" style="margin-bottom: 0;">
-            <label class="form-label-admin">
-                <i class="bi bi-box"></i>Stock Actual (Unidades)
-            </label>
-            <input type="number" class="form-control-admin" id="stock_actual" name="stock_actual" min="0" step="1" placeholder="Ej: 100" value="0">
-            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
-                <i class="bi bi-info-circle me-1"></i>
-                Cantidad de unidades disponibles en inventario
-            </div>
-        </div>
-    </div>
+                    <!-- Sección de Stock -->
+                    <div style="margin-top: 1.5rem; padding: 1.5rem; background: rgba(251, 191, 36, 0.08); border: 2px solid rgba(251, 191, 36, 0.3); border-radius: 12px;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                            <i class="bi bi-box-seam-fill" style="color: #f59e0b; font-size: 1.3rem;"></i>
+                            <h6 style="margin: 0; font-weight: 700; color: #92400e;">Inventario de Stock</h6>
+                        </div>
+                        
+                        <div style="background: rgba(254, 249, 195, 0.4); border-left: 4px solid #f59e0b; padding: 0.85rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <p style="margin: 0; color: #78350f; font-size: 0.875rem; font-weight: 500;">
+                                <i class="bi bi-info-circle-fill me-2"></i>
+                                <strong>Importante:</strong> Define el stock inicial del producto.
+                            </p>
+                        </div>
 
-    <!-- Stock Quintal -->
-    <div id="stock_quintal_group" style="display: none;">
-        <div class="row">
-            <div class="col-md-6">
-                <div class="form-group-admin" style="margin-bottom: 0;">
-                    <label class="form-label-admin">
-                        <i class="bi bi-box-seam"></i>Quintales
-                    </label>
-                    <input type="number" class="form-control-admin" id="quintales" name="quintales" min="0" step="1" placeholder="Ej: 5" value="0">
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="form-group-admin" style="margin-bottom: 0;">
-                    <label class="form-label-admin">
-                        <i class="bi bi-box"></i>Libras
-                    </label>
-                    <input type="number" class="form-control-admin" id="libras" name="libras" min="0" max="99" step="0.01" placeholder="Ej: 25.5" value="0">
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+                        <!-- Stock Normal -->
+                        <div id="stock_normal_group">
+                            <div class="form-group-admin" style="margin-bottom: 0;">
+                                <label class="form-label-admin">
+                                    <i class="bi bi-box"></i>Stock Actual (Unidades)
+                                </label>
+                                <input type="number" class="form-control-admin" id="stock_actual" name="stock_actual" min="0" step="1" placeholder="Ej: 100" value="0">
+                            </div>
+                        </div>
+
+                        <!-- Stock Quintal -->
+                        <div id="stock_quintal_group" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group-admin" style="margin-bottom: 0;">
+                                        <label class="form-label-admin">
+                                            <i class="bi bi-box-seam"></i>Quintales
+                                        </label>
+                                        <input type="number" class="form-control-admin" id="quintales" name="quintales" min="0" step="1" placeholder="0" value="0">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group-admin" style="margin-bottom: 0;">
+                                        <label class="form-label-admin">
+                                            <i class="bi bi-box"></i>Libras
+                                        </label>
+                                        <input type="number" class="form-control-admin" id="libras" name="libras" min="0" max="99" step="0.01" placeholder="0" value="0">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="form-group-admin">
                         <label class="form-label-admin d-flex align-items-center" style="cursor: pointer;">
@@ -1526,7 +1540,7 @@
 {% block extra_js %}
 <script>
     let searchTimeout = null;
-    const IVA_DEFAULT = parseFloat('{{ iva_default }}');
+    const IVA_DEFAULT = parseFloat('{{ porcentaje_iva }}');  // ✅ CORREGIDO: Usar porcentaje_iva
 
     // Sistema de Notificaciones Toast
     function showNotification(type, message, title = null) {
@@ -1602,19 +1616,53 @@
         btnRemove.style.display = 'none';
     }
 
+    // ✅ CORREGIDO: Función updateIVAInfo para trabajar con CHECKBOX
     function updateIVAInfo() {
-        const ivaSelect = document.getElementById('iva');
+        const ivaCheckbox = document.getElementById('aplica_iva');
         const ivaInfo = document.getElementById('ivaInfo');
-        const ivaValue = parseFloat(ivaSelect.value);
         
-        if (ivaValue > 0) {
+        // Si no existe el checkbox, intentar buscar el select (backward compatibility)
+        if (!ivaCheckbox) {
+            const ivaSelect = document.getElementById('iva');
+            if (ivaSelect) {
+                const ivaValue = parseFloat(ivaSelect.value);
+                
+                if (ivaValue > 0) {
+                    ivaInfo.style.display = 'flex';
+                    ivaInfo.style.background = 'rgba(34, 197, 94, 0.1)';
+                    ivaInfo.style.borderColor = 'rgba(34, 197, 94, 0.3)';
+                    ivaInfo.innerHTML = `
+                        <i class="bi bi-info-circle-fill" style="color: #16a34a; font-size: 1.2rem;"></i>
+                        <span style="color: #16a34a; font-weight: 600; font-size: 0.9rem;">
+                            Se aplicará <strong>${ivaValue}%</strong> de IVA al precio del producto
+                        </span>
+                    `;
+                } else {
+                    ivaInfo.style.display = 'flex';
+                    ivaInfo.style.background = 'rgba(100, 116, 139, 0.1)';
+                    ivaInfo.style.borderColor = 'rgba(100, 116, 139, 0.3)';
+                    ivaInfo.innerHTML = `
+                        <i class="bi bi-x-circle-fill" style="color: #64748b; font-size: 1.2rem;"></i>
+                        <span style="color: #64748b; font-weight: 600; font-size: 0.9rem;">
+                            Este producto <strong>no aplica IVA</strong>
+                        </span>
+                    `;
+                }
+            }
+            return;
+        }
+        
+        // Nuevo sistema con checkbox
+        const aplicaIva = ivaCheckbox.checked;
+        
+        if (aplicaIva) {
             ivaInfo.style.display = 'flex';
             ivaInfo.style.background = 'rgba(34, 197, 94, 0.1)';
             ivaInfo.style.borderColor = 'rgba(34, 197, 94, 0.3)';
             ivaInfo.innerHTML = `
                 <i class="bi bi-info-circle-fill" style="color: #16a34a; font-size: 1.2rem;"></i>
                 <span style="color: #16a34a; font-weight: 600; font-size: 0.9rem;">
-                    Se aplicará <strong>${ivaValue}%</strong> de IVA al precio del producto
+                    Se aplicará <strong>${IVA_DEFAULT}%</strong> de IVA al precio del producto
                 </span>
             `;
         } else {
@@ -1634,25 +1682,58 @@
         loadStats();
         updateIVAInfo();
         
+        // ✅ NUEVO: Agregar listener al checkbox de IVA
+        const ivaCheckbox = document.getElementById('aplica_iva');
+        if (ivaCheckbox) {
+            ivaCheckbox.addEventListener('change', updateIVAInfo);
+        }
+        
         // ✅ Agregar listener al formulario para debug
         const form = document.getElementById('productoForm');
-        form.addEventListener('submit', function(e) {
-            console.log('📤 Enviando formulario...');
-            console.log('📝 Datos del formulario:');
-            
-            const formData = new FormData(form);
-            for (let pair of formData.entries()) {
-                console.log(`  ${pair[0]}: ${pair[1]}`);
-            }
-            
-            // Verificar campos específicos
-            console.log('🔍 Verificación de campos críticos:');
-            console.log('  IVA:', document.getElementById('iva').value);
-            console.log('  Stock Actual:', document.getElementById('stock_actual').value);
-            console.log('  Quintales:', document.getElementById('quintales').value);
-            console.log('  Libras:', document.getElementById('libras').value);
-            console.log('  Tipo Inventario:', document.getElementById('tipo_inventario').value);
-        });
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                console.log('📤 Enviando formulario...');
+                console.log('📝 Datos del formulario:');
+                
+                const formData = new FormData(form);
+                for (let pair of formData.entries()) {
+                    console.log(`  ${pair[0]}: ${pair[1]}`);
+                }
+                
+                // Verificar campos específicos
+                console.log('🔍 Verificación de campos críticos:');
+                
+                const ivaCheckboxDebug = document.getElementById('aplica_iva');
+                if (ivaCheckboxDebug) {
+                    console.log('  Aplica IVA (checkbox):', ivaCheckboxDebug.checked);
+                }
+                
+                const ivaSelectDebug = document.getElementById('iva');
+                if (ivaSelectDebug) {
+                    console.log('  IVA (select):', ivaSelectDebug.value);
+                }
+                
+                const stockActualDebug = document.getElementById('stock_actual');
+                if (stockActualDebug) {
+                    console.log('  Stock Actual:', stockActualDebug.value);
+                }
+                
+                const quintalesDebug = document.getElementById('quintales');
+                if (quintalesDebug) {
+                    console.log('  Quintales:', quintalesDebug.value);
+                }
+                
+                const librasDebug = document.getElementById('libras');
+                if (librasDebug) {
+                    console.log('  Libras:', librasDebug.value);
+                }
+                
+                const tipoInventarioDebug = document.getElementById('tipo_inventario');
+                if (tipoInventarioDebug) {
+                    console.log('  Tipo Inventario:', tipoInventarioDebug.value);
+                }
+            });
+        }
     });
 
     function loadStats() {
@@ -1677,11 +1758,17 @@
             if (ivaBadge) conIVA++;
         });
 
-        document.getElementById('totalProductos').textContent = total;
-        document.getElementById('productosActivos').textContent = activos;
-        document.getElementById('quintalesDisponibles').textContent = quintales;
-        document.getElementById('productosNormales').textContent = normales;
-        document.getElementById('productosConIVA').textContent = conIVA;
+        const totalProductosElement = document.getElementById('totalProductos');
+        const productosActivosElement = document.getElementById('productosActivos');
+        const quintalesDisponiblesElement = document.getElementById('quintalesDisponibles');
+        const productosNormalesElement = document.getElementById('productosNormales');
+        const productosConIVAElement = document.getElementById('productosConIVA');
+
+        if (totalProductosElement) totalProductosElement.textContent = total;
+        if (productosActivosElement) productosActivosElement.textContent = activos;
+        if (quintalesDisponiblesElement) quintalesDisponiblesElement.textContent = quintales;
+        if (productosNormalesElement) productosNormalesElement.textContent = normales;
+        if (productosConIVAElement) productosConIVAElement.textContent = conIVA;
     }
 
     function handleSearch() {
@@ -1713,27 +1800,36 @@
     
         if (tipo === 'QUINTAL') {
             // Mostrar campos de quintal
-            camposNormal.style.display = 'none';
-            camposQuintal.style.display = 'block';
-            document.getElementById('precio_unitario').removeAttribute('required');
-            document.getElementById('precio_por_unidad_peso').setAttribute('required', 'required');
+            if (camposNormal) camposNormal.style.display = 'none';
+            if (camposQuintal) camposQuintal.style.display = 'block';
+            
+            const precioUnitario = document.getElementById('precio_unitario');
+            const precioPorUnidadPeso = document.getElementById('precio_por_unidad_peso');
+            
+            if (precioUnitario) precioUnitario.removeAttribute('required');
+            if (precioPorUnidadPeso) precioPorUnidadPeso.setAttribute('required', 'required');
             
             // Mostrar campos de stock quintal
-            stockNormalGroup.style.display = 'none';
-            stockQuintalGroup.style.display = 'block';
+            if (stockNormalGroup) stockNormalGroup.style.display = 'none';
+            if (stockQuintalGroup) stockQuintalGroup.style.display = 'block';
         } else {
             // Mostrar campos normales
-            camposNormal.style.display = 'block';
-            camposQuintal.style.display = 'none';
-            document.getElementById('precio_unitario').setAttribute('required', 'required');
-            document.getElementById('precio_por_unidad_peso').removeAttribute('required');
+            if (camposNormal) camposNormal.style.display = 'block';
+            if (camposQuintal) camposQuintal.style.display = 'none';
+            
+            const precioUnitario = document.getElementById('precio_unitario');
+            const precioPorUnidadPeso = document.getElementById('precio_por_unidad_peso');
+            
+            if (precioUnitario) precioUnitario.setAttribute('required', 'required');
+            if (precioPorUnidadPeso) precioPorUnidadPeso.removeAttribute('required');
             
             // Mostrar campos de stock normal
-            stockNormalGroup.style.display = 'block';
-            stockQuintalGroup.style.display = 'none';
+            if (stockNormalGroup) stockNormalGroup.style.display = 'block';
+            if (stockQuintalGroup) stockQuintalGroup.style.display = 'none';
         }
     }
 
+    // ✅ CORREGIDO: openCreateModal con nuevo sistema de IVA
     function openCreateModal() {
         const form = document.getElementById('productoForm');
     
@@ -1743,16 +1839,33 @@
         document.getElementById('activo').checked = true;
     
         removeImage();
-        document.getElementById('iva').value = IVA_DEFAULT;
+        
+        // ✅ NUEVO: Configurar checkbox de IVA
+        const ivaCheckbox = document.getElementById('aplica_iva');
+        if (ivaCheckbox) {
+            ivaCheckbox.checked = false;  // Por defecto sin IVA
+        } else {
+            // Backward compatibility con select
+            const ivaSelect = document.getElementById('iva');
+            if (ivaSelect) {
+                ivaSelect.value = '0';
+            }
+        }
+        
         updateIVAInfo();
     
         // Resetear unidad de medida
-        document.getElementById('unidad_medida_base').value = '';
+        const unidadMedidaBase = document.getElementById('unidad_medida_base');
+        if (unidadMedidaBase) unidadMedidaBase.value = '';
         
         // Resetear campos de stock
-        document.getElementById('stock_actual').value = '0';
-        document.getElementById('quintales').value = '0';
-        document.getElementById('libras').value = '0';
+        const stockActual = document.getElementById('stock_actual');
+        const quintales = document.getElementById('quintales');
+        const libras = document.getElementById('libras');
+        
+        if (stockActual) stockActual.value = '0';
+        if (quintales) quintales.value = '0';
+        if (libras) libras.value = '0';
     
         toggleTipoInventario();
     
@@ -1766,157 +1879,177 @@
         modal.show();
     }
 
-    // ✅✅✅ FUNCIÓN EDITAR - VERSIÓN DEFINITIVA 100% FUNCIONAL ✅✅✅
-    // ✅✅✅ FUNCIÓN EDITAR - VERSIÓN CON CONVERSIÓN DE NÚMERO ✅✅✅
-function editProducto(productoId) {
-    console.log('🔧 Editando producto:', productoId);
-    
-    const row = document.querySelector(`tr[data-id="${productoId}"]`);
-    
-    if (!row) {
-        showNotification('error', 'No se pudo encontrar el producto');
-        return;
-    }
-    
-    const modalElement = document.getElementById('productoModal');
-    const form = document.getElementById('productoForm');
-    
-    document.getElementById('productoModalTitle').innerHTML = '<i class="bi bi-pencil-square me-2"></i>Editar Producto';
-    
-    // ✅ FUNCIÓN HELPER PARA LIMPIAR PRECIOS
-    const limpiarPrecio = (valor) => {
-        if (!valor || valor === 'None' || valor === 'null' || valor === '') return '0.00';
-        let limpio = String(valor).replace(/[^\d.,]/g, '');
-        limpio = limpio.replace(',', '.');
-        const numero = parseFloat(limpio) || 0;
-        return numero.toFixed(2);
-    };
-    
-    // Obtener datos del row
-    const datos = {
-        id: productoId,
-        nombre: row.getAttribute('data-nombre'),
-        codigo: row.getAttribute('data-codigo'),
-        descripcion: row.getAttribute('data-descripcion'),
-        categoriaId: row.getAttribute('data-categoria-id'),
-        marcaId: row.getAttribute('data-marca-id'),
-        tipo: row.getAttribute('data-tipo'),
-        iva: parseFloat(row.getAttribute('data-iva')) || 0,
-        precioUnitario: limpiarPrecio(row.getAttribute('data-precio-unitario')),
-        precioPeso: limpiarPrecio(row.getAttribute('data-precio-peso')),
-        stockActual: parseInt(row.getAttribute('data-stock-actual')) || 0,
-        quintales: parseInt(row.getAttribute('data-quintales')) || 0,
-        libras: parseFloat(row.getAttribute('data-libras')) || 0,
-        activo: row.getAttribute('data-activo') === 'true',
-        imagenUrl: row.getAttribute('data-imagen-url'),
-        unidadMedidaId: row.getAttribute('data-unidad-medida-id')
-    };
-    
-    console.log('📊 Datos cargados:', datos);
-    console.log('💰 Precio Unitario:', datos.precioUnitario);
-    console.log('💰 Precio Peso:', datos.precioPeso);
-    
-    // ✅ CRITICAL: Resetear el formulario primero
-    form.reset();
-    
-    // Poblar campos básicos
-    document.getElementById('productoId').value = datos.id;
-    document.getElementById('nombre').value = datos.nombre;
-    document.getElementById('codigo_barras').value = datos.codigo;
-    document.getElementById('descripcion').value = datos.descripcion || '';
-    document.getElementById('categoria').value = datos.categoriaId || '';
-    document.getElementById('marca').value = datos.marcaId || '';
-    
-    // ✅ FIX CRÍTICO 1: IVA
-    const ivaSelect = document.getElementById('iva');
-    
-    if (datos.iva > 0) {
-        // Buscar la opción que corresponda al IVA
-        let optionFound = false;
-        for (let option of ivaSelect.options) {
-            if (parseFloat(option.value) === datos.iva) {
-                ivaSelect.value = option.value;
-                optionFound = true;
-                break;
-            }
+    // ✅ CORREGIDO: editProducto con nuevo sistema de IVA
+    function editProducto(productoId) {
+        console.log('🔧 Editando producto:', productoId);
+        
+        const row = document.querySelector(`tr[data-id="${productoId}"]`);
+        
+        if (!row) {
+            showNotification('error', 'No se pudo encontrar el producto');
+            return;
         }
         
-        // Si no se encontró la opción exacta, usar la del IVA_DEFAULT
-        if (!optionFound && datos.iva > 0) {
-            ivaSelect.value = IVA_DEFAULT.toString();
-        }
-    } else {
-        ivaSelect.value = '0';
-    }
-    
-    console.log('✅ IVA configurado en select:', ivaSelect.value);
-    updateIVAInfo();
-    
-    document.getElementById('activo').checked = datos.activo;
-    
-    // Configurar imagen
-    if (datos.imagenUrl) {
-        const preview = document.getElementById('imagePreview');
-        const placeholder = document.getElementById('imagePlaceholder');
-        const btnRemove = document.getElementById('btnRemoveImage');
+        const modalElement = document.getElementById('productoModal');
+        const form = document.getElementById('productoForm');
         
-        preview.src = datos.imagenUrl;
-        preview.style.display = 'block';
-        placeholder.style.display = 'none';
-        btnRemove.style.display = 'inline-block';
-    } else {
-        removeImage();
-    }
-    
-    // ✅ Configurar tipo de inventario
-    document.getElementById('tipo_inventario').value = datos.tipo;
-    toggleTipoInventario();
-    
-    // Configurar formulario
-    form.action = `/panel/inventario/productos/${datos.id}/editar/`;
-    
-    const saveBtn = document.getElementById('saveBtn');
-    saveBtn.disabled = false;
-    saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Actualizar';
-    
-    // 🎯 SOLUCIÓN: Usar el evento 'shown.bs.modal' para cargar precios y stock
-    modalElement.addEventListener('shown.bs.modal', function cargarPreciosHandler() {
-        console.log('🎬 Modal visible, cargando precios y stock...');
+        document.getElementById('productoModalTitle').innerHTML = '<i class="bi bi-pencil-square me-2"></i>Editar Producto';
         
-        // Remover el listener para que solo se ejecute una vez
-        modalElement.removeEventListener('shown.bs.modal', cargarPreciosHandler);
+        // ✅ FUNCIÓN HELPER PARA LIMPIAR PRECIOS
+        const limpiarPrecio = (valor) => {
+            if (!valor || valor === 'None' || valor === 'null' || valor === '') return '0.00';
+            let limpio = String(valor).replace(/[^\d.,]/g, '');
+            limpio = limpio.replace(',', '.');
+            const numero = parseFloat(limpio) || 0;
+            return numero.toFixed(2);
+        };
         
-        // ✅ CARGAR PRECIOS Y STOCK
-        if (datos.tipo === 'QUINTAL') {
-            const inputPrecioPeso = document.getElementById('precio_por_unidad_peso');
-            inputPrecioPeso.value = datos.precioPeso;
-            console.log('✅ Precio por peso cargado:', inputPrecioPeso.value);
-            
-            if (datos.unidadMedidaId) {
-                document.getElementById('unidad_medida_base').value = datos.unidadMedidaId;
-            }
-            
-            // ✅ FIX CRÍTICO 2: CARGAR STOCK QUINTAL
-            document.getElementById('quintales').value = datos.quintales;
-            document.getElementById('libras').value = datos.libras;
-            console.log('📦 Stock Quintal cargado');
+        // Obtener datos del row
+        const datos = {
+            id: productoId,
+            nombre: row.getAttribute('data-nombre'),
+            codigo: row.getAttribute('data-codigo'),
+            descripcion: row.getAttribute('data-descripcion'),
+            categoriaId: row.getAttribute('data-categoria-id'),
+            marcaId: row.getAttribute('data-marca-id'),
+            tipo: row.getAttribute('data-tipo'),
+            iva: parseFloat(row.getAttribute('data-iva')) || 0,
+            precioUnitario: limpiarPrecio(row.getAttribute('data-precio-unitario')),
+            precioPeso: limpiarPrecio(row.getAttribute('data-precio-peso')),
+            stockActual: parseInt(row.getAttribute('data-stock-actual')) || 0,
+            quintales: parseInt(row.getAttribute('data-quintales')) || 0,
+            libras: parseFloat(row.getAttribute('data-libras')) || 0,
+            activo: row.getAttribute('data-activo') === 'true',
+            imagenUrl: row.getAttribute('data-imagen-url'),
+            unidadMedidaId: row.getAttribute('data-unidad-medida-id')
+        };
+        
+        console.log('📊 Datos cargados:', datos);
+        console.log('💰 Precio Unitario:', datos.precioUnitario);
+        console.log('💰 Precio Peso:', datos.precioPeso);
+        
+        // ✅ CRITICAL: Resetear el formulario primero
+        form.reset();
+        
+        // Poblar campos básicos
+        document.getElementById('productoId').value = datos.id;
+        document.getElementById('nombre').value = datos.nombre;
+        document.getElementById('codigo_barras').value = datos.codigo;
+        document.getElementById('descripcion').value = datos.descripcion || '';
+        document.getElementById('categoria').value = datos.categoriaId || '';
+        document.getElementById('marca').value = datos.marcaId || '';
+        
+        // ✅ CORREGIDO: IVA con checkbox
+        const ivaCheckbox = document.getElementById('aplica_iva');
+        if (ivaCheckbox) {
+            ivaCheckbox.checked = datos.iva > 0;
+            console.log('✅ IVA checkbox configurado:', ivaCheckbox.checked);
         } else {
-            const inputPrecioUnitario = document.getElementById('precio_unitario');
-            inputPrecioUnitario.value = datos.precioUnitario;
-            console.log('✅ Precio unitario cargado:', inputPrecioUnitario.value);
-            
-            // ✅ FIX CRÍTICO 3: CARGAR STOCK NORMAL
-            document.getElementById('stock_actual').value = datos.stockActual;
-            console.log('📦 Stock Normal cargado:', datos.stockActual);
+            // Backward compatibility con select
+            const ivaSelect = document.getElementById('iva');
+            if (ivaSelect) {
+                if (datos.iva > 0) {
+                    let optionFound = false;
+                    for (let option of ivaSelect.options) {
+                        if (parseFloat(option.value) === datos.iva) {
+                            ivaSelect.value = option.value;
+                            optionFound = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!optionFound && datos.iva > 0) {
+                        ivaSelect.value = IVA_DEFAULT.toString();
+                    }
+                } else {
+                    ivaSelect.value = '0';
+                }
+                console.log('✅ IVA select configurado:', ivaSelect.value);
+            }
         }
         
-        console.log('🎉 Todos los datos cargados correctamente');
-    }, { once: true });
-    
-    // Mostrar modal
-    const modal = new bootstrap.Modal(modalElement);
-    modal.show();
-}
+        updateIVAInfo();
+        
+        document.getElementById('activo').checked = datos.activo;
+        
+        // Configurar imagen
+        if (datos.imagenUrl) {
+            const preview = document.getElementById('imagePreview');
+            const placeholder = document.getElementById('imagePlaceholder');
+            const btnRemove = document.getElementById('btnRemoveImage');
+            
+            preview.src = datos.imagenUrl;
+            preview.style.display = 'block';
+            placeholder.style.display = 'none';
+            btnRemove.style.display = 'inline-block';
+        } else {
+            removeImage();
+        }
+        
+        // ✅ Configurar tipo de inventario
+        document.getElementById('tipo_inventario').value = datos.tipo;
+        toggleTipoInventario();
+        
+        // Configurar formulario
+        form.action = `/panel/inventario/productos/${datos.id}/editar/`;
+        
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Actualizar';
+        
+        // 🎯 SOLUCIÓN: Usar el evento 'shown.bs.modal' para cargar precios y stock
+        modalElement.addEventListener('shown.bs.modal', function cargarPreciosHandler() {
+            console.log('🎬 Modal visible, cargando precios y stock...');
+            
+            // Remover el listener para que solo se ejecute una vez
+            modalElement.removeEventListener('shown.bs.modal', cargarPreciosHandler);
+            
+            // ✅ CARGAR PRECIOS Y STOCK
+            if (datos.tipo === 'QUINTAL') {
+                const inputPrecioPeso = document.getElementById('precio_por_unidad_peso');
+                if (inputPrecioPeso) {
+                    inputPrecioPeso.value = datos.precioPeso;
+                    console.log('✅ Precio por peso cargado:', inputPrecioPeso.value);
+                }
+                
+                if (datos.unidadMedidaId) {
+                    const unidadMedidaBase = document.getElementById('unidad_medida_base');
+                    if (unidadMedidaBase) {
+                        unidadMedidaBase.value = datos.unidadMedidaId;
+                    }
+                }
+                
+                // ✅ FIX CRÍTICO 2: CARGAR STOCK QUINTAL
+                const quintalesInput = document.getElementById('quintales');
+                const librasInput = document.getElementById('libras');
+                
+                if (quintalesInput) quintalesInput.value = datos.quintales;
+                if (librasInput) librasInput.value = datos.libras;
+                
+                console.log('📦 Stock Quintal cargado');
+            } else {
+                const inputPrecioUnitario = document.getElementById('precio_unitario');
+                if (inputPrecioUnitario) {
+                    inputPrecioUnitario.value = datos.precioUnitario;
+                    console.log('✅ Precio unitario cargado:', inputPrecioUnitario.value);
+                }
+                
+                // ✅ FIX CRÍTICO 3: CARGAR STOCK NORMAL
+                const stockActualInput = document.getElementById('stock_actual');
+                if (stockActualInput) {
+                    stockActualInput.value = datos.stockActual;
+                    console.log('📦 Stock Normal cargado:', datos.stockActual);
+                }
+            }
+            
+            console.log('🎉 Todos los datos cargados correctamente');
+        }, { once: true });
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    }
+
     // ✅ FUNCIÓN VER DETALLES
     function viewProducto(productoId) {
         const row = document.querySelector(`tr[data-id="${productoId}"]`);
@@ -2053,7 +2186,4 @@ function editProducto(productoId) {
         form.submit();
     }
 </script>
-
-
-
 {% endblock %}

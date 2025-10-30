@@ -1907,7 +1907,7 @@ const categoriasData = {
 };
 
 // IVA DESDE CONFIGURACIÓN DEL SISTEMA
-const IVA_DEFAULT = parseFloat("{{ iva_default }}");
+const IVA_DEFAULT = parseFloat("{{ porcentaje_iva }}");
 
 console.log('✅ Categorías cargadas:', categoriasData);
 console.log('✅ IVA configurado:', IVA_DEFAULT + '%');
@@ -1917,6 +1917,12 @@ console.log('✅ IVA configurado:', IVA_DEFAULT + '%');
 // ========================================
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Sistema de entrada de inventario iniciado');
+    
+    // ✅ Listener para checkbox de IVA
+    const ivaCheckbox = document.getElementById('input_iva');
+    if (ivaCheckbox) {
+        ivaCheckbox.addEventListener('change', mostrarInfoIVA);
+    }
     
     // Listener para tipo de inventario
     document.getElementById('input_tipo_inventario').addEventListener('change', function() {
@@ -1946,7 +1952,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     document.getElementById('input_nombre').focus();
-    mostrarInfoIVA();
+    mostrarInfoIVA(); // ✅ Mostrar info inicial
 });
 
 async function abrirModalSeleccionarQuintal() {
@@ -2194,16 +2200,42 @@ function filtrarQuintales(busqueda) {
 }
 
 // ========================================
-// FUNCIÓN PARA MOSTRAR INFO DE IVA
+// FUNCIÓN PARA MOSTRAR INFO DE IVA - ✅ ACTUALIZADA PARA CHECKBOX
 // ========================================
 function mostrarInfoIVA() {
-    const ivaSelect = document.getElementById('input_iva');
+    const ivaCheckbox = document.getElementById('input_iva');
     const infoDiv = document.getElementById('info-iva');
     
-    if (parseFloat(ivaSelect.value) > 0) {
-        infoDiv.style.display = 'block';
+    if (!ivaCheckbox || !infoDiv) return;
+    
+    if (ivaCheckbox.checked) {
+        infoDiv.style.display = 'flex';
+        infoDiv.style.background = 'rgba(34, 197, 94, 0.1)';
+        infoDiv.style.border = '2px solid rgba(34, 197, 94, 0.3)';
+        infoDiv.style.borderRadius = '10px';
+        infoDiv.style.padding = '0.75rem';
+        infoDiv.style.alignItems = 'center';
+        infoDiv.style.gap = '0.5rem';
+        infoDiv.innerHTML = `
+            <i class="bi bi-info-circle-fill" style="color: #16a34a; font-size: 1.2rem;"></i>
+            <span style="color: #16a34a; font-weight: 600; font-size: 0.9rem;">
+                Se aplicará <strong>${IVA_DEFAULT}%</strong> de IVA al precio del producto
+            </span>
+        `;
     } else {
-        infoDiv.style.display = 'none';
+        infoDiv.style.display = 'flex';
+        infoDiv.style.background = 'rgba(239, 68, 68, 0.1)';
+        infoDiv.style.border = '2px solid rgba(239, 68, 68, 0.3)';
+        infoDiv.style.borderRadius = '10px';
+        infoDiv.style.padding = '0.75rem';
+        infoDiv.style.alignItems = 'center';
+        infoDiv.style.gap = '0.5rem';
+        infoDiv.innerHTML = `
+            <i class="bi bi-x-circle-fill" style="color: #dc2626; font-size: 1.2rem;"></i>
+            <span style="color: #dc2626; font-weight: 600; font-size: 0.9rem;">
+                Este producto <strong>NO</strong> aplicará IVA
+            </span>
+        `;
     }
 }
 
@@ -2368,7 +2400,7 @@ function previsualizarImagenEditar(input) {
 }
 
 // ========================================
-// AGREGAR PRODUCTO
+// AGREGAR PRODUCTO - ✅ IVA CON CHECKBOX
 // ========================================
 function agregarProducto() {
     console.log('📝 Iniciando agregar producto...');
@@ -2393,7 +2425,6 @@ function agregarProducto() {
     let unidad_medida_texto = '';
     
     if (tipo_inventario === 'QUINTAL') {
-        // Si es quintal, la unidad ya está seleccionada en el campo de unidad de medida
         const selectUnidad = document.getElementById('input_unidad');
         console.log('🔍 Tipo inventario:', tipo_inventario);
         console.log('🔍 Select unidad:', document.getElementById('input_unidad'));
@@ -2406,7 +2437,6 @@ function agregarProducto() {
             return;
         }
     } else {
-        // Para productos normales
         unidad_medida = document.getElementById('input_unidad').value;
         unidad_medida_texto = document.getElementById('input_unidad').selectedOptions[0].text;
     }
@@ -2418,7 +2448,9 @@ function agregarProducto() {
     const lote = document.getElementById('input_lote').value.trim();
     const fecha_vencimiento = document.getElementById('input_fecha_vencimiento').value;
     const descripcion = document.getElementById('input_descripcion').value.trim();
-    const iva = parseFloat(document.getElementById('input_iva').value);
+    
+    // ✅ IVA ahora es checkbox
+    const aplica_iva = document.getElementById('input_iva').checked;
     
     const inputImagen = document.getElementById('input_imagen');
     const imagenFile = inputImagen.files[0];
@@ -2465,7 +2497,7 @@ function agregarProducto() {
         cantidad, cantidad_codigos: cantidad,
         costo_unitario: costo, precio_venta: precio,
         lote, fecha_vencimiento, descripcion,
-        iva: iva,
+        aplica_iva: aplica_iva, // ✅ Guardar checkbox
         quintal_codigo_unico: quintal_codigo_unico,
         es_nuevo_quintal: es_nuevo_quintal,
         peso_inicial_quintal: peso_inicial_quintal,
@@ -2502,6 +2534,7 @@ function limpiarFormulario() {
     document.getElementById('input_nombre').focus();
     document.getElementById('input_nombre').disabled = false;
     quintalSeleccionado = null;
+    mostrarInfoIVA(); // ✅ Actualizar info de IVA
 }
 
 // ========================================
@@ -2522,7 +2555,7 @@ function cerrarModalProductos() {
 }
 
 // ========================================
-// RENDERIZAR PRODUCTOS
+// RENDERIZAR PRODUCTOS - ✅ BADGE IVA ACTUALIZADO
 // ========================================
 function renderizarProductos() {
     const lista = document.getElementById('productos-lista');
@@ -2547,9 +2580,10 @@ function renderizarProductos() {
             ? `<img src="${producto.imagen_preview}" class="product-image-small" alt="${producto.nombre}">`
             : `<div style="width: 60px; height: 60px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 1.5rem;">📦</div>`;
         
-        const ivaBadge = producto.iva > 0 
-            ? `<span class="badge-custom" style="background: #dbeafe; color: #1e40af; margin-left: 0.5rem;">IVA ${producto.iva}%</span>`
-            : '';
+        // ✅ Badge de IVA actualizado para checkbox
+        const ivaBadge = producto.aplica_iva 
+            ? `<span class="badge-custom" style="background: #dbeafe; color: #1e40af; margin-left: 0.5rem;">✓ Con IVA</span>`
+            : `<span class="badge-custom" style="background: #fee2e2; color: #dc2626; margin-left: 0.5rem;">✗ Sin IVA</span>`;
         
         // Badge para tipo de quintal
         let quintalBadge = '';
@@ -2625,7 +2659,7 @@ function actualizarCodigos(id, cantidad) {
 }
 
 // ========================================
-// EDITAR PRODUCTO
+// EDITAR PRODUCTO - ✅ CARGAR CHECKBOX
 // ========================================
 function editarProducto(id) {
     const producto = productos.find(p => p.id === id);
@@ -2644,7 +2678,9 @@ function editarProducto(id) {
     document.getElementById('edit_lote').value = producto.lote;
     document.getElementById('edit_fecha_vencimiento').value = producto.fecha_vencimiento;
     document.getElementById('edit_descripcion').value = producto.descripcion;
-    document.getElementById('edit_iva').value = producto.iva;
+    
+    // ✅ Cargar checkbox en lugar de value
+    document.getElementById('edit_iva').checked = producto.aplica_iva;
     
     if (producto.imagen_preview) {
         document.getElementById('edit-preview').src = producto.imagen_preview;
@@ -2661,6 +2697,9 @@ function cerrarModalEditar() {
     document.getElementById('edit-preview-container').classList.remove('show');
 }
 
+// ========================================
+// GUARDAR EDICIÓN - ✅ GUARDAR CHECKBOX
+// ========================================
 function guardarEdicion() {
     const id = parseInt(document.getElementById('edit_producto_id').value);
     const producto = productos.find(p => p.id === id);
@@ -2691,7 +2730,10 @@ function guardarEdicion() {
     producto.lote = document.getElementById('edit_lote').value.trim();
     producto.fecha_vencimiento = document.getElementById('edit_fecha_vencimiento').value;
     producto.descripcion = document.getElementById('edit_descripcion').value.trim();
-    producto.iva = parseFloat(document.getElementById('edit_iva').value);
+    
+    // ✅ Guardar checkbox
+    producto.aplica_iva = document.getElementById('edit_iva').checked;
+    
     producto.subtotal = producto.cantidad * costo;
 
     const inputImagen = document.getElementById('edit_imagen');
@@ -2741,7 +2783,7 @@ function limpiarLista() {
 }
 
 // ========================================
-// PROCESAR INVENTARIO
+// PROCESAR INVENTARIO - ✅ ENVIAR CHECKBOX
 // ========================================
 function procesarInventario() {
     if (productos.length === 0) {
@@ -2788,7 +2830,7 @@ async function confirmarProcesamiento() {
         fecha_vencimiento: p.fecha_vencimiento,
         descripcion: p.descripcion, 
         tiene_imagen: p.imagen_file ? true : false,
-        iva: p.iva,
+        aplica_iva: p.aplica_iva, // ✅ Enviar checkbox
         quintal_codigo_unico: p.quintal_codigo_unico,
         es_nuevo_quintal: p.es_nuevo_quintal,
         peso_inicial_quintal: p.peso_inicial_quintal
@@ -2841,14 +2883,11 @@ function mostrarModalCodigosGenerados(codigos) {
     const lista = document.getElementById('lista-codigos-generados');
     lista.innerHTML = '';
 
-    // 🐛 DEBUG: Ver qué datos llegan
     console.log('📦 Códigos recibidos:', codigos);
     
     codigos.forEach((codigo, index) => {
-        // 🐛 DEBUG: Ver estructura de cada código
         console.log(`Código ${index}:`, codigo);
         
-        // 🔧 FIX: Detectar qué propiedad tiene el ID del producto
         const productoId = codigo.producto_id || codigo.id || codigo.producto || null;
         
         if (!productoId) {
@@ -2876,14 +2915,12 @@ function mostrarModalCodigosGenerados(codigos) {
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                     ${productoId ? `
-                        <!-- ✨ Botón de imprimir (solo si hay productoId) -->
                         <button onclick="imprimirCodigoBarras('${productoId}', ${codigo.cantidad_codigos})" 
                                 class="btn-custom btn-primary-custom" 
                                 style="margin: 0; white-space: nowrap;">
                             <i class="bi bi-printer"></i> Imprimir (${codigo.cantidad_codigos})
                         </button>
                     ` : `
-                        <!-- Botón deshabilitado si no hay ID -->
                         <button class="btn-custom btn-primary-custom" 
                                 disabled
                                 style="margin: 0; white-space: nowrap; opacity: 0.5;">
@@ -2891,7 +2928,6 @@ function mostrarModalCodigosGenerados(codigos) {
                         </button>
                     `}
                     
-                    <!-- PDF como backup -->
                     <a href="${codigo.pdf_url}" 
                        target="_blank" 
                        class="btn-custom btn-secondary-custom" 
@@ -2914,17 +2950,14 @@ async function imprimirCodigoBarras(productoId, cantidadCopias = 1) {
     });
     
     try {
-        // Mostrar indicador de carga
         mostrarNotificacion(`⏳ Enviando ${cantidadCopias} etiqueta(s) a la impresora...`, 'success');
         
-        // Obtener CSRF token
         const csrfToken = getCookie('csrftoken');
         
         if (!csrfToken) {
             throw new Error('Token CSRF no encontrado');
         }
         
-        // Realizar petición para imprimir
         const response = await fetch(`/panel/inventario/productos/${productoId}/imprimir-codigo/`, {
             method: 'POST',
             headers: {
@@ -2946,7 +2979,6 @@ async function imprimirCodigoBarras(productoId, cantidadCopias = 1) {
         if (data.success) {
             console.log('✅ Impresión enviada correctamente:', data);
             
-            // Mostrar notificación de éxito
             mostrarNotificacion(
                 `✅ ${cantidadCopias} etiqueta(s) enviada(s) a imprimir en ${data.impresora}`,
                 'success'
@@ -2959,7 +2991,6 @@ async function imprimirCodigoBarras(productoId, cantidadCopias = 1) {
     } catch (error) {
         console.error('❌ Error imprimiendo código de barras:', error);
         
-        // Mostrar notificación de error con detalles
         mostrarNotificacion(
             `❌ Error al imprimir: ${error.message}. Verifica que la impresora esté configurada y el agente esté activo.`,
             'error'
@@ -2972,7 +3003,6 @@ function cerrarModalCodigos() {
 }
 
 function descargarTodosPDFs() {
-    // Cambiar el nombre de la función o crear una nueva
     imprimirTodosLosCodigos();
 }
 
@@ -3057,6 +3087,7 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
 // ============= FUNCIONES PARA MODALES =============
 function openModal(tipo) {
     const modalId = 'modal' + tipo.charAt(0).toUpperCase() + tipo.slice(1);
