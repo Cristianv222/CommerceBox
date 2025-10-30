@@ -54,6 +54,7 @@ urlpatterns = [
     
     # API de hardware
     path('api/hardware/', include('apps.hardware_integration.api.urls')),
+    path('api/configuracion/', include('apps.system_configuration.urls', namespace='system_configuration')),
 ]
 
 # ========================================

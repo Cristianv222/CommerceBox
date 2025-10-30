@@ -1,0 +1,1006 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Parámetros del Sistema - CommerceBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+    }
+
+    .filters-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .table-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 0;
+        overflow: hidden;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .form-control, .form-select {
+        border: 1.5px solid rgba(59, 130, 246, 0.2);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.8);
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        background: white;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+        display: block;
+    }
+
+    .form-label .required {
+        color: #ef4444;
+        margin-left: 0.25rem;
+    }
+
+    .form-check {
+        padding-left: 2rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .form-check-input {
+        width: 1.3rem;
+        height: 1.3rem;
+        margin-top: 0.15rem;
+        border: 2px solid rgba(59, 130, 246, 0.3);
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .form-check-input:checked {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+    }
+
+    .form-check-label {
+        font-weight: 500;
+        color: #334155;
+        margin-left: 0.5rem;
+    }
+
+    .help-text {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-top: 0.35rem;
+        font-style: italic;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    }
+
+    .btn-secondary {
+        background: rgba(100, 116, 139, 0.1);
+        color: #64748b;
+        border: 1.5px solid rgba(100, 116, 139, 0.2);
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-secondary:hover {
+        background: rgba(100, 116, 139, 0.15);
+        border-color: rgba(100, 116, 139, 0.3);
+        color: #475569;
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.75rem;
+        border-radius: 10px;
+        font-weight: 700;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-sm {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+        border-radius: 8px;
+    }
+
+    .btn-warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+        border: none;
+    }
+
+    .btn-warning:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+    }
+
+    .btn-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        border: none;
+    }
+
+    .btn-danger:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+
+    .table-responsive {
+        border-radius: 16px;
+        overflow: hidden;
+    }
+
+    .table-admin {
+        width: 100%;
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table-admin thead {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(96, 165, 250, 0.08) 100%);
+    }
+
+    .table-admin thead th {
+        padding: 1.2rem 1rem;
+        color: #1e293b;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
+        white-space: nowrap;
+    }
+
+    .table-admin tbody tr {
+        transition: all 0.2s ease;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+    }
+
+    .table-admin tbody tr:hover {
+        background: rgba(59, 130, 246, 0.05);
+    }
+
+    .table-admin tbody td {
+        padding: 1rem;
+        color: #1e293b;
+        font-size: 0.9rem;
+        font-weight: 500;
+        vertical-align: middle;
+    }
+
+    .badge-admin {
+        padding: 0.35rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .badge-success {
+        background: rgba(16, 185, 129, 0.15);
+        color: #047857;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: #b91c1c;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-primary {
+        background: rgba(59, 130, 246, 0.15);
+        color: #1e40af;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .badge-warning {
+        background: rgba(245, 158, 11, 0.15);
+        color: #92400e;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-info {
+        background: rgba(6, 182, 212, 0.15);
+        color: #0e7490;
+        border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    .pagination {
+        margin-top: 1.5rem;
+        justify-content: center;
+    }
+
+    .pagination .page-link {
+        border: 1.5px solid rgba(59, 130, 246, 0.2);
+        color: #3b82f6;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        margin: 0 0.25rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .pagination .page-link:hover {
+        background: rgba(59, 130, 246, 0.1);
+        border-color: #3b82f6;
+    }
+
+    .pagination .page-item.active .page-link {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border-color: #3b82f6;
+        color: white;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #64748b;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    .empty-state h5 {
+        font-weight: 700;
+        color: #475569;
+        margin-bottom: 0.5rem;
+    }
+
+    .code-badge {
+        font-family: 'Courier New', monospace;
+        background: rgba(59, 130, 246, 0.1);
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        color: #1e40af;
+        font-weight: 600;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .filters-card, .table-card {
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    .modal-content {
+        border-radius: 16px;
+        border: none;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(96, 165, 250, 0.08) 100%);
+        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
+        border-radius: 16px 16px 0 0;
+        padding: 1.5rem;
+    }
+
+    .modal-header.modal-header-danger {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+        border-bottom: 2px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .modal-title {
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .modal-body {
+        padding: 2rem;
+    }
+
+    .modal-footer {
+        border-top: 1px solid rgba(59, 130, 246, 0.1);
+        padding: 1.5rem;
+    }
+
+    .warning-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: rgba(239, 68, 68, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+    }
+
+    .warning-icon i {
+        font-size: 2.5rem;
+        color: #ef4444;
+    }
+
+    .param-info {
+        background: rgba(59, 130, 246, 0.05);
+        border: 1px solid rgba(59, 130, 246, 0.1);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+    }
+
+    .param-info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+    }
+
+    .param-info-item:last-child {
+        border-bottom: none;
+    }
+
+    .param-info-label {
+        font-weight: 600;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+
+    .param-info-value {
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 0.95rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="card-title">📋 Parámetros del Sistema</h1>
+            <p style="color: #64748b; margin: 0; font-weight: 500;">
+                Gestión de parámetros configurables por módulo
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'custom_admin:configuracion' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Volver
+            </a>
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalNuevoParametro">
+                <i class="bi bi-plus-circle me-2"></i>Nuevo Parámetro
+            </button>
+        </div>
+    </div>
+
+    <!-- Mensajes -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert" style="border-radius: 12px; border: none; padding: 1rem 1.5rem; margin-bottom: 1.5rem; font-weight: 500;">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Filtros -->
+    <div class="filters-card">
+        <form method="get" id="filtrosForm">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-search me-2"></i>Buscar
+                    </label>
+                    <input type="text" 
+                           name="search" 
+                           class="form-control" 
+                           placeholder="Buscar por nombre o clave..."
+                           value="{{ filtros.search|default:'' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-grid-3x3-gap me-2"></i>Módulo
+                    </label>
+                    <select name="modulo" class="form-select">
+                        <option value="">Todos los módulos</option>
+                        {% for modulo in modulos %}
+                        <option value="{{ modulo }}" {% if filtros.modulo == modulo %}selected{% endif %}>
+                            {{ modulo|title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-folder me-2"></i>Grupo
+                    </label>
+                    <select name="grupo" class="form-select">
+                        <option value="">Todos los grupos</option>
+                        {% for grupo in grupos %}
+                        <option value="{{ grupo }}" {% if filtros.grupo == grupo %}selected{% endif %}>
+                            {{ grupo }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-toggle-on me-2"></i>Estado
+                    </label>
+                    <select name="activo" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="true" {% if filtros.activo == 'true' %}selected{% endif %}>Activos</option>
+                        <option value="false" {% if filtros.activo == 'false' %}selected{% endif %}>Inactivos</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary flex-fill">
+                        <i class="bi bi-filter me-2"></i>Filtrar
+                    </button>
+                    <a href="{% url 'system_configuration:parametros_lista' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabla de Parámetros -->
+    <div class="table-card">
+        <div class="table-responsive">
+            {% if parametros %}
+            <table class="table-admin">
+                <thead>
+                    <tr>
+                        <th>Clave</th>
+                        <th>Nombre</th>
+                        <th>Valor</th>
+                        <th>Descripción</th>
+                        <th>Módulo</th>
+                        <th>Grupo</th>
+                        <th>Tipo</th>
+                        <th>Estado</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for parametro in parametros %}
+                    <tr>
+                        <td>
+                            <span class="code-badge">{{ parametro.clave }}</span>
+                        </td>
+                        <td>
+                            <strong>{{ parametro.nombre|default:parametro.clave }}</strong>
+                        </td>
+                        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            <span style="color: #0f172a; font-weight: 600;">{{ parametro.valor|truncatechars:50 }}</span>
+                        </td>
+                        <td style="max-width: 250px;">
+                            <small style="color: #64748b;">{{ parametro.descripcion|truncatechars:80 }}</small>
+                        </td>
+                        <td>
+                            <span class="badge-admin badge-primary">
+                                <i class="bi bi-box me-1"></i>{{ parametro.modulo|title }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if parametro.grupo %}
+                            <span class="badge-admin badge-info">
+                                <i class="bi bi-folder me-1"></i>{{ parametro.grupo }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge-admin badge-warning">
+                                {{ parametro.get_tipo_dato_display }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if parametro.activo %}
+                            <span class="badge-admin badge-success">
+                                <i class="bi bi-check-circle me-1"></i>Activo
+                            </span>
+                            {% else %}
+                            <span class="badge-admin badge-danger">
+                                <i class="bi bi-x-circle me-1"></i>Inactivo
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            <button type="button" 
+                                    class="btn btn-warning btn-sm" 
+                                    onclick="abrirModalEditar('{{ parametro.id }}')"
+                                    title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" 
+                                    class="btn btn-danger btn-sm" 
+                                    onclick="confirmarEliminar('{{ parametro.id }}', '{{ parametro.clave }}', '{{ parametro.modulo|title }}', '{{ parametro.nombre }}', '{{ parametro.valor|truncatechars:50 }}')"
+                                    title="Eliminar">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <h5>No se encontraron parámetros</h5>
+                <p>No hay parámetros que coincidan con los filtros seleccionados</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Paginación -->
+    {% if parametros.has_other_pages %}
+    <nav>
+        <ul class="pagination">
+            {% if parametros.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ parametros.previous_page_number }}{% if filtros.search %}&search={{ filtros.search }}{% endif %}{% if filtros.modulo %}&modulo={{ filtros.modulo }}{% endif %}{% if filtros.grupo %}&grupo={{ filtros.grupo }}{% endif %}{% if filtros.activo %}&activo={{ filtros.activo }}{% endif %}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+            {% endif %}
+
+            {% for num in parametros.paginator.page_range %}
+                {% if parametros.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+                {% elif num > parametros.number|add:'-3' and num < parametros.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}{% if filtros.search %}&search={{ filtros.search }}{% endif %}{% if filtros.modulo %}&modulo={{ filtros.modulo }}{% endif %}{% if filtros.grupo %}&grupo={{ filtros.grupo }}{% endif %}{% if filtros.activo %}&activo={{ filtros.activo }}{% endif %}">
+                        {{ num }}
+                    </a>
+                </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if parametros.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ parametros.next_page_number }}{% if filtros.search %}&search={{ filtros.search }}{% endif %}{% if filtros.modulo %}&modulo={{ filtros.modulo }}{% endif %}{% if filtros.grupo %}&grupo={{ filtros.grupo }}{% endif %}{% if filtros.activo %}&activo={{ filtros.activo }}{% endif %}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<!-- Modal Nuevo Parámetro -->
+<div class="modal fade" id="modalNuevoParametro" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-circle me-2"></i>Nuevo Parámetro
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'system_configuration:parametro_crear' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Módulo <span class="required">*</span></label>
+                            <input type="text" name="modulo" class="form-control" required 
+                                   placeholder="ej: inventory, sales">
+                            <small class="help-text">Módulo al que pertenece el parámetro</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Clave <span class="required">*</span></label>
+                            <input type="text" name="clave" class="form-control" required
+                                   placeholder="ej: dias_alerta_vencimiento">
+                            <small class="help-text">Identificador único del parámetro</small>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" name="nombre" class="form-control"
+                                   placeholder="Nombre descriptivo del parámetro">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Descripción</label>
+                            <textarea name="descripcion" class="form-control" rows="2"
+                                      placeholder="Descripción del parámetro"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de Dato <span class="required">*</span></label>
+                            <select name="tipo_dato" class="form-select" required>
+                                <option value="STRING">Texto</option>
+                                <option value="INTEGER">Número Entero</option>
+                                <option value="DECIMAL">Número Decimal</option>
+                                <option value="BOOLEAN">Verdadero/Falso</option>
+                                <option value="JSON">JSON/Objeto</option>
+                                <option value="DATE">Fecha</option>
+                                <option value="DATETIME">Fecha y Hora</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Grupo</label>
+                            <input type="text" name="grupo" class="form-control"
+                                   placeholder="ej: General, Configuración">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Valor <span class="required">*</span></label>
+                            <input type="text" name="valor" class="form-control" required
+                                   placeholder="Valor actual del parámetro">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Valor por Defecto</label>
+                            <input type="text" name="valor_default" class="form-control"
+                                   placeholder="Valor por defecto">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Orden</label>
+                            <input type="number" name="orden" class="form-control" value="0"
+                                   placeholder="Orden de visualización">
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" name="activo" id="activo" checked>
+                                <label class="form-check-label" for="activo">
+                                    Activo
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" name="editable" id="editable" checked>
+                                <label class="form-check-label" for="editable">
+                                    Editable
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" name="requerido" id="requerido">
+                                <label class="form-check-label" for="requerido">
+                                    Requerido
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-2"></i>Crear Parámetro
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Parámetro -->
+<div class="modal fade" id="modalEditarParametro" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil me-2"></i>Editar Parámetro
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formEditarParametro" method="post" action="">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Módulo <span class="required">*</span></label>
+                            <input type="text" name="modulo" id="edit_modulo" class="form-control" required>
+                            <small class="help-text">Módulo al que pertenece el parámetro</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Clave <span class="required">*</span></label>
+                            <input type="text" name="clave" id="edit_clave" class="form-control" required>
+                            <small class="help-text">Identificador único del parámetro</small>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" name="nombre" id="edit_nombre" class="form-control">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Descripción</label>
+                            <textarea name="descripcion" id="edit_descripcion" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de Dato <span class="required">*</span></label>
+                            <select name="tipo_dato" id="edit_tipo_dato" class="form-select" required>
+                                <option value="STRING">Texto</option>
+                                <option value="INTEGER">Número Entero</option>
+                                <option value="DECIMAL">Número Decimal</option>
+                                <option value="BOOLEAN">Verdadero/Falso</option>
+                                <option value="JSON">JSON/Objeto</option>
+                                <option value="DATE">Fecha</option>
+                                <option value="DATETIME">Fecha y Hora</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Grupo</label>
+                            <input type="text" name="grupo" id="edit_grupo" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Valor <span class="required">*</span></label>
+                            <input type="text" name="valor" id="edit_valor" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Valor por Defecto</label>
+                            <input type="text" name="valor_default" id="edit_valor_default" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Orden</label>
+                            <input type="number" name="orden" id="edit_orden" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" name="activo" id="edit_activo">
+                                <label class="form-check-label" for="edit_activo">
+                                    Activo
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" name="editable" id="edit_editable">
+                                <label class="form-check-label" for="edit_editable">
+                                    Editable
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" name="requerido" id="edit_requerido">
+                                <label class="form-check-label" for="edit_requerido">
+                                    Requerido
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-2"></i>Actualizar Parámetro
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmar Eliminación -->
+<div class="modal fade" id="modalConfirmarEliminar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header modal-header-danger">
+                <h5 class="modal-title" style="color: #b91c1c;">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formEliminar" method="post" action="">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="warning-icon">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                    
+                    <p class="text-center mb-3" style="color: #64748b; font-size: 1.1rem; font-weight: 500;">
+                        ¿Está seguro de que desea eliminar este parámetro?
+                    </p>
+
+                    <!-- Información del Parámetro -->
+                    <div class="param-info">
+                        <div class="param-info-item">
+                            <span class="param-info-label">
+                                <i class="bi bi-key me-2"></i>Clave
+                            </span>
+                            <span class="param-info-value" id="delete_clave"></span>
+                        </div>
+                        <div class="param-info-item">
+                            <span class="param-info-label">
+                                <i class="bi bi-box me-2"></i>Módulo
+                            </span>
+                            <span class="param-info-value" id="delete_modulo"></span>
+                        </div>
+                        <div class="param-info-item" id="delete_nombre_container" style="display: none;">
+                            <span class="param-info-label">
+                                <i class="bi bi-card-text me-2"></i>Nombre
+                            </span>
+                            <span class="param-info-value" id="delete_nombre"></span>
+                        </div>
+                        <div class="param-info-item">
+                            <span class="param-info-label">
+                                <i class="bi bi-file-earmark-code me-2"></i>Valor Actual
+                            </span>
+                            <span class="param-info-value" style="font-family: monospace;" id="delete_valor"></span>
+                        </div>
+                    </div>
+
+                    <!-- Advertencia -->
+                    <div class="alert" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 1rem; margin-top: 1.5rem;">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-info-circle-fill me-2" style="color: #ef4444; font-size: 1.2rem; margin-top: 0.1rem;"></i>
+                            <div>
+                                <strong style="color: #b91c1c;">Esta acción no se puede deshacer</strong>
+                                <p style="margin: 0.5rem 0 0 0; color: #7f1d1d; font-size: 0.9rem;">
+                                    El parámetro será eliminado permanentemente del sistema. Asegúrese de que no se está utilizando en ningún módulo antes de proceder.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-2"></i>Eliminar Parámetro
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Función para abrir modal de edición
+// Función para abrir modal de edición - VERSIÓN CORREGIDA
+async function abrirModalEditar(parametroId) {
+    try {
+        // Construir la URL correctamente
+        const apiUrl = `/api/configuracion/api/parametros/${parametroId}/`;
+        
+        console.log('🔍 Cargando desde:', apiUrl); // Para debug
+        
+        const response = await fetch(apiUrl);
+        
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+        
+        const parametro = await response.json();
+        
+        console.log('✅ Parámetro cargado:', parametro); // Para debug
+        
+        // Llenar el formulario con los datos
+        document.getElementById('edit_modulo').value = parametro.modulo || '';
+        document.getElementById('edit_clave').value = parametro.clave || '';
+        document.getElementById('edit_nombre').value = parametro.nombre || '';
+        document.getElementById('edit_descripcion').value = parametro.descripcion || '';
+        document.getElementById('edit_tipo_dato').value = parametro.tipo_dato || 'STRING';
+        document.getElementById('edit_grupo').value = parametro.grupo || '';
+        document.getElementById('edit_valor').value = parametro.valor || '';
+        document.getElementById('edit_valor_default').value = parametro.valor_default || '';
+        document.getElementById('edit_orden').value = parametro.orden || 0;
+        document.getElementById('edit_activo').checked = parametro.activo || false;
+        document.getElementById('edit_editable').checked = parametro.editable !== false;
+        document.getElementById('edit_requerido').checked = parametro.requerido || false;
+        
+        // Actualizar la acción del formulario para editar
+        document.getElementById('formEditarParametro').action = `/api/configuracion/parametros/${parametroId}/editar/`;
+        
+        // Abrir el modal
+        const modal = new bootstrap.Modal(document.getElementById('modalEditarParametro'));
+        modal.show();
+        
+    } catch (error) {
+        console.error('❌ Error al cargar el parámetro:', error);
+        alert('Error al cargar los datos del parámetro: ' + error.message);
+    }
+}
+
+// Función para confirmar eliminación - VERSIÓN CORREGIDA
+function confirmarEliminar(parametroId, parametroClave, parametroModulo, parametroNombre, parametroValor) {
+    document.getElementById('delete_clave').textContent = parametroClave;
+    document.getElementById('delete_modulo').textContent = parametroModulo;
+    document.getElementById('delete_valor').textContent = parametroValor;
+    
+    // Mostrar nombre si existe
+    if (parametroNombre && parametroNombre !== 'None' && parametroNombre !== '') {
+        document.getElementById('delete_nombre').textContent = parametroNombre;
+        document.getElementById('delete_nombre_container').style.display = 'flex';
+    } else {
+        document.getElementById('delete_nombre_container').style.display = 'none';
+    }
+    
+    // Actualizar la acción del formulario - URL CORREGIDA
+    document.getElementById('formEliminar').action = `/api/configuracion/parametros/${parametroId}/eliminar/`;
+    
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('modalConfirmarEliminar'));
+    modal.show();
+}
+
+// Confirmación antes de abandonar la página si hay cambios sin guardar en modales
+let formChanged = false;
+
+document.querySelectorAll('#modalNuevoParametro form, #modalEditarParametro form').forEach(form => {
+    form.addEventListener('change', function() {
+        formChanged = true;
+    });
+    
+    form.addEventListener('submit', function() {
+        formChanged = false;
+    });
+});
+
+// Limpiar flag cuando se cierra el modal
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('hidden.bs.modal', function() {
+        formChanged = false;
+    });
+});
+</script>
+{% endblock %}

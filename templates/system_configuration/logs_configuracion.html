@@ -1,0 +1,640 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Logs de Configuración - CommerceBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+    }
+
+    .filters-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1);
+    }
+
+    .table-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 0;
+        overflow: hidden;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1);
+    }
+
+    .form-control, .form-select {
+        border: 1.5px solid rgba(59, 130, 246, 0.2);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.8);
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        background: white;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-secondary {
+        background: rgba(100, 116, 139, 0.1);
+        color: #64748b;
+        border: 1.5px solid rgba(100, 116, 139, 0.2);
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-info {
+        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        color: white;
+        border: none;
+    }
+
+    .btn-sm {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+        border-radius: 8px;
+    }
+
+    .table-responsive {
+        border-radius: 16px;
+        overflow: hidden;
+    }
+
+    .table-admin {
+        width: 100%;
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table-admin thead {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(96, 165, 250, 0.08) 100%);
+    }
+
+    .table-admin thead th {
+        padding: 1.2rem 1rem;
+        color: #1e293b;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
+        white-space: nowrap;
+    }
+
+    .table-admin tbody tr {
+        transition: all 0.2s ease;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+    }
+
+    .table-admin tbody tr:hover {
+        background: rgba(59, 130, 246, 0.05);
+    }
+
+    .table-admin tbody td {
+        padding: 1rem;
+        color: #1e293b;
+        font-size: 0.9rem;
+        font-weight: 500;
+        vertical-align: middle;
+    }
+
+    .badge-admin {
+        padding: 0.35rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .badge-success {
+        background: rgba(16, 185, 129, 0.15);
+        color: #047857;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: #b91c1c;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-warning {
+        background: rgba(245, 158, 11, 0.15);
+        color: #92400e;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-info {
+        background: rgba(6, 182, 212, 0.15);
+        color: #0e7490;
+        border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #64748b;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    .pagination {
+        margin-top: 1.5rem;
+        justify-content: center;
+    }
+
+    .pagination .page-link {
+        border: 1.5px solid rgba(59, 130, 246, 0.2);
+        color: #3b82f6;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        margin: 0 0.25rem;
+        font-weight: 600;
+    }
+
+    .pagination .page-item.active .page-link {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border-color: #3b82f6;
+        color: white;
+    }
+
+    .modal-content {
+        border-radius: 16px;
+        border: none;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(96, 165, 250, 0.08) 100%);
+        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
+        border-radius: 16px 16px 0 0;
+        padding: 1.5rem;
+    }
+
+    .modal-title {
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .modal-body {
+        padding: 2rem;
+    }
+
+    .log-detail-item {
+        padding: 1rem;
+        background: rgba(59, 130, 246, 0.05);
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(59, 130, 246, 0.1);
+    }
+
+    .log-detail-label {
+        font-weight: 700;
+        color: #64748b;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .log-detail-value {
+        color: #0f172a;
+        font-weight: 500;
+        font-size: 0.95rem;
+        word-break: break-word;
+    }
+
+    .value-comparison {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        gap: 1rem;
+        align-items: center;
+        margin-top: 0.5rem;
+    }
+
+    .value-box {
+        padding: 0.75rem;
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 0.9rem;
+    }
+
+    .value-old {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        color: #991b1b;
+    }
+
+    .value-new {
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        color: #065f46;
+    }
+
+    .value-arrow {
+        color: #64748b;
+        font-size: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="card-title">📋 Logs de Configuración</h1>
+            <p style="color: #64748b; margin: 0; font-weight: 500;">
+                Historial de cambios en la configuración del sistema
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'custom_admin:configuracion' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Volver
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters-card">
+        <form method="get" id="filtrosForm">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-calendar me-2"></i>Fecha Desde
+                    </label>
+                    <input type="date" name="fecha_inicio" class="form-control" 
+                           value="{{ form.fecha_inicio.value|default:'' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-calendar-check me-2"></i>Fecha Hasta
+                    </label>
+                    <input type="date" name="fecha_fin" class="form-control" 
+                           value="{{ form.fecha_fin.value|default:'' }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-table me-2"></i>Tabla
+                    </label>
+                    <select name="tabla" class="form-select">
+                        <option value="">Todas</option>
+                        {% for tabla in form.fields.tabla.choices %}
+                            {% if tabla.0 %}
+                            <option value="{{ tabla.0 }}" {% if form.tabla.value == tabla.0 %}selected{% endif %}>
+                                {{ tabla.1 }}
+                            </option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-funnel me-2"></i>Tipo de Cambio
+                    </label>
+                    <select name="tipo_cambio" class="form-select">
+                        <option value="">Todos</option>
+                        {% for tipo in form.fields.tipo_cambio.choices %}
+                            {% if tipo.0 %}
+                            <option value="{{ tipo.0 }}" {% if form.tipo_cambio.value == tipo.0 %}selected{% endif %}>
+                                {{ tipo.1 }}
+                            </option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary flex-fill">
+                        <i class="bi bi-filter me-2"></i>Filtrar
+                    </button>
+                    <a href="{% url 'system_configuration:logs_configuracion' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabla de Logs -->
+    <div class="table-card">
+        <div class="table-responsive">
+            {% if logs %}
+            <table class="table-admin">
+                <thead>
+                    <tr>
+                        <th>Tabla</th>
+                        <th>Tipo</th>
+                        <th>Campo</th>
+                        <th>Usuario</th>
+                        <th>Fecha</th>
+                        <th>IP</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>
+                            <strong style="color: #3b82f6;">{{ log.tabla }}</strong>
+                            {% if log.registro_id %}
+                            <br>
+                            <small class="text-muted">ID: {{ log.registro_id|truncatechars:20 }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.tipo_cambio == 'CREACION' %}
+                            <span class="badge-admin badge-success">
+                                <i class="bi bi-plus-circle me-1"></i>Creación
+                            </span>
+                            {% elif log.tipo_cambio == 'MODIFICACION' %}
+                            <span class="badge-admin badge-info">
+                                <i class="bi bi-pencil me-1"></i>Modificación
+                            </span>
+                            {% elif log.tipo_cambio == 'ELIMINACION' %}
+                            <span class="badge-admin badge-danger">
+                                <i class="bi bi-trash me-1"></i>Eliminación
+                            </span>
+                            {% else %}
+                            <span class="badge-admin badge-warning">
+                                {{ log.get_tipo_cambio_display }}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.campo_modificado %}
+                            <code style="color: #6366f1;">{{ log.campo_modificado }}</code>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>
+                                {% if log.usuario %}
+                                    {{ log.usuario.get_full_name|default:log.usuario.username }}
+                                {% else %}
+                                    <span class="text-muted">Sistema</span>
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td>
+                            <small>{{ log.fecha_cambio|date:"d/m/Y" }}</small>
+                            <br>
+                            <small class="text-muted">{{ log.fecha_cambio|date:"H:i:s" }}</small>
+                        </td>
+                        <td>
+                            <small style="font-family: monospace;">
+                                {{ log.ip_address|default:"-" }}
+                            </small>
+                        </td>
+                        <td style="text-align: center;">
+                            <button type="button" 
+                                    class="btn btn-info btn-sm"
+                                    onclick="verDetalleLog('{{ log.id }}')"
+                                    title="Ver detalles">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <h5>No se encontraron logs</h5>
+                <p>No hay registros de cambios en la configuración</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Paginación -->
+    {% if logs.has_other_pages %}
+    <nav>
+        <ul class="pagination">
+            {% if logs.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ logs.previous_page_number }}{% if form.fecha_inicio.value %}&fecha_inicio={{ form.fecha_inicio.value }}{% endif %}{% if form.fecha_fin.value %}&fecha_fin={{ form.fecha_fin.value }}{% endif %}{% if form.tabla.value %}&tabla={{ form.tabla.value }}{% endif %}{% if form.tipo_cambio.value %}&tipo_cambio={{ form.tipo_cambio.value }}{% endif %}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+            {% endif %}
+
+            {% for num in logs.paginator.page_range %}
+                {% if logs.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+                {% elif num > logs.number|add:'-3' and num < logs.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}{% if form.fecha_inicio.value %}&fecha_inicio={{ form.fecha_inicio.value }}{% endif %}{% if form.fecha_fin.value %}&fecha_fin={{ form.fecha_fin.value }}{% endif %}{% if form.tabla.value %}&tabla={{ form.tabla.value }}{% endif %}{% if form.tipo_cambio.value %}&tipo_cambio={{ form.tipo_cambio.value }}{% endif %}">
+                        {{ num }}
+                    </a>
+                </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if logs.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ logs.next_page_number }}{% if form.fecha_inicio.value %}&fecha_inicio={{ form.fecha_inicio.value }}{% endif %}{% if form.fecha_fin.value %}&fecha_fin={{ form.fecha_fin.value }}{% endif %}{% if form.tabla.value %}&tabla={{ form.tabla.value }}{% endif %}{% if form.tipo_cambio.value %}&tipo_cambio={{ form.tipo_cambio.value }}{% endif %}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<!-- Modal Detalles del Log -->
+<div class="modal fade" id="modalDetalleLog" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-info-circle me-2"></i>Detalles del Log
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalDetalleLogBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-2"></i>Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function verDetalleLog(logId) {
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('modalDetalleLog'));
+    modal.show();
+    
+    // Cargar detalles del log
+    fetch(`/api/configuracion/logs/${logId}/detalle/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const log = data.log;
+                
+                let html = `
+                    <div class="log-detail-item">
+                        <div class="log-detail-label">Tabla</div>
+                        <div class="log-detail-value">${log.tabla}</div>
+                    </div>
+                    
+                    <div class="log-detail-item">
+                        <div class="log-detail-label">Registro ID</div>
+                        <div class="log-detail-value"><code>${log.registro_id || '-'}</code></div>
+                    </div>
+                    
+                    <div class="log-detail-item">
+                        <div class="log-detail-label">Tipo de Cambio</div>
+                        <div class="log-detail-value">${log.tipo_cambio_display}</div>
+                    </div>
+                `;
+                
+                if (log.campo_modificado) {
+                    html += `
+                        <div class="log-detail-item">
+                            <div class="log-detail-label">Campo Modificado</div>
+                            <div class="log-detail-value"><code>${log.campo_modificado}</code></div>
+                        </div>
+                    `;
+                }
+                
+                if (log.valor_anterior || log.valor_nuevo) {
+                    html += `
+                        <div class="log-detail-item">
+                            <div class="log-detail-label">Cambio de Valor</div>
+                            <div class="value-comparison">
+                                <div class="value-box value-old">
+                                    <small><strong>Anterior:</strong></small><br>
+                                    ${log.valor_anterior || '<em>vacío</em>'}
+                                </div>
+                                <div class="value-arrow">
+                                    <i class="bi bi-arrow-right"></i>
+                                </div>
+                                <div class="value-box value-new">
+                                    <small><strong>Nuevo:</strong></small><br>
+                                    ${log.valor_nuevo || '<em>vacío</em>'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                if (log.descripcion) {
+                    html += `
+                        <div class="log-detail-item">
+                            <div class="log-detail-label">Descripción</div>
+                            <div class="log-detail-value">${log.descripcion}</div>
+                        </div>
+                    `;
+                }
+                
+                html += `
+                    <div class="log-detail-item">
+                        <div class="log-detail-label">Usuario</div>
+                        <div class="log-detail-value">${log.usuario || 'Sistema'}</div>
+                    </div>
+                    
+                    <div class="log-detail-item">
+                        <div class="log-detail-label">Fecha y Hora</div>
+                        <div class="log-detail-value">${log.fecha_cambio}</div>
+                    </div>
+                    
+                    <div class="log-detail-item">
+                        <div class="log-detail-label">Dirección IP</div>
+                        <div class="log-detail-value"><code>${log.ip_address || '-'}</code></div>
+                    </div>
+                `;
+                
+                document.getElementById('modalDetalleLogBody').innerHTML = html;
+            } else {
+                document.getElementById('modalDetalleLogBody').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Error al cargar detalles del log
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('modalDetalleLogBody').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Error al cargar detalles del log
+                </div>
+            `;
+        });
+}
+</script>
+{% endblock %}
+```
+
+---
+
+## 📍 **UBICACIÓN:**
+
+Guarda este archivo como:
+```
+templates/system_configuration/logs_configuracion.html

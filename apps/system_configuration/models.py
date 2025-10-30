@@ -816,13 +816,29 @@ class HealthCheck(models.Model):
         max_digits=10,
         decimal_places=2,
         null=True,
-        blank=True
+        blank=True,
+        help_text='Espacio libre en disco en GB'
     )
     uso_memoria_porcentaje = models.DecimalField(
         max_digits=5,
         decimal_places=2,
         null=True,
-        blank=True
+        blank=True,
+        help_text='Porcentaje de uso de memoria RAM'
+    )
+    uso_disco_porcentaje = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Porcentaje de uso del disco'
+    )
+    uso_cpu_porcentaje = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Porcentaje de uso de CPU'
     )
     tiempo_respuesta_db_ms = models.IntegerField(
         null=True,
@@ -855,7 +871,6 @@ class HealthCheck(models.Model):
     
     def __str__(self):
         return f"Health Check - {self.get_estado_general_display()} - {self.fecha_check}"
-
 
 # ============================================================================
 # FUNCIONES HELPER

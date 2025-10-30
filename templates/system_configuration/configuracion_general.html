@@ -1,0 +1,959 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Configuración General - CommerceBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .config-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .card-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+    }
+
+    .config-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .accordion-item {
+        background: transparent;
+        border: none;
+        margin-bottom: 0.75rem;
+    }
+
+    .accordion-button {
+        background: rgba(59, 130, 246, 0.08);
+        border: 1px solid rgba(59, 130, 246, 0.15);
+        border-radius: 12px !important;
+        color: #0f172a;
+        font-weight: 700;
+        font-size: 1.05rem;
+        padding: 1.2rem 1.5rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.05);
+    }
+
+    .accordion-button:not(.collapsed) {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(96, 165, 250, 0.1) 100%);
+        border-color: rgba(59, 130, 246, 0.3);
+        color: #1e40af;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    }
+
+    .accordion-button:hover {
+        background: rgba(59, 130, 246, 0.12);
+        border-color: rgba(59, 130, 246, 0.25);
+    }
+
+    .accordion-button::after {
+        background-size: 1.2rem;
+        filter: brightness(0.4);
+    }
+
+    .accordion-button:not(.collapsed)::after {
+        filter: brightness(0.3);
+    }
+
+    .accordion-body {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(219, 234, 254, 0.3);
+        border-top: none;
+        border-radius: 0 0 12px 12px;
+        padding: 2rem 1.5rem;
+        margin-top: -12px;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+        display: block;
+    }
+
+    .form-label .required {
+        color: #ef4444;
+        margin-left: 0.25rem;
+    }
+
+    .form-control, .form-select {
+        border: 1.5px solid rgba(59, 130, 246, 0.2);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.8);
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        background: white;
+    }
+
+    .form-check {
+        padding-left: 2rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .form-check-input {
+        width: 1.3rem;
+        height: 1.3rem;
+        margin-top: 0.15rem;
+        border: 2px solid rgba(59, 130, 246, 0.3);
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .form-check-input:checked {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+    }
+
+    .form-check-label {
+        font-weight: 500;
+        color: #334155;
+        margin-left: 0.5rem;
+    }
+
+    .help-text {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-top: 0.35rem;
+        font-style: italic;
+    }
+
+    .section-divider {
+        border: none;
+        height: 2px;
+        background: linear-gradient(90deg, 
+            rgba(59, 130, 246, 0.1) 0%, 
+            rgba(59, 130, 246, 0.3) 50%, 
+            rgba(59, 130, 246, 0.1) 100%);
+        margin: 2rem 0;
+    }
+
+    .btn-save {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        border: none;
+        padding: 0.85rem 2.5rem;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    }
+
+    .btn-cancel {
+        background: rgba(100, 116, 139, 0.1);
+        color: #64748b;
+        border: 1.5px solid rgba(100, 116, 139, 0.2);
+        padding: 0.85rem 2rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-cancel:hover {
+        background: rgba(100, 116, 139, 0.15);
+        border-color: rgba(100, 116, 139, 0.3);
+        color: #475569;
+    }
+
+    .alert {
+        border-radius: 12px;
+        border: none;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
+        font-weight: 500;
+    }
+
+    .alert-success {
+        background: rgba(16, 185, 129, 0.1);
+        color: #047857;
+        border-left: 4px solid #10b981;
+    }
+
+    .alert-danger {
+        background: rgba(239, 68, 68, 0.1);
+        color: #b91c1c;
+        border-left: 4px solid #ef4444;
+    }
+
+    .logo-preview {
+        max-width: 200px;
+        max-height: 200px;
+        border-radius: 12px;
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        padding: 0.5rem;
+        background: white;
+        margin-top: 1rem;
+    }
+
+    .accordion-icon {
+        font-size: 1.2rem;
+        margin-right: 0.75rem;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .config-card {
+        animation: fadeIn 0.5s ease-out;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="config-container">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="card-title">⚙️ Configuración General del Sistema</h1>
+            <p style="color: #64748b; margin: 0; font-weight: 500;">
+                Administración de parámetros globales de {{ config.nombre_empresa }}
+            </p>
+        </div>
+        <a href="{% url 'custom_admin:configuracion' %}" class="btn btn-cancel">
+            <i class="bi bi-arrow-left me-2"></i>Volver
+        </a>
+    </div>
+
+    <!-- Mensajes -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Formulario -->
+    <form method="post" enctype="multipart/form-data" id="configForm">
+        {% csrf_token %}
+        
+        <div class="config-card">
+            <div class="accordion" id="configAccordion">
+                
+                <!-- Sección 1: Información de la Empresa -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#empresa">
+                            <span class="accordion-icon">🏢</span>
+                            Información de la Empresa
+                        </button>
+                    </h2>
+                    <div id="empresa" class="accordion-collapse collapse show" data-bs-parent="#configAccordion">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.nombre_empresa.label }}<span class="required">*</span></label>
+                                        {{ form.nombre_empresa }}
+                                        {% if form.nombre_empresa.help_text %}
+                                            <small class="help-text">{{ form.nombre_empresa.help_text }}</small>
+                                        {% endif %}
+                                        {% if form.nombre_empresa.errors %}
+                                            <div class="text-danger mt-1">{{ form.nombre_empresa.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.ruc_empresa.label }}</label>
+                                        {{ form.ruc_empresa }}
+                                        {% if form.ruc_empresa.help_text %}
+                                            <small class="help-text">{{ form.ruc_empresa.help_text }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.direccion_empresa.label }}</label>
+                                        {{ form.direccion_empresa }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.telefono_empresa.label }}</label>
+                                        {{ form.telefono_empresa }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.email_empresa.label }}</label>
+                                        {{ form.email_empresa }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.sitio_web.label }}</label>
+                                        {{ form.sitio_web }}
+                                    </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.logo_empresa.label }}</label>
+                                        {{ form.logo_empresa }}
+                                        {% if form.logo_empresa.help_text %}
+                                            <small class="help-text">{{ form.logo_empresa.help_text }}</small>
+                                        {% endif %}
+                                        {% if config.logo_empresa %}
+                                            <div>
+                                                <label class="form-label mt-3">Logo actual:</label>
+                                                <img src="{{ config.logo_empresa.url }}" alt="Logo" class="logo-preview">
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 2: Inventario -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#inventario">
+                            <span class="accordion-icon">📦</span>
+                            Configuración de Inventario
+                        </button>
+                    </h2>
+                    <div id="inventario" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.prefijo_codigo_quintal.label }}</label>
+                                        {{ form.prefijo_codigo_quintal }}
+                                        <small class="help-text">{{ form.prefijo_codigo_quintal.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.prefijo_codigo_producto.label }}</label>
+                                        {{ form.prefijo_codigo_producto }}
+                                        <small class="help-text">{{ form.prefijo_codigo_producto.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.longitud_codigo_secuencial.label }}</label>
+                                        {{ form.longitud_codigo_secuencial }}
+                                        <small class="help-text">{{ form.longitud_codigo_secuencial.help_text }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr class="section-divider">
+                            <h5 style="color: #1e293b; font-weight: 700; margin-bottom: 1.5rem;">Umbrales de Stock</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.umbral_stock_critico_porcentaje.label }}</label>
+                                        {{ form.umbral_stock_critico_porcentaje }}
+                                        <small class="help-text">{{ form.umbral_stock_critico_porcentaje.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.umbral_stock_bajo_porcentaje.label }}</label>
+                                        {{ form.umbral_stock_bajo_porcentaje }}
+                                        <small class="help-text">{{ form.umbral_stock_bajo_porcentaje.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.stock_minimo_default.label }}</label>
+                                        {{ form.stock_minimo_default }}
+                                        <small class="help-text">{{ form.stock_minimo_default.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.dias_alerta_vencimiento.label }}</label>
+                                        {{ form.dias_alerta_vencimiento }}
+                                        <small class="help-text">{{ form.dias_alerta_vencimiento.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.peso_minimo_quintal_critico.label }}</label>
+                                        {{ form.peso_minimo_quintal_critico }}
+                                        <small class="help-text">{{ form.peso_minimo_quintal_critico.help_text }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 3: Ventas -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ventas">
+                            <span class="accordion-icon">💰</span>
+                            Configuración de Ventas
+                        </button>
+                    </h2>
+                    <div id="ventas" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.prefijo_numero_factura.label }}</label>
+                                        {{ form.prefijo_numero_factura }}
+                                        <small class="help-text">{{ form.prefijo_numero_factura.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.prefijo_numero_venta.label }}</label>
+                                        {{ form.prefijo_numero_venta }}
+                                        <small class="help-text">{{ form.prefijo_numero_venta.help_text }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr class="section-divider">
+                            <h5 style="color: #1e293b; font-weight: 700; margin-bottom: 1.5rem;">Configuración de IVA</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        {{ form.iva_activo }}
+                                        <label class="form-check-label" for="{{ form.iva_activo.id_for_label }}">
+                                            {{ form.iva_activo.label }}
+                                        </label>
+                                        <small class="help-text d-block">{{ form.iva_activo.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.porcentaje_iva.label }}</label>
+                                        {{ form.porcentaje_iva }}
+                                        <small class="help-text">{{ form.porcentaje_iva.help_text }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr class="section-divider">
+                            <h5 style="color: #1e293b; font-weight: 700; margin-bottom: 1.5rem;">Descuentos y Crédito</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.max_descuento_sin_autorizacion.label }}</label>
+                                        {{ form.max_descuento_sin_autorizacion }}
+                                        <small class="help-text">{{ form.max_descuento_sin_autorizacion.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.dias_credito_default.label }}</label>
+                                        {{ form.dias_credito_default }}
+                                        <small class="help-text">{{ form.dias_credito_default.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="form-check">
+                                        {{ form.permitir_ventas_credito }}
+                                        <label class="form-check-label" for="{{ form.permitir_ventas_credito.id_for_label }}">
+                                            {{ form.permitir_ventas_credito.label }}
+                                        </label>
+                                        <small class="help-text d-block">{{ form.permitir_ventas_credito.help_text }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 4: Configuración Financiera -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#financiero">
+                            <span class="accordion-icon">💵</span>
+                            Configuración Financiera
+                        </button>
+                    </h2>
+                    <div id="financiero" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.moneda.label }}</label>
+                                        {{ form.moneda }}
+                                        <small class="help-text">{{ form.moneda.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.simbolo_moneda.label }}</label>
+                                        {{ form.simbolo_moneda }}
+                                        <small class="help-text">{{ form.simbolo_moneda.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.decimales_moneda.label }}</label>
+                                        {{ form.decimales_moneda }}
+                                        <small class="help-text">{{ form.decimales_moneda.help_text }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr class="section-divider">
+                            <h5 style="color: #1e293b; font-weight: 700; margin-bottom: 1.5rem;">Configuración de Caja</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.monto_inicial_caja.label }}</label>
+                                        {{ form.monto_inicial_caja }}
+                                        <small class="help-text">{{ form.monto_inicial_caja.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.monto_fondo_caja_chica.label }}</label>
+                                        {{ form.monto_fondo_caja_chica }}
+                                        <small class="help-text">{{ form.monto_fondo_caja_chica.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.alerta_diferencia_caja.label }}</label>
+                                        {{ form.alerta_diferencia_caja }}
+                                        <small class="help-text">{{ form.alerta_diferencia_caja.help_text }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 5: Notificaciones -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#notificaciones">
+                            <span class="accordion-icon">🔔</span>
+                            Notificaciones
+                        </button>
+                    </h2>
+                    <div id="notificaciones" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-check mb-3">
+                                        {{ form.notificaciones_email_activas }}
+                                        <label class="form-check-label" for="{{ form.notificaciones_email_activas.id_for_label }}">
+                                            {{ form.notificaciones_email_activas.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.email_notificaciones.label }}</label>
+                                        {{ form.email_notificaciones }}
+                                        <small class="help-text">{{ form.email_notificaciones.help_text }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr class="section-divider">
+                            <h5 style="color: #1e293b; font-weight: 700; margin-bottom: 1.5rem;">Tipos de Notificación</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ form.notificar_stock_bajo }}
+                                        <label class="form-check-label" for="{{ form.notificar_stock_bajo.id_for_label }}">
+                                            {{ form.notificar_stock_bajo.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ form.notificar_vencimientos }}
+                                        <label class="form-check-label" for="{{ form.notificar_vencimientos.id_for_label }}">
+                                            {{ form.notificar_vencimientos.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ form.notificar_cierre_caja }}
+                                        <label class="form-check-label" for="{{ form.notificar_cierre_caja.id_for_label }}">
+                                            {{ form.notificar_cierre_caja.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 6: Backups -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#backups">
+                            <span class="accordion-icon">💾</span>
+                            Configuración de Backups
+                        </button>
+                    </h2>
+                    <div id="backups" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-check mb-3">
+                                        {{ form.backup_automatico_activo }}
+                                        <label class="form-check-label" for="{{ form.backup_automatico_activo.id_for_label }}">
+                                            {{ form.backup_automatico_activo.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.frecuencia_backup.label }}</label>
+                                        {{ form.frecuencia_backup }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.hora_backup.label }}</label>
+                                        {{ form.hora_backup }}
+                                        <small class="help-text">{{ form.hora_backup.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.dias_retencion_backup.label }}</label>
+                                        {{ form.dias_retencion_backup }}
+                                        <small class="help-text">{{ form.dias_retencion_backup.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.ruta_backup.label }}</label>
+                                        {{ form.ruta_backup }}
+                                        <small class="help-text">{{ form.ruta_backup.help_text }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 7: Sistema y Logs -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sistema">
+                            <span class="accordion-icon">🖥️</span>
+                            Sistema y Logs
+                        </button>
+                    </h2>
+                    <div id="sistema" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-check mb-3">
+                                        {{ form.mantenimiento_activo }}
+                                        <label class="form-check-label" for="{{ form.mantenimiento_activo.id_for_label }}">
+                                            {{ form.mantenimiento_activo.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.mensaje_mantenimiento.label }}</label>
+                                        {{ form.mensaje_mantenimiento }}
+                                        <small class="help-text">{{ form.mensaje_mantenimiento.help_text }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr class="section-divider">
+                            <h5 style="color: #1e293b; font-weight: 700; margin-bottom: 1.5rem;">Configuración de Logs</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        {{ form.activar_logs_detallados }}
+                                        <label class="form-check-label" for="{{ form.activar_logs_detallados.id_for_label }}">
+                                            {{ form.activar_logs_detallados.label }}
+                                        </label>
+                                        <small class="help-text d-block">{{ form.activar_logs_detallados.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.dias_retencion_logs.label }}</label>
+                                        {{ form.dias_retencion_logs }}
+                                        <small class="help-text">{{ form.dias_retencion_logs.help_text }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 8: Seguridad -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#seguridad">
+                            <span class="accordion-icon">🔒</span>
+                            Seguridad
+                        </button>
+                    </h2>
+                    <div id="seguridad" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.timeout_sesion.label }}</label>
+                                        {{ form.timeout_sesion }}
+                                        <small class="help-text">{{ form.timeout_sesion.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.intentos_login_maximos.label }}</label>
+                                        {{ form.intentos_login_maximos }}
+                                        <small class="help-text">{{ form.intentos_login_maximos.help_text }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.tiempo_bloqueo_cuenta.label }}</label>
+                                        {{ form.tiempo_bloqueo_cuenta }}
+                                        <small class="help-text">{{ form.tiempo_bloqueo_cuenta.help_text }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 9: Interfaz -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#interfaz">
+                            <span class="accordion-icon">🎨</span>
+                            Interfaz y Localización
+                        </button>
+                    </h2>
+                    <div id="interfaz" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.tema_interfaz.label }}</label>
+                                        {{ form.tema_interfaz }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.idioma.label }}</label>
+                                        {{ form.idioma }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.zona_horaria.label }}</label>
+                                        {{ form.zona_horaria }}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.formato_fecha.label }}</label>
+                                        {{ form.formato_fecha }}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ form.formato_hora.label }}</label>
+                                        {{ form.formato_hora }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 10: Módulos Activos -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#modulos">
+                            <span class="accordion-icon">📊</span>
+                            Módulos del Sistema
+                        </button>
+                    </h2>
+                    <div id="modulos" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        {{ form.modulo_inventario_activo }}
+                                        <label class="form-check-label" for="{{ form.modulo_inventario_activo.id_for_label }}">
+                                            {{ form.modulo_inventario_activo.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        {{ form.modulo_ventas_activo }}
+                                        <label class="form-check-label" for="{{ form.modulo_ventas_activo.id_for_label }}">
+                                            {{ form.modulo_ventas_activo.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        {{ form.modulo_financiero_activo }}
+                                        <label class="form-check-label" for="{{ form.modulo_financiero_activo.id_for_label }}">
+                                            {{ form.modulo_financiero_activo.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        {{ form.modulo_reportes_activo }}
+                                        <label class="form-check-label" for="{{ form.modulo_reportes_activo.id_for_label }}">
+                                            {{ form.modulo_reportes_activo.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        {{ form.modulo_alertas_activo }}
+                                        <label class="form-check-label" for="{{ form.modulo_alertas_activo.id_for_label }}">
+                                            {{ form.modulo_alertas_activo.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="d-flex justify-content-between align-items-center mt-4">
+<a href="{% url 'custom_admin:configuracion' %}" class="btn btn-cancel">
+    <i class="bi bi-x-circle me-2"></i>Cancelar
+</a>
+            <button type="submit" class="btn btn-save">
+                <i class="bi bi-check-circle me-2"></i>Guardar Configuración
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Confirmación antes de abandonar la página si hay cambios sin guardar
+    let formChanged = false;
+    const form = document.getElementById('configForm');
+    
+    form.addEventListener('change', function() {
+        formChanged = true;
+    });
+    
+    window.addEventListener('beforeunload', function(e) {
+        if (formChanged) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+    
+    form.addEventListener('submit', function() {
+        formChanged = false;
+    });
+
+    // Preview del logo al seleccionar archivo
+    const logoInput = document.getElementById('{{ form.logo_empresa.id_for_label }}');
+    if (logoInput) {
+        logoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Buscar o crear preview
+                    let preview = document.querySelector('.logo-preview');
+                    if (!preview) {
+                        preview = document.createElement('img');
+                        preview.className = 'logo-preview';
+                        logoInput.parentElement.appendChild(preview);
+                    }
+                    preview.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+</script>
+{% endblock %}
+```
+
+Este template incluye:
+
+✅ **10 secciones organizadas en acordeón** con todos los campos del formulario
+✅ **Diseño glassmorphic moderno** igual al dashboard que ya te di
+✅ **Manejo correcto de archivos** con `enctype="multipart/form-data"`
+✅ **Preview del logo** actual y nuevo
+✅ **Validación y mensajes de error** de Django
+✅ **Confirmación antes de salir** si hay cambios sin guardar
+✅ **Responsive** y optimizado para diferentes pantallas
+✅ **Tooltips y help texts** de cada campo
+✅ **Iconos descriptivos** para cada sección
+
+Guarda este archivo en:
+```
+/app/templates/custom_admin/configuracion/configuracion_general.html
+```
+
+O si prefieres seguir la estructura del error:
+```
+/app/templates/system_configuration/configuracion_general.html

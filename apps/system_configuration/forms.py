@@ -35,9 +35,9 @@ class ConfiguracionSistemaForm(forms.ModelForm):
             'umbral_stock_bajo_porcentaje', 'stock_minimo_default',
             'dias_alerta_vencimiento', 'peso_minimo_quintal_critico',
             
-            # Ventas
+            # Ventas - ✅ CORREGIDO: Usar nombres correctos del modelo
             'prefijo_numero_factura', 'prefijo_numero_venta',
-            'iva_default', 'max_descuento_sin_autorizacion',
+            'iva_activo', 'porcentaje_iva', 'max_descuento_sin_autorizacion',
             'permitir_ventas_credito', 'dias_credito_default',
             
             # Financiero
@@ -45,8 +45,8 @@ class ConfiguracionSistemaForm(forms.ModelForm):
             'monto_inicial_caja', 'monto_fondo_caja_chica',
             'alerta_diferencia_caja',
             
-            # Facturación electrónica
-            'facturacion_electronica_activa', 'ambiente_facturacion',
+            # ✅ ELIMINADO: Campos de facturación electrónica que no existen
+            # Si los necesitas, agrégalos primero al modelo models.py
             
             # Notificaciones
             'notificaciones_email_activas', 'email_notificaciones',
@@ -134,16 +134,21 @@ class ConfiguracionSistemaForm(forms.ModelForm):
                 'step': '0.001'
             }),
             
-            # Ventas
+            # Ventas - ✅ CORREGIDO: Usar nombres correctos
             'prefijo_numero_factura': forms.TextInput(attrs={
                 'class': 'form-control'
             }),
             'prefijo_numero_venta': forms.TextInput(attrs={
                 'class': 'form-control'
             }),
-            'iva_default': forms.NumberInput(attrs={
+            'iva_activo': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+            'porcentaje_iva': forms.NumberInput(attrs={
                 'class': 'form-control',
-                'step': '0.01'
+                'step': '0.01',
+                'min': '0',
+                'max': '100'
             }),
             'max_descuento_sin_autorizacion': forms.NumberInput(attrs={
                 'class': 'form-control',
@@ -179,13 +184,7 @@ class ConfiguracionSistemaForm(forms.ModelForm):
                 'step': '0.01'
             }),
             
-            # Facturación electrónica
-            'facturacion_electronica_activa': forms.CheckboxInput(attrs={
-                'class': 'form-check-input'
-            }),
-            'ambiente_facturacion': forms.Select(attrs={
-                'class': 'form-control'
-            }),
+            # ✅ ELIMINADO: Widgets de facturación electrónica que no existen
             
             # Notificaciones
             'notificaciones_email_activas': forms.CheckboxInput(attrs={

@@ -1,0 +1,866 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Backups del Sistema - CommerceBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.8rem;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 48px rgba(59, 130, 246, 0.15);
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+    }
+
+    .stat-icon.primary {
+        background: rgba(59, 130, 246, 0.15);
+        color: #3b82f6;
+    }
+
+    .stat-icon.success {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+    }
+
+    .stat-icon.danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+
+    .stat-icon.info {
+        background: rgba(6, 182, 212, 0.15);
+        color: #06b6d4;
+    }
+
+    .stat-value {
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 0.3rem;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .filters-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1);
+    }
+
+    .table-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 0;
+        overflow: hidden;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1);
+    }
+
+    .form-control, .form-select {
+        border: 1.5px solid rgba(59, 130, 246, 0.2);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.8);
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        background: white;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+    }
+
+    .form-check {
+        padding-left: 2rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .form-check-input {
+        width: 1.3rem;
+        height: 1.3rem;
+        margin-top: 0.15rem;
+        border: 2px solid rgba(59, 130, 246, 0.3);
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .form-check-input:checked {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+    }
+
+    .form-check-label {
+        font-weight: 500;
+        color: #334155;
+        margin-left: 0.5rem;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-secondary {
+        background: rgba(100, 116, 139, 0.1);
+        color: #64748b;
+        border: 1.5px solid rgba(100, 116, 139, 0.2);
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.75rem;
+        border-radius: 10px;
+        font-weight: 700;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-info {
+        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        color: white;
+        border: none;
+    }
+
+    .btn-warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+        border: none;
+    }
+
+    .btn-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        border: none;
+    }
+
+    .btn-sm {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+        border-radius: 8px;
+    }
+
+    .table-responsive {
+        border-radius: 16px;
+        overflow: hidden;
+    }
+
+    .table-admin {
+        width: 100%;
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table-admin thead {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(96, 165, 250, 0.08) 100%);
+    }
+
+    .table-admin thead th {
+        padding: 1.2rem 1rem;
+        color: #1e293b;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
+        white-space: nowrap;
+    }
+
+    .table-admin tbody tr {
+        transition: all 0.2s ease;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+    }
+
+    .table-admin tbody tr:hover {
+        background: rgba(59, 130, 246, 0.05);
+    }
+
+    .table-admin tbody td {
+        padding: 1rem;
+        color: #1e293b;
+        font-size: 0.9rem;
+        font-weight: 500;
+        vertical-align: middle;
+    }
+
+    .badge-admin {
+        padding: 0.35rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .badge-success {
+        background: rgba(16, 185, 129, 0.15);
+        color: #047857;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: #b91c1c;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-warning {
+        background: rgba(245, 158, 11, 0.15);
+        color: #92400e;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-info {
+        background: rgba(6, 182, 212, 0.15);
+        color: #0e7490;
+        border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    .badge-primary {
+        background: rgba(59, 130, 246, 0.15);
+        color: #1e40af;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #64748b;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    .pagination {
+        margin-top: 1.5rem;
+        justify-content: center;
+    }
+
+    .pagination .page-link {
+        border: 1.5px solid rgba(59, 130, 246, 0.2);
+        color: #3b82f6;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        margin: 0 0.25rem;
+        font-weight: 600;
+    }
+
+    .pagination .page-item.active .page-link {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border-color: #3b82f6;
+        color: white;
+    }
+
+    .modal-content {
+        border-radius: 16px;
+        border: none;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(96, 165, 250, 0.08) 100%);
+        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
+        border-radius: 16px 16px 0 0;
+        padding: 1.5rem;
+    }
+
+    .modal-header.modal-header-danger {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+        border-bottom: 2px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .modal-title {
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .modal-body {
+        padding: 2rem;
+    }
+
+    .modal-footer {
+        border-top: 1px solid rgba(59, 130, 246, 0.1);
+        padding: 1.5rem;
+    }
+
+    .warning-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: rgba(239, 68, 68, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+    }
+
+    .warning-icon i {
+        font-size: 2.5rem;
+        color: #ef4444;
+    }
+
+    .backup-info {
+        background: rgba(59, 130, 246, 0.05);
+        border: 1px solid rgba(59, 130, 246, 0.1);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+    }
+
+    .backup-info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+    }
+
+    .backup-info-item:last-child {
+        border-bottom: none;
+    }
+
+    .backup-info-label {
+        font-weight: 600;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+
+    .backup-info-value {
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 0.95rem;
+    }
+
+    .help-text {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-top: 0.35rem;
+        font-style: italic;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="card-title">💾 Backups del Sistema</h1>
+            <p style="color: #64748b; margin: 0; font-weight: 500;">
+                Gestión de respaldos y restauración de datos
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'custom_admin:configuracion' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Volver
+            </a>
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalEjecutarBackup">
+                <i class="bi bi-play-circle me-2"></i>Ejecutar Backup
+            </button>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon primary">
+                <i class="bi bi-database-fill"></i>
+            </div>
+            <div class="stat-value">{{ stats.total }}</div>
+            <div class="stat-label">Total de Backups</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon success">
+                <i class="bi bi-check-circle-fill"></i>
+            </div>
+            <div class="stat-value">{{ stats.exitosos }}</div>
+            <div class="stat-label">Backups Exitosos</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon danger">
+                <i class="bi bi-x-circle-fill"></i>
+            </div>
+            <div class="stat-value">{{ stats.fallidos }}</div>
+            <div class="stat-label">Backups Fallidos</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon info">
+                <i class="bi bi-hdd-fill"></i>
+            </div>
+            <div class="stat-value">
+                {% if stats.tamaño_total %}
+                    {{ stats.tamaño_total|filesizeformat }}
+                {% else %}
+                    0 B
+                {% endif %}
+            </div>
+            <div class="stat-label">Espacio Total Usado</div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters-card">
+        <form method="get" id="filtrosForm">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-funnel me-2"></i>Estado
+                    </label>
+                    <select name="estado" class="form-select">
+                        <option value="">Todos los estados</option>
+                        <option value="EXITOSO" {% if form.estado.value == 'EXITOSO' %}selected{% endif %}>Exitoso</option>
+                        <option value="FALLIDO" {% if form.estado.value == 'FALLIDO' %}selected{% endif %}>Fallido</option>
+                        <option value="EN_PROCESO" {% if form.estado.value == 'EN_PROCESO' %}selected{% endif %}>En Proceso</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-archive me-2"></i>Tipo de Backup
+                    </label>
+                    <select name="tipo_backup" class="form-select">
+                        <option value="">Todos los tipos</option>
+                        <option value="COMPLETO" {% if form.tipo_backup.value == 'COMPLETO' %}selected{% endif %}>Completo</option>
+                        <option value="INCREMENTAL" {% if form.tipo_backup.value == 'INCREMENTAL' %}selected{% endif %}>Incremental</option>
+                        <option value="DIFERENCIAL" {% if form.tipo_backup.value == 'DIFERENCIAL' %}selected{% endif %}>Diferencial</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-calendar me-2"></i>Desde
+                    </label>
+                    <input type="date" name="fecha_inicio" class="form-control" value="{{ form.fecha_inicio.value|default:'' }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-calendar-check me-2"></i>Hasta
+                    </label>
+                    <input type="date" name="fecha_fin" class="form-control" value="{{ form.fecha_fin.value|default:'' }}">
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary flex-fill">
+                        <i class="bi bi-filter me-2"></i>Filtrar
+                    </button>
+                    <a href="{% url 'system_configuration:backups_lista' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabla de Backups -->
+    <div class="table-card">
+        <div class="table-responsive">
+            {% if backups %}
+            <table class="table-admin">
+                <thead>
+                    <tr>
+                        <th>Nombre del Archivo</th>
+                        <th>Tipo</th>
+                        <th>Tamaño</th>
+                        <th>Estado</th>
+                        <th>Fecha Inicio</th>
+                        <th>Fecha Fin</th>
+                        <th>Usuario</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for backup in backups %}
+                    <tr>
+                        <td>
+                            <strong style="font-family: monospace; color: #3b82f6;">{{ backup.nombre_archivo }}</strong>
+                        </td>
+                        <td>
+                            {% if backup.tipo_backup == 'COMPLETO' %}
+                            <span class="badge-admin badge-primary">
+                                <i class="bi bi-database-fill-check me-1"></i>Completo
+                            </span>
+                            {% elif backup.tipo_backup == 'INCREMENTAL' %}
+                            <span class="badge-admin badge-info">
+                                <i class="bi bi-arrow-up-circle me-1"></i>Incremental
+                            </span>
+                            {% else %}
+                            <span class="badge-admin badge-warning">
+                                <i class="bi bi-arrow-repeat me-1"></i>{{ backup.get_tipo_backup_display }}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if backup.tamaño_bytes %}
+                            <strong>{{ backup.tamaño_bytes|filesizeformat }}</strong>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if backup.estado == 'EXITOSO' %}
+                            <span class="badge-admin badge-success">
+                                <i class="bi bi-check-circle me-1"></i>Exitoso
+                            </span>
+                            {% elif backup.estado == 'FALLIDO' %}
+                            <span class="badge-admin badge-danger">
+                                <i class="bi bi-x-circle me-1"></i>Fallido
+                            </span>
+                            {% else %}
+                            <span class="badge-admin badge-warning">
+                                <i class="bi bi-hourglass-split me-1"></i>En Proceso
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ backup.fecha_inicio|date:"d/m/Y H:i" }}</small>
+                        </td>
+                        <td>
+                            {% if backup.fecha_fin %}
+                            <small>{{ backup.fecha_fin|date:"d/m/Y H:i" }}</small>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ backup.usuario.get_full_name|default:backup.usuario.username }}</small>
+                        </td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            {% if backup.estado == 'EXITOSO' %}
+                            <a href="{% url 'system_configuration:backup_descargar' backup.id %}" 
+                               class="btn btn-info btn-sm"
+                               title="Descargar">
+                                <i class="bi bi-download"></i>
+                            </a>
+                            <button type="button" 
+                                    class="btn btn-warning btn-sm"
+                                    onclick="confirmarRestaurar('{{ backup.id }}', '{{ backup.nombre_archivo }}', '{{ backup.fecha_inicio|date:"d/m/Y H:i" }}', '{{ backup.tamaño_bytes|filesizeformat }}')"
+                                    title="Restaurar">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <h5>No se encontraron backups</h5>
+                <p>No hay backups registrados en el sistema</p>
+                <button type="button" class="btn btn-success mt-3" data-bs-toggle="modal" data-bs-target="#modalEjecutarBackup">
+                    <i class="bi bi-play-circle me-2"></i>Ejecutar Primer Backup
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Paginación -->
+    {% if backups.has_other_pages %}
+    <nav>
+        <ul class="pagination">
+            {% if backups.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ backups.previous_page_number }}{% if form.estado.value %}&estado={{ form.estado.value }}{% endif %}{% if form.tipo_backup.value %}&tipo_backup={{ form.tipo_backup.value }}{% endif %}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+            {% endif %}
+
+            {% for num in backups.paginator.page_range %}
+                {% if backups.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+                {% elif num > backups.number|add:'-3' and num < backups.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}{% if form.estado.value %}&estado={{ form.estado.value }}{% endif %}{% if form.tipo_backup.value %}&tipo_backup={{ form.tipo_backup.value }}{% endif %}">
+                        {{ num }}
+                    </a>
+                </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if backups.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ backups.next_page_number }}{% if form.estado.value %}&estado={{ form.estado.value }}{% endif %}{% if form.tipo_backup.value %}&tipo_backup={{ form.tipo_backup.value }}{% endif %}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<!-- Modal Ejecutar Backup -->
+<div class="modal fade" id="modalEjecutarBackup" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-play-circle me-2"></i>Ejecutar Backup Manual
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'system_configuration:backup_ejecutar' %}" id="formEjecutarBackup">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info" style="border-radius: 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2);">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Nota:</strong> El proceso de backup puede tomar varios minutos dependiendo del tamaño de la base de datos.
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Tipo de Backup <span style="color: #ef4444;">*</span></label>
+                            <select name="tipo_backup" class="form-select" required>
+                                <option value="COMPLETO">Completo - Backup completo de toda la base de datos</option>
+                                <option value="INCREMENTAL">Incremental - Solo cambios desde el último backup</option>
+                                <option value="DIFERENCIAL">Diferencial - Cambios desde el último backup completo</option>
+                            </select>
+                            <small class="help-text">
+                                <strong>Recomendado:</strong> Usar "Completo" para backups programados semanales
+                            </small>
+                        </div>
+
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="incluir_media" id="incluir_media" checked>
+                                <label class="form-check-label" for="incluir_media">
+                                    <strong>Incluir archivos multimedia</strong>
+                                    <br>
+                                    <small class="text-muted">Incluye imágenes, logos y documentos cargados (aumenta el tamaño del backup)</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="comprimir" id="comprimir" checked>
+                                <label class="form-check-label" for="comprimir">
+                                    <strong>Comprimir backup</strong>
+                                    <br>
+                                    <small class="text-muted">Reduce el tamaño del archivo final (recomendado)</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12 mt-4">
+                            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 12px; padding: 1rem;">
+                                <div class="d-flex align-items-start">
+                                    <i class="bi bi-exclamation-triangle-fill me-2" style="color: #f59e0b; font-size: 1.2rem;"></i>
+                                    <div>
+                                        <strong style="color: #92400e;">Consideraciones importantes:</strong>
+                                        <ul style="margin: 0.5rem 0 0 0; color: #78350f; font-size: 0.9rem;">
+                                            <li>El proceso puede tardar varios minutos</li>
+                                            <li>No se recomienda ejecutar backups durante horas pico</li>
+                                            <li>Asegúrese de tener suficiente espacio en disco</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-play-circle me-2"></i>Ejecutar Backup
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmar Restauración -->
+<div class="modal fade" id="modalConfirmarRestaurar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header modal-header-danger">
+                <h5 class="modal-title" style="color: #b91c1c;">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Confirmar Restauración
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formRestaurar" method="post" action="">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="warning-icon">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                    
+                    <p class="text-center mb-3" style="color: #64748b; font-size: 1.1rem; font-weight: 500;">
+                        ¿Está seguro de que desea restaurar este backup?
+                    </p>
+
+                    <!-- Información del Backup -->
+                    <div class="backup-info">
+                        <div class="backup-info-item">
+                            <span class="backup-info-label">
+                                <i class="bi bi-file-earmark-zip me-2"></i>Archivo
+                            </span>
+                            <span class="backup-info-value" id="restore_nombre"></span>
+                        </div>
+                        <div class="backup-info-item">
+                            <span class="backup-info-label">
+                                <i class="bi bi-calendar me-2"></i>Fecha del Backup
+                            </span>
+                            <span class="backup-info-value" id="restore_fecha"></span>
+                        </div>
+                        <div class="backup-info-item">
+                            <span class="backup-info-label">
+                                <i class="bi bi-hdd me-2"></i>Tamaño
+                            </span>
+                            <span class="backup-info-value" id="restore_tamaño"></span>
+                        </div>
+                    </div>
+
+                    <!-- Advertencia -->
+                    <div class="alert" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 1rem; margin-top: 1.5rem;">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-shield-fill-exclamation me-2" style="color: #ef4444; font-size: 1.2rem; margin-top: 0.1rem;"></i>
+                            <div>
+                                <strong style="color: #b91c1c;">¡ADVERTENCIA CRÍTICA!</strong>
+                                <ul style="margin: 0.5rem 0 0 0; color: #7f1d1d; font-size: 0.9rem;">
+                                    <li>Esta acción sobrescribirá TODOS los datos actuales</li>
+                                    <li>Se recomienda hacer un backup antes de restaurar</li>
+                                    <li>El sistema estará temporalmente fuera de línea</li>
+                                    <li>Esta acción NO se puede deshacer</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Restaurar Backup
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Función para confirmar restauración
+function confirmarRestaurar(backupId, backupNombre, backupFecha, backupTamaño) {
+    document.getElementById('restore_nombre').textContent = backupNombre;
+    document.getElementById('restore_fecha').textContent = backupFecha;
+    document.getElementById('restore_tamaño').textContent = backupTamaño;
+    
+    // Actualizar la acción del formulario
+    document.getElementById('formRestaurar').action = `/api/configuracion/backups/${backupId}/restaurar/`;
+    
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('modalConfirmarRestaurar'));
+    modal.show();
+}
+
+// Mostrar mensaje de progreso al ejecutar backup
+document.getElementById('formEjecutarBackup').addEventListener('submit', function(e) {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Ejecutando...';
+});
+
+// Mostrar mensaje de progreso al restaurar
+document.getElementById('formRestaurar').addEventListener('submit', function(e) {
+    if (!confirm('¿ESTÁ COMPLETAMENTE SEGURO de que desea continuar con la restauración?')) {
+        e.preventDefault();
+        return false;
+    }
+    
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Restaurando...';
+});
+</script>
+{% endblock %}

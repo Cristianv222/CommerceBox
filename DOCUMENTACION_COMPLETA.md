@@ -4,7 +4,7 @@
 
 INFORMACIÓN GENERAL
 -------------------
-Fecha de generación: 2025-10-23 21:16:53
+Fecha de generación: 2025-10-29 18:34:30
 Ubicación: C:\Users\godoy\Desktop\CommerceBox
 Python Version: Python 3.13.7
 Pip Version: pip 25.2 from C:\Users\godoy\AppData\Local\Programs\Python\Python313\Lib\site-packages\pip (python 3.13)
@@ -54,9 +54,9 @@ Usuario: Desconocido
 │   │   ├── apps.py (166.0B)
 │   │   ├── models.py (60.0B)
 │   │   ├── tests.py (63.0B)
-│   │   ├── urls.py (16.7KB)
+│   │   ├── urls.py (18.3KB)
 │   │   ├── urls.py.backup (12.8KB)
-│   │   └── views.py (292.1KB)
+│   │   └── views.py (330.9KB)
 │   ├── financial_management/ (23 elementos)
 │   │   ├── __pycache__/ (excluido)
 │   │   ├── accounting/ (4 elementos)
@@ -128,10 +128,13 @@ Usuario: Desconocido
 │   │   │   │   ├── setup_inventory_data.py (3.8KB)
 │   │   │   │   └── validate_inventory_integrity.py (3.4KB)
 │   │   │   └── __init__.py (0B)
-│   │   ├── migrations/ (4 elementos)
+│   │   ├── migrations/ (7 elementos)
 │   │   │   ├── 0001_initial.py (40.1KB)
 │   │   │   ├── 0002_producto_iva.py (540.0B)
 │   │   │   ├── 0003_agregar_marca.py (3.1KB)
+│   │   │   ├── 0004_remove_producto_iva.py (350.0B)
+│   │   │   ├── 0005_alter_quintal_options_and_more.py (9.0KB)
+│   │   │   ├── 0006_alter_quintal_codigo_quintal.py (662.0B)
 │   │   │   └── __init__.py (0B)
 │   │   ├── services/ (5 elementos)
 │   │   │   ├── __init__.py (329.0B)
@@ -146,12 +149,12 @@ Usuario: Desconocido
 │   │   │   ├── unit_converter.py (1.4KB)
 │   │   │   └── validators.py (1.2KB)
 │   │   ├── __init__.py (0B)
-│   │   ├── admin.py (26.6KB)
+│   │   ├── admin.py (34.1KB)
 │   │   ├── apps.py (182.0B)
 │   │   ├── decorators.py (2.3KB)
-│   │   ├── forms.py (24.8KB)
+│   │   ├── forms.py (26.3KB)
 │   │   ├── mixins.py (3.9KB)
-│   │   ├── models.py (44.2KB)
+│   │   ├── models.py (52.8KB)
 │   │   ├── signals.py (8.2KB)
 │   │   ├── tests.py (63.0B)
 │   │   ├── urls.py (8.3KB)
@@ -198,11 +201,12 @@ Usuario: Desconocido
 │   │   │   ├── __init__.py (0B)
 │   │   │   ├── invoice_service.py (4.8KB)
 │   │   │   └── ticket_generator.py (4.0KB)
-│   │   ├── migrations/ (5 elementos)
+│   │   ├── migrations/ (6 elementos)
 │   │   │   ├── 0001_initial.py (1.1KB)
 │   │   │   ├── 0002_cliente_detalleventa_devolucion_pago_and_more.py (17.2KB)
 │   │   │   ├── 0003_alter_venta_numero_venta.py (671.0B)
 │   │   │   ├── 0004_alter_devolucion_descripcion.py (486.0B)
+│   │   │   ├── 0005_detalleventa_aplica_iva_detalleventa_monto_iva_and_more.py (4.5KB)
 │   │   │   └── __init__.py (0B)
 │   │   ├── pos/ (4 elementos)
 │   │   │   ├── __init__.py (0B)
@@ -213,7 +217,7 @@ Usuario: Desconocido
 │   │   ├── admin.py (19.8KB)
 │   │   ├── apps.py (401.0B)
 │   │   ├── forms.py (15.7KB)
-│   │   ├── models.py (23.3KB)
+│   │   ├── models.py (25.5KB)
 │   │   ├── models.py.backup3 (22.5KB)
 │   │   ├── models.py.backup_final (22.5KB)
 │   │   ├── quintal_service.py (2.1KB)
@@ -251,17 +255,19 @@ Usuario: Desconocido
 │   │   │   │   ├── setup_commercebox.py (27.9KB)
 │   │   │   │   └── system_health_check.py (9.1KB)
 │   │   │   └── __init__.py (0B)
-│   │   ├── migrations/ (2 elementos)
+│   │   ├── migrations/ (4 elementos)
 │   │   │   ├── 0001_initial.py (37.4KB)
+│   │   │   ├── 0002_remove_configuracionsistema_ambiente_facturacion_and_more.py (789.0B)
+│   │   │   ├── 0003_remove_configuracionsistema_iva_default_and_more.py (1.2KB)
 │   │   │   └── __init__.py (0B)
 │   │   ├── __init__.py (0B)
-│   │   ├── admin.py (23.3KB)
+│   │   ├── admin.py (24.3KB)
 │   │   ├── apps.py (182.0B)
-│   │   ├── forms.py (15.0KB)
-│   │   ├── models.py (29.9KB)
+│   │   ├── forms.py (15.1KB)
+│   │   ├── models.py (30.3KB)
 │   │   ├── signals.py (0B)
 │   │   ├── tests.py (63.0B)
-│   │   ├── urls.py (2.3KB)
+│   │   ├── urls.py (1.7KB)
 │   │   └── views.py (23.6KB)
 │   └── context_processors.py (544.0B)
 ├── commercebox/ (8 elementos)
@@ -270,18 +276,21 @@ Usuario: Desconocido
 │   ├── asgi.py (415.0B)
 │   ├── celery.py (811.0B)
 │   ├── settings.py (18.2KB)
-│   ├── urls.py (2.3KB)
+│   ├── urls.py (2.4KB)
 │   ├── urls.py.backup (2.3KB)
 │   └── wsgi.py (415.0B)
 ├── logs/ (2 elementos)
-│   ├── commercebox.log (7.6MB)
+│   ├── commercebox.log (7.9MB)
 │   └── commercebox_audit.log (0B)
-├── media/ (6 elementos)
+├── media/ (7 elementos)
 │   ├── barcodes/ (2 elementos)
 │   │   ├── productos/ (0 elementos)
 │   │   └── quintales/ (0 elementos)
 │   ├── cajas_chicas/ (1 elementos)
 │   │   └── comprobantes/ (1 elementos)
+│   │       └── acer-predator-logo-4k-wallpaper-uhdpaper.com-4623a.jpg (1.7MB)
+│   ├── empresa/ (1 elementos)
+│   │   └── logos/ (1 elementos)
 │   │       └── acer-predator-logo-4k-wallpaper-uhdpaper.com-4623a.jpg (1.7MB)
 │   ├── invoices/ (0 elementos)
 │   ├── marcas/ (8 elementos)
@@ -293,8 +302,9 @@ Usuario: Desconocido
 │   │   ├── Predator_Wallpaper_03_3840x2400.jpg (9.3MB)
 │   │   ├── senal-satelital.png (38.5KB)
 │   │   └── WhatsApp_Image_2025-04-01_at_15.16.02.jpeg (41.2KB)
-│   ├── productos/ (8 elementos)
+│   ├── productos/ (9 elementos)
 │   │   ├── acer-predator-logo-4k-wallpaper-uhdpaper.com-4623a.jpg (1.7MB)
+│   │   ├── acer-predator-logo-4k-wallpaper-uhdpaper.com-4633a.jpg (1.9MB)
 │   │   ├── lunar.webp (5.1KB)
 │   │   ├── Predator_Wallpaper_01_3840x2400.jpg (6.4MB)
 │   │   ├── Predator_Wallpaper_03_3840x2400.jpg (9.3MB)
@@ -309,10 +319,12 @@ Usuario: Desconocido
 ├── static/ (2 elementos)
 │   ├── js/ (0 elementos)
 │   └── devoluciones.js (5.3KB)
-├── templates/ (5 elementos)
+├── templates/ (6 elementos)
 │   ├── authentication/ (1 elementos)
 │   │   └── login.html (22.7KB)
-│   ├── custom_admin/ (13 elementos)
+│   ├── custom_admin/ (14 elementos)
+│   │   ├── configuracion/ (1 elementos)
+│   │   │   └── general.html (16.9KB)
 │   │   ├── finanzas/ (7 elementos)
 │   │   │   ├── arqueo_detalle.html (13.9KB)
 │   │   │   ├── arqueos_list.html (22.8KB)
@@ -326,7 +338,7 @@ Usuario: Desconocido
 │   │   │   ├── entrada_inventario.html (125.7KB)
 │   │   │   ├── marcas_list.html (53.0KB)
 │   │   │   ├── movimientos_list.html (42.9KB)
-│   │   │   ├── productos_list.html (77.9KB)
+│   │   │   ├── productos_list.html (85.5KB)
 │   │   │   └── proveedores_list.html (42.9KB)
 │   │   ├── logs/ (1 elementos)
 │   │   │   └── accesos.html (33.8KB)
@@ -344,11 +356,13 @@ Usuario: Desconocido
 │   │   │   ├── devoluciones_list.html (33.7KB)
 │   │   │   ├── devoluciones_list.html.backup (18.5KB)
 │   │   │   └── list.html (52.0KB)
-│   │   ├── base_admin.html (38.1KB)
+│   │   ├── base_admin.html (41.2KB)
 │   │   ├── base_admin.html.backup (37.4KB)
 │   │   ├── dashboard.html (28.9KB)
 │   │   └── dashboard.html.backup (28.9KB)
 │   ├── errors/ (0 elementos)
+│   ├── system_configuration/ (1 elementos)
+│   │   └── configuracion_general.html (47.3KB)
 │   ├── base.html (23.9KB)
 │   └── base_login.html (9.9KB)
 ├── .env (2.1KB)
@@ -386,11 +400,11 @@ setup.cfg                 ❌ Faltante
 
 ESTADÍSTICAS POR EXTENSIÓN
 --------------------------
-.py                   196 archivos ( 72.1%)
-.html                  25 archivos (  9.2%)
-.backup                13 archivos (  4.8%)
-.jpg                   10 archivos (  3.7%)
-(sin extensión)         4 archivos (  1.5%)
+.py                   202 archivos ( 71.6%)
+.html                  27 archivos (  9.6%)
+.backup                13 archivos (  4.6%)
+.jpg                   12 archivos (  4.3%)
+(sin extensión)         4 archivos (  1.4%)
 .png                    3 archivos (  1.1%)
 .jpeg                   3 archivos (  1.1%)
 .backup2                2 archivos (  0.7%)
@@ -399,8 +413,8 @@ ESTADÍSTICAS POR EXTENSIÓN
 
 TOTALES
 -------
-Total de archivos: 272
-Total de directorios: 70
+Total de archivos: 282
+Total de directorios: 74
 
 ================================================================================
                            APLICACIONES DJANGO
@@ -414,12 +428,12 @@ authentication       Completa   5/5      18         models.py, views.py, urls.py
 custom_admin         Completa   5/5      6          models.py, views.py, urls.py...
 financial_management Completa   5/5      19         models.py, views.py, urls.py...
 hardware_integration Parcial    4/5      14         models.py, views.py, admin.py...
-inventory_management Completa   5/5      24         models.py, views.py, urls.py...
+inventory_management Completa   5/5      27         models.py, views.py, urls.py...
 notifications        Parcial    4/5      9          models.py, views.py, admin.py...
 reports_analytics    Completa   5/5      14         models.py, views.py, urls.py...
-sales_management     Completa   5/5      18         models.py, views.py, urls.py...
+sales_management     Completa   5/5      19         models.py, views.py, urls.py...
 stock_alert_system   Parcial    4/5      12         models.py, views.py, admin.py...
-system_configuration Completa   5/5      11         models.py, views.py, urls.py...
+system_configuration Completa   5/5      13         models.py, views.py, urls.py...
 
 DETALLE POR APP
 ==================================================
@@ -544,7 +558,7 @@ storage/invoices/pdf/               ❌ Facturas PDF generadas
 storage/invoices/sent/              ❌ Facturas enviadas al SRI 
 storage/logs/                       ❌ Logs del sistema 
 storage/backups/                    ❌ Respaldos de BD 
-media/                              ✅ Archivos de media (26 archivos)
+media/                              ✅ Archivos de media (30 archivos)
 static/                             ✅ Archivos estáticos (2 archivos)
 uploads/                            ❌ Archivos subidos 
 
@@ -595,13 +609,13 @@ Documentación:           ⚠️  Iniciada (60%)
 
 ESTADÍSTICAS GENERALES
 ---------------------
-Total directorios:       70
-Total archivos:          272
+Total directorios:       74
+Total archivos:          282
 Apps Django:             10
-Archivos Python:         196
+Archivos Python:         202
 Paquetes instalados:     0
 
 ================================================================================
-Reporte generado automáticamente el 2025-10-23 21:16:53
+Reporte generado automáticamente el 2025-10-29 18:34:30
 Para actualizar, ejecuta: python documenter.py
 ================================================================================
