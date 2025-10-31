@@ -341,15 +341,17 @@ def producto_editar(request, producto_id):
             if codigo_barras:
                 producto.codigo_barras = codigo_barras
             
-            # ✅ IVA simplificado
+            # ✅ IVA CORREGIDO - Actualizar AMBOS campos
             aplica_iva = request.POST.get('aplica_iva') == 'on'
+            producto.aplica_impuestos = aplica_iva  # ✅ CAMPO BOOLEAN
+            
             if aplica_iva:
                 config = ConfiguracionSistema.get_config()
-                producto.iva = config.porcentaje_iva
+                producto.iva = config.porcentaje_iva  # ✅ CAMPO DECIMAL
             else:
                 producto.iva = Decimal('0.00')
             
-            print(f"🔧 IVA actualizado: {producto.iva}")
+            print(f"🔧 IVA actualizado - aplica_impuestos: {producto.aplica_impuestos}, iva: {producto.iva}")
             
             # Imagen
             if 'imagen' in request.FILES:
@@ -421,7 +423,6 @@ def producto_editar(request, producto_id):
         messages.error(request, f'Error al editar producto: {str(e)}')
     
     return redirect('custom_admin:productos')
-
 
 @ensure_csrf_cookie
 @auth_required
