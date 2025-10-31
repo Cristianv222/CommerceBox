@@ -1,0 +1,1652 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Centro de Notificaciones{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ============================================
+       GLASSMORPHISM BASE
+       ============================================ */
+    .card-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+    }
+
+    /* ============================================
+       STAT CARDS CON GLASSMORPHISM
+       ============================================ */
+    .stat-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 300px 200px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 
+            0 12px 40px rgba(59, 130, 246, 0.15),
+            0 4px 12px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        border-color: rgba(96, 165, 250, 0.6);
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 2;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .stat-label {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* ============================================
+       ADMIN CARD (Filtros y Lista)
+       ============================================ */
+    .admin-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .admin-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 400px 300px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .admin-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg, 
+            rgba(59, 130, 246, 0.3) 0%, 
+            rgba(96, 165, 250, 0.5) 25%,
+            rgba(147, 197, 253, 0.4) 50%,
+            rgba(96, 165, 250, 0.5) 75%,
+            rgba(59, 130, 246, 0.3) 100%);
+        border-radius: 16px 16px 0 0;
+    }
+
+    /* ============================================
+       BOTONES
+       ============================================ */
+    .btn-primary-admin,
+    .btn-success-admin {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 
+            0 8px 20px rgba(59, 130, 246, 0.25),
+            0 2px 8px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-primary-admin:hover,
+    .btn-success-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 12px 28px rgba(59, 130, 246, 0.3),
+            0 4px 12px rgba(96, 165, 250, 0.25),
+            inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.95) 0%, rgba(59, 130, 246, 0.95) 100%);
+    }
+
+    .btn-primary-admin:disabled,
+    .btn-success-admin:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-danger-admin {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(220, 38, 38, 0.95) 100%);
+        border: none;
+        padding: 12px 24px;
+        border-radius: 12px;
+        color: white;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 
+            0 8px 20px rgba(239, 68, 68, 0.25),
+            0 2px 8px rgba(239, 68, 68, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-danger-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 12px 28px rgba(239, 68, 68, 0.3),
+            0 4px 12px rgba(239, 68, 68, 0.25);
+    }
+
+    /* ============================================
+       FORM CONTROLS
+       ============================================ */
+    .form-control-admin {
+        width: 100%;
+        padding: 14px 18px;
+        background: rgba(248, 250, 252, 0.6);
+        border: 1.5px solid rgba(203, 213, 225, 0.5);
+        border-radius: 12px;
+        color: #1e293b;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+    }
+
+    .form-control-admin:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(96, 165, 250, 0.6);
+        box-shadow: 
+            0 0 0 4px rgba(96, 165, 250, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.15);
+    }
+
+    .form-control-admin::placeholder {
+        color: #9ca3af;
+    }
+
+    /* ============================================
+       FILTROS
+       ============================================ */
+    .filtros-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .filtro-grupo {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .filtro-label {
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .filtro-botones {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .filtro-btn {
+        padding: 0.625rem 1.25rem;
+        border: 2px solid rgba(203, 213, 225, 0.5);
+        background: rgba(248, 250, 252, 0.6);
+        color: #64748b;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .filtro-btn:hover {
+        border-color: rgba(96, 165, 250, 0.6);
+        color: #3b82f6;
+        transform: translateY(-2px);
+        background: rgba(255, 255, 255, 0.9);
+    }
+
+    .filtro-btn.active {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        border-color: rgba(59, 130, 246, 0.8);
+        color: white;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    /* ============================================
+       NOTIFICACIONES ITEM
+       ============================================ */
+    .notificacion-item {
+        padding: 1.5rem;
+        border-bottom: 1px solid rgba(219, 234, 254, 0.3);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+        position: relative;
+        z-index: 1;
+    }
+
+    .notificacion-item:hover {
+        background: rgba(59, 130, 246, 0.05);
+    }
+
+    .notificacion-item:last-child {
+        border-bottom: none;
+    }
+
+    .notificacion-item.no-leida {
+        background: rgba(239, 246, 255, 0.6);
+        border-left: 4px solid rgba(59, 130, 246, 0.8);
+    }
+
+    .notificacion-item.no-leida:hover {
+        background: rgba(219, 234, 254, 0.4);
+    }
+
+    .notificacion-icono {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .notificacion-icono.STOCK {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.2) 100%);
+        color: #3b82f6;
+    }
+
+    .notificacion-icono.VENTAS {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%);
+        color: #10b981;
+    }
+
+    .notificacion-icono.FINANCIERO {
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%);
+        color: #f59e0b;
+    }
+
+    .notificacion-icono.SISTEMA {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(124, 58, 237, 0.2) 100%);
+        color: #8b5cf6;
+    }
+
+    .notificacion-contenido {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .notificacion-titulo {
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 1rem;
+        margin: 0 0 0.5rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .notificacion-mensaje {
+        color: #64748b;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin: 0 0 0.75rem 0;
+        font-weight: 500;
+    }
+
+    .notificacion-footer {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .notificacion-fecha {
+        color: #94a3b8;
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+    }
+
+    /* ============================================
+       BADGES
+       ============================================ */
+    .badge-admin {
+        padding: 0.4rem 0.9rem;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        display: inline-block;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .badge-prioridad-BAJA {
+        background: rgba(100, 116, 139, 0.15);
+        color: #64748b;
+        border: 1px solid rgba(100, 116, 139, 0.3);
+    }
+
+    .badge-prioridad-MEDIA {
+        background: rgba(245, 158, 11, 0.15);
+        color: #d97706;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-prioridad-ALTA {
+        background: rgba(249, 115, 22, 0.15);
+        color: #ea580c;
+        border: 1px solid rgba(249, 115, 22, 0.3);
+    }
+
+    .badge-prioridad-CRITICA {
+        background: rgba(239, 68, 68, 0.15);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-categoria {
+        background: rgba(59, 130, 246, 0.15);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .badge-nuevo {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(220, 38, 38, 0.95) 100%);
+        color: white;
+        border: none;
+        animation: pulse 2s infinite;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(0.98); }
+    }
+
+    /* ============================================
+       ACCIONES
+       ============================================ */
+    .notificacion-acciones {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        display: flex;
+        gap: 0.5rem;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        z-index: 3;
+    }
+
+    .notificacion-item:hover .notificacion-acciones {
+        opacity: 1;
+    }
+
+    .btn-accion {
+        width: 35px;
+        height: 35px;
+        border: none;
+        background: rgba(255, 255, 255, 0.9);
+        color: #64748b;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        font-weight: 700;
+    }
+
+    .btn-accion:hover {
+        transform: scale(1.1) translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-accion.btn-marcar-leida:hover {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+    }
+
+    .btn-accion.btn-eliminar:hover {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+    }
+
+    /* ============================================
+       EMPTY STATE
+       ============================================ */
+    .empty-state {
+        padding: 4rem 2rem;
+        text-align: center;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .empty-state h3 {
+        margin: 0 0 0.5rem 0;
+        color: #64748b;
+        font-size: 1.25rem;
+        font-weight: 700;
+    }
+
+    .empty-state p {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+
+    /* ============================================
+       LOADING STATE
+       ============================================ */
+    .loading-state {
+        padding: 3rem;
+        text-align: center;
+    }
+
+    .spinner-border {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(203, 213, 225, 0.3);
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* ============================================
+       PAGINACIÓN
+       ============================================ */
+    .pagination {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin: 0;
+    }
+
+    .page-item .page-link {
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+        font-weight: 600;
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        background: rgba(248, 250, 252, 0.6);
+        color: #64748b;
+    }
+
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        border-color: rgba(59, 130, 246, 0.8);
+        color: white;
+    }
+
+    .page-item:not(.active):not(.disabled) .page-link:hover {
+        background: rgba(59, 130, 246, 0.15);
+        border-color: rgba(96, 165, 250, 0.6);
+        color: #3b82f6;
+        transform: translateY(-1px);
+    }
+
+    .page-item.disabled .page-link {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* ============================================
+       MODALES
+       ============================================ */
+    .modal-dialog {
+        margin-top: 5rem !important;
+    }
+
+    .modal-content {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 20px;
+        box-shadow: 
+            0 20px 60px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .modal-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 600px 400px at 50% 50%, rgba(219, 234, 254, 0.15) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .modal-header {
+        border-bottom: 1px solid rgba(59, 130, 246, 0.15);
+        position: relative;
+        z-index: 2;
+        padding: 1.5rem 2rem;
+    }
+
+    .modal-title {
+        color: #0f172a;
+        font-weight: 700;
+        font-size: 1.5rem;
+    }
+
+    .modal-body {
+        color: #1e293b;
+        position: relative;
+        z-index: 2;
+        padding: 2rem;
+        max-height: calc(100vh - 250px);
+        overflow-y: auto;
+    }
+
+    .modal-footer {
+        border-top: 1px solid rgba(59, 130, 246, 0.15);
+        position: relative;
+        z-index: 2;
+        padding: 1.5rem 2rem;
+    }
+
+    .detalle-section {
+        margin-bottom: 1.5rem;
+        padding: 1.5rem;
+        background: rgba(59, 130, 246, 0.05);
+        border: 1px solid rgba(59, 130, 246, 0.15);
+        border-radius: 12px;
+    }
+
+    .detalle-section h3 {
+        margin: 0 0 1rem 0;
+        color: #0f172a;
+        font-size: 1.1rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .detalle-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(203, 213, 225, 0.3);
+    }
+
+    .detalle-row:last-child {
+        border-bottom: none;
+    }
+
+    .detalle-label {
+        color: #64748b;
+        font-weight: 600;
+    }
+
+    .detalle-valor {
+        color: #0f172a;
+        font-weight: 700;
+        text-align: right;
+    }
+
+    /* ============================================
+       TOAST NOTIFICATIONS
+       ============================================ */
+    #toast-container {
+        position: fixed;
+        top: 90px;
+        right: 20px;
+        z-index: 10001;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 400px;
+    }
+
+    .toast-notification {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        animation: slideIn 0.3s ease-out;
+        position: relative;
+    }
+
+    .toast-notification.removing {
+        animation: slideOut 0.3s ease-out forwards;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+
+    .toast-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .toast-success .toast-icon {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+    }
+
+    .toast-error .toast-icon {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+    }
+
+    .toast-warning .toast-icon {
+        background: rgba(245, 158, 11, 0.2);
+        color: #f59e0b;
+    }
+
+    .toast-info .toast-icon {
+        background: rgba(59, 130, 246, 0.2);
+        color: #3b82f6;
+    }
+
+    .toast-content {
+        flex: 1;
+        color: #1e293b;
+    }
+
+    .toast-title {
+        font-weight: 700;
+        margin-bottom: 0.2rem;
+        font-size: 0.95rem;
+    }
+
+    .toast-message {
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .toast-close {
+        background: rgba(59, 130, 246, 0.1);
+        border: none;
+        color: #3b82f6;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex-shrink: 0;
+        font-weight: 700;
+    }
+
+    .toast-close:hover {
+        background: rgba(59, 130, 246, 0.2);
+        transform: scale(1.1);
+    }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 768px) {
+        .card-title {
+            font-size: 1.5rem;
+        }
+
+        .stat-card {
+            margin-bottom: 1rem;
+        }
+
+        .filtros-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .notificacion-item {
+            flex-direction: column;
+        }
+
+        .notificacion-acciones {
+            position: static;
+            opacity: 1;
+            margin-top: 1rem;
+        }
+
+        .modal-dialog {
+            margin: 1rem !important;
+            margin-top: 2rem !important;
+        }
+
+        #toast-container {
+            left: 10px;
+            right: 10px;
+            max-width: none;
+        }
+    }
+
+    /* ============================================
+       ANIMACIONES DE ENTRADA
+       ============================================ */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .stat-card,
+    .admin-card {
+        animation: fadeInUp 0.5s ease-out backwards;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.05s; }
+    .stat-card:nth-child(2) { animation-delay: 0.1s; }
+    .stat-card:nth-child(3) { animation-delay: 0.15s; }
+    .stat-card:nth-child(4) { animation-delay: 0.2s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="card-title">🔔 Centro de Notificaciones</h1>
+            <p style="color: #64748b; margin: 0; font-weight: 500;">Gestiona todas tus notificaciones desde un solo lugar</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn-success-admin" onclick="marcarTodasLeidas()">
+                <i class="bi bi-check-all me-2"></i>Marcar Todas Leídas
+            </button>
+            <button class="btn-primary-admin" onclick="cargarNotificaciones()">
+                <i class="bi bi-arrow-clockwise me-2"></i>Refrescar
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(59, 130, 246, 0.2); color: #3b82f6;">
+                    <i class="bi bi-bell-fill"></i>
+                </div>
+                <div class="stat-value" id="total-notificaciones">{{ total_notificaciones }}</div>
+                <div class="stat-label">Total Notificaciones</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(239, 68, 68, 0.2); color: #ef4444;">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                </div>
+                <div class="stat-value" id="badge-no-leidas">{{ notificaciones_no_leidas }}</div>
+                <div class="stat-label">No Leídas</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <div class="stat-value" id="notificaciones-leidas">0</div>
+                <div class="stat-label">Leídas</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">
+                    <i class="bi bi-shield-exclamation-fill"></i>
+                </div>
+                <div class="stat-value" id="notificaciones-criticas">0</div>
+                <div class="stat-label">Críticas</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="admin-card mb-4" style="animation-delay: 0.25s;">
+        <div class="filtros-grid">
+            <!-- Filtro por Estado -->
+            <div class="filtro-grupo">
+                <span class="filtro-label">Estado</span>
+                <div class="filtro-botones">
+                    <button class="filtro-btn active" data-filtro="todas" onclick="cambiarFiltro('estado', 'todas')">
+                        Todas
+                    </button>
+                    <button class="filtro-btn" data-filtro="no_leidas" onclick="cambiarFiltro('estado', 'no_leidas')">
+                        No Leídas
+                    </button>
+                    <button class="filtro-btn" data-filtro="leidas" onclick="cambiarFiltro('estado', 'leidas')">
+                        Leídas
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtro por Categoría -->
+            <div class="filtro-grupo">
+                <span class="filtro-label">Categoría</span>
+                <div class="filtro-botones">
+                    <button class="filtro-btn active" data-categoria="" onclick="cambiarFiltro('categoria', '')">
+                        Todas
+                    </button>
+                    <button class="filtro-btn" data-categoria="STOCK" onclick="cambiarFiltro('categoria', 'STOCK')">
+                        📦 Stock
+                    </button>
+                    <button class="filtro-btn" data-categoria="VENTAS" onclick="cambiarFiltro('categoria', 'VENTAS')">
+                        🛒 Ventas
+                    </button>
+                    <button class="filtro-btn" data-categoria="FINANCIERO" onclick="cambiarFiltro('categoria', 'FINANCIERO')">
+                        💰 Financiero
+                    </button>
+                    <button class="filtro-btn" data-categoria="SISTEMA" onclick="cambiarFiltro('categoria', 'SISTEMA')">
+                        ⚙️ Sistema
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtro por Prioridad -->
+            <div class="filtro-grupo">
+                <span class="filtro-label">Prioridad</span>
+                <div class="filtro-botones">
+                    <button class="filtro-btn active" data-prioridad="" onclick="cambiarFiltro('prioridad', '')">
+                        Todas
+                    </button>
+                    <button class="filtro-btn" data-prioridad="CRITICA" onclick="cambiarFiltro('prioridad', 'CRITICA')">
+                        🚨 Críticas
+                    </button>
+                    <button class="filtro-btn" data-prioridad="ALTA" onclick="cambiarFiltro('prioridad', 'ALTA')">
+                        🔥 Altas
+                    </button>
+                </div>
+            </div>
+
+            <!-- Búsqueda -->
+            <div class="filtro-grupo">
+                <span class="filtro-label">Buscar</span>
+                <input 
+                    type="text" 
+                    class="form-control-admin" 
+                    id="buscar-notificaciones" 
+                    placeholder="Buscar notificaciones..."
+                    onkeyup="buscarNotificaciones()"
+                >
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Notificaciones -->
+    <div class="admin-card" style="animation-delay: 0.3s;">
+        <div id="notificaciones-container">
+            <!-- Loading inicial -->
+            <div class="loading-state">
+                <div class="spinner-border"></div>
+                <p style="color: #64748b; font-weight: 600; margin-top: 1rem;">Cargando notificaciones...</p>
+            </div>
+        </div>
+
+        <!-- Paginación -->
+        <div class="d-flex justify-content-between align-items-center mt-4" id="paginacion-container" style="display: none !important;">
+            <div style="color: #64748b; font-weight: 600;">
+                Mostrando <span id="showing-start">0</span> - <span id="showing-end">0</span> de <span id="total-items">0</span> notificaciones
+            </div>
+            <div id="pagination-buttons"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalle -->
+<div class="modal fade" id="modal-detalle" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-titulo">Detalle de Notificación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modal-body-content">
+                <!-- Se carga dinámicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-primary-admin" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-2"></i>Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal Confirmar Eliminación -->
+<div class="modal fade" id="modal-eliminar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle-fill me-2" style="color: #ef4444;"></i>
+                    Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem;">
+                    <i class="bi bi-exclamation-triangle-fill" style="font-size: 2rem; color: #ef4444;"></i>
+                    <div>
+                        <p style="margin: 0; font-weight: 700; color: #0f172a;">¿Estás seguro de eliminar esta notificación?</p>
+                        <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: #64748b;">Esta acción no se puede deshacer.</p>
+                    </div>
+                </div>
+                
+                <div id="notificacion-eliminar-info" style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 12px; padding: 1rem;">
+                    <!-- Se llena dinámicamente -->
+                </div>
+                
+                <input type="hidden" id="notificacion-eliminar-id">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-primary-admin" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-2"></i>Cancelar
+                </button>
+                <button type="button" class="btn-danger-admin" onclick="confirmarEliminacion()" id="btn-confirmar-eliminar">
+                    <i class="bi bi-trash me-2"></i>Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ============================================================================
+// SISTEMA DE NOTIFICACIONES - JavaScript Completo
+// ============================================================================
+
+let filtros = {
+    filtro: 'todas',
+    categoria: '',
+    prioridad: '',
+    busqueda: '',
+    page: 1,
+    per_page: 20
+};
+
+let paginacion = {
+    page: 1,
+    total_pages: 1,
+    total_items: 0,
+    has_next: false,
+    has_previous: false
+};
+
+// ============================================================================
+// CARGA DE NOTIFICACIONES
+// ============================================================================
+
+async function cargarNotificaciones() {
+    const container = document.getElementById('notificaciones-container');
+    
+    container.innerHTML = `
+        <div class="loading-state">
+            <div class="spinner-border"></div>
+            <p style="color: #64748b; font-weight: 600; margin-top: 1rem;">Cargando notificaciones...</p>
+        </div>
+    `;
+
+    try {
+        const params = new URLSearchParams();
+        params.append('filtro', filtros.filtro);
+        if (filtros.categoria) params.append('categoria', filtros.categoria);
+        if (filtros.prioridad) params.append('prioridad', filtros.prioridad);
+        if (filtros.busqueda) params.append('busqueda', filtros.busqueda);
+        params.append('page', filtros.page);
+        params.append('per_page', filtros.per_page);
+
+        const response = await fetch(`/panel/api/notificaciones/list/?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.success) {
+            paginacion = data.pagination;
+            renderizarNotificaciones(data.notificaciones);
+            actualizarPaginacion();
+            actualizarContador();
+            actualizarStats(data.notificaciones);
+        } else {
+            mostrarError(data.error || 'Error al cargar notificaciones');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="bi bi-exclamation-triangle"></i>
+                <h3>Error al cargar</h3>
+                <p>No se pudieron cargar las notificaciones. Intenta de nuevo.</p>
+            </div>
+        `;
+    }
+}
+
+function renderizarNotificaciones(notificaciones) {
+    const container = document.getElementById('notificaciones-container');
+
+    if (notificaciones.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <h3>No hay notificaciones</h3>
+                <p>No se encontraron notificaciones con los filtros aplicados.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = notificaciones.map(notif => `
+        <div class="notificacion-item ${notif.es_no_leida ? 'no-leida' : ''}" onclick="verDetalle('${notif.id}')">
+            <div class="notificacion-icono ${notif.categoria}">
+                ${notif.icono_prioridad}
+            </div>
+            
+            <div class="notificacion-contenido">
+                <div class="notificacion-titulo">
+                    ${notif.titulo}
+                    ${notif.es_no_leida ? '<span class="badge-admin badge-nuevo">NUEVO</span>' : ''}
+                </div>
+                
+                <div class="notificacion-mensaje">
+                    ${notif.mensaje.substring(0, 150)}${notif.mensaje.length > 150 ? '...' : ''}
+                </div>
+                
+                <div class="notificacion-footer">
+                    <span class="notificacion-fecha">
+                        <i class="bi bi-clock"></i> ${notif.tiempo_transcurrido}
+                    </span>
+                    
+                    <div class="notificacion-badges">
+                        <span class="badge-admin badge-prioridad-${notif.prioridad}">
+                            ${notif.prioridad_display}
+                        </span>
+                        <span class="badge-admin badge-categoria">
+                            ${notif.categoria_display}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notificacion-acciones">
+                ${notif.es_no_leida ? `
+                    <button class="btn-accion btn-marcar-leida" onclick="marcarLeida(event, '${notif.id}')" title="Marcar como leída">
+                        <i class="bi bi-check"></i>
+                    </button>
+                ` : ''}
+                <button class="btn-accion btn-eliminar" onclick="eliminarNotificacion(event, '${notif.id}')" title="Eliminar">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ============================================================================
+// ACCIONES
+// ============================================================================
+
+async function marcarLeida(event, notificacionId) {
+    event.stopPropagation();
+    
+    try {
+        const response = await fetch(`/panel/api/notificaciones/${notificacionId}/marcar-leida/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            mostrarToast('✅ Notificación marcada como leída', 'success');
+            cargarNotificaciones();
+        } else {
+            mostrarToast('❌ ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarToast('❌ Error al marcar notificación', 'error');
+    }
+}
+
+async function marcarTodasLeidas() {
+    const btn = event.target.closest('button');
+    const originalHTML = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Procesando...';
+
+    try {
+        const response = await fetch('/panel/api/notificaciones/marcar-todas-leidas/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            mostrarToast(`✅ ${data.count} notificaciones marcadas como leídas`, 'success');
+            cargarNotificaciones();
+        } else {
+            mostrarToast('❌ ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarToast('❌ Error al marcar notificaciones', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+    }
+}
+
+async function eliminarNotificacion(event, notificacionId) {
+    event.stopPropagation();
+    
+    // Obtener datos de la notificación para mostrar en el modal
+    try {
+        const response = await fetch(`/panel/api/notificaciones/${notificacionId}/`);
+        const data = await response.json();
+
+        if (data.success) {
+            const notif = data.notificacion;
+            
+            // Llenar el modal con la información
+            document.getElementById('notificacion-eliminar-id').value = notificacionId;
+            document.getElementById('notificacion-eliminar-info').innerHTML = `
+                <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                    <div class="notificacion-icono ${notif.categoria}" style="width: 40px; height: 40px; font-size: 1.2rem; flex-shrink: 0;">
+                        ${notif.icono_prioridad}
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 700; color: #0f172a; margin-bottom: 0.5rem;">${notif.titulo}</div>
+                        <div style="color: #64748b; font-size: 0.9rem; margin-bottom: 0.5rem;">${notif.mensaje.substring(0, 100)}${notif.mensaje.length > 100 ? '...' : ''}</div>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <span class="badge-admin badge-prioridad-${notif.prioridad}">${notif.prioridad_display}</span>
+                            <span class="badge-admin badge-categoria">${notif.categoria_display}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Mostrar el modal
+            const modal = new bootstrap.Modal(document.getElementById('modal-eliminar'));
+            modal.show();
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarToast('❌ Error al cargar información de la notificación', 'error');
+    }
+}
+
+async function confirmarEliminacion() {
+    const notificacionId = document.getElementById('notificacion-eliminar-id').value;
+    const btn = document.getElementById('btn-confirmar-eliminar');
+    const originalHTML = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Eliminando...';
+
+    try {
+        const response = await fetch(`/panel/api/notificaciones/${notificacionId}/eliminar/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Cerrar el modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modal-eliminar'));
+            modal.hide();
+            
+            mostrarToast('🗑️ Notificación eliminada exitosamente', 'success');
+            cargarNotificaciones();
+        } else {
+            mostrarToast('❌ ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarToast('❌ Error al eliminar notificación', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+    }
+}
+
+async function verDetalle(notificacionId) {
+    try {
+        const response = await fetch(`/panel/api/notificaciones/${notificacionId}/`);
+        const data = await response.json();
+
+        if (data.success) {
+            mostrarModalDetalle(data.notificacion);
+            
+            // Marcar como leída automáticamente
+            await fetch(`/panel/api/notificaciones/${notificacionId}/marcar-leida/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            actualizarContador();
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarToast('❌ Error al cargar detalle', 'error');
+    }
+}
+
+function mostrarModalDetalle(notificacion) {
+    document.getElementById('modal-titulo').innerHTML = `${notificacion.icono_prioridad} ${notificacion.titulo}`;
+    
+    document.getElementById('modal-body-content').innerHTML = `
+        <div class="detalle-section">
+            <h3><i class="bi bi-file-text"></i> Mensaje</h3>
+            <p style="margin: 0; color: #64748b; line-height: 1.6; white-space: pre-wrap;">${notificacion.mensaje}</p>
+        </div>
+        
+        <div class="detalle-section">
+            <h3><i class="bi bi-info-circle"></i> Información</h3>
+            <div class="detalle-row">
+                <span class="detalle-label">Categoría:</span>
+                <span class="detalle-valor">${notificacion.categoria}</span>
+            </div>
+            <div class="detalle-row">
+                <span class="detalle-label">Prioridad:</span>
+                <span class="detalle-valor">${notificacion.prioridad}</span>
+            </div>
+            <div class="detalle-row">
+                <span class="detalle-label">Estado:</span>
+                <span class="detalle-valor">${notificacion.estado}</span>
+            </div>
+            <div class="detalle-row">
+                <span class="detalle-label">Fecha de creación:</span>
+                <span class="detalle-valor">${notificacion.fecha_creacion}</span>
+            </div>
+            ${notificacion.fecha_lectura ? `
+                <div class="detalle-row">
+                    <span class="detalle-label">Fecha de lectura:</span>
+                    <span class="detalle-valor">${notificacion.fecha_lectura}</span>
+                </div>
+            ` : ''}
+        </div>
+        
+        ${notificacion.canales ? `
+            <div class="detalle-section">
+                <h3><i class="bi bi-broadcast"></i> Canales de Envío</h3>
+                <div class="detalle-row">
+                    <span class="detalle-label">Web:</span>
+                    <span class="detalle-valor">${notificacion.canales.web ? '✅ Sí' : '❌ No'}</span>
+                </div>
+                <div class="detalle-row">
+                    <span class="detalle-label">Email:</span>
+                    <span class="detalle-valor">${notificacion.canales.email ? '✅ Sí' : '❌ No'}</span>
+                </div>
+            </div>
+        ` : ''}
+        
+        ${notificacion.url_accion ? `
+            <div class="text-center mt-3">
+                <a href="${notificacion.url_accion}" class="btn-primary-admin">
+                    <i class="bi bi-box-arrow-up-right me-2"></i>Ver Detalles
+                </a>
+            </div>
+        ` : ''}
+    `;
+    
+    const modal = new bootstrap.Modal(document.getElementById('modal-detalle'));
+    modal.show();
+}
+
+// ============================================================================
+// FILTROS Y BÚSQUEDA
+// ============================================================================
+
+function cambiarFiltro(tipo, valor) {
+    if (tipo === 'estado') {
+        filtros.filtro = valor;
+        document.querySelectorAll('[data-filtro]').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.filtro === valor) {
+                btn.classList.add('active');
+            }
+        });
+    } else if (tipo === 'categoria') {
+        filtros.categoria = valor;
+        document.querySelectorAll('[data-categoria]').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.categoria === valor) {
+                btn.classList.add('active');
+            }
+        });
+    } else if (tipo === 'prioridad') {
+        filtros.prioridad = valor;
+        document.querySelectorAll('[data-prioridad]').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.prioridad === valor) {
+                btn.classList.add('active');
+            }
+        });
+    }
+
+    filtros.page = 1;
+    cargarNotificaciones();
+}
+
+let busquedaTimeout;
+function buscarNotificaciones() {
+    clearTimeout(busquedaTimeout);
+    busquedaTimeout = setTimeout(() => {
+        filtros.busqueda = document.getElementById('buscar-notificaciones').value.trim();
+        filtros.page = 1;
+        cargarNotificaciones();
+    }, 500);
+}
+
+// ============================================================================
+// PAGINACIÓN
+// ============================================================================
+
+function cambiarPagina(direccion) {
+    if (direccion === 'prev' && paginacion.has_previous) {
+        filtros.page--;
+    } else if (direccion === 'next' && paginacion.has_next) {
+        filtros.page++;
+    }
+    cargarNotificaciones();
+}
+
+function actualizarPaginacion() {
+    const container = document.getElementById('paginacion-container');
+    const buttons = document.getElementById('pagination-buttons');
+
+    if (paginacion.total_pages > 1) {
+        container.style.display = 'flex';
+        
+        document.getElementById('showing-start').textContent = ((paginacion.page - 1) * filtros.per_page) + 1;
+        document.getElementById('showing-end').textContent = Math.min(paginacion.page * filtros.per_page, paginacion.total_items);
+        document.getElementById('total-items').textContent = paginacion.total_items;
+
+        let html = '<nav><ul class="pagination">';
+        
+        html += `<li class="page-item ${!paginacion.has_previous ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="cambiarPagina('prev'); return false;">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+        </li>`;
+
+        for (let i = 1; i <= paginacion.total_pages; i++) {
+            if (i === 1 || i === paginacion.total_pages || (i >= paginacion.page - 2 && i <= paginacion.page + 2)) {
+                html += `<li class="page-item ${i === paginacion.page ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="filtros.page = ${i}; cargarNotificaciones(); return false;">
+                        ${i}
+                    </a>
+                </li>`;
+            } else if (i === paginacion.page - 3 || i === paginacion.page + 3) {
+                html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+            }
+        }
+
+        html += `<li class="page-item ${!paginacion.has_next ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="cambiarPagina('next'); return false;">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>`;
+
+        html += '</ul></nav>';
+        buttons.innerHTML = html;
+    } else {
+        container.style.display = 'none';
+    }
+}
+
+// ============================================================================
+// CONTADOR Y STATS
+// ============================================================================
+
+async function actualizarContador() {
+    try {
+        const response = await fetch('/panel/api/notificaciones/contador/');
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('badge-no-leidas').textContent = data.no_leidas;
+            
+            const badgeSidebar = document.getElementById('notificaciones-badge');
+            if (badgeSidebar) {
+                badgeSidebar.textContent = data.no_leidas;
+                badgeSidebar.style.display = data.no_leidas > 0 ? 'flex' : 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Error al actualizar contador:', error);
+    }
+}
+
+function actualizarStats(notificaciones) {
+    const total = notificaciones.length;
+    const noLeidas = notificaciones.filter(n => n.es_no_leida).length;
+    const leidas = total - noLeidas;
+    const criticas = notificaciones.filter(n => n.prioridad === 'CRITICA').length;
+
+    document.getElementById('notificaciones-leidas').textContent = leidas;
+    document.getElementById('notificaciones-criticas').textContent = criticas;
+}
+
+// ============================================================================
+// UTILIDADES
+// ============================================================================
+
+function mostrarToast(mensaje, tipo = 'info') {
+    const tipos = {
+        success: { icono: 'bi-check-circle-fill', titulo: 'Éxito' },
+        error: { icono: 'bi-x-circle-fill', titulo: 'Error' },
+        warning: { icono: 'bi-exclamation-triangle-fill', titulo: 'Advertencia' },
+        info: { icono: 'bi-info-circle-fill', titulo: 'Información' }
+    };
+
+    const config = tipos[tipo] || tipos.info;
+
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${tipo}`;
+    toast.innerHTML = `
+        <div class="toast-icon">
+            <i class="bi ${config.icono}"></i>
+        </div>
+        <div class="toast-content">
+            <div class="toast-title">${config.titulo}</div>
+            <div class="toast-message">${mensaje}</div>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()">
+            <i class="bi bi-x"></i>
+        </button>
+    `;
+
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('removing');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// ============================================================================
+// INICIALIZACIÓN
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Sistema de Notificaciones iniciado');
+    
+    cargarNotificaciones();
+    
+    setInterval(() => {
+        cargarNotificaciones();
+    }, 30000);
+});
+</script>
+{% endblock %}

@@ -4,623 +4,421 @@
 
 {% block extra_css %}
 <style>
-    /* ============================================
-       FONDO CON EFECTO MÁRMOL
-       ============================================ */
-    body {
-        position: relative;
-        background: #f8fafc;
-        min-height: 100vh;
-        overflow-x: hidden;
+    /* ========================================
+       ESTILOS DEL DASHBOARD
+       ======================================== */
+
+
+    .dashboard-header {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
     }
 
-    /* Efecto mármol con vetas finas - SIN pointer-events por defecto */
-    body::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: 
-            /* Manchas sutiles de color */
-            radial-gradient(ellipse 800px 600px at 10% 20%, rgba(219, 234, 254, 0.4) 0%, transparent 50%),
-            radial-gradient(ellipse 900px 700px at 90% 80%, rgba(191, 219, 254, 0.35) 0%, transparent 50%),
-            radial-gradient(ellipse 600px 800px at 50% 50%, rgba(147, 197, 253, 0.15) 0%, transparent 50%),
-            
-            /* Vetas finas diagonales */
-            linear-gradient(135deg, transparent 0%, transparent 48%, rgba(96, 165, 250, 0.05) 49%, rgba(96, 165, 250, 0.08) 50%, rgba(96, 165, 250, 0.05) 51%, transparent 52%, transparent 100%),
-            linear-gradient(125deg, transparent 0%, transparent 68%, rgba(147, 197, 253, 0.06) 69%, rgba(147, 197, 253, 0.09) 70%, rgba(147, 197, 253, 0.06) 71%, transparent 72%, transparent 100%),
-            linear-gradient(115deg, transparent 0%, transparent 78%, rgba(191, 219, 254, 0.07) 79%, rgba(191, 219, 254, 0.1) 80%, rgba(191, 219, 254, 0.07) 81%, transparent 82%, transparent 100%),
-            linear-gradient(145deg, transparent 0%, transparent 38%, rgba(59, 130, 246, 0.04) 39%, rgba(59, 130, 246, 0.06) 40%, rgba(59, 130, 246, 0.04) 41%, transparent 42%, transparent 100%),
-            
-            /* Vetas muy finas adicionales */
-            linear-gradient(170deg, transparent 0%, transparent 88%, rgba(96, 165, 250, 0.03) 89%, rgba(96, 165, 250, 0.05) 90%, rgba(96, 165, 250, 0.03) 91%, transparent 92%, transparent 100%),
-            linear-gradient(105deg, transparent 0%, transparent 58%, rgba(147, 197, 253, 0.04) 59%, rgba(147, 197, 253, 0.06) 60%, rgba(147, 197, 253, 0.04) 61%, transparent 62%, transparent 100%),
-            
-            /* Base blanca pura con toque azul */
-            linear-gradient(180deg, #ffffff 0%, #f8fafc 40%, #f0f9ff 70%, #e0f2fe 100%);
-        background-size: 100% 100%;
-        z-index: 0;
-        pointer-events: none !important;
-    }
-
-    /* Textura de grano fino */
-    body::after {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-image: 
-            repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(59, 130, 246, 0.01) 1px, rgba(59, 130, 246, 0.01) 2px),
-            repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(96, 165, 250, 0.01) 1px, rgba(96, 165, 250, 0.01) 2px);
-        opacity: 0.6;
-        z-index: 0;
-        pointer-events: none !important;
-    }
-
-    /* Asegurar que el contenido esté por encima */
-    .container-fluid {
-        position: relative;
-        z-index: 2;
-    }
-
-    /* ============================================
-       HEADER PERSONALIZADO
-       ============================================ */
-    .card-title {
+    .dashboard-header h1 {
+        color: #0f172a;
         font-size: 2rem;
         font-weight: 800;
-        color: #0f172a;
-        margin-bottom: 0.5rem;
-        letter-spacing: -0.5px;
+        margin: 0 0 0.5rem 0;
     }
 
-    /* ============================================
-       STATS CARDS CON GLASSMORPHISM
-       ============================================ */
-    .stats-grid {
+    .dashboard-header p {
+        color: #64748b;
+        margin: 0;
+        font-weight: 500;
+    }
+
+    /* KPIs Grid */
+    .kpis-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         gap: 1.5rem;
         margin-bottom: 2rem;
     }
 
-    .stat-card {
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(30px) saturate(180%);
-        border: 1px solid rgba(219, 234, 254, 0.5);
+    .kpi-card {
+        background: white;
         border-radius: 16px;
-        padding: 1.8rem;
+        padding: 1.75rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
         overflow: hidden;
-        transition: all 0.3s ease;
-        box-shadow: 
-            0 8px 32px rgba(59, 130, 246, 0.08),
-            0 2px 8px rgba(147, 197, 253, 0.1),
-            inset 0 1px 0 rgba(255, 255, 255, 0.9);
     }
 
-    .stat-card::before {
+    .kpi-card::before {
         content: '';
         position: absolute;
         top: 0;
         left: 0;
-        width: 100%;
-        height: 100%;
-        background: 
-            radial-gradient(ellipse 300px 200px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
-        pointer-events: none;
-        z-index: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
     }
 
-    .stat-card::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 3px;
-        background: linear-gradient(90deg, 
-            rgba(59, 130, 246, 0.3) 0%, 
-            rgba(96, 165, 250, 0.5) 25%,
-            rgba(147, 197, 253, 0.4) 50%,
-            rgba(96, 165, 250, 0.5) 75%,
-            rgba(59, 130, 246, 0.3) 100%);
-        border-radius: 16px 16px 0 0;
+    .kpi-card:hover::before {
+        transform: scaleX(1);
     }
 
-    .stat-card:hover {
+    .kpi-card:hover {
         transform: translateY(-5px);
-        box-shadow: 
-            0 12px 40px rgba(59, 130, 246, 0.15),
-            0 4px 12px rgba(96, 165, 250, 0.2),
-            inset 0 1px 0 rgba(255, 255, 255, 0.95);
-        border-color: rgba(96, 165, 250, 0.6);
+        box-shadow: 0 12px 40px rgba(59, 130, 246, 0.2);
     }
 
-    .stat-icon {
-        width: 55px;
-        height: 55px;
-        border-radius: 14px;
-        background: rgba(219, 234, 254, 0.5);
+    .kpi-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+
+    .kpi-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.6rem;
-        color: #3b82f6;
-        margin-bottom: 1rem;
-        position: relative;
-        z-index: 2;
-        box-shadow: 0 4px 12px rgba(96, 165, 250, 0.2);
+        font-size: 1.5rem;
     }
 
-    .stat-value {
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: #0f172a;
-        margin-bottom: 0.3rem;
-        position: relative;
-        z-index: 2;
-    }
+    .kpi-icon.blue { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+    .kpi-icon.purple { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
+    .kpi-icon.green { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+    .kpi-icon.orange { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
 
-    .stat-label {
-        font-size: 0.9rem;
+    .kpi-title {
         color: #64748b;
+        font-size: 0.875rem;
         font-weight: 600;
-        position: relative;
-        z-index: 2;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 
-    /* ============================================
-       ADMIN CARDS (Charts y Tablas)
-       ============================================ */
-    .admin-card {
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(30px) saturate(180%);
-        border: 1px solid rgba(219, 234, 254, 0.5);
-        border-radius: 16px;
-        padding: 1.8rem;
-        margin-bottom: 1.5rem;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 
-            0 8px 32px rgba(59, 130, 246, 0.08),
-            0 2px 8px rgba(147, 197, 253, 0.1),
-            inset 0 1px 0 rgba(255, 255, 255, 0.9);
-        transition: all 0.3s ease;
+    .kpi-value {
+        color: #0f172a;
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 0.5rem 0;
     }
 
-    .admin-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: 
-            radial-gradient(ellipse 400px 300px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
-        pointer-events: none;
-        z-index: 0;
-    }
-
-    .admin-card::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 3px;
-        background: linear-gradient(90deg, 
-            rgba(59, 130, 246, 0.3) 0%, 
-            rgba(96, 165, 250, 0.5) 25%,
-            rgba(147, 197, 253, 0.4) 50%,
-            rgba(96, 165, 250, 0.5) 75%,
-            rgba(59, 130, 246, 0.3) 100%);
-        border-radius: 16px 16px 0 0;
-    }
-
-    .admin-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 
-            0 12px 40px rgba(59, 130, 246, 0.12),
-            0 4px 12px rgba(96, 165, 250, 0.15),
-            inset 0 1px 0 rgba(255, 255, 255, 0.95);
-    }
-
-    .card-header-admin {
+    .kpi-trend {
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.5rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid rgba(59, 130, 246, 0.15);
-        position: relative;
-        z-index: 2;
+        gap: 0.5rem;
+        color: #10b981;
+        font-size: 0.875rem;
+        font-weight: 600;
     }
 
-    .card-header-admin .card-title {
+    .kpi-trend.down {
+        color: #ef4444;
+    }
+
+    /* Charts Grid */
+    .charts-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .chart-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.75rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .chart-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+    }
+
+    .chart-title {
+        color: #0f172a;
         font-size: 1.25rem;
         font-weight: 700;
-        color: #0f172a;
         margin: 0;
     }
 
-    /* ============================================
-       TABLA
-       ============================================ */
+    .chart-subtitle {
+        color: #64748b;
+        font-size: 0.875rem;
+        margin: 0;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+
+    /* Tables */
+    .table-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.75rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        margin-bottom: 1.5rem;
+    }
+
+    .table-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+    }
+
+    .table-title {
+        color: #0f172a;
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin: 0;
+    }
+
     .table-admin {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
-        position: relative;
-        z-index: 2;
-    }
-
-    .table-admin thead {
-        background: rgba(59, 130, 246, 0.08);
-        border-radius: 12px 12px 0 0;
     }
 
     .table-admin thead th {
-        padding: 1rem 1rem;
-        color: #1e293b;
+        background: #f8fafc;
+        color: #64748b;
         font-weight: 700;
-        font-size: 0.85rem;
         text-transform: uppercase;
+        font-size: 0.75rem;
         letter-spacing: 0.5px;
-        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
-    }
-
-    .table-admin thead th:first-child {
-        border-radius: 12px 0 0 0;
-    }
-
-    .table-admin thead th:last-child {
-        border-radius: 0 12px 0 0;
-    }
-
-    .table-admin tbody tr {
-        transition: all 0.2s ease;
-        border-bottom: 1px solid rgba(59, 130, 246, 0.08);
-    }
-
-    .table-admin tbody tr:hover {
-        background: rgba(59, 130, 246, 0.05);
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 2px solid #e2e8f0;
     }
 
     .table-admin tbody td {
-        padding: 1rem 1rem;
-        color: #1e293b;
-        font-size: 0.9rem;
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        color: #0f172a;
         font-weight: 500;
-        vertical-align: middle;
     }
 
-    /* ============================================
-       BOTONES
-       ============================================ */
-    .btn-primary-admin {
-        padding: 12px 24px;
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
-        border: none;
-        border-radius: 12px;
-        color: white;
-        font-size: 0.95rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 
-            0 8px 20px rgba(59, 130, 246, 0.25),
-            0 2px 8px rgba(96, 165, 250, 0.2),
-            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    .table-admin tbody tr:hover {
+        background: #f8fafc;
     }
 
-    .btn-primary-admin:hover {
-        transform: translateY(-2px);
-        box-shadow: 
-            0 12px 28px rgba(59, 130, 246, 0.3),
-            0 4px 12px rgba(96, 165, 250, 0.25),
-            inset 0 1px 0 rgba(255, 255, 255, 0.25);
-        background: linear-gradient(135deg, rgba(96, 165, 250, 0.95) 0%, rgba(59, 130, 246, 0.95) 100%);
-    }
-
-    /* ============================================
-       FORM CONTROLS
-       ============================================ */
-    .form-control-admin {
-        width: 100%;
-        padding: 12px 16px;
-        background: rgba(248, 250, 252, 0.6);
-        border: 1.5px solid rgba(203, 213, 225, 0.5);
-        border-radius: 12px;
-        color: #1e293b;
-        font-size: 0.95rem;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        position: relative;
-        z-index: 2;
-    }
-
-    .form-control-admin:focus {
-        outline: none;
-        background: rgba(255, 255, 255, 0.9);
-        border-color: rgba(96, 165, 250, 0.6);
-        box-shadow: 
-            0 0 0 4px rgba(96, 165, 250, 0.08),
-            0 2px 8px rgba(147, 197, 253, 0.15);
-    }
-
-    /* ============================================
-       BADGES
-       ============================================ */
     .badge-admin {
-        padding: 0.4rem 0.9rem;
-        border-radius: 10px;
-        font-size: 0.8rem;
-        font-weight: 700;
-        letter-spacing: 0.3px;
         display: inline-block;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        padding: 0.375rem 0.875rem;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 
     .badge-success {
-        background: rgba(16, 185, 129, 0.15);
-        color: #059669;
-        border: 1px solid rgba(16, 185, 129, 0.3);
+        background: #d1fae5;
+        color: #065f46;
     }
 
     .badge-warning {
-        background: rgba(245, 158, 11, 0.15);
-        color: #d97706;
-        border: 1px solid rgba(245, 158, 11, 0.3);
+        background: #fef3c7;
+        color: #92400e;
     }
 
     .badge-danger {
-        background: rgba(239, 68, 68, 0.15);
-        color: #dc2626;
-        border: 1px solid rgba(239, 68, 68, 0.3);
+        background: #fee2e2;
+        color: #991b1b;
     }
 
-    /* ============================================
-       ALERTS
-       ============================================ */
+    /* Alertas */
     .alert-admin {
         padding: 1rem 1.25rem;
         border-radius: 12px;
         margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        font-weight: 600;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        position: relative;
-        z-index: 2;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(10px);
+        border-left: 4px solid;
     }
 
     .alert-danger-admin {
-        border-left: 4px solid #ef4444;
-        color: #dc2626;
-        background: rgba(239, 68, 68, 0.1);
+        background: #fef2f2;
+        border-color: #ef4444;
+        color: #991b1b;
     }
 
     .alert-warning-admin {
-        border-left: 4px solid #f59e0b;
-        color: #d97706;
-        background: rgba(245, 158, 11, 0.1);
+        background: #fffbeb;
+        border-color: #f59e0b;
+        color: #92400e;
     }
 
-    /* ============================================
-       ANIMACIONES DE ENTRADA
-       ============================================ */
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
+    /* Responsive */
+    @media (max-width: 1024px) {
+        .charts-grid {
+            grid-template-columns: 1fr;
         }
     }
 
-    .stat-card,
-    .admin-card {
-        animation: fadeInUp 0.5s ease-out backwards;
-    }
-
-    .stat-card:nth-child(1) { animation-delay: 0.05s; }
-    .stat-card:nth-child(2) { animation-delay: 0.1s; }
-    .stat-card:nth-child(3) { animation-delay: 0.15s; }
-    .stat-card:nth-child(4) { animation-delay: 0.2s; }
-
-    /* ============================================
-       CHARTS STYLING
-       ============================================ */
-    canvas {
-        position: relative;
-        z-index: 2;
-    }
-
-    /* ============================================
-       LOADING SPINNER
-       ============================================ */
-    .spinner-border {
-        border-color: rgba(59, 130, 246, 0.3);
-        border-top-color: #3b82f6;
-    }
-
-    /* ============================================
-       RESPONSIVE
-       ============================================ */
     @media (max-width: 768px) {
-        .card-title {
-            font-size: 1.5rem;
+        .kpis-grid {
+            grid-template-columns: 1fr;
         }
-
-        .stat-card {
-            margin-bottom: 1rem;
-        }
-
-        .admin-card {
-            padding: 1.2rem;
-        }
-
-        .table-admin {
-            font-size: 0.85rem;
-        }
-
-        .card-header-admin {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 1rem;
-        }
-    }
-
-    @media (max-width: 480px) {
-        body::before,
-        body::after {
-            /* Simplificar en móviles para mejor performance */
-            background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%);
-        }
-
-        .stat-value {
-            font-size: 1.8rem;
+        
+        .dashboard-container {
+            padding: 1rem;
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="dashboard-container">
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="card-title">Dashboard</h1>
-            <p style="color: #64748b; margin: 0; font-weight: 500;">Bienvenido al panel de control</p>
+    <div class="dashboard-header">
+        <h1>Dashboard CommerceBox</h1>
+        <p>Vista general del sistema en tiempo real</p>
+    </div>
+
+    <!-- KPIs Grid -->
+    <div class="kpis-grid">
+        <!-- Ventas Hoy -->
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div class="kpi-icon blue">
+                    <i class="bi bi-cash-coin" style="color: white;"></i>
+                </div>
+            </div>
+            <div class="kpi-title">Ventas Hoy</div>
+            <div class="kpi-value" id="ventasHoy">$0.00</div>
+            <div class="kpi-trend">
+                <i class="bi bi-arrow-up"></i>
+                <span>Actualizado ahora</span>
+            </div>
         </div>
-        <div>
-            <button class="btn-primary-admin">
-                <i class="bi bi-download me-2"></i>Exportar Reporte
-            </button>
+
+        <!-- Número de Ventas -->
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div class="kpi-icon purple">
+                    <i class="bi bi-cart-check" style="color: white;"></i>
+                </div>
+            </div>
+            <div class="kpi-title">Transacciones</div>
+            <div class="kpi-value" id="numVentas">0</div>
+            <div class="kpi-trend">
+                <i class="bi bi-graph-up"></i>
+                <span>Ventas completadas</span>
+            </div>
+        </div>
+
+        <!-- Productos en Stock -->
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div class="kpi-icon green">
+                    <i class="bi bi-box-seam" style="color: white;"></i>
+                </div>
+            </div>
+            <div class="kpi-title">Productos</div>
+            <div class="kpi-value" id="productosTotal">0</div>
+            <div class="kpi-trend">
+                <i class="bi bi-check-circle"></i>
+                <span>Con stock</span>
+            </div>
+        </div>
+
+        <!-- Alertas Críticas -->
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div class="kpi-icon orange">
+                    <i class="bi bi-exclamation-triangle" style="color: white;"></i>
+                </div>
+            </div>
+            <div class="kpi-title">Alertas</div>
+            <div class="kpi-value" id="alertasCriticas">0</div>
+            <div class="kpi-trend down">
+                <i class="bi bi-shield-exclamation"></i>
+                <span>Requieren atención</span>
+            </div>
         </div>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="bi bi-cash-stack"></i>
-            </div>
-            <div class="stat-value" id="ventasHoy">$0.00</div>
-            <div class="stat-label">Ventas Hoy</div>
-            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #10b981; font-weight: 600;">
-                <i class="bi bi-arrow-up"></i> +12% vs ayer
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="bi bi-cart-check"></i>
-            </div>
-            <div class="stat-value" id="numVentas">0</div>
-            <div class="stat-label">Transacciones</div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="bi bi-box-seam"></i>
-            </div>
-            <div class="stat-value" id="productosTotal">0</div>
-            <div class="stat-label">Productos en Stock</div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon" style="background: rgba(239, 68, 68, 0.2); color: #ef4444;">
-                <i class="bi bi-exclamation-triangle"></i>
-            </div>
-            <div class="stat-value" id="alertasCriticas">0</div>
-            <div class="stat-label">Alertas Críticas</div>
-        </div>
-    </div>
-
-    <!-- Charts -->
-    <div class="row">
-        <div class="col-lg-8 mb-4">
-            <div class="admin-card" style="animation-delay: 0.25s;">
-                <div class="card-header-admin">
-                    <h3 class="card-title">Ventas de los Últimos 7 Días</h3>
-                    <select class="form-control-admin" style="width: auto;">
-                        <option>Últimos 7 días</option>
-                        <option>Últimos 30 días</option>
-                        <option>Este mes</option>
-                    </select>
+    <!-- Charts Grid -->
+    <div class="charts-grid">
+        <!-- Gráfico de Ventas -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <div>
+                    <h3 class="chart-title">Ventas de la Semana</h3>
+                    <p class="chart-subtitle">Tendencia de ventas de los últimos 7 días</p>
                 </div>
-                <canvas id="ventasChart" height="80"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="ventasChart"></canvas>
             </div>
         </div>
 
-        <div class="col-lg-4 mb-4">
-            <div class="admin-card" style="animation-delay: 0.3s;">
-                <div class="card-header-admin">
-                    <h3 class="card-title">Top Productos</h3>
+        <!-- Gráfico de Productos -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <div>
+                    <h3 class="chart-title">Top Productos</h3>
+                    <p class="chart-subtitle">Más vendidos hoy</p>
                 </div>
+            </div>
+            <div class="chart-container">
                 <canvas id="productosChart"></canvas>
             </div>
         </div>
     </div>
 
-    <!-- Tablas -->
-    <div class="row">
-        <div class="col-lg-6 mb-4">
-            <div class="admin-card" style="animation-delay: 0.35s;">
-                <div class="card-header-admin">
-                    <h3 class="card-title">Últimas Ventas</h3>
-                    <a href="/panel/ventas/historial/" style="color: #3b82f6; text-decoration: none; font-weight: 600; transition: all 0.2s;">
-                        Ver todas <i class="bi bi-arrow-right"></i>
-                    </a>
-                </div>
-                <table class="table-admin">
-                    <thead>
-                        <tr>
-                            <th>Nº Venta</th>
-                            <th>Cliente</th>
-                            <th>Total</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ultimasVentas">
-                        <tr>
-                            <td colspan="4" class="text-center" style="padding: 3rem;">
-                                <div class="spinner-border" role="status"></div>
-                                <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">Cargando ventas...</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+    <!-- Últimas Ventas -->
+    <div class="table-card">
+        <div class="table-header">
+            <h3 class="table-title">Últimas Ventas</h3>
+            <a href="#" class="btn-primary-admin">
+                <i class="bi bi-eye"></i> Ver todas
+            </a>
         </div>
+        <table class="table-admin">
+            <thead>
+                <tr>
+                    <th>Nº Venta</th>
+                    <th>Cliente</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody id="ultimasVentas">
+                <tr>
+                    <td colspan="4" class="text-center" style="padding: 3rem;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">Cargando ventas...</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
-        <div class="col-lg-6 mb-4">
-            <div class="admin-card" style="animation-delay: 0.4s;">
-                <div class="card-header-admin">
-                    <h3 class="card-title">Alertas de Stock</h3>
-                    <a href="/panel/alertas/" style="color: #3b82f6; text-decoration: none; font-weight: 600; transition: all 0.2s;">
-                        Ver todas <i class="bi bi-arrow-right"></i>
-                    </a>
+    <!-- Alertas de Stock -->
+    <div class="table-card">
+        <div class="table-header">
+            <h3 class="table-title">Alertas de Stock</h3>
+            <a href="#" class="btn-primary-admin">
+                <i class="bi bi-gear"></i> Configurar
+            </a>
+        </div>
+        <div id="alertasStock">
+            <div class="text-center" style="padding: 3rem;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
                 </div>
-                <div id="alertasStock">
-                    <div class="text-center" style="padding: 3rem;">
-                        <div class="spinner-border" role="status"></div>
-                        <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">Cargando alertas...</p>
-                    </div>
-                </div>
+                <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">Cargando alertas...</p>
             </div>
         </div>
     </div>
@@ -628,65 +426,114 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-    // Cargar estadísticas del dashboard
+    // ============================================================================
+    // FUNCIONES PARA CARGAR DATOS DEL DASHBOARD
+    // ============================================================================
+    
     async function loadDashboardStats() {
         try {
-            const response = await fetch('/api/reportes/dashboard/', {
+            const apiUrl = '/api/reportes/dashboard/';
+            
+            console.log('🔄 Cargando dashboard desde:', apiUrl);
+            
+            const response = await fetch(apiUrl, {
+                method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-                }
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include'
             });
             
-            // Redirigir a login si no está autenticado
+            console.log('📡 Respuesta del servidor:', response.status);
+            
             if (response.status === 401 || response.status === 403) {
+                console.warn('⚠️ No autenticado, redirigiendo al login...');
                 window.location.href = '/login/';
                 return;
             }
             
-            // Si hay otro error, solo registrarlo sin redirigir
             if (!response.ok) {
-                console.error('Error en la API:', response.status);
+                console.error('❌ Error en la API:', response.status, response.statusText);
+                showErrorState();
                 return;
             }
             
-            const data = await response.json();
+            const result = await response.json();
+            console.log('✅ Datos recibidos:', result);
             
-            // Actualizar stats
-            document.getElementById('ventasHoy').textContent = `$${data.ventas_hoy?.toFixed(2) || '0.00'}`;
-            document.getElementById('numVentas').textContent = data.num_ventas || '0';
-            document.getElementById('productosTotal').textContent = data.productos_total || '0';
-            document.getElementById('alertasCriticas').textContent = data.alertas_criticas || '0';
-            
-            // Cargar gráficos
-            loadVentasChart(data.ventas_semana || []);     
-            loadProductosChart(data.top_productos || []);  
-            loadUltimasVentas(data.ultimas_ventas || []);  
-            loadAlertas(data.alertas || []);
-            
-        } catch (error) {
-            console.error('Error cargando dashboard:', error);
-            // NO redirigir aquí - solo es error de red
-        }
-    }
-
-            
-            // Cargar gráficos
-            loadVentasChart(data.ventas_semana || []);     
-            loadProductosChart(data.top_productos || []);  
-            loadUltimasVentas(data.ultimas_ventas || []);  
-            loadAlertas(data.alertas || []);
+            if (result.success && result.data) {
+                const data = result.data;
+                
+                updateKPIs(data);
+                loadVentasChart(data.ventas_semana || []);
+                loadProductosChart(data.top_productos || []);
+                loadUltimasVentas(data.ultimas_ventas || []);
+                loadAlertas(data.alertas || []);
+                
+                console.log('✅ Dashboard cargado exitosamente');
+            } else {
+                console.error('❌ Respuesta sin datos:', result);
+                showErrorState();
+            }
             
         } catch (error) {
-            console.error('Error cargando dashboard:', error);
-            // NO redirigir aquí - solo es error de red
+            console.error('💥 Error cargando dashboard:', error);
+            showErrorState();
         }
     }
-
-    // Gráfico de ventas
+    
+    function updateKPIs(data) {
+        const ventasEl = document.getElementById('ventasHoy');
+        if (ventasEl) ventasEl.textContent = `$${(data.ventas_hoy || 0).toFixed(2)}`;
+        
+        const numVentasEl = document.getElementById('numVentas');
+        if (numVentasEl) numVentasEl.textContent = data.num_ventas || 0;
+        
+        const productosEl = document.getElementById('productosTotal');
+        if (productosEl) productosEl.textContent = data.productos_total || 0;
+        
+        const alertasEl = document.getElementById('alertasCriticas');
+        if (alertasEl) alertasEl.textContent = data.alertas_criticas || 0;
+    }
+    
+    function showErrorState() {
+        const tbody = document.getElementById('ultimasVentas');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center" style="padding: 3rem;">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 2.5rem; color: #ef4444;"></i>
+                        <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">Error al cargar datos</p>
+                        <button onclick="loadDashboardStats()" class="btn-primary-admin" style="margin-top: 1rem;">
+                            <i class="bi bi-arrow-clockwise"></i> Reintentar
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+    
+    // ============================================================================
+    // GRÁFICOS
+    // ============================================================================
+    
+    let ventasChartInstance = null;
+    let productosChartInstance = null;
+    
     function loadVentasChart(data) {
-        const ctx = document.getElementById('ventasChart').getContext('2d');
-        new Chart(ctx, {
+        const ctx = document.getElementById('ventasChart');
+        if (!ctx) return;
+        
+        if (ventasChartInstance) ventasChartInstance.destroy();
+        
+        if (!data || data.length === 0) {
+            ctx.parentElement.innerHTML = '<p style="text-align: center; color: #64748b; padding: 3rem;">No hay datos de ventas</p>';
+            return;
+        }
+        
+        ventasChartInstance = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: data.map(d => d.fecha),
@@ -697,64 +544,21 @@
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     tension: 0.4,
                     fill: true,
-                    borderWidth: 3,
-                    pointBackgroundColor: '#3b82f6',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    pointRadius: 5,
-                    pointHoverRadius: 7
+                    borderWidth: 3
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        titleColor: '#0f172a',
-                        bodyColor: '#64748b',
-                        borderColor: 'rgba(59, 130, 246, 0.5)',
-                        borderWidth: 1,
-                        padding: 12,
-                        displayColors: false,
-                        titleFont: {
-                            size: 14,
-                            weight: 'bold'
-                        },
-                        bodyFont: {
-                            size: 13
-                        }
-                    }
+                    legend: { display: false }
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        grid: {
-                            color: 'rgba(59, 130, 246, 0.1)',
-                            drawBorder: false
-                        },
                         ticks: {
-                            color: '#64748b',
-                            font: {
-                                weight: '600'
-                            },
                             callback: function(value) {
                                 return '$' + value.toFixed(2);
-                            }
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false,
-                            drawBorder: false
-                        },
-                        ticks: {
-                            color: '#64748b',
-                            font: {
-                                weight: '600'
                             }
                         }
                     }
@@ -762,122 +566,87 @@
             }
         });
     }
-
-    // Gráfico de productos
+    
     function loadProductosChart(data) {
-        const ctx = document.getElementById('productosChart').getContext('2d');
-        new Chart(ctx, {
+        const ctx = document.getElementById('productosChart');
+        if (!ctx) return;
+        
+        if (productosChartInstance) productosChartInstance.destroy();
+        
+        if (!data || data.length === 0) {
+            ctx.parentElement.innerHTML = '<p style="text-align: center; color: #64748b; padding: 3rem;">No hay datos</p>';
+            return;
+        }
+        
+        productosChartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: data.map(d => d.nombre),
                 datasets: [{
                     data: data.map(d => d.cantidad),
-                    backgroundColor: [
-                        '#3b82f6',
-                        '#8b5cf6',
-                        '#06b6d4',
-                        '#10b981',
-                        '#f59e0b'
-                    ],
-                    borderWidth: 3,
-                    borderColor: '#fff'
+                    backgroundColor: ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b']
                 }]
             },
             options: {
                 responsive: true,
                 plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            color: '#64748b',
-                            padding: 15,
-                            font: {
-                                size: 13,
-                                weight: '600'
-                            }
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        titleColor: '#0f172a',
-                        bodyColor: '#64748b',
-                        borderColor: 'rgba(59, 130, 246, 0.5)',
-                        borderWidth: 1,
-                        padding: 12,
-                        titleFont: {
-                            size: 14,
-                            weight: 'bold'
-                        },
-                        bodyFont: {
-                            size: 13
-                        }
-                    }
+                    legend: { position: 'bottom' }
                 }
             }
         });
     }
-
-    // Últimas ventas
+    
     function loadUltimasVentas(ventas) {
         const tbody = document.getElementById('ultimasVentas');
-        if (ventas.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="4" class="text-center" style="padding: 3rem;">
-                        <i class="bi bi-inbox" style="font-size: 2.5rem; color: #64748b;"></i>
-                        <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">No hay ventas recientes</p>
-                    </td>
-                </tr>
-            `;
+        if (!tbody) return;
+        
+        if (!ventas || ventas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 3rem;">No hay ventas recientes</td></tr>';
             return;
         }
-
+        
         tbody.innerHTML = ventas.map(v => `
             <tr>
-                <td><strong style="color: #3b82f6; font-weight: 700;">${v.numero_venta}</strong></td>
-                <td style="font-weight: 600;">${v.cliente || 'Público General'}</td>
-                <td><strong style="color: #0f172a;">$${v.total.toFixed(2)}</strong></td>
-                <td>
-                    <span class="badge-admin badge-${v.estado === 'COMPLETADA' ? 'success' : 'warning'}">
-                        ${v.estado}
-                    </span>
-                </td>
+                <td><strong style="color: #3b82f6;">${v.numero_venta}</strong></td>
+                <td>${v.cliente || 'Público General'}</td>
+                <td><strong>$${v.total.toFixed(2)}</strong></td>
+                <td><span class="badge-admin badge-${v.estado === 'COMPLETADA' ? 'success' : 'warning'}">${v.estado}</span></td>
             </tr>
         `).join('');
     }
-
-    // Alertas
+    
     function loadAlertas(alertas) {
         const container = document.getElementById('alertasStock');
-        if (alertas.length === 0) {
-            container.innerHTML = `
-                <div class="text-center" style="padding: 3rem;">
-                    <i class="bi bi-check-circle" style="font-size: 3rem; color: #10b981;"></i>
-                    <p style="color: #10b981; margin-top: 1rem; font-weight: 700; font-size: 1.1rem;">¡Todo en orden!</p>
-                    <p style="color: #64748b; font-size: 0.9rem; font-weight: 500;">No hay alertas críticas</p>
-                </div>
-            `;
+        if (!container) return;
+        
+        if (!alertas || alertas.length === 0) {
+            container.innerHTML = '<div class="text-center" style="padding: 3rem;"><i class="bi bi-check-circle" style="font-size: 3rem; color: #10b981;"></i><p style="color: #10b981; margin-top: 1rem;">¡Todo en orden!</p></div>';
             return;
         }
-
-        container.innerHTML = alertas.map(a => `
-            <div class="alert-admin alert-${a.prioridad === 'CRITICA' ? 'danger' : 'warning'}-admin">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-exclamation-triangle me-3" style="font-size: 1.5rem;"></i>
-                    <div style="flex: 1;">
-                        <strong>${a.titulo}</strong>
-                        <p style="margin: 0.3rem 0 0; font-size: 0.9rem; opacity: 0.9;">${a.mensaje}</p>
+        
+        container.innerHTML = alertas.map(a => {
+            const isDanger = a.prioridad === 'CRITICA' || a.prioridad === 'ALTA';
+            return `
+                <div class="alert-admin alert-${isDanger ? 'danger' : 'warning'}-admin">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle me-3" style="font-size: 1.5rem;"></i>
+                        <div>
+                            <strong>${a.titulo}</strong>
+                            <p style="margin: 0.3rem 0 0; font-size: 0.9rem;">${a.mensaje}</p>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
-
-    // Inicializar
+    
+    // ============================================================================
+    // INICIALIZACIÓN
+    // ============================================================================
+    
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('🚀 Iniciando carga del dashboard...');
         loadDashboardStats();
-        
-        // Actualizar cada 30 segundos
         setInterval(loadDashboardStats, 30000);
     });
 </script>

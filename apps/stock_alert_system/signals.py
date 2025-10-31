@@ -8,7 +8,7 @@ Escucha cambios en inventario y ventas
 from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 from django.db import transaction
-
+from .models import AlertaStock
 
 # ============================================================================
 # SIGNALS PARA QUINTALES
@@ -212,3 +212,20 @@ def compra_recibida_actualizar_estados(sender, instance, **kwargs):
             transaction.on_commit(
                 lambda p=producto: StatusCalculator.calcular_estado(p)
             )
+# Al final del archivo apps/stock_alert_system/signals.py
+
+
+@receiver(post_save, sender=AlertaStock)
+def crear_notificacion_desde_alerta(sender, instance, created, **kwargs):
+    """
+    Cuando se crea una nueva alerta, automáticamente crear notificación
+    """
+    if created and not instance.resuelta:
+        from apps.notifications.services.notification_service import NotificationService
+        
+        try:
+            NotificationService.crear_notificacion_desde_alerta(instance)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error al crear notificación desde alerta: {str(e)}")

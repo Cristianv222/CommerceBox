@@ -376,8 +376,10 @@ class DashboardDataGenerator:
     
     def get_productos_mas_vendidos(self, limite=10):
         """
-        Top productos más vendidos del día
+        Top productos más vendidos
+        Busca primero del día, si no hay, busca de la semana
         """
+        # Intentar productos del día
         productos_dia = DetalleVenta.objects.filter(
             venta__fecha_venta__gte=self.inicio_dia,
             venta__estado='COMPLETADA'
@@ -389,7 +391,22 @@ class DashboardDataGenerator:
             total_vendido=Sum('total'),
             cantidad_ventas=Count('id')
         ).order_by('-total_vendido')[:limite]
-        
+    
+        # Si no hay ventas del día, buscar de la semana
+        if not productos_dia.exists():
+            hace_7_dias = self.inicio_dia - timedelta(days=7)
+            productos_dia = DetalleVenta.objects.filter(
+                venta__fecha_venta__gte=hace_7_dias,
+                venta__estado='COMPLETADA'
+            ).values(
+                'producto__id',
+                'producto__nombre',
+                'producto__tipo_inventario'
+            ).annotate(
+                total_vendido=Sum('total'),
+                cantidad_ventas=Count('id')
+            ).order_by('-total_vendido')[:limite]
+    
         return list(productos_dia)
     
     def get_ventas_por_categoria(self):

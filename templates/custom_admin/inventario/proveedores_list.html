@@ -999,7 +999,46 @@
         </div>
     </div>
 </div>
-
+    <!-- Modal Confirmar Eliminación -->
+<div class="modal fade" id="modal-eliminar-proveedor" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle-fill me-2" style="color: #ef4444;"></i>
+                    Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 1rem;">
+                    <i class="bi bi-exclamation-triangle-fill" style="font-size: 2.5rem; color: #ef4444; flex-shrink: 0;"></i>
+                    <div>
+                        <p style="margin: 0; font-weight: 700; color: #0f172a; font-size: 1.05rem;">¿Estás seguro de eliminar este proveedor?</p>
+                        <p style="margin: 0.75rem 0 0 0; font-size: 0.95rem; color: #64748b; line-height: 1.5;">
+                            Si el proveedor tiene productos asociados, solo se desactivará. De lo contrario, será eliminado permanentemente.
+                        </p>
+                    </div>
+                </div>
+                
+                <div id="proveedor-eliminar-info" style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 12px; padding: 1.25rem;">
+                    <!-- Se llena dinámicamente -->
+                </div>
+                
+                <input type="hidden" id="proveedor-eliminar-id">
+                <input type="hidden" id="proveedor-eliminar-nombre">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-primary-admin" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-2"></i>Cancelar
+                </button>
+                <button type="button" class="btn-danger-admin" onclick="confirmarEliminacionProveedor()" id="btn-confirmar-eliminar-proveedor">
+                    <i class="bi bi-trash me-2"></i>Eliminar Proveedor
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- FORM ELIMINAR -->
 <form id="formEliminar" method="POST" style="display: none;">
     {% csrf_token %}
@@ -1124,11 +1163,97 @@
     }
 
     function confirmarEliminar(proveedorId, nombre) {
-        if (confirm(`¿Estás seguro de eliminar el proveedor "${nombre}"?\n\nSi tiene productos asociados, solo se desactivará.`)) {
-            const form = document.getElementById('formEliminar');
-            form.action = `/panel/inventario/proveedores/${proveedorId}/eliminar/`;
-            form.submit();
+        // Buscar la fila con los datos del proveedor
+        const fila = document.querySelector(`tr[data-proveedor-id="${proveedorId}"]`);
+        
+        if (!fila) {
+            showNotification('error', 'No se encontró el proveedor');
+            return;
         }
+        
+        // Guardar ID y nombre para usar después
+        document.getElementById('proveedor-eliminar-id').value = proveedorId;
+        document.getElementById('proveedor-eliminar-nombre').value = nombre;
+        
+        // Obtener información del proveedor desde los data attributes
+        const nombreComercial = fila.dataset.nombreComercial || nombre;
+        const rucNit = fila.dataset.rucNit || 'Sin RUC/NIT';
+        const telefono = fila.dataset.telefono || 'Sin teléfono';
+        const email = fila.dataset.email || 'Sin email';
+        const totalProductos = fila.querySelector('td:nth-child(5)') ? 
+            fila.querySelector('td:nth-child(5)').textContent.trim() : '0';
+        
+        // Llenar el modal con la información del proveedor
+        document.getElementById('proveedor-eliminar-info').innerHTML = `
+            <div style="display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem;">
+                <div class="stat-icon" style="width: 50px; height: 50px; background: rgba(59, 130, 246, 0.2); color: #3b82f6; flex-shrink: 0; margin-bottom: 0;">
+                    <i class="bi bi-building-fill"></i>
+                </div>
+                <div style="flex: 1;">
+                    <div style="font-weight: 700; color: #0f172a; font-size: 1.1rem; margin-bottom: 0.5rem;">${nombreComercial}</div>
+                    <div style="color: #64748b; font-size: 0.9rem; margin-bottom: 0.25rem;">
+                        <i class="bi bi-card-text me-1"></i><strong>RUC/NIT:</strong> ${rucNit}
+                    </div>
+                    ${telefono !== 'Sin teléfono' ? `
+                        <div style="color: #64748b; font-size: 0.9rem; margin-bottom: 0.25rem;">
+                            <i class="bi bi-telephone-fill me-1"></i><strong>Teléfono:</strong> ${telefono}
+                        </div>
+                    ` : ''}
+                    ${email !== 'Sin email' ? `
+                        <div style="color: #64748b; font-size: 0.9rem; margin-bottom: 0.25rem;">
+                            <i class="bi bi-envelope-fill me-1"></i><strong>Email:</strong> ${email}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+            
+            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 0.75rem; display: flex; align-items: center; gap: 0.75rem;">
+                <i class="bi bi-box-seam-fill" style="color: #f59e0b; font-size: 1.5rem;"></i>
+                <div style="font-size: 0.9rem; color: #92400e;">
+                    <strong>Productos asociados:</strong> ${totalProductos}
+                </div>
+            </div>
+        `;
+        
+        // Mostrar el modal
+        const modal = new bootstrap.Modal(document.getElementById('modal-eliminar-proveedor'));
+        modal.show();
+    }
+
+    function confirmarEliminacionProveedor() {
+        const proveedorId = document.getElementById('proveedor-eliminar-id').value;
+        const proveedorNombre = document.getElementById('proveedor-eliminar-nombre').value;
+        const btn = document.getElementById('btn-confirmar-eliminar-proveedor');
+        const originalHTML = btn.innerHTML;
+        
+        if (!proveedorId) {
+            showNotification('error', 'Error: No se ha seleccionado un proveedor');
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Eliminando...';
+
+        // Enviar el formulario
+        const form = document.getElementById('formEliminar');
+        form.action = `/panel/inventario/proveedores/${proveedorId}/eliminar/`;
+        
+        // Agregar un campo oculto para identificar que es una solicitud AJAX
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'ajax';
+        input.value = '1';
+        form.appendChild(input);
+        
+        // Enviar el formulario
+        form.submit();
+        
+        // Cerrar el modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modal-eliminar-proveedor'));
+        modal.hide();
+        
+        // Mostrar notificación de procesamiento
+        showNotification('info', `Procesando eliminación de "${proveedorNombre}"...`);
     }
 
     // Mostrar spinner al enviar el formulario

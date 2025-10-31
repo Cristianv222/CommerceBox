@@ -222,8 +222,21 @@ urlpatterns = [
     # ALERTAS Y NOTIFICACIONES
     # ========================================
     path('alertas/', views.alertas_view, name='alertas'),
+    # APIs de Alertas
+    path('api/alertas/list/', views.api_alertas_list, name='api_alertas_list'),
+    path('api/alertas/<uuid:alerta_id>/', views.api_alerta_detalle, name='api_alerta_detalle'),
+    path('api/alertas/<uuid:alerta_id>/resolver/', views.api_alerta_resolver, name='api_alerta_resolver'),
+    path('api/alertas/<uuid:alerta_id>/ignorar/', views.api_alerta_ignorar, name='api_alerta_ignorar'),
+    path('api/productos/stock/', views.api_productos_stock_list, name='api_productos_stock_list'),
+    path('api/alertas/stats/', views.api_alertas_stats, name='api_alertas_stats'),
     path('notificaciones/', views.notificaciones_view, name='notificaciones'),
-    
+    # APIs de Notificaciones
+    path('api/notificaciones/list/', views.api_notificaciones_list, name='api_notificaciones_list'),
+    path('api/notificaciones/<uuid:notificacion_id>/', views.api_notificacion_detalle, name='api_notificacion_detalle'),
+    path('api/notificaciones/<uuid:notificacion_id>/marcar-leida/', views.api_notificacion_marcar_leida, name='api_notificacion_marcar_leida'),
+    path('api/notificaciones/marcar-todas-leidas/', views.api_notificaciones_marcar_todas_leidas, name='api_notificaciones_marcar_todas_leidas'),
+    path('api/notificaciones/<uuid:notificacion_id>/eliminar/', views.api_notificacion_eliminar, name='api_notificacion_eliminar'),
+    path('api/notificaciones/contador/', views.api_notificaciones_contador, name='api_notificaciones_contador'),
     # ========================================
     # LOGS Y AUDITORÍA
     # ========================================

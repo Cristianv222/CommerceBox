@@ -1,0 +1,1608 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Alertas de Stock{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ========================================
+       ESTILOS DEL DASHBOARD DE ALERTAS
+       ======================================== */
+    .alertas-header {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .alertas-header h1 {
+        color: #0f172a;
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 0;
+    }
+
+    .alertas-header p {
+        color: #64748b;
+        margin: 0.5rem 0 0 0;
+        font-weight: 500;
+    }
+
+    .btn-header {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-refrescar {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+    }
+
+    .btn-refrescar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+    }
+
+    /* Resumen de Alertas */
+    .alertas-resumen {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .alerta-stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .alerta-stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    .alerta-stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        transition: transform 0.3s ease;
+    }
+
+    .alerta-stat-card:hover::before {
+        transform: scaleY(1.5);
+    }
+
+    .alerta-stat-card.critica::before { background: #ef4444; }
+    .alerta-stat-card.alta::before { background: #f59e0b; }
+    .alerta-stat-card.media::before { background: #3b82f6; }
+    .alerta-stat-card.normal::before { background: #10b981; }
+
+    .alerta-stat-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+
+    .alerta-stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .alerta-stat-icon.critica { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+    .alerta-stat-icon.alta { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    .alerta-stat-icon.media { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+    .alerta-stat-icon.normal { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+
+    .alerta-stat-number {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0.5rem 0;
+    }
+
+    .alerta-stat-label {
+        color: #64748b;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Tabs */
+    .alertas-tabs {
+        background: white;
+        border-radius: 16px;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        display: flex;
+        gap: 1rem;
+        overflow-x: auto;
+    }
+
+    .tab-btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        background: transparent;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.95rem;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+        background: #f1f5f9;
+        color: #3b82f6;
+    }
+
+    .tab-btn.active {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+
+    /* Contenido de Tabs */
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* Cards de Alertas */
+    .alertas-grid {
+        display: grid;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .alerta-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border-left: 4px solid;
+        transition: all 0.3s ease;
+    }
+
+    .alerta-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    .alerta-card.critica { border-left-color: #ef4444; }
+    .alerta-card.alta { border-left-color: #f59e0b; }
+    .alerta-card.media { border-left-color: #3b82f6; }
+
+    .alerta-card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+
+    .alerta-card-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .alerta-card-desc {
+        color: #64748b;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    .alerta-badge {
+        padding: 0.375rem 0.875rem;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .alerta-badge.critica {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .alerta-badge.alta {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .alerta-badge.media {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .alerta-card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .alerta-date {
+        color: #94a3b8;
+        font-size: 0.875rem;
+    }
+
+    .alerta-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-alerta {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-resolver {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-resolver:hover {
+        background: #059669;
+        transform: scale(1.05);
+    }
+
+    .btn-ignorar {
+        background: #64748b;
+        color: white;
+    }
+
+    .btn-ignorar:hover {
+        background: #475569;
+    }
+
+    /* Tabla de Productos */
+    .productos-table-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.75rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .table-productos {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table-productos thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .table-productos tbody td {
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        color: #0f172a;
+        font-weight: 500;
+    }
+
+    .table-productos tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .semaforo-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.375rem 0.875rem;
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 700;
+    }
+
+    .semaforo-badge.normal {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .semaforo-badge.bajo {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .semaforo-badge.critico {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .semaforo-badge.agotado {
+        background: #e5e7eb;
+        color: #1f2937;
+    }
+
+    /* Loading */
+    .loading-container {
+        text-align: center;
+        padding: 3rem;
+    }
+
+    .spinner {
+        border: 4px solid #f3f4f6;
+        border-top: 4px solid #3b82f6;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .alertas-container {
+            padding: 1rem;
+        }
+
+        .alertas-resumen {
+            grid-template-columns: 1fr;
+        }
+
+        .alertas-tabs {
+            flex-direction: column;
+        }
+
+        .alerta-card-footer {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+    }
+    /* ========================================
+       MODALES Y NOTIFICACIONES
+       ======================================== */
+    
+    /* Modal Overlay */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 1rem;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .modal-overlay.active {
+        opacity: 1;
+    }
+
+    /* Modal Container */
+    .modal-container {
+        background: white;
+        border-radius: 20px;
+        max-width: 600px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        transform: scale(0.9) translateY(20px);
+        transition: transform 0.3s ease;
+    }
+
+    .modal-overlay.active .modal-container {
+        transform: scale(1) translateY(0);
+    }
+
+    /* Modal Header */
+    .modal-header {
+        padding: 2rem;
+        border-radius: 20px 20px 0 0;
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .modal-header-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .modal-header-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+
+    .modal-icon {
+        width: 50px;
+        height: 50px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .modal-title {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 800;
+        flex: 1;
+    }
+
+    .modal-close {
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+
+    .modal-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: rotate(90deg);
+    }
+
+    /* Modal Body */
+    .modal-body {
+        padding: 2rem;
+    }
+
+    .modal-alerta-info {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid #3b82f6;
+    }
+
+    .modal-alerta-info h3 {
+        margin: 0 0 0.5rem 0;
+        color: #0f172a;
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+
+    .modal-alerta-info p {
+        margin: 0 0 1rem 0;
+        color: #64748b;
+        line-height: 1.6;
+    }
+
+    .modal-alerta-meta {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        font-size: 0.875rem;
+        color: #94a3b8;
+    }
+
+    .modal-alerta-meta span {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .modal-alerta-warning {
+        border-left-color: #f59e0b;
+        background: #fffbeb;
+    }
+
+    .modal-warning {
+        background: #fef3c7;
+        border: 2px solid #fbbf24;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .modal-warning i {
+        color: #d97706;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .modal-warning p {
+        margin: 0;
+        color: #78350f;
+        line-height: 1.5;
+    }
+
+    /* Form Group */
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #0f172a;
+        font-weight: 600;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-group label.required::after {
+        content: '*';
+        color: #ef4444;
+        margin-left: 0.25rem;
+    }
+
+    .form-textarea {
+        width: 100%;
+        padding: 0.875rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        resize: vertical;
+        transition: all 0.3s ease;
+    }
+
+    .form-textarea:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-help {
+        display: block;
+        margin-top: 0.5rem;
+        color: #94a3b8;
+        font-size: 0.875rem;
+    }
+
+    /* Modal Footer */
+    .modal-footer {
+        padding: 1.5rem 2rem 2rem;
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+    }
+
+    .btn-modal {
+        padding: 0.875rem 1.75rem;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-cancelar {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .btn-cancelar:hover {
+        background: #e2e8f0;
+        color: #475569;
+    }
+
+    .btn-confirmar-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .btn-confirmar-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-confirmar-success:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-confirmar-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+
+    .btn-confirmar-danger:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-confirmar-danger:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* Toast Notifications */
+    #toast-container {
+        position: fixed;
+        top: 2rem;
+        right: 2rem;
+        z-index: 10001;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .toast-notification {
+        background: white;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        min-width: 300px;
+        max-width: 500px;
+        transform: translateX(120%);
+        transition: transform 0.3s ease;
+        border-left: 4px solid;
+    }
+
+    .toast-notification.show {
+        transform: translateX(0);
+    }
+
+    .toast-notification.success {
+        border-left-color: #10b981;
+    }
+
+    .toast-notification.error {
+        border-left-color: #ef4444;
+    }
+
+    .toast-notification.warning {
+        border-left-color: #f59e0b;
+    }
+
+    .toast-notification.info {
+        border-left-color: #3b82f6;
+    }
+
+    .toast-notification i {
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .toast-notification span {
+        flex: 1;
+        font-weight: 600;
+        color: #0f172a;
+        font-size: 0.95rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .modal-container {
+            max-width: 95%;
+            margin: 1rem;
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem 1.5rem;
+            flex-direction: column;
+        }
+
+        .btn-modal {
+            width: 100%;
+            justify-content: center;
+        }
+
+        #toast-container {
+            top: 1rem;
+            right: 1rem;
+            left: 1rem;
+        }
+
+        .toast-notification {
+            min-width: auto;
+            width: 100%;
+        }
+    }
+/* ========================================
+   MODAL DETALLE DE PRODUCTO
+   ======================================== */
+
+.modal-header-info {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+
+.modal-detalle {
+    max-width: 700px;
+}
+
+.producto-estado-grande {
+    background: #f8fafc;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    border-left: 6px solid;
+}
+
+.producto-estado-grande.normal {
+    border-left-color: #10b981;
+    background: #d1fae5;
+}
+
+.producto-estado-grande.bajo {
+    border-left-color: #f59e0b;
+    background: #fef3c7;
+}
+
+.producto-estado-grande.critico {
+    border-left-color: #ef4444;
+    background: #fee2e2;
+}
+
+.producto-estado-grande.agotado {
+    border-left-color: #64748b;
+    background: #f1f5f9;
+}
+
+.estado-icono {
+    font-size: 4rem;
+    flex-shrink: 0;
+}
+
+.estado-info h3 {
+    margin: 0 0 0.5rem 0;
+    color: #0f172a;
+    font-size: 1.75rem;
+    font-weight: 800;
+}
+
+.estado-info p {
+    margin: 0;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.detalle-section {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.detalle-section h4 {
+    margin: 0 0 1rem 0;
+    color: #0f172a;
+    font-size: 1.1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.detalle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.detalle-row:last-child {
+    border-bottom: none;
+}
+
+.detalle-label {
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.detalle-valor {
+    color: #0f172a;
+    font-weight: 500;
+    text-align: right;
+}
+
+.valor-destacado {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #10b981;
+}
+
+.btn-confirmar-info {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    text-decoration: none;
+}
+
+.btn-confirmar-info:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="alertas-container">
+    <!-- Header -->
+    <div class="alertas-header">
+        <div>
+            <h1>🚨 Dashboard de Alertas</h1>
+            <p>Sistema de monitoreo de inventario en tiempo real</p>
+        </div>
+        <button class="btn-header btn-refrescar" onclick="cargarDatos()">
+            <i class="bi bi-arrow-clockwise"></i>
+            Actualizar
+        </button>
+    </div>
+
+    <!-- Resumen de Alertas -->
+    <div class="alertas-resumen">
+        <!-- Total Activas -->
+        <div class="alerta-stat-card critica">
+            <div class="alerta-stat-header">
+                <div class="alerta-stat-icon critica">
+                    <i class="bi bi-exclamation-triangle-fill" style="color: white;"></i>
+                </div>
+            </div>
+            <div class="alerta-stat-label">Alertas Activas</div>
+            <div class="alerta-stat-number" id="stat-activas">{{ alertas_stats.total_activas }}</div>
+        </div>
+
+        <!-- Críticas -->
+        <div class="alerta-stat-card critica">
+            <div class="alerta-stat-header">
+                <div class="alerta-stat-icon critica">
+                    <i class="bi bi-fire" style="color: white;"></i>
+                </div>
+            </div>
+            <div class="alerta-stat-label">Críticas</div>
+            <div class="alerta-stat-number" id="stat-criticas">{{ alertas_stats.criticas }}</div>
+        </div>
+
+        <!-- Altas -->
+        <div class="alerta-stat-card alta">
+            <div class="alerta-stat-header">
+                <div class="alerta-stat-icon alta">
+                    <i class="bi bi-exclamation-circle-fill" style="color: white;"></i>
+                </div>
+            </div>
+            <div class="alerta-stat-label">Altas</div>
+            <div class="alerta-stat-number" id="stat-altas">{{ alertas_stats.altas }}</div>
+        </div>
+
+        <!-- Productos Críticos -->
+        <div class="alerta-stat-card critica">
+            <div class="alerta-stat-header">
+                <div class="alerta-stat-icon critica">
+                    <i class="bi bi-box-seam" style="color: white;"></i>
+                </div>
+            </div>
+            <div class="alerta-stat-label">Productos Críticos</div>
+            <div class="alerta-stat-number" id="stat-productos-criticos">{{ productos_stats.criticos }}</div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="alertas-tabs">
+        <button class="tab-btn active" onclick="cambiarTab('activas')">
+            <i class="bi bi-exclamation-triangle"></i> Activas
+        </button>
+        <button class="tab-btn" onclick="cambiarTab('criticas')">
+            <i class="bi bi-fire"></i> Críticas
+        </button>
+        <button class="tab-btn" onclick="cambiarTab('resueltas')">
+            <i class="bi bi-check-circle"></i> Resueltas
+        </button>
+    </div>
+
+    <!-- Tab Content: Alertas -->
+    <div id="tab-activas" class="tab-content active">
+        <div class="alertas-grid" id="alertas-container">
+            <div class="loading-container">
+                <div class="spinner"></div>
+                <p style="color: #64748b; font-weight: 600;">Cargando alertas...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-criticas" class="tab-content">
+        <div class="alertas-grid" id="alertas-criticas-container">
+            <div class="loading-container">
+                <div class="spinner"></div>
+                <p style="color: #64748b; font-weight: 600;">Cargando alertas críticas...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-resueltas" class="tab-content">
+        <div class="alertas-grid" id="alertas-resueltas-container">
+            <div class="loading-container">
+                <div class="spinner"></div>
+                <p style="color: #64748b; font-weight: 600;">Cargando alertas resueltas...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ============================================================================
+// DASHBOARD DE ALERTAS - JavaScript con Modales
+// ============================================================================
+
+let currentTab = 'activas';
+let alertasCache = {};
+let alertaSeleccionada = null;
+
+// ============================================================================
+// FUNCIONES PRINCIPALES
+// ============================================================================
+
+function cambiarTab(tab) {
+    // Actualizar botones
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Actualizar contenido
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    
+    // Actualizar tab actual
+    currentTab = tab;
+    
+    // Cargar datos si no están cacheados
+    if (tab === 'productos') {
+        cargarProductos();
+    } else {
+        cargarAlertas(tab);
+    }
+}
+
+async function cargarDatos() {
+    console.log('🔄 Refrescando datos del dashboard...');
+    
+    // Mostrar indicador de carga
+    const btn = event.target.closest('button');
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise" style="animation: spin 1s linear infinite;"></i> Actualizando...';
+    btn.disabled = true;
+    
+    try {
+        // Cargar estadísticas
+        await cargarEstadisticas();
+        
+        // Cargar contenido del tab actual
+        if (currentTab === 'productos') {
+            await cargarProductos();
+        } else {
+            await cargarAlertas(currentTab);
+        }
+        
+        mostrarNotificacion('✅ Dashboard actualizado correctamente', 'success');
+        console.log('✅ Dashboard actualizado');
+    } catch (error) {
+        console.error('❌ Error al actualizar:', error);
+        mostrarNotificacion('❌ Error al actualizar el dashboard', 'error');
+    } finally {
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+    }
+}
+
+async function cargarEstadisticas() {
+    try {
+        const response = await fetch('/panel/api/alertas/stats/');
+        const data = await response.json();
+        
+        if (data.success) {
+            const stats = data.stats;
+            
+            // Actualizar contadores con animación
+            animarContador('stat-activas', stats.alertas_activas);
+            animarContador('stat-criticas', stats.alertas_criticas);
+            animarContador('stat-altas', stats.alertas_activas - stats.alertas_criticas);
+            animarContador('stat-productos-criticos', stats.productos_criticos);
+        }
+    } catch (error) {
+        console.error('Error cargando estadísticas:', error);
+    }
+}
+
+function animarContador(elementId, valorFinal) {
+    const elemento = document.getElementById(elementId);
+    const valorInicial = parseInt(elemento.textContent) || 0;
+    const diferencia = valorFinal - valorInicial;
+    const duracion = 500; // ms
+    const pasos = 20;
+    const incremento = diferencia / pasos;
+    const intervalo = duracion / pasos;
+    
+    let contador = 0;
+    const timer = setInterval(() => {
+        contador++;
+        const valorActual = Math.round(valorInicial + (incremento * contador));
+        elemento.textContent = valorActual;
+        
+        if (contador >= pasos) {
+            elemento.textContent = valorFinal;
+            clearInterval(timer);
+        }
+    }, intervalo);
+}
+
+async function cargarAlertas(filtro) {
+    const containerId = filtro === 'activas' ? 'alertas-container' : 
+                        filtro === 'criticas' ? 'alertas-criticas-container' : 
+                        'alertas-resueltas-container';
+    
+    const container = document.getElementById(containerId);
+    
+    try {
+        const response = await fetch(`/panel/api/alertas/list/?filtro=${filtro}&per_page=50`);
+        const data = await response.json();
+        
+        if (data.success && data.alertas.length > 0) {
+            container.innerHTML = data.alertas.map(alerta => crearCardAlerta(alerta)).join('');
+        } else {
+            container.innerHTML = `
+                <div class="loading-container">
+                    <i class="bi bi-inbox" style="font-size: 3rem; color: #cbd5e1;"></i>
+                    <p style="color: #64748b; font-weight: 600; margin-top: 1rem;">No hay alertas en esta categoría</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error cargando alertas:', error);
+        container.innerHTML = `
+            <div class="loading-container">
+                <i class="bi bi-exclamation-triangle" style="font-size: 3rem; color: #ef4444;"></i>
+                <p style="color: #64748b; font-weight: 600; margin-top: 1rem;">Error al cargar alertas</p>
+                <button onclick="cargarAlertas('${filtro}')" class="btn-header btn-refrescar" style="margin-top: 1rem;">
+                    Reintentar
+                </button>
+            </div>
+        `;
+    }
+}
+
+function crearCardAlerta(alerta) {
+    const clasePrioridad = alerta.prioridad_code.toLowerCase();
+    
+    return `
+        <div class="alerta-card ${clasePrioridad}">
+            <div class="alerta-card-header">
+                <div style="flex: 1;">
+                    <h3 class="alerta-card-title">${alerta.icono_prioridad} ${alerta.titulo}</h3>
+                    <p class="alerta-card-desc">${alerta.mensaje}</p>
+                    <p style="color: #94a3b8; font-size: 0.875rem; margin: 0.5rem 0 0 0;">
+                        <i class="bi bi-box"></i> ${alerta.producto_nombre}
+                    </p>
+                </div>
+                <span class="alerta-badge ${clasePrioridad}">${alerta.prioridad}</span>
+            </div>
+            
+            <div class="alerta-card-footer">
+                <div class="alerta-date">
+                    <i class="bi bi-clock"></i> ${alerta.fecha_creacion}
+                    ${alerta.dias_sin_resolver > 0 ? `<span style="color: #ef4444; font-weight: 700;"> · ${alerta.dias_sin_resolver} días sin resolver</span>` : ''}
+                </div>
+                
+                ${!alerta.resuelta ? `
+                    <div class="alerta-actions">
+                        <button class="btn-alerta btn-resolver" onclick='abrirModalResolver(${JSON.stringify(alerta)})'>
+                            <i class="bi bi-check-circle"></i> Resolver
+                        </button>
+                        <button class="btn-alerta btn-ignorar" onclick='abrirModalIgnorar(${JSON.stringify(alerta)})'>
+                            <i class="bi bi-x-circle"></i> Ignorar
+                        </button>
+                    </div>
+                ` : `
+                    <span style="color: #10b981; font-weight: 700;">
+                        <i class="bi bi-check-circle-fill"></i> Resuelta
+                    </span>
+                `}
+            </div>
+        </div>
+    `;
+}
+
+async function cargarProductos() {
+    const container = document.getElementById('productos-container');
+    
+    try {
+        const response = await fetch('/panel/api/productos/stock/?per_page=50');
+        const data = await response.json();
+        
+        if (data.success && data.productos.length > 0) {
+            container.innerHTML = data.productos.map(producto => crearFilaProducto(producto)).join('');
+        } else {
+            container.innerHTML = `
+                <tr>
+                    <td colspan="6">
+                        <div class="loading-container">
+                            <i class="bi bi-inbox" style="font-size: 3rem; color: #cbd5e1;"></i>
+                            <p style="color: #64748b; font-weight: 600; margin-top: 1rem;">No hay productos para mostrar</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+    } catch (error) {
+        console.error('Error cargando productos:', error);
+        container.innerHTML = `
+            <tr>
+                <td colspan="6">
+                    <div class="loading-container">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 3rem; color: #ef4444;"></i>
+                        <p style="color: #64748b; font-weight: 600; margin-top: 1rem;">Error al cargar productos</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+function crearFilaProducto(producto) {
+    const claseEstado = producto.estado_code.toLowerCase();
+    
+    let stockInfo = '';
+    if (producto.tipo_inventario === 'Producto Normal') {
+        stockInfo = `${producto.stock_actual} unidades (Mín: ${producto.stock_minimo})`;
+    } else {
+        stockInfo = `${producto.peso_disponible ? producto.peso_disponible.toFixed(2) : '0'} kg (${producto.porcentaje ? producto.porcentaje.toFixed(1) : '0'}%)`;
+    }
+    
+    return `
+        <tr>
+            <td>
+                <span class="semaforo-badge ${claseEstado}">
+                    ${producto.icono} ${producto.estado_semaforo}
+                </span>
+            </td>
+            <td><strong>${producto.nombre}</strong></td>
+            <td><code>${producto.codigo}</code></td>
+            <td>${producto.tipo_inventario}</td>
+            <td>${stockInfo}</td>
+            <td><strong style="color: #10b981;">L. ${producto.valor_inventario.toFixed(2)}</strong></td>
+        </tr>
+    `;
+}
+
+// ============================================================================
+// MODALES - RESOLVER ALERTA
+// ============================================================================
+
+function abrirModalResolver(alerta) {
+    alertaSeleccionada = alerta;
+    
+    const modalHTML = `
+        <div class="modal-overlay" id="modal-resolver" onclick="cerrarModalResolver(event)">
+            <div class="modal-container" onclick="event.stopPropagation()">
+                <div class="modal-header modal-header-success">
+                    <div class="modal-icon">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <h2 class="modal-title">Resolver Alerta</h2>
+                    <button class="modal-close" onclick="cerrarModalResolver()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="modal-alerta-info">
+                        <h3>${alerta.titulo}</h3>
+                        <p>${alerta.mensaje}</p>
+                        <div class="modal-alerta-meta">
+                            <span><i class="bi bi-box"></i> ${alerta.producto_nombre}</span>
+                            <span><i class="bi bi-clock"></i> ${alerta.fecha_creacion}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="notas-resolucion">
+                            <i class="bi bi-chat-left-text"></i>
+                            Notas de resolución (opcional)
+                        </label>
+                        <textarea 
+                            id="notas-resolucion" 
+                            rows="4" 
+                            placeholder="Describe cómo se resolvió esta alerta..."
+                            class="form-textarea"
+                        ></textarea>
+                        <small class="form-help">
+                            Ejemplos: "Stock repuesto", "Producto reordenado", "Ya no aplica"
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button class="btn-modal btn-cancelar" onclick="cerrarModalResolver()">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </button>
+                    <button class="btn-modal btn-confirmar-success" onclick="confirmarResolver()">
+                        <i class="bi bi-check-circle"></i> Marcar como Resuelta
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Animación de entrada
+    setTimeout(() => {
+        document.getElementById('modal-resolver').classList.add('active');
+    }, 10);
+}
+
+function cerrarModalResolver(event) {
+    if (event && event.target !== event.currentTarget) return;
+    
+    const modal = document.getElementById('modal-resolver');
+    if (modal) {
+        modal.classList.remove('active');
+        setTimeout(() => modal.remove(), 300);
+    }
+    alertaSeleccionada = null;
+}
+
+async function confirmarResolver() {
+    if (!alertaSeleccionada) return;
+    
+    const notas = document.getElementById('notas-resolucion').value.trim();
+    const btnConfirmar = event.target;
+    const originalHTML = btnConfirmar.innerHTML;
+    
+    // Deshabilitar botón y mostrar loading
+    btnConfirmar.disabled = true;
+    btnConfirmar.innerHTML = '<i class="bi bi-hourglass-split"></i> Procesando...';
+    
+    try {
+        const response = await fetch(`/panel/api/alertas/${alertaSeleccionada.id}/resolver/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                notas: notas || 'Resuelta desde el dashboard'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            cerrarModalResolver();
+            mostrarNotificacion('✅ Alerta resuelta correctamente', 'success');
+            cargarDatos();
+        } else {
+            mostrarNotificacion('❌ Error: ' + data.error, 'error');
+            btnConfirmar.disabled = false;
+            btnConfirmar.innerHTML = originalHTML;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarNotificacion('❌ Error al resolver la alerta', 'error');
+        btnConfirmar.disabled = false;
+        btnConfirmar.innerHTML = originalHTML;
+    }
+}
+
+// ============================================================================
+// MODALES - IGNORAR ALERTA
+// ============================================================================
+
+function abrirModalIgnorar(alerta) {
+    alertaSeleccionada = alerta;
+    
+    const modalHTML = `
+        <div class="modal-overlay" id="modal-ignorar" onclick="cerrarModalIgnorar(event)">
+            <div class="modal-container" onclick="event.stopPropagation()">
+                <div class="modal-header modal-header-danger">
+                    <div class="modal-icon">
+                        <i class="bi bi-x-circle-fill"></i>
+                    </div>
+                    <h2 class="modal-title">Ignorar Alerta</h2>
+                    <button class="modal-close" onclick="cerrarModalIgnorar()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="modal-alerta-info modal-alerta-warning">
+                        <h3>${alerta.titulo}</h3>
+                        <p>${alerta.mensaje}</p>
+                        <div class="modal-alerta-meta">
+                            <span><i class="bi bi-box"></i> ${alerta.producto_nombre}</span>
+                            <span><i class="bi bi-clock"></i> ${alerta.fecha_creacion}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-warning">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <p><strong>¿Estás seguro?</strong> Ignorar esta alerta la archivará sin resolver el problema subyacente.</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="razon-ignorar" class="required">
+                            <i class="bi bi-chat-left-text"></i>
+                            Razón para ignorar esta alerta *
+                        </label>
+                        <textarea 
+                            id="razon-ignorar" 
+                            rows="4" 
+                            placeholder="Explica por qué se ignora esta alerta..."
+                            class="form-textarea"
+                            required
+                        ></textarea>
+                        <small class="form-help">
+                            Ejemplos: "Alerta falsa", "Ya no es relevante", "Producto discontinuado"
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button class="btn-modal btn-cancelar" onclick="cerrarModalIgnorar()">
+                        <i class="bi bi-arrow-left"></i> Cancelar
+                    </button>
+                    <button class="btn-modal btn-confirmar-danger" onclick="confirmarIgnorar()">
+                        <i class="bi bi-trash"></i> Confirmar Ignorar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Animación de entrada
+    setTimeout(() => {
+        document.getElementById('modal-ignorar').classList.add('active');
+    }, 10);
+}
+
+function cerrarModalIgnorar(event) {
+    if (event && event.target !== event.currentTarget) return;
+    
+    const modal = document.getElementById('modal-ignorar');
+    if (modal) {
+        modal.classList.remove('active');
+        setTimeout(() => modal.remove(), 300);
+    }
+    alertaSeleccionada = null;
+}
+
+async function confirmarIgnorar() {
+    if (!alertaSeleccionada) return;
+    
+    const razon = document.getElementById('razon-ignorar').value.trim();
+    
+    if (!razon) {
+        mostrarNotificacion('⚠️ Debes proporcionar una razón para ignorar la alerta', 'warning');
+        document.getElementById('razon-ignorar').focus();
+        return;
+    }
+    
+    const btnConfirmar = event.target;
+    const originalHTML = btnConfirmar.innerHTML;
+    
+    // Deshabilitar botón y mostrar loading
+    btnConfirmar.disabled = true;
+    btnConfirmar.innerHTML = '<i class="bi bi-hourglass-split"></i> Procesando...';
+    
+    try {
+        const response = await fetch(`/panel/api/alertas/${alertaSeleccionada.id}/ignorar/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                razon: razon
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            cerrarModalIgnorar();
+            mostrarNotificacion('🗑️ Alerta ignorada', 'warning');
+            cargarDatos();
+        } else {
+            mostrarNotificacion('❌ Error: ' + data.error, 'error');
+            btnConfirmar.disabled = false;
+            btnConfirmar.innerHTML = originalHTML;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarNotificacion('❌ Error al ignorar la alerta', 'error');
+        btnConfirmar.disabled = false;
+        btnConfirmar.innerHTML = originalHTML;
+    }
+}
+
+// ============================================================================
+// SISTEMA DE NOTIFICACIONES (TOAST)
+// ============================================================================
+
+function mostrarNotificacion(mensaje, tipo = 'info') {
+    const tipos = {
+        success: {
+            icono: 'bi-check-circle-fill',
+            color: '#10b981'
+        },
+        error: {
+            icono: 'bi-x-circle-fill',
+            color: '#ef4444'
+        },
+        warning: {
+            icono: 'bi-exclamation-triangle-fill',
+            color: '#f59e0b'
+        },
+        info: {
+            icono: 'bi-info-circle-fill',
+            color: '#3b82f6'
+        }
+    };
+    
+    const config = tipos[tipo] || tipos.info;
+    
+    const toastHTML = `
+        <div class="toast-notification ${tipo}">
+            <i class="bi ${config.icono}" style="color: ${config.color};"></i>
+            <span>${mensaje}</span>
+        </div>
+    `;
+    
+    const toast = document.createElement('div');
+    toast.innerHTML = toastHTML;
+    const toastElement = toast.firstElementChild;
+    
+    // Agregar al contenedor
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+    
+    container.appendChild(toastElement);
+    
+    // Animación de entrada
+    setTimeout(() => toastElement.classList.add('show'), 10);
+    
+    // Auto-remover después de 3 segundos
+    setTimeout(() => {
+        toastElement.classList.remove('show');
+        setTimeout(() => toastElement.remove(), 300);
+    }, 3000);
+}
+
+// ============================================================================
+// UTILIDADES
+// ============================================================================
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// ============================================================================
+// INICIALIZACIÓN
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Dashboard de Alertas iniciado');
+    
+    // Cargar datos iniciales
+    cargarAlertas('activas');
+    
+    // Actualizar cada 30 segundos
+    setInterval(() => {
+        cargarEstadisticas();
+        if (currentTab !== 'productos') {
+            cargarAlertas(currentTab);
+        }
+    }, 30000);
+});
+
+// Cerrar modales con tecla ESC
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        cerrarModalResolver();
+        cerrarModalIgnorar();
+    }
+});
+</script>
+{% endblock %}

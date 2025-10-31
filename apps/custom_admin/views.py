@@ -873,8 +873,9 @@ def proveedores_view(request):
     from django.db.models import Q, Count
     from django.core.paginator import Paginator
     
+    # ✅ CORRECCIÓN: Contar productos a través de la relación quintales → producto
     proveedores = Proveedor.objects.annotate(
-        total_productos=Count('productos', distinct=True)
+        total_productos=Count('quintales__producto', distinct=True)
     ).order_by('nombre_comercial')
     
     # Filtros
@@ -1029,7 +1030,7 @@ def proveedor_editar(request, pk):
 @ensure_csrf_cookie
 @auth_required
 def proveedor_eliminar(request, pk):
-    """Eliminar un proveedor (o desactivar si tiene productos)"""
+    """Eliminar un proveedor (o desactivar si tiene quintales)"""
     from apps.inventory_management.models import Proveedor
     
     proveedor = get_object_or_404(Proveedor, pk=pk)
@@ -1037,17 +1038,17 @@ def proveedor_eliminar(request, pk):
     
     if request.method == 'POST':
         try:
-            # Verificar si tiene productos asociados
-            if proveedor.productos.exists():
-                # Tiene productos, solo desactivar
+            # ✅ CORRECCIÓN: Verificar si tiene quintales asociados
+            if proveedor.quintales.exists():
+                # Tiene quintales, solo desactivar
                 proveedor.activo = False
                 proveedor.save()
                 messages.warning(
                     request,
-                    f'⚠️ El proveedor "{nombre}" tiene {proveedor.productos.count()} productos asociados y no puede eliminarse. Se ha desactivado.'
+                    f'⚠️ El proveedor "{nombre}" tiene {proveedor.quintales.count()} quintales asociados y no puede eliminarse. Se ha desactivado.'
                 )
             else:
-                # No tiene productos, eliminar completamente
+                # No tiene quintales, eliminar completamente
                 proveedor.delete()
                 messages.success(request, f'✅ Proveedor "{nombre}" eliminado exitosamente.')
         except Exception as e:
@@ -5157,16 +5158,391 @@ def caja_chica_view(request):
 
 
 
-# ========================================
-# ALERTAS
-# ========================================
+# ============================================================================
+# ALERTAS DE STOCK - SISTEMA COMPLETO
+# ============================================================================
 
 @ensure_csrf_cookie
 @auth_required
 def alertas_view(request):
-    """Dashboard de alertas"""
-    return render(request, 'custom_admin/alertas/dashboard.html')
+    """
+    Dashboard completo de alertas de stock
+    """
+    from apps.stock_alert_system.models import AlertaStock, EstadoStock, ConfiguracionAlerta
+    
+    # Obtener configuración
+    config = ConfiguracionAlerta.get_configuracion()
+    
+    # Estadísticas de alertas
+    alertas_stats = {
+        'total_activas': AlertaStock.objects.filter(resuelta=False).count(),
+        'criticas': AlertaStock.objects.filter(resuelta=False, prioridad='CRITICA').count(),
+        'altas': AlertaStock.objects.filter(resuelta=False, prioridad='ALTA').count(),
+        'medias': AlertaStock.objects.filter(resuelta=False, prioridad='MEDIA').count(),
+    }
+    
+    # Estadísticas de productos
+    productos_stats = {
+        'total': EstadoStock.objects.count(),
+        'criticos': EstadoStock.objects.filter(estado_semaforo='CRITICO').count(),
+        'bajos': EstadoStock.objects.filter(estado_semaforo='BAJO').count(),
+        'agotados': EstadoStock.objects.filter(estado_semaforo='AGOTADO').count(),
+        'normales': EstadoStock.objects.filter(estado_semaforo='NORMAL').count(),
+    }
+    
+    context = {
+        'alertas_stats': alertas_stats,
+        'productos_stats': productos_stats,
+        'config': config,
+    }
+    
+    return render(request, 'custom_admin/alertas/dashboard.html', context)
 
+
+# ============================================================================
+# APIs PARA ALERTAS - ENDPOINTS REST
+# ============================================================================
+
+@ensure_csrf_cookie
+@auth_required
+def api_alertas_list(request):
+    """
+    API: Lista de alertas con filtros
+    GET /panel/api/alertas/list/
+    """
+    from apps.stock_alert_system.models import AlertaStock
+    from django.core.paginator import Paginator
+    
+    try:
+        # Filtros desde query params
+        filtro = request.GET.get('filtro', 'activas')  # activas, todas, criticas, resueltas
+        buscar = request.GET.get('buscar', '').strip()
+        prioridad = request.GET.get('prioridad', '')
+        tipo = request.GET.get('tipo', '')
+        page = int(request.GET.get('page', 1))
+        per_page = int(request.GET.get('per_page', 20))
+        
+        # Query base
+        alertas = AlertaStock.objects.select_related(
+            'producto',
+            'quintal',
+            'producto_normal',
+            'usuario_asignado'
+        ).all()
+        
+        # Aplicar filtros
+        if filtro == 'activas':
+            alertas = alertas.filter(resuelta=False)
+        elif filtro == 'criticas':
+            alertas = alertas.filter(resuelta=False, prioridad='CRITICA')
+        elif filtro == 'resueltas':
+            alertas = alertas.filter(resuelta=True)
+        
+        # Filtro de búsqueda
+        if buscar:
+            alertas = alertas.filter(
+                Q(titulo__icontains=buscar) |
+                Q(mensaje__icontains=buscar) |
+                Q(producto__nombre__icontains=buscar)
+            )
+        
+        # Filtro por prioridad
+        if prioridad:
+            alertas = alertas.filter(prioridad=prioridad)
+        
+        # Filtro por tipo
+        if tipo:
+            alertas = alertas.filter(tipo_alerta=tipo)
+        
+        # Ordenar por prioridad y fecha
+        alertas = alertas.order_by('-prioridad', '-fecha_creacion')
+        
+        # Paginación
+        paginator = Paginator(alertas, per_page)
+        page_obj = paginator.get_page(page)
+        
+        # Serializar datos
+        alertas_data = []
+        for alerta in page_obj:
+            alertas_data.append({
+                'id': str(alerta.id),
+                'tipo_alerta': alerta.get_tipo_alerta_display(),
+                'tipo_alerta_code': alerta.tipo_alerta,
+                'prioridad': alerta.get_prioridad_display(),
+                'prioridad_code': alerta.prioridad,
+                'estado': alerta.get_estado_display(),
+                'estado_code': alerta.estado,
+                'titulo': alerta.titulo,
+                'mensaje': alerta.mensaje,
+                'producto_nombre': alerta.get_referencia_nombre(),
+                'fecha_creacion': alerta.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
+                'dias_sin_resolver': alerta.dias_sin_resolver(),
+                'resuelta': alerta.resuelta,
+                'icono_prioridad': alerta.get_icono_prioridad(),
+                'usuario_asignado': alerta.usuario_asignado.get_full_name() if alerta.usuario_asignado else None,
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'alertas': alertas_data,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': paginator.count,
+                'total_pages': paginator.num_pages,
+                'has_next': page_obj.has_next(),
+                'has_previous': page_obj.has_previous(),
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required
+def api_alerta_detalle(request, alerta_id):
+    """
+    API: Detalle de una alerta específica
+    GET /panel/api/alertas/<uuid:alerta_id>/
+    """
+    from apps.stock_alert_system.models import AlertaStock
+    
+    try:
+        alerta = AlertaStock.objects.select_related(
+            'producto',
+            'quintal',
+            'producto_normal',
+            'usuario_asignado',
+            'usuario_resolutor',
+            'estado_stock'
+        ).get(id=alerta_id)
+        
+        data = {
+            'id': str(alerta.id),
+            'tipo_alerta': alerta.get_tipo_alerta_display(),
+            'tipo_alerta_code': alerta.tipo_alerta,
+            'prioridad': alerta.get_prioridad_display(),
+            'prioridad_code': alerta.prioridad,
+            'estado': alerta.get_estado_display(),
+            'estado_code': alerta.estado,
+            'titulo': alerta.titulo,
+            'mensaje': alerta.mensaje,
+            'producto_nombre': alerta.get_referencia_nombre(),
+            'fecha_creacion': alerta.fecha_creacion.strftime('%d/%m/%Y %H:%M:%S'),
+            'fecha_vista': alerta.fecha_vista.strftime('%d/%m/%Y %H:%M:%S') if alerta.fecha_vista else None,
+            'fecha_resolucion': alerta.fecha_resolucion.strftime('%d/%m/%Y %H:%M:%S') if alerta.fecha_resolucion else None,
+            'dias_sin_resolver': alerta.dias_sin_resolver(),
+            'resuelta': alerta.resuelta,
+            'notas': alerta.notas,
+            'usuario_asignado': alerta.usuario_asignado.get_full_name() if alerta.usuario_asignado else None,
+            'usuario_resolutor': alerta.usuario_resolutor.get_full_name() if alerta.usuario_resolutor else None,
+            'datos_adicionales': alerta.datos_adicionales,
+        }
+        
+        # Si tiene producto, agregar info del estado de stock
+        if alerta.estado_stock:
+            data['estado_stock'] = {
+                'estado_semaforo': alerta.estado_stock.get_estado_semaforo_display(),
+                'icono': alerta.estado_stock.get_icono_semaforo(),
+                'requiere_atencion': alerta.estado_stock.requiere_atencion,
+            }
+        
+        return JsonResponse({
+            'success': True,
+            'alerta': data
+        })
+        
+    except AlertaStock.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Alerta no encontrada'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required  
+def api_alerta_resolver(request, alerta_id):
+    """
+    API: Resolver una alerta
+    POST /panel/api/alertas/<uuid:alerta_id>/resolver/
+    """
+    from apps.stock_alert_system.models import AlertaStock
+    import json
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        notas = data.get('notas', '')
+        
+        alerta = AlertaStock.objects.get(id=alerta_id)
+        alerta.resolver(usuario=request.user, notas=notas)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Alerta resuelta correctamente'
+        })
+        
+    except AlertaStock.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Alerta no encontrada'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required
+def api_alerta_ignorar(request, alerta_id):
+    """
+    API: Ignorar una alerta
+    POST /panel/api/alertas/<uuid:alerta_id>/ignorar/
+    """
+    from apps.stock_alert_system.models import AlertaStock
+    import json
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        razon = data.get('razon', '')
+        
+        alerta = AlertaStock.objects.get(id=alerta_id)
+        alerta.ignorar(usuario=request.user, razon=razon)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Alerta ignorada'
+        })
+        
+    except AlertaStock.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Alerta no encontrada'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required
+def api_productos_stock_list(request):
+    """
+    API: Lista de productos con su estado de stock
+    GET /panel/api/productos/stock/
+    """
+    from apps.stock_alert_system.models import EstadoStock
+    from django.core.paginator import Paginator
+    
+    try:
+        # Filtros
+        estado = request.GET.get('estado', '')  # CRITICO, BAJO, AGOTADO, NORMAL
+        buscar = request.GET.get('buscar', '').strip()
+        page = int(request.GET.get('page', 1))
+        per_page = int(request.GET.get('per_page', 20))
+        
+        # Query
+        productos = EstadoStock.objects.select_related('producto').all()
+        
+        # Filtro por estado
+        if estado:
+            productos = productos.filter(estado_semaforo=estado)
+        
+        # Búsqueda
+        if buscar:
+            productos = productos.filter(
+                Q(producto__nombre__icontains=buscar) |
+                Q(producto__codigo__icontains=buscar)
+            )
+        
+        # Ordenar por estado (críticos primero)
+        productos = productos.order_by('estado_semaforo', 'producto__nombre')
+        
+        # Paginación
+        paginator = Paginator(productos, per_page)
+        page_obj = paginator.get_page(page)
+        
+        # Serializar
+        productos_data = []
+        for estado_stock in page_obj:
+            productos_data.append({
+                'id': str(estado_stock.producto.id),
+                'nombre': estado_stock.producto.nombre,
+                'codigo': estado_stock.producto.codigo,
+                'tipo_inventario': estado_stock.get_tipo_inventario_display(),
+                'estado_semaforo': estado_stock.get_estado_semaforo_display(),
+                'estado_code': estado_stock.estado_semaforo,
+                'icono': estado_stock.get_icono_semaforo(),
+                'stock_actual': int(estado_stock.stock_actual) if estado_stock.tipo_inventario == 'NORMAL' else None,
+                'stock_minimo': int(estado_stock.stock_minimo) if estado_stock.tipo_inventario == 'NORMAL' else None,
+                'peso_disponible': float(estado_stock.peso_total_disponible) if estado_stock.tipo_inventario == 'QUINTAL' else None,
+                'porcentaje': float(estado_stock.porcentaje_disponible) if estado_stock.tipo_inventario == 'QUINTAL' else None,
+                'valor_inventario': float(estado_stock.valor_inventario),
+                'requiere_atencion': estado_stock.requiere_atencion,
+                'fecha_ultimo_calculo': estado_stock.fecha_ultimo_calculo.strftime('%d/%m/%Y %H:%M'),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'productos': productos_data,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': paginator.count,
+                'total_pages': paginator.num_pages,
+                'has_next': page_obj.has_next(),
+                'has_previous': page_obj.has_previous(),
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required
+def api_alertas_stats(request):
+    """
+    API: Estadísticas del sistema de alertas
+    GET /panel/api/alertas/stats/
+    """
+    from apps.stock_alert_system.models import AlertaStock, EstadoStock, get_estadisticas_globales
+    
+    try:
+        # Usar función helper del modelo
+        stats = get_estadisticas_globales()
+        
+        return JsonResponse({
+            'success': True,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 
 # ========================================
 # LOGS Y AUDITORÍA
@@ -5234,16 +5610,361 @@ def busqueda_view(request):
     return render(request, 'custom_admin/busqueda/results.html', {'query': query})
 
 
-# ========================================
-# NOTIFICACIONES
-# ========================================
+# ============================================================================
+# NOTIFICACIONES - SISTEMA COMPLETO
+# ============================================================================
 
 @ensure_csrf_cookie
 @auth_required
 def notificaciones_view(request):
-    """Centro de notificaciones"""
-    return render(request, 'custom_admin/notificaciones/list.html')
+    """Centro de notificaciones del usuario"""
+    from apps.notifications.models import Notificacion
+    
+    # Obtener contadores
+    total = Notificacion.objects.filter(usuario=request.user).count()
+    no_leidas = Notificacion.objects.filter(
+        usuario=request.user,
+        estado__in=['PENDIENTE', 'ENVIADA']
+    ).count()
+    
+    context = {
+        'total_notificaciones': total,
+        'notificaciones_no_leidas': no_leidas,
+    }
+    
+    return render(request, 'custom_admin/notificaciones/list.html', context)
 
+
+@ensure_csrf_cookie
+@auth_required
+def api_notificaciones_list(request):
+    """
+    API: Lista de notificaciones del usuario con filtros
+    GET /panel/api/notificaciones/list/
+    Parámetros:
+        - filtro: 'todas', 'no_leidas', 'leidas'
+        - categoria: 'STOCK', 'VENTAS', 'FINANCIERO', 'SISTEMA'
+        - prioridad: 'BAJA', 'MEDIA', 'ALTA', 'CRITICA'
+        - busqueda: texto a buscar
+        - page: número de página
+        - per_page: items por página (default 20)
+    """
+    from apps.notifications.models import Notificacion
+    from django.core.paginator import Paginator
+    from django.db.models import Q
+    
+    try:
+        # Parámetros
+        filtro = request.GET.get('filtro', 'todas')
+        categoria = request.GET.get('categoria', '')
+        prioridad = request.GET.get('prioridad', '')
+        busqueda = request.GET.get('busqueda', '').strip()
+        page = int(request.GET.get('page', 1))
+        per_page = int(request.GET.get('per_page', 20))
+        
+        # Query base
+        notificaciones = Notificacion.objects.filter(
+            usuario=request.user
+        ).select_related('tipo_notificacion')
+        
+        # Aplicar filtros
+        if filtro == 'no_leidas':
+            notificaciones = notificaciones.filter(estado__in=['PENDIENTE', 'ENVIADA'])
+        elif filtro == 'leidas':
+            notificaciones = notificaciones.filter(estado='LEIDA')
+        
+        if categoria:
+            notificaciones = notificaciones.filter(tipo_notificacion__categoria=categoria)
+        
+        if prioridad:
+            notificaciones = notificaciones.filter(prioridad=prioridad)
+        
+        if busqueda:
+            notificaciones = notificaciones.filter(
+                Q(titulo__icontains=busqueda) | 
+                Q(mensaje__icontains=busqueda)
+            )
+        
+        # Ordenar
+        notificaciones = notificaciones.order_by('-fecha_creacion')
+        
+        # Paginar
+        paginator = Paginator(notificaciones, per_page)
+        page_obj = paginator.get_page(page)
+        
+        # Serializar
+        notificaciones_data = []
+        for notif in page_obj:
+            notificaciones_data.append({
+                'id': str(notif.id),
+                'tipo': notif.tipo_notificacion.nombre,
+                'categoria': notif.tipo_notificacion.categoria,
+                'categoria_display': notif.tipo_notificacion.get_categoria_display(),
+                'titulo': notif.titulo,
+                'mensaje': notif.mensaje,
+                'prioridad': notif.prioridad,
+                'prioridad_display': notif.get_prioridad_display(),
+                'icono_prioridad': notif.get_icono_prioridad(),
+                'estado': notif.estado,
+                'estado_display': notif.get_estado_display(),
+                'es_no_leida': notif.es_no_leida(),
+                'requiere_accion': notif.requiere_accion,
+                'accion_tomada': notif.accion_tomada,
+                'url_accion': notif.url_accion,
+                'fecha_creacion': notif.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
+                'fecha_creacion_iso': notif.fecha_creacion.isoformat(),
+                'fecha_lectura': notif.fecha_lectura.strftime('%d/%m/%Y %H:%M') if notif.fecha_lectura else None,
+                'tiempo_transcurrido': calcular_tiempo_transcurrido(notif.fecha_creacion),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'notificaciones': notificaciones_data,
+            'pagination': {
+                'page': page_obj.number,
+                'total_pages': paginator.num_pages,
+                'total_items': paginator.count,
+                'has_next': page_obj.has_next(),
+                'has_previous': page_obj.has_previous(),
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error en api_notificaciones_list: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required
+def api_notificacion_detalle(request, notificacion_id):
+    """
+    API: Obtiene detalles de una notificación
+    GET /panel/api/notificaciones/<uuid>/
+    """
+    from apps.notifications.models import Notificacion
+    
+    try:
+        notificacion = Notificacion.objects.select_related(
+            'tipo_notificacion'
+        ).get(id=notificacion_id, usuario=request.user)
+        
+        data = {
+            'id': str(notificacion.id),
+            'tipo': notificacion.tipo_notificacion.nombre,
+            'categoria': notificacion.tipo_notificacion.get_categoria_display(),
+            'titulo': notificacion.titulo,
+            'mensaje': notificacion.mensaje,
+            'prioridad': notificacion.get_prioridad_display(),
+            'icono_prioridad': notificacion.get_icono_prioridad(),
+            'estado': notificacion.get_estado_display(),
+            'requiere_accion': notificacion.requiere_accion,
+            'accion_tomada': notificacion.accion_tomada,
+            'url_accion': notificacion.url_accion,
+            'datos_adicionales': notificacion.datos_adicionales,
+            'fecha_creacion': notificacion.fecha_creacion.strftime('%d/%m/%Y %H:%M:%S'),
+            'fecha_lectura': notificacion.fecha_lectura.strftime('%d/%m/%Y %H:%M:%S') if notificacion.fecha_lectura else None,
+            'canales': {
+                'web': notificacion.enviada_web,
+                'email': notificacion.enviada_email,
+                'push': notificacion.enviada_push,
+                'sms': notificacion.enviada_sms,
+            }
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'notificacion': data
+        })
+        
+    except Notificacion.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Notificación no encontrada'
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Error en api_notificacion_detalle: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required
+def api_notificacion_marcar_leida(request, notificacion_id):
+    """
+    API: Marca una notificación como leída
+    POST /panel/api/notificaciones/<uuid>/marcar-leida/
+    """
+    from apps.notifications.models import Notificacion
+    
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False,
+            'error': 'Método no permitido'
+        }, status=405)
+    
+    try:
+        notificacion = Notificacion.objects.get(
+            id=notificacion_id,
+            usuario=request.user
+        )
+        
+        notificacion.marcar_leida()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Notificación marcada como leída'
+        })
+        
+    except Notificacion.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Notificación no encontrada'
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Error en api_notificacion_marcar_leida: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required
+def api_notificaciones_marcar_todas_leidas(request):
+    """
+    API: Marca TODAS las notificaciones del usuario como leídas
+    POST /panel/api/notificaciones/marcar-todas-leidas/
+    """
+    from apps.notifications.models import Notificacion
+    from django.utils import timezone
+    
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False,
+            'error': 'Método no permitido'
+        }, status=405)
+    
+    try:
+        # Actualizar en masa
+        count = Notificacion.objects.filter(
+            usuario=request.user,
+            estado__in=['PENDIENTE', 'ENVIADA']
+        ).update(
+            estado='LEIDA',
+            fecha_lectura=timezone.now()
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{count} notificaciones marcadas como leídas',
+            'count': count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error en api_notificaciones_marcar_todas_leidas: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required
+def api_notificacion_eliminar(request, notificacion_id):
+    """
+    API: Elimina una notificación
+    DELETE /panel/api/notificaciones/<uuid>/eliminar/
+    """
+    from apps.notifications.models import Notificacion
+    
+    if request.method != 'POST' and request.method != 'DELETE':
+        return JsonResponse({
+            'success': False,
+            'error': 'Método no permitido'
+        }, status=405)
+    
+    try:
+        notificacion = Notificacion.objects.get(
+            id=notificacion_id,
+            usuario=request.user
+        )
+        
+        notificacion.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Notificación eliminada correctamente'
+        })
+        
+    except Notificacion.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Notificación no encontrada'
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Error en api_notificacion_eliminar: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required
+def api_notificaciones_contador(request):
+    """
+    API: Contador de notificaciones no leídas
+    GET /panel/api/notificaciones/contador/
+    """
+    from apps.notifications.models import Notificacion
+    
+    try:
+        no_leidas = Notificacion.objects.filter(
+            usuario=request.user,
+            estado__in=['PENDIENTE', 'ENVIADA']
+        ).count()
+        
+        return JsonResponse({
+            'success': True,
+            'no_leidas': no_leidas
+        })
+        
+    except Exception as e:
+        logger.error(f"Error en api_notificaciones_contador: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# Función auxiliar para calcular tiempo transcurrido
+def calcular_tiempo_transcurrido(fecha):
+    """Calcula tiempo transcurrido en formato legible"""
+    from django.utils import timezone
+    
+    ahora = timezone.now()
+    diferencia = ahora - fecha
+    
+    segundos = int(diferencia.total_seconds())
+    
+    if segundos < 60:
+        return 'Hace un momento'
+    elif segundos < 3600:
+        minutos = segundos // 60
+        return f'Hace {minutos} min'
+    elif segundos < 86400:
+        horas = segundos // 3600
+        return f'Hace {horas} h'
+    elif segundos < 604800:
+        dias = segundos // 86400
+        return f'Hace {dias} día{"s" if dias > 1 else ""}'
+    else:
+        return fecha.strftime('%d/%m/%Y')
 
 # ========================================
 # PERFIL
