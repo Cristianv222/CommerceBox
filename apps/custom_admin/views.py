@@ -5126,64 +5126,6 @@ def exportar_movimientos_pdf_general(request):
     return response
 
 
-# ========================================
-# FINANZAS
-# ========================================
-
-@ensure_csrf_cookie
-@auth_required
-def finanzas_dashboard_view(request):
-    """Dashboard general de finanzas con resumen de cuentas por cobrar y pagar"""
-    
-    from apps.financial_management.models import ReporteCuentasPorCobrar, ReporteCuentasPorPagar
-    
-    # Resúmenes generales
-    resumen_cobrar = ReporteCuentasPorCobrar.resumen_general()
-    resumen_pagar = ReporteCuentasPorPagar.resumen_general()
-    
-    # Antigüedad de saldos
-    antiguedad_cobrar = ReporteCuentasPorCobrar.antiguedad_saldos()
-    antiguedad_pagar = ReporteCuentasPorPagar.antiguedad_saldos()
-    
-    # Cuentas más urgentes (próximas a vencer en 7 días)
-    hoy = timezone.now().date()
-    fecha_limite = hoy + timedelta(days=7)
-    
-    cuentas_cobrar_urgentes = CuentaPorCobrar.objects.filter(
-        estado__in=['PENDIENTE', 'PARCIAL'],
-        fecha_vencimiento__lte=fecha_limite,
-        fecha_vencimiento__gte=hoy
-    ).select_related('cliente').order_by('fecha_vencimiento')[:10]
-    
-    cuentas_pagar_urgentes = CuentaPorPagar.objects.filter(
-        estado__in=['PENDIENTE', 'PARCIAL'],
-        fecha_vencimiento__lte=fecha_limite,
-        fecha_vencimiento__gte=hoy
-    ).select_related('proveedor').order_by('fecha_vencimiento')[:10]
-    
-    # Cuentas vencidas
-    cuentas_cobrar_vencidas = CuentaPorCobrar.objects.filter(
-        estado='VENCIDA'
-    ).select_related('cliente').order_by('fecha_vencimiento')[:10]
-    
-    cuentas_pagar_vencidas = CuentaPorPagar.objects.filter(
-        estado='VENCIDA'
-    ).select_related('proveedor').order_by('fecha_vencimiento')[:10]
-    
-    context = {
-        'resumen_cobrar': resumen_cobrar,
-        'resumen_pagar': resumen_pagar,
-        'antiguedad_cobrar': antiguedad_cobrar,
-        'antiguedad_pagar': antiguedad_pagar,
-        'cuentas_cobrar_urgentes': cuentas_cobrar_urgentes,
-        'cuentas_pagar_urgentes': cuentas_pagar_urgentes,
-        'cuentas_cobrar_vencidas': cuentas_cobrar_vencidas,
-        'cuentas_pagar_vencidas': cuentas_pagar_vencidas,
-    }
-    
-    return render(request, 'custom_admin/finanzas/dashboard.html', context)
-
-
 
 @ensure_csrf_cookie
 @auth_required
@@ -5213,36 +5155,6 @@ def caja_chica_view(request):
     return render(request, 'custom_admin/finanzas/caja_chica_list.html')
 
 
-# ========================================
-# REPORTES
-# ========================================
-
-@ensure_csrf_cookie
-@auth_required
-def reportes_dashboard_view(request):
-    """Dashboard de reportes"""
-    return render(request, 'custom_admin/reportes/dashboard.html')
-
-
-@ensure_csrf_cookie
-@auth_required
-def reporte_ventas_view(request):
-    """Reporte de ventas"""
-    return render(request, 'custom_admin/reportes/ventas.html')
-
-
-@ensure_csrf_cookie
-@auth_required
-def reporte_inventario_view(request):
-    """Reporte de inventario"""
-    return render(request, 'custom_admin/reportes/inventario.html')
-
-
-@ensure_csrf_cookie
-@auth_required
-def reporte_financiero_view(request):
-    """Reporte financiero"""
-    return render(request, 'custom_admin/reportes/financiero.html')
 
 
 # ========================================

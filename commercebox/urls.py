@@ -57,6 +57,7 @@ urlpatterns = [
     path('api/configuracion/', include('apps.system_configuration.urls', namespace='system_configuration')),
 
     path('panel/finanzas/', include('apps.financial_management.urls', namespace='financial_management')),
+    path('panel/reportes-analitica/', include('apps.reports_analytics.urls', namespace='reports_analytics')),
 ]
 
 # ========================================

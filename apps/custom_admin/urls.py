@@ -192,11 +192,6 @@ urlpatterns = [
     path('ventas/api/aprobar-devolucion/<uuid:id>/', views.aprobar_devolucion_api, name='aprobar_devolucion_api'),
     
     # ========================================
-    # FINANZAS - Dashboard
-    # ========================================
-    path('finanzas/', views.finanzas_dashboard_view, name='finanzas'),
-    
-    # ========================================
     # FINANZAS - Cajas
     # ========================================
     path('finanzas/cajas/', views.cajas_list, name='cajas_list'),
@@ -222,13 +217,6 @@ urlpatterns = [
     path('finanzas/caja-chica/<uuid:caja_chica_id>/movimientos/', views.caja_chica_movimientos_api, name='caja_chica_movimientos_api'),
     path('finanzas/caja-chica/<uuid:caja_chica_id>/editar/', views.editar_caja_chica, name='editar_caja_chica'),
     
-    # ========================================
-    # REPORTES
-    # ========================================
-    path('reportes/', views.reportes_dashboard_view, name='reportes'),
-    path('reportes/ventas/', views.reporte_ventas_view, name='reporte_ventas'),
-    path('reportes/inventario/', views.reporte_inventario_view, name='reporte_inventario'),
-    path('reportes/financiero/', views.reporte_financiero_view, name='reporte_financiero'),
     
     # ========================================
     # ALERTAS Y NOTIFICACIONES

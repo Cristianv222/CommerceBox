@@ -375,6 +375,9 @@
 
             <div class="menu-divider"></div>
 
+            <!-- ============================================================================
+                 SECCIÓN USUARIOS
+                 ============================================================================ -->
             <div class="menu-group" id="group-usuarios">
                 <div class="menu-group-header" onclick="toggleMenuGroup('group-usuarios')">
                     <i class="bi bi-people-fill menu-group-icon"></i>
@@ -401,6 +404,9 @@
                 </div>
             </div>
 
+            <!-- ============================================================================
+                 SECCIÓN VENTAS
+                 ============================================================================ -->
             <div class="menu-group" id="group-ventas">
                 <div class="menu-group-header" onclick="toggleMenuGroup('group-ventas')">
                     <i class="bi bi-cart-check-fill menu-group-icon"></i>
@@ -427,6 +433,9 @@
                 </div>
             </div>
 
+            <!-- ============================================================================
+                 SECCIÓN INVENTARIO
+                 ============================================================================ -->
             <div class="menu-group" id="group-inventario">
                 <div class="menu-group-header" onclick="toggleMenuGroup('group-inventario')">
                     <i class="bi bi-box-seam menu-group-icon"></i>
@@ -462,7 +471,9 @@
                 </div>
             </div>
 
-            <!-- ✅ SECCIÓN FINANZAS CORREGIDA -->
+            <!-- ============================================================================
+                 SECCIÓN FINANZAS
+                 ============================================================================ -->
             <div class="menu-group" id="group-finanzas">
                 <div class="menu-group-header" onclick="toggleMenuGroup('group-finanzas')">
                     <i class="bi bi-cash-coin menu-group-icon"></i>
@@ -482,12 +493,10 @@
                         <i class="bi bi-wallet2 menu-item-icon"></i>
                         <span class="menu-item-text">Caja Chica</span>
                     </a>
-                    <!-- 💰 Cuentas por Cobrar (Clientes nos deben) -->
                     <a href="/panel/finanzas/cuentas-por-cobrar/" class="menu-item {% if '/finanzas/cuentas-por-cobrar/' in request.path %}active{% endif %}">
                         <i class="bi bi-credit-card-2-front menu-item-icon"></i>
                         <span class="menu-item-text">Cuentas por Cobrar</span>
                     </a>
-                    <!-- 📄 Cuentas por Pagar (Nosotros debemos) -->
                     <a href="/panel/finanzas/cuentas-por-pagar/" class="menu-item {% if '/finanzas/cuentas-por-pagar/' in request.path %}active{% endif %}">
                         <i class="bi bi-file-earmark-minus menu-item-icon"></i>
                         <span class="menu-item-text">Cuentas por Pagar</span>
@@ -495,22 +504,47 @@
                 </div>
             </div>
 
+            <!-- ============================================================================
+                 ✅ SECCIÓN REPORTES Y ANÁLISIS - CORREGIDA
+                 ============================================================================ -->
             <div class="menu-group" id="group-reportes">
                 <div class="menu-group-header" onclick="toggleMenuGroup('group-reportes')">
                     <i class="bi bi-graph-up-arrow menu-group-icon"></i>
-                    <span class="menu-group-title">Reportes</span>
+                    <span class="menu-group-title">Reportes y Análisis</span>
                     <i class="bi bi-chevron-right menu-group-arrow"></i>
                 </div>
                 <div class="menu-group-items">
-                    <a href="/panel/reportes/" class="menu-item {% if request.path == '/panel/reportes/' %}active{% endif %}">
-                        <i class="bi bi-file-bar-graph menu-item-icon"></i>
-                        <span class="menu-item-text">Generar Reportes</span>
+                    <!-- Dashboard Analítico Principal -->
+                    <a href="/panel/reportes-analitica/" class="menu-item {% if request.path == '/panel/reportes-analitica/' %}active{% endif %}">
+                        <i class="bi bi-speedometer2 menu-item-icon"></i>
+                        <span class="menu-item-text">Dashboard Analítico</span>
+                    </a>
+                    
+                    <!-- Reportes de Ventas -->
+                    <a href="/panel/reportes-analitica/ventas/" class="menu-item {% if '/reportes-analitica/ventas/' in request.path %}active{% endif %}">
+                        <i class="bi bi-cart-check menu-item-icon"></i>
+                        <span class="menu-item-text">Reportes de Ventas</span>
+                    </a>
+                    
+                    <!-- Reportes de Inventario -->
+                    <a href="/panel/reportes-analitica/inventario/" class="menu-item {% if '/reportes-analitica/inventario/' in request.path %}active{% endif %}">
+                        <i class="bi bi-box-seam menu-item-icon"></i>
+                        <span class="menu-item-text">Reportes de Inventario</span>
+                    </a>
+                    
+                    <!-- Reportes Financieros -->
+                    <a href="/panel/reportes-analitica/financiero/" class="menu-item {% if '/reportes-analitica/financiero/' in request.path %}active{% endif %}">
+                        <i class="bi bi-cash-coin menu-item-icon"></i>
+                        <span class="menu-item-text">Reportes Financieros</span>
                     </a>
                 </div>
             </div>
 
             <div class="menu-divider"></div>
 
+            <!-- ============================================================================
+                 OPCIONES INDIVIDUALES
+                 ============================================================================ -->
             <a href="/panel/alertas/" class="menu-item-single {% if '/alertas/' in request.path %}active{% endif %}">
                 <i class="bi bi-bell-fill menu-item-icon"></i>
                 <span class="menu-item-text">Alertas de Stock</span>
@@ -542,7 +576,7 @@
                 <span class="badge" id="alert-count" style="display:none;">0</span>
             </div>
 
-            <!-- 🆕 DROPDOWN DE USUARIO MEJORADO -->
+            <!-- DROPDOWN DE USUARIO -->
             <div class="user-dropdown" onclick="toggleUserMenu(event)">
                 <div class="user-avatar" id="userAvatar">A</div>
                 <div class="d-none d-md-block">
@@ -571,21 +605,6 @@
             </div>
         </div>
     </div>
-
-<!-- Mensajes de Django - DESACTIVADOS (se usan notificaciones toast personalizadas) -->
-{% comment %}
-{% if messages %}
-<div class="container-fluid mt-3">
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-        <i class="bi bi-info-circle me-2"></i>
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
-{% endcomment %}
 
     <!-- MAIN CONTENT -->
     <main class="main-content" id="mainContent">
@@ -616,7 +635,7 @@
             loadAlertCounts();
             initExpandedGroups();
 
-            // 🆕 Cerrar dropdown al hacer clic fuera
+            // Cerrar dropdown al hacer clic fuera
             document.addEventListener('click', function(e) {
                 const userDropdown = document.querySelector('.user-dropdown');
                 const dropdownMenu = document.getElementById('userDropdownMenu');
@@ -653,11 +672,13 @@
             const group = document.getElementById(groupId);
             const wasExpanded = group.classList.contains('expanded');
             
+            // Cerrar todos los grupos
             document.querySelectorAll('.menu-group').forEach(g => {
                 g.classList.remove('expanded');
                 localStorage.removeItem('menu_' + g.id);
             });
             
+            // Abrir el grupo clickeado si estaba cerrado
             if (!wasExpanded) {
                 group.classList.add('expanded');
                 localStorage.setItem('menu_' + groupId, 'expanded');
@@ -665,12 +686,14 @@
         }
 
         function initExpandedGroups() {
+            // Restaurar grupos expandidos
             document.querySelectorAll('.menu-group').forEach(group => {
                 if (localStorage.getItem('menu_' + group.id) === 'expanded') {
                     group.classList.add('expanded');
                 }
             });
             
+            // Restaurar estado del sidebar
             const sidebarState = localStorage.getItem('sidebarState');
             if (sidebarState === 'collapsed') {
                 toggleSidebar();
@@ -678,7 +701,7 @@
         }
 
         // ========================================
-        // 🆕 FUNCIONES DEL DROPDOWN DE USUARIO
+        // FUNCIONES DEL DROPDOWN DE USUARIO
         // ========================================
         function toggleUserMenu(event) {
             event.stopPropagation();
@@ -697,11 +720,12 @@
                     const userName = user.nombres || user.username || 'Admin';
                     const userEmail = user.email || user.username + '@commercebox.com';
                     
+                    // Actualizar elementos del topbar
                     document.getElementById('userName').textContent = userName;
                     document.getElementById('userRole').textContent = user.rol || 'Administrador';
                     document.getElementById('userAvatar').textContent = userName.charAt(0).toUpperCase();
                     
-                    // 🆕 Actualizar también el dropdown
+                    // Actualizar dropdown
                     document.getElementById('dropdownUserName').textContent = userName;
                     document.getElementById('dropdownUserEmail').textContent = userEmail;
                 } catch (e) {
@@ -744,7 +768,7 @@
         }
 
         // ========================================
-        // ✅ FUNCIÓN DE LOGOUT MEJORADA
+        // FUNCIÓN DE LOGOUT
         // ========================================
         async function handleLogout(event) {
             if (event) {
@@ -761,7 +785,7 @@
             try {
                 const token = localStorage.getItem('access_token');
                 
-                // 1. Intentar llamar al endpoint de logout del servidor
+                // Intentar llamar al endpoint de logout
                 if (token) {
                     try {
                         await fetch('/api/auth/logout/', {
@@ -778,12 +802,12 @@
                     }
                 }
                 
-                // 2. Limpiar TODOS los datos locales
+                // Limpiar datos locales
                 console.log('🧹 Limpiando datos locales...');
                 localStorage.clear();
                 sessionStorage.clear();
                 
-                // 3. Limpiar cookies de autenticación
+                // Limpiar cookies de autenticación
                 document.cookie.split(";").forEach(function(c) {
                     if (c.includes('access_token') || c.includes('refresh_token') || c.includes('sessionid')) {
                         document.cookie = c.replace(/^ +/, "")
@@ -791,17 +815,17 @@
                     }
                 });
                 
-                // 4. Marcar que es un logout exitoso
+                // Marcar logout exitoso
                 sessionStorage.setItem('logout_success', 'true');
                 
-                // 5. Redirigir al login
+                // Redirigir
                 console.log('✅ Logout exitoso, redirigiendo...');
                 window.location.replace('/login/');
                 
             } catch (error) {
                 console.error('Error en logout:', error);
                 
-                // Aunque falle, limpiar y redirigir
+                // Limpiar y redirigir de todos modos
                 localStorage.clear();
                 sessionStorage.clear();
                 sessionStorage.setItem('logout_success', 'true');

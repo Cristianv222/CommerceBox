@@ -81,8 +81,7 @@ urlpatterns = [
     # ============================================================================
     # API ENDPOINTS (JSON)
     # ============================================================================
-    path('api/dashboard/', views.DashboardAPIView.as_view(), name='api_dashboard'),
-    path('dashboard/', views.DashboardAPIView.as_view(), name='dashboard_api_simple'),
-    path('api/ventas/grafico/', views.VentasGraficoAPIView.as_view(), name='api_ventas_grafico'),
-    path('api/inventario/estado/', views.InventarioEstadoAPIView.as_view(), name='api_inventario_estado'),
+    path('api/dashboard/', views.DashboardAPIView.as_view(), name='dashboard_api'),
+    path('api/ventas/grafico/', views.VentasGraficoAPIView.as_view(), name='ventas_grafico_api'),
+    path('api/inventario/estado/', views.InventarioEstadoAPIView.as_view(), name='inventario_estado_api'),
 ]

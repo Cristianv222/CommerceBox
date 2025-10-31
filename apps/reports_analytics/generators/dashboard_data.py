@@ -404,10 +404,16 @@ class DashboardDataGenerator:
         ).annotate(
             total=Sum('total'),
             cantidad=Count('id'),
-            utilidad=Sum(F('total') - F('costo_total'))
+            total_costos=Sum('costo_total')  # ✅ Agregamos costos por separado
         ).order_by('-total')
         
-        return list(ventas_cat)
+        # Calcular utilidad en Python
+        resultados = []
+        for item in ventas_cat:
+            item['utilidad'] = (item['total'] or Decimal('0')) - (item['total_costos'] or Decimal('0'))
+            resultados.append(item)
+        
+        return resultados
     
     def get_tendencias_semanales(self):
         """
