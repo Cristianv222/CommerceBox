@@ -54,4 +54,30 @@ urlpatterns = [
     # ============================================================================
     path('api/caja/<uuid:pk>/estado/', views.EstadoCajaAPIView.as_view(), name='api_caja_estado'),
     path('api/caja-chica/<uuid:pk>/estado/', views.CajaChicaEstadoAPIView.as_view(), name='api_caja_chica_estado'),
+
+    # ============================================================================
+    # CUENTAS POR COBRAR (CRÉDITOS A CLIENTES)
+    # ============================================================================
+    path('cuentas-por-cobrar/', views.CuentaPorCobrarListView.as_view(), name='cuenta_por_cobrar_list'),
+    path('cuentas-por-cobrar/nueva/', views.CuentaPorCobrarCreateView.as_view(), name='cuenta_por_cobrar_create'),
+    path('cuentas-por-cobrar/<uuid:pk>/registrar-pago/', views.RegistrarPagoCuentaPorCobrarView.as_view(), name='registrar_pago_cuenta_cobrar'),
+    path('cuentas-por-cobrar/<uuid:pk>/cancelar/', views.CancelarCuentaPorCobrarView.as_view(), name='cancelar_cuenta_cobrar'),
+    path('reportes/antiguedad-saldos-cobrar/', views.ReporteAntiguedadSaldosCobrarView.as_view(), name='reporte_antiguedad_cobrar'),
+    
+    # ============================================================================
+    # CUENTAS POR PAGAR (DEUDAS CON PROVEEDORES)
+    # ============================================================================
+    path('cuentas-por-pagar/', views.CuentaPorPagarListView.as_view(), name='cuenta_por_pagar_list'),
+    path('cuentas-por-pagar/nueva/', views.CuentaPorPagarCreateView.as_view(), name='cuenta_por_pagar_create'),
+    path('cuentas-por-pagar/<uuid:pk>/', views.CuentaPorPagarDetailView.as_view(), name='cuenta_por_pagar_detail'),
+    path('cuentas-por-pagar/<uuid:pk>/registrar-pago/', views.RegistrarPagoCuentaPorPagarView.as_view(), name='registrar_pago_cuenta_pagar'),
+    path('reportes/antiguedad-saldos-pagar/', views.ReporteAntiguedadSaldosPagarView.as_view(), name='reporte_antiguedad_pagar'),
+
+    # ============================================================================
+    # APIs PARA CRÉDITOS
+    # ============================================================================
+    path('api/credito-cliente/<uuid:cliente_id>/', views.EstadoCreditoClienteAPIView.as_view(), name='api_credito_cliente'),
+    path('api/clientes/', views.ClientesAPIView.as_view(), name='api_clientes'),
+    path('api/clientes/<uuid:cliente_id>/ventas/', views.ClienteVentasAPIView.as_view(), name='api_cliente_ventas'),
+    path('api/cuenta-cobrar/<uuid:cuenta_id>/detalle/', views.CuentaPorCobrarDetalleAPIView.as_view(), name='api_cuenta_cobrar_detalle'),
 ]

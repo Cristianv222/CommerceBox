@@ -13,21 +13,22 @@ from django.db import transaction
 from decimal import Decimal
 from datetime import timedelta, datetime
 from django.db.models.functions import Coalesce, TruncDate
-from apps.sales_management.models import DetalleVenta
+from apps.sales_management.models import DetalleVenta, Cliente, Venta
 import json
-
+from django.db.models import Avg
 from .models import (
     Caja, MovimientoCaja, ArqueoCaja,
-    CajaChica, MovimientoCajaChica
+    CajaChica, MovimientoCajaChica, CuentaPorCobrar, PagoCuentaPorCobrar, CuentaPorPagar, PagoCuentaPorPagar
 )
 from .forms import (
     CajaForm, AperturaCajaForm, CierreCajaForm, MovimientoCajaForm,
     CajaChicaForm, GastoCajaChicaForm, ReposicionCajaChicaForm,
-    BuscarMovimientosForm
+    BuscarMovimientosForm, CuentaPorCobrarForm, RegistrarPagoCuentaPorCobrarForm, BuscarCuentasPorCobrarForm,
+    CuentaPorPagarForm, RegistrarPagoCuentaPorPagarForm, BuscarCuentasPorPagarForm
 )
 from .mixins import (
     FinancialAccessMixin, CajaEditMixin, CajeroAccessMixin,
-    SupervisorAccessMixin, CajaChicaAccessMixin, FormMessagesMixin
+    SupervisorAccessMixin, CajaChicaAccessMixin, FormMessagesMixin, CreditoAccessMixin
 )
 
 
@@ -853,6 +854,782 @@ class CajaChicaEstadoAPIView(CajaChicaAccessMixin, View):
             'porcentaje_disponible': float((caja_chica.monto_actual / caja_chica.monto_fondo * 100) if caja_chica.monto_fondo > 0 else 0),
             'necesita_reposicion': caja_chica.necesita_reposicion(),
             'monto_a_reponer': float(caja_chica.monto_a_reponer()),
+        }
+        
+        return JsonResponse(data)
+    # ============================================================================
+# CUENTAS POR COBRAR (CRÉDITOS A CLIENTES)
+# ============================================================================
+
+class CuentaPorCobrarListView(CreditoAccessMixin, ListView):
+    """Lista de cuentas por cobrar (créditos a clientes)"""
+    model = CuentaPorCobrar
+    template_name = 'custom_admin/finanzas/cuenta_por_cobrar_list.html'
+    context_object_name = 'cuentas'
+    paginate_by = 20
+    
+    def get_queryset(self):
+        queryset = CuentaPorCobrar.objects.select_related(
+            'cliente', 'venta', 'usuario_registro'
+        ).order_by('-fecha_emision')
+        
+        # Aplicar filtros del formulario
+        form = BuscarCuentasPorCobrarForm(self.request.GET)
+        
+        if form.is_valid():
+            cliente = form.cleaned_data.get('cliente')
+            if cliente:
+                queryset = queryset.filter(
+                    Q(cliente__nombres__icontains=cliente) |
+                    Q(cliente__apellidos__icontains=cliente) |
+                    Q(cliente__nit__icontains=cliente)
+                )
+            
+            estado = form.cleaned_data.get('estado')
+            if estado:
+                queryset = queryset.filter(estado=estado)
+            
+            fecha_desde = form.cleaned_data.get('fecha_desde')
+            if fecha_desde:
+                queryset = queryset.filter(fecha_emision__gte=fecha_desde)
+            
+            fecha_hasta = form.cleaned_data.get('fecha_hasta')
+            if fecha_hasta:
+                queryset = queryset.filter(fecha_emision__lte=fecha_hasta)
+            
+            solo_vencidas = form.cleaned_data.get('solo_vencidas')
+            if solo_vencidas:
+                queryset = queryset.filter(estado='VENCIDA')
+        
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Formulario de búsqueda
+        context['buscar_form'] = BuscarCuentasPorCobrarForm(self.request.GET)
+        
+        # Estadísticas generales
+        from .models import ReporteCuentasPorCobrar
+        context['resumen'] = ReporteCuentasPorCobrar.resumen_general()
+        
+        # Totales filtrados
+        cuentas_filtradas = self.get_queryset()
+        context['total_filtrado'] = cuentas_filtradas.aggregate(
+            total=Sum('saldo_pendiente')
+        )['total'] or Decimal('0')
+        
+        context['cantidad_filtrada'] = cuentas_filtradas.count()
+        
+        return context
+
+
+
+
+class CuentaPorCobrarCreateView(CreditoAccessMixin, View):
+    """Crear nueva cuenta por cobrar vía POST (sin template)"""
+    
+    @transaction.atomic
+    def post(self, request):
+        try:
+            from apps.sales_management.models import Cliente, Venta
+            
+            # Obtener datos del formulario
+            cliente_id = request.POST.get('cliente')
+            venta_id = request.POST.get('venta')
+            monto_total = Decimal(request.POST.get('monto_total', '0'))
+            fecha_vencimiento_str = request.POST.get('fecha_vencimiento')  # String
+            descripcion = request.POST.get('descripcion', '')
+            observaciones = request.POST.get('observaciones', '')
+            
+            # ✅ CONVERTIR STRING A DATE
+            try:
+                fecha_vencimiento = datetime.strptime(fecha_vencimiento_str, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                messages.error(request, "Fecha de vencimiento inválida")
+                return redirect('financial_management:cuenta_por_cobrar_list')
+            
+            # Validar que la fecha de vencimiento sea futura
+            if fecha_vencimiento <= timezone.now().date():
+                messages.error(request, "La fecha de vencimiento debe ser posterior a hoy")
+                return redirect('financial_management:cuenta_por_cobrar_list')
+            
+            # Validar cliente
+            try:
+                cliente = Cliente.objects.get(id=cliente_id, activo=True)
+            except Cliente.DoesNotExist:
+                messages.error(request, "Cliente no válido o inactivo")
+                return redirect('financial_management:cuenta_por_cobrar_list')
+            
+            # Validar venta (opcional)
+            venta = None
+            if venta_id:
+                try:
+                    venta = Venta.objects.get(id=venta_id, cliente=cliente)
+                except Venta.DoesNotExist:
+                    messages.error(request, "Venta no válida")
+                    return redirect('financial_management:cuenta_por_cobrar_list')
+            
+            # Validar monto
+            if monto_total <= 0:
+                messages.error(request, "El monto debe ser mayor a cero")
+                return redirect('financial_management:cuenta_por_cobrar_list')
+            
+            # Validar crédito disponible
+            if monto_total > cliente.credito_disponible:
+                messages.error(
+                    request,
+                    f"El monto (${monto_total}) excede el crédito disponible del cliente (${cliente.credito_disponible})"
+                )
+                return redirect('financial_management:cuenta_por_cobrar_list')
+            
+            # Crear la cuenta por cobrar
+            cuenta = CuentaPorCobrar.objects.create(
+                cliente=cliente,
+                venta=venta,
+                monto_total=monto_total,
+                fecha_emision=timezone.now().date(),
+                fecha_vencimiento=fecha_vencimiento,  # ✅ Ahora es objeto date
+                descripcion=descripcion,
+                observaciones=observaciones,
+                usuario_registro=request.user,
+                estado='PENDIENTE',
+                saldo_pendiente=monto_total
+            )
+            
+            # Actualizar crédito disponible del cliente
+            cliente.credito_disponible -= monto_total
+            cliente.save()
+            
+            messages.success(
+                request,
+                f"✅ Cuenta por cobrar {cuenta.numero_cuenta} creada exitosamente"
+            )
+            
+            return redirect('financial_management:cuenta_por_cobrar_list')
+        
+        except ValueError as e:
+            messages.error(request, f"Error en los datos: {str(e)}")
+            return redirect('financial_management:cuenta_por_cobrar_list')
+        
+        except Exception as e:
+            messages.error(request, f"Error al crear la cuenta: {str(e)}")
+            return redirect('financial_management:cuenta_por_cobrar_list')
+
+
+class RegistrarPagoCuentaPorCobrarView(CreditoAccessMixin, View):
+    """Registrar un pago de cliente (solo POST, sin template)"""
+    
+    @transaction.atomic
+    def post(self, request, pk):
+        try:
+            cuenta = get_object_or_404(CuentaPorCobrar, pk=pk)
+            
+            # Verificar que la cuenta tenga saldo pendiente
+            if cuenta.saldo_pendiente <= 0:
+                messages.warning(request, "Esta cuenta ya está pagada completamente.")
+                return redirect('financial_management:cuenta_por_cobrar_list')
+            
+            # Obtener datos del formulario
+            monto = Decimal(request.POST.get('monto', '0'))
+            metodo_pago = request.POST.get('metodo_pago', 'EFECTIVO')
+            numero_comprobante = request.POST.get('numero_comprobante', '')
+            banco = request.POST.get('banco', '')
+            numero_cuenta_banco = request.POST.get('numero_cuenta_banco', '')
+            observaciones = request.POST.get('observaciones', '')
+            
+            # Validar monto
+            if monto <= 0:
+                messages.error(request, "El monto debe ser mayor a cero")
+                return redirect('financial_management:cuenta_por_cobrar_list')
+            
+            if monto > cuenta.saldo_pendiente:
+                messages.error(
+                    request,
+                    f"El monto (${monto}) excede el saldo pendiente (${cuenta.saldo_pendiente})"
+                )
+                return redirect('financial_management:cuenta_por_cobrar_list')
+            
+            # Registrar el pago usando el método del modelo
+            pago = cuenta.registrar_pago(
+                monto=monto,
+                metodo_pago=metodo_pago,
+                usuario=request.user,
+                observaciones=observaciones,
+                numero_comprobante=numero_comprobante
+            )
+            
+            # Actualizar datos adicionales del pago
+            pago.banco = banco
+            pago.numero_cuenta_banco = numero_cuenta_banco
+            pago.save()
+            
+            # Mensaje según el estado final
+            if cuenta.estado == 'PAGADA':
+                messages.success(
+                    request,
+                    f"✅ Pago de ${monto} registrado. ¡Cuenta {cuenta.numero_cuenta} pagada completamente!"
+                )
+            else:
+                messages.success(
+                    request,
+                    f"✅ Pago de ${monto} registrado en cuenta {cuenta.numero_cuenta}. Saldo pendiente: ${cuenta.saldo_pendiente}"
+                )
+            
+            return redirect('financial_management:cuenta_por_cobrar_list')
+        
+        except ValueError as e:
+            messages.error(request, f"Error en los datos: {str(e)}")
+            return redirect('financial_management:cuenta_por_cobrar_list')
+        
+        except Exception as e:
+            messages.error(request, f"Error al registrar el pago: {str(e)}")
+            return redirect('financial_management:cuenta_por_cobrar_list')
+
+
+class CancelarCuentaPorCobrarView(SupervisorAccessMixin, View):
+    """Cancelar una cuenta por cobrar (solo POST, sin template)"""
+    
+    @transaction.atomic
+    def post(self, request, pk):
+        try:
+            cuenta = get_object_or_404(CuentaPorCobrar, pk=pk)
+            
+            # Verificar que se pueda cancelar
+            if not cuenta.puede_cancelarse():
+                messages.error(
+                    request,
+                    "No se puede cancelar una cuenta que ya tiene pagos registrados."
+                )
+                return redirect('financial_management:cuenta_por_cobrar_list')
+            
+            # Obtener motivo de cancelación
+            motivo = request.POST.get('motivo', '')
+            
+            if not motivo:
+                messages.error(request, "Debe especificar el motivo de cancelación")
+                return redirect('financial_management:cuenta_por_cobrar_list')
+            
+            # Cambiar estado a CANCELADA
+            cuenta.estado = 'CANCELADA'
+            cuenta.observaciones += f"\n\n[CANCELADA por {request.user.username}] {motivo}"
+            cuenta.save()
+            
+            # Restaurar crédito del cliente
+            cuenta.cliente.credito_disponible += cuenta.saldo_pendiente
+            cuenta.cliente.save()
+            
+            messages.success(
+                request,
+                f"✅ Cuenta {cuenta.numero_cuenta} cancelada exitosamente."
+            )
+            
+            return redirect('financial_management:cuenta_por_cobrar_list')
+        
+        except Exception as e:
+            messages.error(request, f"Error al cancelar la cuenta: {str(e)}")
+            return redirect('financial_management:cuenta_por_cobrar_list')
+
+
+class ReporteAntiguedadSaldosCobrarView(CreditoAccessMixin, TemplateView):
+    """Reporte de antigüedad de saldos por cobrar"""
+    template_name = 'custom_admin/financial/reporte_antiguedad_cobrar.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        from .models import ReporteCuentasPorCobrar
+        
+        # Resumen general
+        context['resumen'] = ReporteCuentasPorCobrar.resumen_general()
+        
+        # Antigüedad de saldos
+        context['antiguedad'] = ReporteCuentasPorCobrar.antiguedad_saldos()
+        
+        # Cuentas vencidas por cliente
+        from django.db.models import Sum, Count
+        context['clientes_vencidos'] = CuentaPorCobrar.objects.filter(
+            estado='VENCIDA'
+        ).values(
+            'cliente__id',
+            'cliente__nombres',
+            'cliente__apellidos'
+        ).annotate(
+            total_vencido=Sum('saldo_pendiente'),
+            cantidad_cuentas=Count('id'),
+            dias_promedio=Avg('dias_vencidos')
+        ).order_by('-total_vencido')[:10]
+        
+        # Top 10 cuentas vencidas
+        context['top_vencidas'] = CuentaPorCobrar.objects.filter(
+            estado='VENCIDA'
+        ).select_related('cliente').order_by('-saldo_pendiente')[:10]
+        
+        return context
+
+
+# ============================================================================
+# CUENTAS POR PAGAR (DEUDAS CON PROVEEDORES)
+# ============================================================================
+
+class CuentaPorPagarListView(CreditoAccessMixin, ListView):
+    """Lista de cuentas por pagar (deudas con proveedores)"""
+    model = CuentaPorPagar
+    template_name = 'custom_admin/financial/cuenta_por_pagar_list.html'
+    context_object_name = 'cuentas'
+    paginate_by = 20
+    
+    def get_queryset(self):
+        queryset = CuentaPorPagar.objects.select_related(
+            'proveedor', 'usuario_registro'
+        ).order_by('-fecha_emision')
+        
+        # Aplicar filtros del formulario
+        form = BuscarCuentasPorPagarForm(self.request.GET)
+        
+        if form.is_valid():
+            proveedor = form.cleaned_data.get('proveedor')
+            if proveedor:
+                queryset = queryset.filter(
+                    Q(proveedor__nombre_comercial__icontains=proveedor) |
+                    Q(proveedor__razon_social__icontains=proveedor) |
+                    Q(proveedor__nit__icontains=proveedor)
+                )
+            
+            estado = form.cleaned_data.get('estado')
+            if estado:
+                queryset = queryset.filter(estado=estado)
+            
+            tipo_compra = form.cleaned_data.get('tipo_compra')
+            if tipo_compra:
+                queryset = queryset.filter(tipo_compra=tipo_compra)
+            
+            fecha_desde = form.cleaned_data.get('fecha_desde')
+            if fecha_desde:
+                queryset = queryset.filter(fecha_emision__gte=fecha_desde)
+            
+            fecha_hasta = form.cleaned_data.get('fecha_hasta')
+            if fecha_hasta:
+                queryset = queryset.filter(fecha_emision__lte=fecha_hasta)
+            
+            solo_vencidas = form.cleaned_data.get('solo_vencidas')
+            if solo_vencidas:
+                queryset = queryset.filter(estado='VENCIDA')
+        
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Formulario de búsqueda
+        context['buscar_form'] = BuscarCuentasPorPagarForm(self.request.GET)
+        
+        # Estadísticas generales
+        from .models import ReporteCuentasPorPagar
+        context['resumen'] = ReporteCuentasPorPagar.resumen_general()
+        
+        # Totales filtrados
+        cuentas_filtradas = self.get_queryset()
+        context['total_filtrado'] = cuentas_filtradas.aggregate(
+            total=Sum('saldo_pendiente')
+        )['total'] or Decimal('0')
+        
+        context['cantidad_filtrada'] = cuentas_filtradas.count()
+        
+        return context
+
+
+class CuentaPorPagarDetailView(CreditoAccessMixin, DetailView):
+    """Detalle de una cuenta por pagar con historial de pagos"""
+    model = CuentaPorPagar
+    template_name = 'custom_admin/financial/cuenta_por_pagar_detail.html'
+    context_object_name = 'cuenta'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        cuenta = self.get_object()
+        
+        # Historial de pagos
+        context['pagos'] = cuenta.pagos.all().select_related('usuario').order_by('-fecha_pago')
+        
+        # Estadísticas de la cuenta
+        context['total_pagado'] = cuenta.pagos.aggregate(
+            total=Sum('monto')
+        )['total'] or Decimal('0')
+        
+        context['cantidad_pagos'] = cuenta.pagos.count()
+        
+        # Estado de vencimiento
+        context['esta_vencida'] = cuenta.esta_vencida()
+        context['dias_restantes'] = cuenta.dias_para_vencer()
+        
+        return context
+
+
+class CuentaPorPagarCreateView(CreditoAccessMixin, View):
+    """Crear nueva cuenta por pagar vía POST (sin template)"""
+    
+    @transaction.atomic
+    def post(self, request):
+        try:
+            from apps.inventory_management.models import Proveedor
+            
+            # Obtener datos del formulario
+            proveedor_id = request.POST.get('proveedor')
+            numero_factura = request.POST.get('numero_factura_proveedor', '')
+            tipo_compra = request.POST.get('tipo_compra', 'NORMAL')
+            monto_total = Decimal(request.POST.get('monto_total', '0'))
+            fecha_factura_str = request.POST.get('fecha_factura')
+            fecha_vencimiento_str = request.POST.get('fecha_vencimiento')
+            descripcion = request.POST.get('descripcion', '')
+            observaciones = request.POST.get('observaciones', '')
+            
+            # ✅ CONVERTIR STRINGS A DATE
+            try:
+                fecha_factura = datetime.strptime(fecha_factura_str, '%Y-%m-%d').date()
+                fecha_vencimiento = datetime.strptime(fecha_vencimiento_str, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                messages.error(request, "Fechas inválidas")
+                return redirect('financial_management:cuenta_por_pagar_list')
+            
+            # Validar que fecha de vencimiento sea posterior a fecha de factura
+            if fecha_vencimiento < fecha_factura:
+                messages.error(request, "La fecha de vencimiento debe ser posterior a la fecha de factura")
+                return redirect('financial_management:cuenta_por_pagar_list')
+            
+            # Validar proveedor
+            try:
+                proveedor = Proveedor.objects.get(id=proveedor_id, activo=True)
+            except Proveedor.DoesNotExist:
+                messages.error(request, "Proveedor no válido o inactivo")
+                return redirect('financial_management:cuenta_por_pagar_list')
+            
+            # Validar monto
+            if monto_total <= 0:
+                messages.error(request, "El monto debe ser mayor a cero")
+                return redirect('financial_management:cuenta_por_pagar_list')
+            
+            # Crear la cuenta por pagar
+            cuenta = CuentaPorPagar.objects.create(
+                proveedor=proveedor,
+                numero_factura_proveedor=numero_factura,
+                tipo_compra=tipo_compra,
+                monto_total=monto_total,
+                fecha_emision=timezone.now().date(),
+                fecha_factura=fecha_factura,  # ✅ Ahora es objeto date
+                fecha_vencimiento=fecha_vencimiento,  # ✅ Ahora es objeto date
+                descripcion=descripcion,
+                observaciones=observaciones,
+                usuario_registro=request.user,
+                estado='PENDIENTE',
+                saldo_pendiente=monto_total
+            )
+            
+            messages.success(
+                request,
+                f"✅ Cuenta por pagar {cuenta.numero_cuenta} creada exitosamente"
+            )
+            
+            return redirect('financial_management:cuenta_por_pagar_list')
+        
+        except ValueError as e:
+            messages.error(request, f"Error en los datos: {str(e)}")
+            return redirect('financial_management:cuenta_por_pagar_list')
+        
+        except Exception as e:
+            messages.error(request, f"Error al crear la cuenta: {str(e)}")
+            return redirect('financial_management:cuenta_por_pagar_list')
+
+
+class RegistrarPagoCuentaPorPagarView(CreditoAccessMixin, View):
+    """Registrar un pago a proveedor (solo POST, sin template)"""
+    
+    @transaction.atomic
+    def post(self, request, pk):
+        try:
+            cuenta = get_object_or_404(CuentaPorPagar, pk=pk)
+            
+            # Verificar que la cuenta tenga saldo pendiente
+            if cuenta.saldo_pendiente <= 0:
+                messages.warning(request, "Esta cuenta ya está pagada completamente.")
+                return redirect('financial_management:cuenta_por_pagar_list')
+            
+            # Obtener datos del formulario
+            monto = Decimal(request.POST.get('monto', '0'))
+            metodo_pago = request.POST.get('metodo_pago', 'EFECTIVO')
+            numero_comprobante = request.POST.get('numero_comprobante', '')
+            banco = request.POST.get('banco', '')
+            numero_cuenta_banco = request.POST.get('numero_cuenta_banco', '')
+            observaciones = request.POST.get('observaciones', '')
+            
+            # Validar monto
+            if monto <= 0:
+                messages.error(request, "El monto debe ser mayor a cero")
+                return redirect('financial_management:cuenta_por_pagar_list')
+            
+            if monto > cuenta.saldo_pendiente:
+                messages.error(
+                    request,
+                    f"El monto (${monto}) excede el saldo pendiente (${cuenta.saldo_pendiente})"
+                )
+                return redirect('financial_management:cuenta_por_pagar_list')
+            
+            # Registrar el pago usando el método del modelo
+            pago = cuenta.registrar_pago(
+                monto=monto,
+                metodo_pago=metodo_pago,
+                usuario=request.user,
+                observaciones=observaciones,
+                numero_comprobante=numero_comprobante
+            )
+            
+            # Actualizar datos adicionales del pago
+            pago.banco = banco
+            pago.numero_cuenta_banco = numero_cuenta_banco
+            pago.save()
+            
+            # Mensaje según el estado final
+            if cuenta.estado == 'PAGADA':
+                messages.success(
+                    request,
+                    f"✅ Pago de ${monto} registrado. ¡Cuenta {cuenta.numero_cuenta} pagada completamente!"
+                )
+            else:
+                messages.success(
+                    request,
+                    f"✅ Pago de ${monto} registrado en cuenta {cuenta.numero_cuenta}. Saldo pendiente: ${cuenta.saldo_pendiente}"
+                )
+            
+            return redirect('financial_management:cuenta_por_pagar_list')
+        
+        except ValueError as e:
+            messages.error(request, f"Error en los datos: {str(e)}")
+            return redirect('financial_management:cuenta_por_pagar_list')
+        
+        except Exception as e:
+            messages.error(request, f"Error al registrar el pago: {str(e)}")
+            return redirect('financial_management:cuenta_por_pagar_list')
+
+
+class ReporteAntiguedadSaldosPagarView(CreditoAccessMixin, TemplateView):
+    """Reporte de antigüedad de saldos por pagar"""
+    template_name = 'custom_admin/financial/reporte_antiguedad_pagar.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        from .models import ReporteCuentasPorPagar
+        
+        # Resumen general
+        context['resumen'] = ReporteCuentasPorPagar.resumen_general()
+        
+        # Antigüedad de saldos
+        context['antiguedad'] = ReporteCuentasPorPagar.antiguedad_saldos()
+        
+        # Proveedores con deudas vencidas
+        from django.db.models import Sum, Count, Avg
+        context['proveedores_vencidos'] = CuentaPorPagar.objects.filter(
+            estado='VENCIDA'
+        ).values(
+            'proveedor__id',
+            'proveedor__nombre_comercial'
+        ).annotate(
+            total_vencido=Sum('saldo_pendiente'),
+            cantidad_cuentas=Count('id'),
+            dias_promedio=Avg('dias_vencidos')
+        ).order_by('-total_vencido')[:10]
+        
+        # Top 10 cuentas vencidas
+        context['top_vencidas'] = CuentaPorPagar.objects.filter(
+            estado='VENCIDA'
+        ).select_related('proveedor').order_by('-saldo_pendiente')[:10]
+        
+        return context
+
+
+# ============================================================================
+# APIS Y UTILIDADES PARA CRÉDITOS
+# ============================================================================
+
+class EstadoCreditoClienteAPIView(CreditoAccessMixin, View):
+    """API para obtener el estado del crédito de un cliente"""
+    
+    def get(self, request, cliente_id):
+        from apps.sales_management.models import Cliente
+        cliente = get_object_or_404(Cliente, pk=cliente_id)
+        
+        # Cuentas pendientes
+        cuentas_pendientes = CuentaPorCobrar.objects.filter(
+            cliente=cliente,
+            estado__in=['PENDIENTE', 'PARCIAL', 'VENCIDA']
+        )
+        
+        data = {
+            'cliente': {
+                'id': str(cliente.id),
+                'nombre': cliente.nombre_completo(),
+                'nit': cliente.nit
+            },
+            'credito': {
+                'limite': float(cliente.limite_credito),
+                'disponible': float(cliente.credito_disponible),
+                'usado': float(cliente.limite_credito - cliente.credito_disponible),
+                'porcentaje_usado': float(
+                    (cliente.limite_credito - cliente.credito_disponible) / 
+                    cliente.limite_credito * 100
+                ) if cliente.limite_credito > 0 else 0
+            },
+            'cuentas_pendientes': {
+                'total': cuentas_pendientes.aggregate(
+                    total=Sum('saldo_pendiente')
+                )['total'] or 0,
+                'cantidad': cuentas_pendientes.count(),
+                'vencidas': cuentas_pendientes.filter(estado='VENCIDA').count()
+            }
+        }
+        
+        return JsonResponse(data)
+    from apps.sales_management.models import Cliente, Venta
+
+from apps.sales_management.models import Cliente, Venta
+
+class ClientesAPIView(View):
+    """API para obtener lista de clientes"""
+    
+    def get(self, request):
+        clientes = Cliente.objects.filter(activo=True).values(
+            'id', 'nombres', 'apellidos', 'numero_documento'  # ✅ CORRECTO
+        )
+        
+        data = [
+            {
+                'id': str(c['id']),
+                'nombre': f"{c['nombres']} {c['apellidos']}",
+                'nit': c['numero_documento']  # ✅ Usar numero_documento
+            }
+            for c in clientes
+        ]
+        
+        return JsonResponse(data, safe=False)
+
+
+class ClienteVentasAPIView(View):
+    """API para obtener ventas de un cliente"""
+    
+    def get(self, request, cliente_id):
+        ventas = Venta.objects.filter(
+            cliente_id=cliente_id,
+            estado='COMPLETADA'
+        ).values(
+            'id', 'numero_venta', 'total', 'fecha_venta'
+        ).order_by('-fecha_venta')[:20]
+        
+        data = [
+            {
+                'id': str(v['id']),
+                'numero_venta': v['numero_venta'],
+                'total': float(v['total']),
+                'fecha': v['fecha_venta'].strftime('%d/%m/%Y')
+            }
+            for v in ventas
+        ]
+        
+        return JsonResponse(data, safe=False)
+
+
+class EstadoCreditoClienteAPIView(CreditoAccessMixin, View):
+    """API para obtener el estado del crédito de un cliente"""
+    
+    def get(self, request, cliente_id):
+        from apps.sales_management.models import Cliente
+        cliente = get_object_or_404(Cliente, pk=cliente_id)
+        
+        # Cuentas pendientes
+        cuentas_pendientes = CuentaPorCobrar.objects.filter(
+            cliente=cliente,
+            estado__in=['PENDIENTE', 'PARCIAL', 'VENCIDA']
+        )
+        
+        data = {
+            'cliente': {
+                'id': str(cliente.id),
+                'nombre': cliente.nombre_completo(),
+                'nit': cliente.numero_documento  # ✅ CORRECCIÓN: usar numero_documento
+            },
+            'credito': {
+                'limite': float(cliente.limite_credito),
+                'disponible': float(cliente.credito_disponible),
+                'usado': float(cliente.limite_credito - cliente.credito_disponible),
+                'porcentaje_usado': float(
+                    (cliente.limite_credito - cliente.credito_disponible) / 
+                    cliente.limite_credito * 100
+                ) if cliente.limite_credito > 0 else 0
+            },
+            'cuentas_pendientes': {
+                'total': cuentas_pendientes.aggregate(
+                    total=Sum('saldo_pendiente')
+                )['total'] or 0,
+                'cantidad': cuentas_pendientes.count(),
+                'vencidas': cuentas_pendientes.filter(estado='VENCIDA').count()
+            }
+        }
+        
+        return JsonResponse(data)
+
+
+class CuentaPorCobrarDetalleAPIView(CreditoAccessMixin, View):
+    """API para obtener detalle de cuenta por cobrar en JSON"""
+    
+    def get(self, request, cuenta_id):
+        cuenta = get_object_or_404(CuentaPorCobrar, pk=cuenta_id)
+        
+        # Obtener pagos
+        pagos = cuenta.pagos.all().select_related('usuario').order_by('-fecha_pago')
+        pagos_data = [
+            {
+                'id': str(p.id),
+                'fecha': p.fecha_pago.strftime('%d/%m/%Y %H:%M'),
+                'monto': float(p.monto),
+                'metodo_pago': p.get_metodo_pago_display(),
+                'numero_comprobante': p.numero_comprobante or '-',
+                'usuario': p.usuario.get_full_name() if p.usuario else 'N/A',
+                'observaciones': p.observaciones or ''
+            }
+            for p in pagos
+        ]
+        
+        # ✅ CALCULAR porcentaje_pagado aquí
+        porcentaje_pagado = (cuenta.monto_pagado / cuenta.monto_total * 100) if cuenta.monto_total > 0 else 0
+        
+        data = {
+            'id': str(cuenta.id),
+            'numero_cuenta': cuenta.numero_cuenta,
+            'cliente': {
+                'nombre': cuenta.cliente.nombre_completo(),
+                'nit': cuenta.cliente.numero_documento,  # ✅ CORRECCIÓN
+                'limite_credito': float(cuenta.cliente.limite_credito),
+                'credito_disponible': float(cuenta.cliente.credito_disponible),
+                'credito_usado': float(cuenta.cliente.limite_credito - cuenta.cliente.credito_disponible),
+            },
+            'venta': {
+                'numero': cuenta.venta.numero_venta if cuenta.venta else None,
+                'id': str(cuenta.venta.id) if cuenta.venta else None
+            } if cuenta.venta else None,
+            'monto_total': float(cuenta.monto_total),
+            'monto_pagado': float(cuenta.monto_pagado),
+            'saldo_pendiente': float(cuenta.saldo_pendiente),
+            'porcentaje_pagado': float(porcentaje_pagado),  # ✅ CORRECCIÓN
+            'estado': cuenta.estado,
+            'estado_display': cuenta.get_estado_display(),
+            'fecha_emision': cuenta.fecha_emision.strftime('%d/%m/%Y'),
+            'fecha_vencimiento': cuenta.fecha_vencimiento.strftime('%d/%m/%Y'),
+            'dias_para_vencer': cuenta.dias_para_vencer(),
+            'dias_vencidos': cuenta.dias_vencidos,
+            'esta_vencida': cuenta.esta_vencida(),
+            'descripcion': cuenta.descripcion or '',
+            'observaciones': cuenta.observaciones or '',
+            'pagos': pagos_data,
+            'puede_cancelarse': cuenta.puede_cancelarse(),
         }
         
         return JsonResponse(data)

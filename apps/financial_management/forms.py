@@ -1,13 +1,27 @@
 # apps/financial_management/forms.py
 
+"""
+Formularios para el módulo de gestión financiera
+Incluye: Cajas, Caja Chica, Cuentas por Cobrar, Cuentas por Pagar
+"""
+
 from django import forms
 from django.core.exceptions import ValidationError
 from decimal import Decimal
+from datetime import timedelta
+from django.utils import timezone
+
 from .models import (
     Caja, MovimientoCaja, ArqueoCaja,
-    CajaChica, MovimientoCajaChica
+    CajaChica, MovimientoCajaChica,
+    CuentaPorCobrar, PagoCuentaPorCobrar,
+    CuentaPorPagar, PagoCuentaPorPagar
 )
 
+
+# ============================================================================
+# FORMULARIOS PARA CAJAS
+# ============================================================================
 
 class CajaForm(forms.ModelForm):
     """Formulario para crear/editar cajas"""
@@ -261,6 +275,56 @@ class MovimientoCajaForm(forms.ModelForm):
         return cleaned_data
 
 
+class BuscarMovimientosForm(forms.Form):
+    """Formulario para filtrar movimientos"""
+    
+    fecha_desde = forms.DateField(
+        label='Desde',
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        })
+    )
+    
+    fecha_hasta = forms.DateField(
+        label='Hasta',
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        })
+    )
+    
+    tipo_movimiento = forms.ChoiceField(
+        label='Tipo de Movimiento',
+        required=False,
+        choices=[('', 'Todos')] + list(MovimientoCaja.TIPO_MOVIMIENTO_CHOICES),
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    usuario = forms.ModelChoiceField(
+        label='Usuario',
+        required=False,
+        queryset=None,  # Se establece en __init__
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        empty_label='Todos'
+    )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Importar aquí para evitar import circular
+        from apps.authentication.models import Usuario
+        self.fields['usuario'].queryset = Usuario.objects.filter(
+            is_active=True
+        ).order_by('first_name', 'last_name')
+
+
+# ============================================================================
+# FORMULARIOS PARA CAJA CHICA
+# ============================================================================
+
 class CajaChicaForm(forms.ModelForm):
     """Formulario para crear/editar caja chica"""
     
@@ -444,11 +508,171 @@ class ReposicionCajaChicaForm(forms.Form):
             )
 
 
-class BuscarMovimientosForm(forms.Form):
-    """Formulario para filtrar movimientos"""
+# ============================================================================
+# FORMULARIOS PARA CUENTAS POR COBRAR (CRÉDITOS A CLIENTES)
+# ============================================================================
+
+class CuentaPorCobrarForm(forms.ModelForm):
+    """Formulario para crear/editar cuenta por cobrar"""
+    
+    class Meta:
+        model = CuentaPorCobrar
+        fields = [
+            'cliente', 'venta', 'descripcion', 
+            'monto_total', 'fecha_vencimiento', 'observaciones'
+        ]
+        widgets = {
+            'cliente': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True
+            }),
+            'venta': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'descripcion': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Descripción de la cuenta por cobrar'
+            }),
+            'monto_total': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0.01',
+                'placeholder': '0.00'
+            }),
+            'fecha_vencimiento': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'observaciones': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Observaciones adicionales (opcional)'
+            })
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Si no hay venta asociada, hacer el campo opcional
+        self.fields['venta'].required = False
+        
+        # Filtrar solo clientes activos con crédito habilitado
+        from apps.sales_management.models import Cliente
+        self.fields['cliente'].queryset = Cliente.objects.filter(
+            activo=True,
+            limite_credito__gt=0
+        )
+    
+    def clean_monto_total(self):
+        monto = self.cleaned_data.get('monto_total')
+        if monto and monto <= 0:
+            raise ValidationError("El monto debe ser mayor a cero.")
+        return monto
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        cliente = cleaned_data.get('cliente')
+        monto_total = cleaned_data.get('monto_total')
+        
+        # Verificar límite de crédito del cliente
+        if cliente and monto_total:
+            if monto_total > cliente.credito_disponible:
+                raise ValidationError(
+                    f"El monto (${monto_total}) excede el crédito disponible "
+                    f"del cliente (${cliente.credito_disponible})"
+                )
+        
+        return cleaned_data
+
+
+class RegistrarPagoCuentaPorCobrarForm(forms.ModelForm):
+    """Formulario para registrar un pago de cliente"""
+    
+    class Meta:
+        model = PagoCuentaPorCobrar
+        fields = [
+            'monto', 'metodo_pago', 'numero_comprobante',
+            'banco', 'numero_cuenta_banco', 'observaciones'
+        ]
+        widgets = {
+            'monto': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0.01',
+                'placeholder': '0.00'
+            }),
+            'metodo_pago': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'numero_comprobante': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Número de comprobante/voucher'
+            }),
+            'banco': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nombre del banco'
+            }),
+            'numero_cuenta_banco': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Número de cuenta'
+            }),
+            'observaciones': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Observaciones del pago (opcional)'
+            })
+        }
+    
+    def __init__(self, *args, cuenta=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cuenta = cuenta
+        
+        # Campos opcionales
+        self.fields['numero_comprobante'].required = False
+        self.fields['banco'].required = False
+        self.fields['numero_cuenta_banco'].required = False
+        self.fields['observaciones'].required = False
+        
+        # Establecer monto máximo al saldo pendiente
+        if cuenta:
+            self.fields['monto'].widget.attrs['max'] = str(cuenta.saldo_pendiente)
+            self.fields['monto'].help_text = f"Saldo pendiente: ${cuenta.saldo_pendiente}"
+    
+    def clean_monto(self):
+        monto = self.cleaned_data.get('monto')
+        
+        if monto and monto <= 0:
+            raise ValidationError("El monto debe ser mayor a cero.")
+        
+        if self.cuenta and monto > self.cuenta.saldo_pendiente:
+            raise ValidationError(
+                f"El monto (${monto}) excede el saldo pendiente (${self.cuenta.saldo_pendiente})"
+            )
+        
+        return monto
+
+
+class BuscarCuentasPorCobrarForm(forms.Form):
+    """Formulario para filtrar cuentas por cobrar"""
+    
+    cliente = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Buscar por cliente...'
+        })
+    )
+    
+    estado = forms.ChoiceField(
+        required=False,
+        choices=[('', 'Todos los estados')] + CuentaPorCobrar.ESTADO_CHOICES,
+        widget=forms.Select(attrs={
+            'class': 'form-select'
+        })
+    )
     
     fecha_desde = forms.DateField(
-        label='Desde',
         required=False,
         widget=forms.DateInput(attrs={
             'class': 'form-control',
@@ -457,7 +681,6 @@ class BuscarMovimientosForm(forms.Form):
     )
     
     fecha_hasta = forms.DateField(
-        label='Hasta',
         required=False,
         widget=forms.DateInput(attrs={
             'class': 'form-control',
@@ -465,26 +688,215 @@ class BuscarMovimientosForm(forms.Form):
         })
     )
     
-    tipo_movimiento = forms.ChoiceField(
-        label='Tipo de Movimiento',
+    solo_vencidas = forms.BooleanField(
         required=False,
-        choices=[('', 'Todos')] + list(MovimientoCaja.TIPO_MOVIMIENTO_CHOICES),
-        widget=forms.Select(attrs={'class': 'form-control'})
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input'
+        })
     )
+
+
+# ============================================================================
+# FORMULARIOS PARA CUENTAS POR PAGAR (DEUDAS CON PROVEEDORES)
+# ============================================================================
+
+class CuentaPorPagarForm(forms.ModelForm):
+    """Formulario para crear/editar cuenta por pagar"""
     
-    usuario = forms.ModelChoiceField(
-        label='Usuario',
-        required=False,
-        queryset=None,  # Se establece en __init__
-        widget=forms.Select(attrs={'class': 'form-control'}),
-        empty_label='Todos'
-    )
+    class Meta:
+        model = CuentaPorPagar
+        fields = [
+            'proveedor', 'numero_factura_proveedor', 'tipo_compra',
+            'descripcion', 'monto_total', 'fecha_factura', 
+            'fecha_vencimiento', 'observaciones'
+        ]
+        widgets = {
+            'proveedor': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True
+            }),
+            'numero_factura_proveedor': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Número de factura del proveedor'
+            }),
+            'tipo_compra': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'descripcion': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Descripción detallada de la compra'
+            }),
+            'monto_total': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0.01',
+                'placeholder': '0.00'
+            }),
+            'fecha_factura': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'fecha_vencimiento': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'observaciones': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Observaciones adicionales (opcional)'
+            })
+        }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        # Importar aquí para evitar import circular
-        from apps.authentication.models import Usuario
-        self.fields['usuario'].queryset = Usuario.objects.filter(
-            is_active=True
-        ).order_by('first_name', 'last_name')
+        # Filtrar solo proveedores activos
+        from apps.inventory_management.models import Proveedor
+        self.fields['proveedor'].queryset = Proveedor.objects.filter(activo=True)
+        
+        # Establecer fecha actual por defecto si no hay instancia
+        if not self.instance.pk:
+            self.fields['fecha_factura'].initial = timezone.now().date()
+            # Fecha de vencimiento 30 días después por defecto
+            self.fields['fecha_vencimiento'].initial = (
+                timezone.now().date() + timedelta(days=30)
+            )
+    
+    def clean_monto_total(self):
+        monto = self.cleaned_data.get('monto_total')
+        if monto and monto <= 0:
+            raise ValidationError("El monto debe ser mayor a cero.")
+        return monto
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_factura = cleaned_data.get('fecha_factura')
+        fecha_vencimiento = cleaned_data.get('fecha_vencimiento')
+        
+        # Verificar que fecha de vencimiento sea posterior a fecha de factura
+        if fecha_factura and fecha_vencimiento:
+            if fecha_vencimiento < fecha_factura:
+                raise ValidationError(
+                    "La fecha de vencimiento no puede ser anterior a la fecha de factura"
+                )
+        
+        return cleaned_data
+
+
+class RegistrarPagoCuentaPorPagarForm(forms.ModelForm):
+    """Formulario para registrar un pago a proveedor"""
+    
+    class Meta:
+        model = PagoCuentaPorPagar
+        fields = [
+            'monto', 'metodo_pago', 'numero_comprobante',
+            'banco', 'numero_cuenta_banco', 'observaciones'
+        ]
+        widgets = {
+            'monto': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0.01',
+                'placeholder': '0.00'
+            }),
+            'metodo_pago': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'numero_comprobante': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Número de comprobante/voucher'
+            }),
+            'banco': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nombre del banco'
+            }),
+            'numero_cuenta_banco': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Número de cuenta'
+            }),
+            'observaciones': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Observaciones del pago (opcional)'
+            })
+        }
+    
+    def __init__(self, *args, cuenta=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cuenta = cuenta
+        
+        # Campos opcionales
+        self.fields['numero_comprobante'].required = False
+        self.fields['banco'].required = False
+        self.fields['numero_cuenta_banco'].required = False
+        self.fields['observaciones'].required = False
+        
+        # Establecer monto máximo al saldo pendiente
+        if cuenta:
+            self.fields['monto'].widget.attrs['max'] = str(cuenta.saldo_pendiente)
+            self.fields['monto'].help_text = f"Saldo pendiente: ${cuenta.saldo_pendiente}"
+    
+    def clean_monto(self):
+        monto = self.cleaned_data.get('monto')
+        
+        if monto and monto <= 0:
+            raise ValidationError("El monto debe ser mayor a cero.")
+        
+        if self.cuenta and monto > self.cuenta.saldo_pendiente:
+            raise ValidationError(
+                f"El monto (${monto}) excede el saldo pendiente (${self.cuenta.saldo_pendiente})"
+            )
+        
+        return monto
+
+
+class BuscarCuentasPorPagarForm(forms.Form):
+    """Formulario para filtrar cuentas por pagar"""
+    
+    proveedor = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Buscar por proveedor...'
+        })
+    )
+    
+    estado = forms.ChoiceField(
+        required=False,
+        choices=[('', 'Todos los estados')] + CuentaPorPagar.ESTADO_CHOICES,
+        widget=forms.Select(attrs={
+            'class': 'form-select'
+        })
+    )
+    
+    tipo_compra = forms.ChoiceField(
+        required=False,
+        choices=[('', 'Todos los tipos')] + CuentaPorPagar.TIPO_COMPRA_CHOICES,
+        widget=forms.Select(attrs={
+            'class': 'form-select'
+        })
+    )
+    
+    fecha_desde = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        })
+    )
+    
+    fecha_hasta = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        })
+    )
+    
+    solo_vencidas = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input'
+        })
+    )

@@ -462,6 +462,7 @@
                 </div>
             </div>
 
+            <!-- ✅ SECCIÓN FINANZAS CORREGIDA -->
             <div class="menu-group" id="group-finanzas">
                 <div class="menu-group-header" onclick="toggleMenuGroup('group-finanzas')">
                     <i class="bi bi-cash-coin menu-group-icon"></i>
@@ -470,7 +471,7 @@
                 </div>
                 <div class="menu-group-items">
                     <a href="/panel/finanzas/cajas/" class="menu-item {% if '/finanzas/cajas/' in request.path %}active{% endif %}">
-                        <i class="bi bi-box menu-item-icon"></i>
+                        <i class="bi bi-cash-stack menu-item-icon"></i>
                         <span class="menu-item-text">Cajas</span>
                     </a>
                     <a href="/panel/finanzas/arqueos/" class="menu-item {% if '/finanzas/arqueos/' in request.path %}active{% endif %}">
@@ -480,6 +481,16 @@
                     <a href="/panel/finanzas/caja-chica/" class="menu-item {% if '/finanzas/caja-chica/' in request.path %}active{% endif %}">
                         <i class="bi bi-wallet2 menu-item-icon"></i>
                         <span class="menu-item-text">Caja Chica</span>
+                    </a>
+                    <!-- 💰 Cuentas por Cobrar (Clientes nos deben) -->
+                    <a href="/panel/finanzas/cuentas-por-cobrar/" class="menu-item {% if '/finanzas/cuentas-por-cobrar/' in request.path %}active{% endif %}">
+                        <i class="bi bi-credit-card-2-front menu-item-icon"></i>
+                        <span class="menu-item-text">Cuentas por Cobrar</span>
+                    </a>
+                    <!-- 📄 Cuentas por Pagar (Nosotros debemos) -->
+                    <a href="/panel/finanzas/cuentas-por-pagar/" class="menu-item {% if '/finanzas/cuentas-por-pagar/' in request.path %}active{% endif %}">
+                        <i class="bi bi-file-earmark-minus menu-item-icon"></i>
+                        <span class="menu-item-text">Cuentas por Pagar</span>
                     </a>
                 </div>
             </div>

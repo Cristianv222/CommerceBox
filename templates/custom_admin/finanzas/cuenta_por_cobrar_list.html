@@ -1,0 +1,1115 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Cuentas por Cobrar{% endblock %}
+
+{% block alerts %}{% endblock %}
+
+{% block extra_css %}
+<!-- FontAwesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    /* ============================================
+       MODALES - Centrado y configuración
+       ============================================ */
+    .modal-dialog {
+        margin-top: 3rem !important;
+        margin-bottom: 3rem !important;
+    }
+
+    .modal-dialog-centered {
+        min-height: calc(100% - 6rem);
+    }
+
+    body.modal-open {
+        position: static !important;
+    }
+
+    .modal-body {
+        max-height: calc(90vh - 200px);
+        overflow-y: auto;
+    }
+
+    /* ============================================
+       HEADER
+       ============================================ */
+    .card-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+    }
+
+    /* ============================================
+       STAT CARDS CON GLASSMORPHISM
+       ============================================ */
+    .stat-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow:
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(ellipse 300px 200px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow:
+            0 12px 40px rgba(59, 130, 246, 0.15),
+            0 4px 12px rgba(96, 165, 250, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        border-color: rgba(96, 165, 250, 0.6);
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 2;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .stat-label {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* ============================================
+       ADMIN CARD
+       ============================================ */
+    .admin-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow:
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    /* ============================================
+       CUENTA CARDS
+       ============================================ */
+    .cuenta-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+        box-shadow:
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .cuenta-card:hover {
+        transform: translateY(-4px);
+        box-shadow:
+            0 12px 40px rgba(59, 130, 246, 0.15),
+            0 4px 12px rgba(96, 165, 250, 0.2);
+    }
+
+    .cuenta-card.estado-pendiente {
+        border-left: 4px solid #f59e0b;
+    }
+
+    .cuenta-card.estado-parcial {
+        border-left: 4px solid #3b82f6;
+    }
+
+    .cuenta-card.estado-pagada {
+        border-left: 4px solid #10b981;
+    }
+
+    .cuenta-card.estado-vencida {
+        border-left: 4px solid #ef4444;
+    }
+
+    .cuenta-card.estado-cancelada {
+        border-left: 4px solid #6b7280;
+        opacity: 0.7;
+    }
+
+    .badge-estado {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .badge-pendiente {
+        background: rgba(245, 158, 11, 0.1);
+        color: #d97706;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-parcial {
+        background: rgba(59, 130, 246, 0.1);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .badge-pagada {
+        background: rgba(16, 185, 129, 0.1);
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-vencida {
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-cancelada {
+        background: rgba(107, 114, 128, 0.1);
+        color: #4b5563;
+        border: 1px solid rgba(107, 114, 128, 0.3);
+    }
+
+    .monto-display {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 10px 0;
+    }
+
+    .progress-bar-custom {
+        height: 8px;
+        border-radius: 10px;
+        background: rgba(219, 234, 254, 0.3);
+        overflow: hidden;
+        margin-top: 0.5rem;
+    }
+
+    .progress-fill {
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.3s ease;
+    }
+
+    /* Tabla en modales */
+    .modal .table {
+        margin-bottom: 0;
+    }
+
+    .modal .table th {
+        background: rgba(59, 130, 246, 0.05);
+        font-weight: 600;
+        border-bottom: 2px solid rgba(59, 130, 246, 0.1);
+        font-size: 0.85rem;
+    }
+
+    .modal .table td {
+        font-size: 0.9rem;
+    }
+
+    /* Info card en detalle */
+    .info-card {
+        background: rgba(59, 130, 246, 0.05);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    /* Loading spinner */
+    .spinner-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        border-radius: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h1 class="card-title">
+                <i class="fas fa-money-bill-wave me-2"></i>Cuentas por Cobrar
+            </h1>
+            <p class="text-muted mb-0">Gestiona los créditos otorgados a clientes</p>
+        </div>
+        <div class="col-md-6 text-end">
+            <button class="btn btn-primary" onclick="nuevaCuenta()">
+                <i class="fas fa-plus me-2"></i>Nueva Cuenta
+            </button>
+            <button class="btn btn-info text-white ms-2" onclick="verReporteAntiguedad()">
+                <i class="fas fa-chart-bar me-2"></i>Reporte Antigüedad
+            </button>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                </div>
+                <div class="stat-value">${{ resumen.total_por_cobrar|floatformat:2 }}</div>
+                <div class="stat-label">Total por Cobrar</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-value">${{ resumen.total_vencido|floatformat:2 }}</div>
+                <div class="stat-label">Vencido</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <div class="stat-value">{{ resumen.cuentas_pendientes }}</div>
+                <div class="stat-label">Cuentas Pendientes</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-value">{{ resumen.cuentas_pagadas }}</div>
+                <div class="stat-label">Pagadas este Mes</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="admin-card mb-4">
+        <form method="GET" id="filterForm">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-user me-2"></i>Cliente
+                    </label>
+                    <input type="text" name="cliente" class="form-control" 
+                           placeholder="Nombre, NIT..." value="{{ request.GET.cliente }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-filter me-2"></i>Estado
+                    </label>
+                    <select name="estado" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="PENDIENTE" {% if request.GET.estado == 'PENDIENTE' %}selected{% endif %}>Pendiente</option>
+                        <option value="PARCIAL" {% if request.GET.estado == 'PARCIAL' %}selected{% endif %}>Parcial</option>
+                        <option value="PAGADA" {% if request.GET.estado == 'PAGADA' %}selected{% endif %}>Pagada</option>
+                        <option value="VENCIDA" {% if request.GET.estado == 'VENCIDA' %}selected{% endif %}>Vencida</option>
+                        <option value="CANCELADA" {% if request.GET.estado == 'CANCELADA' %}selected{% endif %}>Cancelada</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Desde</label>
+                    <input type="date" name="fecha_desde" class="form-control" value="{{ request.GET.fecha_desde }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Hasta</label>
+                    <input type="date" name="fecha_hasta" class="form-control" value="{{ request.GET.fecha_hasta }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">&nbsp;</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="solo_vencidas" 
+                               id="soloVencidas" {% if request.GET.solo_vencidas %}checked{% endif %}>
+                        <label class="form-check-label" for="soloVencidas">
+                            Solo vencidas
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Resumen filtrado -->
+    {% if cantidad_filtrada > 0 %}
+    <div class="alert alert-info mb-4">
+        <i class="fas fa-info-circle me-2"></i>
+        Mostrando <strong>{{ cantidad_filtrada }}</strong> cuenta{{ cantidad_filtrada|pluralize }}
+        con un total de <strong>${{ total_filtrado|floatformat:2 }}</strong>
+    </div>
+    {% endif %}
+
+    <!-- Lista de Cuentas -->
+    <div class="row g-3">
+        {% for cuenta in cuentas %}
+        <div class="col-md-6 col-lg-4">
+            <div class="cuenta-card estado-{{ cuenta.estado|lower }}" onclick="verDetalle('{{ cuenta.id }}')">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h6 class="mb-1 fw-bold">{{ cuenta.numero_cuenta }}</h6>
+                        <span class="text-muted small">
+                            <i class="fas fa-user me-1"></i>{{ cuenta.cliente.nombre_completo|truncatechars:25 }}
+                        </span>
+                    </div>
+                    <span class="badge-estado badge-{{ cuenta.estado|lower }}">
+                        {% if cuenta.estado == 'PENDIENTE' %}
+                            <i class="fas fa-clock me-1"></i>Pendiente
+                        {% elif cuenta.estado == 'PARCIAL' %}
+                            <i class="fas fa-percent me-1"></i>Parcial
+                        {% elif cuenta.estado == 'PAGADA' %}
+                            <i class="fas fa-check me-1"></i>Pagada
+                        {% elif cuenta.estado == 'VENCIDA' %}
+                            <i class="fas fa-exclamation-triangle me-1"></i>Vencida
+                        {% else %}
+                            <i class="fas fa-ban me-1"></i>Cancelada
+                        {% endif %}
+                    </span>
+                </div>
+
+                <!-- Venta asociada -->
+                {% if cuenta.venta %}
+                <div class="mb-2">
+                    <small class="text-muted">
+                        <i class="fas fa-receipt me-1"></i>Venta: {{ cuenta.venta.numero_venta }}
+                    </small>
+                </div>
+                {% endif %}
+
+                <!-- Montos -->
+                <div class="row text-center mb-3">
+                    <div class="col-4">
+                        <small class="text-muted d-block">Total</small>
+                        <strong>${{ cuenta.monto_total|floatformat:2 }}</strong>
+                    </div>
+                    <div class="col-4">
+                        <small class="text-muted d-block">Pagado</small>
+                        <strong class="text-success">${{ cuenta.monto_pagado|floatformat:2 }}</strong>
+                    </div>
+                    <div class="col-4">
+                        <small class="text-muted d-block">Pendiente</small>
+                        <strong class="text-danger">${{ cuenta.saldo_pendiente|floatformat:2 }}</strong>
+                    </div>
+                </div>
+
+                <!-- Progreso -->
+                {% if cuenta.estado != 'CANCELADA' %}
+                <div class="progress-bar-custom">
+                    <div class="progress-fill" 
+                         style="width: {{ cuenta.porcentaje_pagado }}%; 
+                                background: {% if cuenta.estado == 'PAGADA' %}#10b981{% elif cuenta.estado == 'VENCIDA' %}#ef4444{% else %}#3b82f6{% endif %};">
+                    </div>
+                </div>
+                <small class="text-muted d-block text-center mt-1">{{ cuenta.porcentaje_pagado|floatformat:0 }}% pagado</small>
+                {% endif %}
+
+                <!-- Fechas -->
+                <div class="mt-3 pt-3" style="border-top: 1px solid rgba(0,0,0,0.05);">
+                    <div class="row small text-muted">
+                        <div class="col-6">
+                            <i class="fas fa-calendar me-1"></i>
+                            {{ cuenta.fecha_emision|date:"d/m/Y" }}
+                        </div>
+                        <div class="col-6 text-end">
+                            {% if cuenta.estado == 'VENCIDA' %}
+                                <span class="text-danger fw-bold">
+                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                    Vencida {{ cuenta.dias_vencidos }} día{{ cuenta.dias_vencidos|pluralize }}
+                                </span>
+                            {% elif cuenta.dias_para_vencer >= 0 and cuenta.estado not in 'PAGADA,CANCELADA' %}
+                                <i class="fas fa-clock me-1"></i>
+                                Vence en {{ cuenta.dias_para_vencer }} día{{ cuenta.dias_para_vencer|pluralize }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Acciones rápidas -->
+                <div class="d-flex gap-2 mt-3">
+                    {% if cuenta.estado not in 'PAGADA,CANCELADA' %}
+                    <button class="btn btn-sm btn-success flex-fill" 
+                            onclick="event.stopPropagation(); registrarPago('{{ cuenta.id }}')">
+                        <i class="fas fa-dollar-sign me-1"></i>Pagar
+                    </button>
+                    {% endif %}
+                    <button class="btn btn-sm btn-info text-white flex-fill" 
+                            onclick="event.stopPropagation(); verDetalle('{{ cuenta.id }}')">
+                        <i class="fas fa-eye me-1"></i>Ver
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="admin-card text-center py-5">
+                <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                <h5>No hay cuentas por cobrar</h5>
+                <p class="text-muted">No se encontraron resultados con los filtros aplicados</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Paginación -->
+    {% if is_paginated %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Anterior</a>
+            </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item"><a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a></li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Siguiente</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<!-- Modal: Nueva Cuenta -->
+<div class="modal fade" id="nuevaCuentaModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle me-2"></i>Nueva Cuenta por Cobrar
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'financial_management:cuenta_por_cobrar_create' %}" id="nuevaCuentaForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Cliente *</label>
+                            <select name="cliente" id="selectCliente" class="form-select" required>
+                                <option value="">Cargando clientes...</option>
+                            </select>
+                            <small class="text-muted">Selecciona el cliente que recibirá el crédito</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Venta *</label>
+                            <select name="venta" id="selectVenta" class="form-select" required>
+                                <option value="">Primero selecciona un cliente</option>
+                            </select>
+                            <small class="text-muted">Venta asociada al crédito</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Monto Total *</label>
+                            <input type="number" name="monto_total" class="form-control" 
+                                   step="0.01" min="0.01" required id="montoTotal">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Fecha de Vencimiento *</label>
+                            <input type="date" name="fecha_vencimiento" class="form-control" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Descripción</label>
+                            <textarea name="descripcion" class="form-control" rows="3" 
+                                      placeholder="Detalle de la venta o productos..."></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Observaciones</label>
+                            <textarea name="observaciones" class="form-control" rows="2" 
+                                      placeholder="Notas adicionales..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Info del crédito del cliente -->
+                    <div id="infoCreditoCliente" style="display: none;" class="mt-3">
+                        <div class="info-card">
+                            <h6 class="fw-bold mb-2">
+                                <i class="fas fa-info-circle me-2"></i>Estado del Crédito
+                            </h6>
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Límite</small>
+                                    <strong id="limiteCredito">$0.00</strong>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Usado</small>
+                                    <strong class="text-danger" id="creditoUsado">$0.00</strong>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Disponible</small>
+                                    <strong class="text-success" id="creditoDisponible">$0.00</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Crear Cuenta
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Detalle de Cuenta -->
+<div class="modal fade" id="detalleCuentaModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-invoice me-2"></i>Detalle de Cuenta - <span id="detalleNumeroCuenta"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="min-height: 400px; position: relative;">
+                <div id="detalleCuentaContent">
+                    <!-- Contenido se cargará vía JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Registrar Pago -->
+<div class="modal fade" id="registrarPagoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-dollar-sign me-2"></i>Registrar Pago
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="registrarPagoForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info mb-3">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Cliente:</strong> <span id="pagoCliente">-</span><br>
+                                <strong>Cuenta:</strong> <span id="pagoCuenta">-</span>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <strong>Saldo Pendiente:</strong><br>
+                                <h3 class="text-danger mb-0" id="pagoSaldoPendiente">$0.00</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Monto a Pagar *</label>
+                            <input type="number" name="monto" class="form-control" 
+                                   step="0.01" min="0.01" required id="montoPago">
+                            <small class="text-muted">Ingrese el monto total o parcial</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Método de Pago *</label>
+                            <select name="metodo_pago" class="form-select" required>
+                                <option value="EFECTIVO">Efectivo</option>
+                                <option value="TRANSFERENCIA">Transferencia bancaria</option>
+                                <option value="CHEQUE">Cheque</option>
+                                <option value="TARJETA">Tarjeta</option>
+                                <option value="OTRO">Otro</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Número de Comprobante</label>
+                            <input type="text" name="numero_comprobante" class="form-control" 
+                                   placeholder="Ej: 001-00123">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Banco</label>
+                            <input type="text" name="banco" class="form-control" 
+                                   placeholder="Nombre del banco">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold">Número de Cuenta Banco</label>
+                            <input type="text" name="numero_cuenta_banco" class="form-control" 
+                                   placeholder="Número de cuenta">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Observaciones</label>
+                            <textarea name="observaciones" class="form-control" rows="2" 
+                                      placeholder="Notas sobre el pago..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Historial de pagos previos -->
+                    <div id="pagosPrevios" style="display: none;" class="mt-3">
+                        <h6 class="fw-bold mb-2">
+                            <i class="fas fa-history me-2"></i>Últimos Pagos
+                        </h6>
+                        <div id="listaPagosPrevios"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check me-2"></i>Registrar Pago
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Cancelar Cuenta -->
+<div class="modal fade" id="cancelarCuentaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-ban me-2"></i>Cancelar Cuenta
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="cancelarCuentaForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>¡Atención!</strong> Esta acción no se puede deshacer.
+                    </div>
+                    <p>¿Estás seguro de cancelar esta cuenta?</p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Motivo de Cancelación *</label>
+                        <textarea name="motivo" class="form-control" rows="3" required 
+                                  placeholder="Explica por qué se cancela esta cuenta..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, Mantener</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-ban me-2"></i>Sí, Cancelar Cuenta
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+// ============================================
+// CARGAR CLIENTES AL ABRIR EL MODAL
+// ============================================
+function nuevaCuenta() {
+    const modal = new bootstrap.Modal(document.getElementById('nuevaCuentaModal'));
+    modal.show();
+    
+    // Cargar clientes
+    cargarClientes();
+}
+
+function cargarClientes() {
+    const select = document.getElementById('selectCliente');
+    select.innerHTML = '<option value="">Cargando clientes...</option>';
+    
+    // Usar la URL correcta de Django
+    fetch('{% url "financial_management:api_clientes" %}')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error en la respuesta');
+            }
+            return response.json();
+        })
+        .then(data => {
+            select.innerHTML = '<option value="">Seleccionar cliente...</option>';
+            data.forEach(cliente => {
+                const option = document.createElement('option');
+                option.value = cliente.id;
+                option.textContent = `${cliente.nombre} - ${cliente.nit}`;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            select.innerHTML = '<option value="">Error al cargar clientes</option>';
+            console.error('Error:', error);
+            Swal.fire('Error', 'No se pudieron cargar los clientes', 'error');
+        });
+}
+
+// ============================================
+// CUANDO SE SELECCIONA UN CLIENTE
+// ============================================
+document.getElementById('selectCliente')?.addEventListener('change', function() {
+    const clienteId = this.value;
+    const selectVenta = document.getElementById('selectVenta');
+    const infoCredito = document.getElementById('infoCreditoCliente');
+    
+    if (!clienteId) {
+        selectVenta.innerHTML = '<option value="">Primero selecciona un cliente</option>';
+        infoCredito.style.display = 'none';
+        return;
+    }
+    
+    // Cargar ventas del cliente
+    selectVenta.innerHTML = '<option value="">Cargando ventas...</option>';
+    
+    fetch(`{% url "financial_management:api_cliente_ventas" cliente_id="00000000-0000-0000-0000-000000000000" %}`.replace('00000000-0000-0000-0000-000000000000', clienteId))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error en la respuesta');
+            }
+            return response.json();
+        })
+        .then(data => {
+            selectVenta.innerHTML = '<option value="">Seleccionar venta...</option>';
+            if (data.length === 0) {
+                selectVenta.innerHTML = '<option value="">No hay ventas disponibles</option>';
+            } else {
+                data.forEach(venta => {
+                    const option = document.createElement('option');
+                    option.value = venta.id;
+                    option.textContent = `${venta.numero_venta} - $${parseFloat(venta.total).toFixed(2)} (${venta.fecha})`;
+                    option.dataset.total = venta.total;
+                    selectVenta.appendChild(option);
+                });
+            }
+        })
+        .catch(error => {
+            selectVenta.innerHTML = '<option value="">Error al cargar ventas</option>';
+            console.error('Error:', error);
+        });
+    
+    // Cargar info de crédito del cliente
+    fetch(`{% url "financial_management:api_credito_cliente" cliente_id="00000000-0000-0000-0000-000000000000" %}`.replace('00000000-0000-0000-0000-000000000000', clienteId))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error en la respuesta');
+            }
+            return response.json();
+        })
+        .then(data => {
+            document.getElementById('limiteCredito').textContent = `$${data.credito.limite.toFixed(2)}`;
+            document.getElementById('creditoUsado').textContent = `$${data.credito.usado.toFixed(2)}`;
+            document.getElementById('creditoDisponible').textContent = `$${data.credito.disponible.toFixed(2)}`;
+            infoCredito.style.display = 'block';
+            
+            // Validar si tiene crédito disponible
+            if (data.credito.disponible <= 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Sin crédito disponible',
+                    text: 'Este cliente ha alcanzado su límite de crédito'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            infoCredito.style.display = 'none';
+        });
+});
+
+// ============================================
+// CUANDO SE SELECCIONA UNA VENTA
+// ============================================
+document.getElementById('selectVenta')?.addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    if (selectedOption.dataset.total) {
+        document.getElementById('montoTotal').value = selectedOption.dataset.total;
+    }
+});
+
+// ============================================
+// VER DETALLE DE CUENTA
+// ============================================
+function verDetalle(cuentaId) {
+    const modal = new bootstrap.Modal(document.getElementById('detalleCuentaModal'));
+    const content = document.getElementById('detalleCuentaContent');
+    
+    // Mostrar loading
+    content.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-3 text-muted">Cargando detalles...</p>
+        </div>
+    `;
+    
+    modal.show();
+    
+    // Cargar detalles vía API JSON
+    fetch(`{% url "financial_management:api_cuenta_cobrar_detalle" cuenta_id="00000000-0000-0000-0000-000000000000" %}`.replace('00000000-0000-0000-0000-000000000000', cuentaId))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error en la respuesta');
+            }
+            return response.json();
+        })
+        .then(data => {
+            document.getElementById('detalleNumeroCuenta').textContent = data.numero_cuenta;
+            
+            // Construir HTML del detalle
+            let html = `
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="info-card">
+                            <h6 class="fw-bold mb-3"><i class="fas fa-user me-2"></i>Información del Cliente</h6>
+                            <p class="mb-1"><strong>Nombre:</strong> ${data.cliente.nombre}</p>
+                            <p class="mb-1"><strong>NIT:</strong> ${data.cliente.nit}</p>
+                            <hr>
+                            <p class="mb-1"><strong>Límite de Crédito:</strong> $${data.cliente.limite_credito.toFixed(2)}</p>
+                            <p class="mb-1"><strong>Crédito Usado:</strong> <span class="text-danger">$${data.cliente.credito_usado.toFixed(2)}</span></p>
+                            <p class="mb-0"><strong>Crédito Disponible:</strong> <span class="text-success">$${data.cliente.credito_disponible.toFixed(2)}</span></p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-card">
+                            <h6 class="fw-bold mb-3"><i class="fas fa-file-invoice me-2"></i>Detalles de la Cuenta</h6>
+                            <p class="mb-1"><strong>Estado:</strong> 
+                                <span class="badge-estado badge-${data.estado.toLowerCase()}">${data.estado_display}</span>
+                            </p>
+                            <p class="mb-1"><strong>Fecha de Emisión:</strong> ${data.fecha_emision}</p>
+                            <p class="mb-1"><strong>Fecha de Vencimiento:</strong> ${data.fecha_vencimiento}</p>
+                            ${data.venta ? `<p class="mb-0"><strong>Venta Asociada:</strong> ${data.venta.numero}</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="info-card">
+                            <h6 class="fw-bold mb-3"><i class="fas fa-dollar-sign me-2"></i>Estado Financiero</h6>
+                            <div class="row text-center">
+                                <div class="col-3">
+                                    <small class="text-muted d-block">Monto Total</small>
+                                    <h4>$${data.monto_total.toFixed(2)}</h4>
+                                </div>
+                                <div class="col-3">
+                                    <small class="text-muted d-block">Monto Pagado</small>
+                                    <h4 class="text-success">$${data.monto_pagado.toFixed(2)}</h4>
+                                </div>
+                                <div class="col-3">
+                                    <small class="text-muted d-block">Saldo Pendiente</small>
+                                    <h4 class="text-danger">$${data.saldo_pendiente.toFixed(2)}</h4>
+                                </div>
+                                <div class="col-3">
+                                    <small class="text-muted d-block">Progreso</small>
+                                    <h4>${data.porcentaje_pagado.toFixed(0)}%</h4>
+                                </div>
+                            </div>
+                            <div class="progress-bar-custom mt-3">
+                                <div class="progress-fill" style="width: ${data.porcentaje_pagado}%; background: ${data.estado === 'PAGADA' ? '#10b981' : data.estado === 'VENCIDA' ? '#ef4444' : '#3b82f6'};"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                ${data.descripcion ? `
+                <div class="mb-4">
+                    <h6 class="fw-bold"><i class="fas fa-align-left me-2"></i>Descripción</h6>
+                    <p class="text-muted">${data.descripcion}</p>
+                </div>
+                ` : ''}
+
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-history me-2"></i>Historial de Pagos (${data.pagos.length})</h6>
+                    ${data.pagos.length > 0 ? `
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Monto</th>
+                                        <th>Método</th>
+                                        <th>Comprobante</th>
+                                        <th>Usuario</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${data.pagos.map(pago => `
+                                        <tr>
+                                            <td>${pago.fecha}</td>
+                                            <td class="fw-bold text-success">$${pago.monto.toFixed(2)}</td>
+                                            <td>${pago.metodo_pago}</td>
+                                            <td>${pago.numero_comprobante}</td>
+                                            <td>${pago.usuario}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    ` : '<p class="text-muted">No hay pagos registrados</p>'}
+                </div>
+
+                <div class="d-flex gap-2 justify-content-end">
+                    ${data.estado !== 'PAGADA' && data.estado !== 'CANCELADA' ? `
+                        <button class="btn btn-success" onclick="registrarPago('${data.id}')">
+                            <i class="fas fa-dollar-sign me-2"></i>Registrar Pago
+                        </button>
+                    ` : ''}
+                    ${data.puede_cancelarse ? `
+                        <button class="btn btn-danger" onclick="cancelarCuenta('${data.id}')">
+                            <i class="fas fa-ban me-2"></i>Cancelar Cuenta
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+            
+            content.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            content.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error al cargar detalles. Por favor intenta nuevamente.
+                </div>
+            `;
+        });
+}
+
+// ============================================
+// REGISTRAR PAGO
+// ============================================
+function registrarPago(cuentaId) {
+    const modal = new bootstrap.Modal(document.getElementById('registrarPagoModal'));
+    const form = document.getElementById('registrarPagoForm');
+    
+    // Configurar la URL del formulario
+    form.action = `{% url "financial_management:registrar_pago_cuenta_cobrar" pk="00000000-0000-0000-0000-000000000000" %}`.replace('00000000-0000-0000-0000-000000000000', cuentaId);
+    
+    // Mostrar loading en el modal
+    document.getElementById('pagoCliente').textContent = 'Cargando...';
+    document.getElementById('pagoCuenta').textContent = 'Cargando...';
+    document.getElementById('pagoSaldoPendiente').textContent = '$0.00';
+    
+    modal.show();
+    
+    // Cargar datos de la cuenta
+    fetch(`{% url "financial_management:api_cuenta_cobrar_detalle" cuenta_id="00000000-0000-0000-0000-000000000000" %}`.replace('00000000-0000-0000-0000-000000000000', cuentaId))
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('pagoCliente').textContent = data.cliente.nombre;
+            document.getElementById('pagoCuenta').textContent = data.numero_cuenta;
+            document.getElementById('pagoSaldoPendiente').textContent = `$${data.saldo_pendiente.toFixed(2)}`;
+            
+            // Establecer el monto máximo
+            document.getElementById('montoPago').max = data.saldo_pendiente;
+            document.getElementById('montoPago').value = data.saldo_pendiente.toFixed(2);
+            
+            // Mostrar pagos previos si existen
+            if (data.pagos.length > 0) {
+                const lista = data.pagos.slice(0, 5).map(pago => `
+                    <div class="alert alert-light mb-2">
+                        <strong>${pago.fecha}</strong> - $${pago.monto.toFixed(2)} (${pago.metodo_pago})
+                    </div>
+                `).join('');
+                document.getElementById('listaPagosPrevios').innerHTML = lista;
+                document.getElementById('pagosPrevios').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire('Error', 'No se pudo cargar la información de la cuenta', 'error');
+        });
+}
+
+// ============================================
+// CANCELAR CUENTA
+// ============================================
+function cancelarCuenta(cuentaId) {
+    const modal = new bootstrap.Modal(document.getElementById('cancelarCuentaModal'));
+    const form = document.getElementById('cancelarCuentaForm');
+    
+    form.action = `{% url "financial_management:cancelar_cuenta_cobrar" pk="00000000-0000-0000-0000-000000000000" %}`.replace('00000000-0000-0000-0000-000000000000', cuentaId);
+    modal.show();
+}
+
+// ============================================
+// VER REPORTE DE ANTIGÜEDAD
+// ============================================
+function verReporteAntiguedad() {
+    window.open('{% url "financial_management:reporte_antiguedad_cobrar" %}', '_blank');
+}
+
+// ============================================
+// MENSAJES
+// ============================================
+{% if messages %}
+    {% for message in messages %}
+        Swal.fire({
+            icon: '{% if message.tags == "success" %}success{% elif message.tags == "error" %}error{% elif message.tags == "warning" %}warning{% else %}info{% endif %}',
+            title: '{% if message.tags == "success" %}¡Éxito!{% elif message.tags == "error" %}Error{% elif message.tags == "warning" %}Advertencia{% else %}Información{% endif %}',
+            text: '{{ message }}',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+    {% endfor %}
+{% endif %}
+</script>
+{% endblock %}

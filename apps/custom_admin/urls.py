@@ -223,30 +223,6 @@ urlpatterns = [
     path('finanzas/caja-chica/<uuid:caja_chica_id>/editar/', views.editar_caja_chica, name='editar_caja_chica'),
     
     # ========================================
-    # FINANZAS - CUENTAS POR COBRAR (NUEVO)
-    # ========================================
-    path('finanzas/cuentas-por-cobrar/', views.cuentas_por_cobrar_list, name='cuentas_por_cobrar_list'),
-    path('finanzas/cuentas-por-cobrar/<uuid:cuenta_id>/', views.cuenta_por_cobrar_detalle, name='cuenta_por_cobrar_detalle'),
-    path('finanzas/cuentas-por-cobrar/<uuid:cuenta_id>/registrar-pago/', views.registrar_pago_cobrar, name='registrar_pago_cobrar'),
-    
-    # APIs Cuentas por Cobrar
-    path('api/finanzas/cuentas-por-cobrar/', views.api_cuentas_por_cobrar_list, name='api_cuentas_por_cobrar_list'),
-    path('api/finanzas/cuentas-por-cobrar/registrar-pago/', views.api_registrar_pago_cobrar, name='api_registrar_pago_cobrar'),
-    path('api/finanzas/cuentas-por-cobrar/<uuid:cuenta_id>/', views.api_obtener_cuenta_cobrar, name='api_obtener_cuenta_cobrar'),
-    
-    # ========================================
-    # FINANZAS - CUENTAS POR PAGAR (NUEVO)
-    # ========================================
-    path('finanzas/cuentas-por-pagar/', views.cuentas_por_pagar_list, name='cuentas_por_pagar_list'),
-    path('finanzas/cuentas-por-pagar/<uuid:cuenta_id>/', views.cuenta_por_pagar_detalle, name='cuenta_por_pagar_detalle'),
-    path('finanzas/cuentas-por-pagar/<uuid:cuenta_id>/registrar-pago/', views.registrar_pago_pagar, name='registrar_pago_pagar'),
-    
-    # APIs Cuentas por Pagar
-    path('api/finanzas/cuentas-por-pagar/', views.api_cuentas_por_pagar_list, name='api_cuentas_por_pagar_list'),
-    path('api/finanzas/cuentas-por-pagar/registrar-pago/', views.api_registrar_pago_pagar, name='api_registrar_pago_pagar'),
-    path('api/finanzas/cuentas-por-pagar/<uuid:cuenta_id>/', views.api_obtener_cuenta_pagar, name='api_obtener_cuenta_pagar'),
-    
-    # ========================================
     # REPORTES
     # ========================================
     path('reportes/', views.reportes_dashboard_view, name='reportes'),
