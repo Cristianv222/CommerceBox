@@ -80,4 +80,9 @@ urlpatterns = [
     path('api/clientes/', views.ClientesAPIView.as_view(), name='api_clientes'),
     path('api/clientes/<uuid:cliente_id>/ventas/', views.ClienteVentasAPIView.as_view(), name='api_cliente_ventas'),
     path('api/cuenta-cobrar/<uuid:cuenta_id>/detalle/', views.CuentaPorCobrarDetalleAPIView.as_view(), name='api_cuenta_cobrar_detalle'),
+
+    # ============ APIs para Cuentas por Pagar ============
+    path('api/proveedores/', views.ProveedoresAPIView.as_view(), name='api_proveedores'),
+    path('api/proveedores/<uuid:proveedor_id>/credito/', views.EstadoCreditoProveedorAPIView.as_view(), name='api_credito_proveedor'),
+    path('api/cuentas-por-pagar/<uuid:cuenta_id>/', views.CuentaPorPagarDetalleAPIView.as_view(), name='api_cuenta_pagar_detalle'),
 ]

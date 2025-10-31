@@ -13,12 +13,14 @@ from django.db import transaction
 from decimal import Decimal
 from datetime import timedelta, datetime
 from django.db.models.functions import Coalesce, TruncDate
+from apps.financial_management import apps
 from apps.sales_management.models import DetalleVenta, Cliente, Venta
 import json
 from django.db.models import Avg
 from .models import (
     Caja, MovimientoCaja, ArqueoCaja,
-    CajaChica, MovimientoCajaChica, CuentaPorCobrar, PagoCuentaPorCobrar, CuentaPorPagar, PagoCuentaPorPagar
+    CajaChica, MovimientoCajaChica, CuentaPorCobrar, PagoCuentaPorCobrar, CuentaPorPagar, PagoCuentaPorPagar,
+    CuentaPorPagar, ReporteCuentasPorPagar
 )
 from .forms import (
     CajaForm, AperturaCajaForm, CierreCajaForm, MovimientoCajaForm,
@@ -30,7 +32,7 @@ from .mixins import (
     FinancialAccessMixin, CajaEditMixin, CajeroAccessMixin,
     SupervisorAccessMixin, CajaChicaAccessMixin, FormMessagesMixin, CreditoAccessMixin
 )
-
+from apps.inventory_management.models import Proveedor
 
 # ============================================================================
 # DASHBOARD FINANCIERO
@@ -882,7 +884,7 @@ class CuentaPorCobrarListView(CreditoAccessMixin, ListView):
                 queryset = queryset.filter(
                     Q(cliente__nombres__icontains=cliente) |
                     Q(cliente__apellidos__icontains=cliente) |
-                    Q(cliente__nit__icontains=cliente)
+                    Q(cliente__numero_documento__icontains=cliente)  # ✅ CORRECCIÓN
                 )
             
             estado = form.cleaned_data.get('estado')
@@ -1133,22 +1135,39 @@ class CancelarCuentaPorCobrarView(SupervisorAccessMixin, View):
 
 class ReporteAntiguedadSaldosCobrarView(CreditoAccessMixin, TemplateView):
     """Reporte de antigüedad de saldos por cobrar"""
-    template_name = 'custom_admin/financial/reporte_antiguedad_cobrar.html'
+    template_name = 'custom_admin/finanzas/reporte_antiguedad_cobrar.html'
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
         from .models import ReporteCuentasPorCobrar
         
-        # Resumen general
-        context['resumen'] = ReporteCuentasPorCobrar.resumen_general()
+        # ✅ Resumen general
+        resumen = ReporteCuentasPorCobrar.resumen_general()
+        context['resumen'] = resumen
         
-        # Antigüedad de saldos
-        context['antiguedad'] = ReporteCuentasPorCobrar.antiguedad_saldos()
+        # ✅ DEBUG: Imprimir para verificar
+        print("=" * 50)
+        print("RESUMEN GENERAL CUENTAS POR COBRAR:")
+        print(f"Total por cobrar: {resumen.get('total_por_cobrar', 0)}")
+        print(f"Total vencido: {resumen.get('total_vencido', 0)}")
+        print(f"Total por vencer: {resumen.get('total_por_vencer', 0)}")
+        print(f"Cuentas pendientes: {resumen.get('cuentas_pendientes', 0)}")
+        print(f"Cuentas cobradas: {resumen.get('cuentas_cobradas', 0)}")
+        print("=" * 50)
         
-        # Cuentas vencidas por cliente
-        from django.db.models import Sum, Count
-        context['clientes_vencidos'] = CuentaPorCobrar.objects.filter(
+        # ✅ Antigüedad de saldos
+        antiguedad = ReporteCuentasPorCobrar.antiguedad_saldos()
+        context['antiguedad'] = antiguedad
+        
+        # ✅ DEBUG: Imprimir antigüedad
+        print("ANTIGÜEDAD DE SALDOS:")
+        for rango in antiguedad:
+            print(f"  {rango}")
+        print("=" * 50)
+        
+        # ✅ Clientes con cuentas vencidas
+        clientes_vencidos = CuentaPorCobrar.objects.filter(
             estado='VENCIDA'
         ).values(
             'cliente__id',
@@ -1160,10 +1179,26 @@ class ReporteAntiguedadSaldosCobrarView(CreditoAccessMixin, TemplateView):
             dias_promedio=Avg('dias_vencidos')
         ).order_by('-total_vencido')[:10]
         
-        # Top 10 cuentas vencidas
-        context['top_vencidas'] = CuentaPorCobrar.objects.filter(
+        context['clientes_vencidos'] = clientes_vencidos
+        
+        # ✅ DEBUG: Imprimir clientes vencidos
+        print("CLIENTES VENCIDOS:")
+        for cliente in clientes_vencidos:
+            print(f"  {cliente}")
+        print("=" * 50)
+        
+        # ✅ Top 10 cuentas vencidas
+        top_vencidas = CuentaPorCobrar.objects.filter(
             estado='VENCIDA'
         ).select_related('cliente').order_by('-saldo_pendiente')[:10]
+        
+        context['top_vencidas'] = top_vencidas
+        
+        # ✅ DEBUG: Imprimir top vencidas
+        print("TOP CUENTAS VENCIDAS:")
+        for cuenta in top_vencidas:
+            print(f"  {cuenta.numero_cuenta}: ${cuenta.saldo_pendiente}")
+        print("=" * 50)
         
         return context
 
@@ -1175,7 +1210,7 @@ class ReporteAntiguedadSaldosCobrarView(CreditoAccessMixin, TemplateView):
 class CuentaPorPagarListView(CreditoAccessMixin, ListView):
     """Lista de cuentas por pagar (deudas con proveedores)"""
     model = CuentaPorPagar
-    template_name = 'custom_admin/financial/cuenta_por_pagar_list.html'
+    template_name = 'custom_admin/finanzas/cuenta_por_pagar_list.html'
     context_object_name = 'cuentas'
     paginate_by = 20
     
@@ -1193,7 +1228,7 @@ class CuentaPorPagarListView(CreditoAccessMixin, ListView):
                 queryset = queryset.filter(
                     Q(proveedor__nombre_comercial__icontains=proveedor) |
                     Q(proveedor__razon_social__icontains=proveedor) |
-                    Q(proveedor__nit__icontains=proveedor)
+                    Q(proveedor__ruc_nit__icontains=proveedor)  # ✅ CORRECCIÓN
                 )
             
             estado = form.cleaned_data.get('estado')
@@ -1413,22 +1448,37 @@ class RegistrarPagoCuentaPorPagarView(CreditoAccessMixin, View):
 
 class ReporteAntiguedadSaldosPagarView(CreditoAccessMixin, TemplateView):
     """Reporte de antigüedad de saldos por pagar"""
-    template_name = 'custom_admin/financial/reporte_antiguedad_pagar.html'
+    template_name = 'custom_admin/finanzas/reporte_antiguedad_pagar.html'
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        from .models import ReporteCuentasPorPagar
+        # ✅ Resumen general
+        resumen = ReporteCuentasPorPagar.resumen_general()
+        context['resumen'] = resumen
         
-        # Resumen general
-        context['resumen'] = ReporteCuentasPorPagar.resumen_general()
+        # ✅ DEBUG: Imprimir para verificar
+        print("=" * 50)
+        print("RESUMEN GENERAL:")
+        print(f"Total por pagar: {resumen.get('total_por_pagar', 0)}")
+        print(f"Total vencido: {resumen.get('total_vencido', 0)}")
+        print(f"Total por vencer: {resumen.get('total_por_vencer', 0)}")
+        print(f"Cuentas pendientes: {resumen.get('cuentas_pendientes', 0)}")
+        print(f"Cuentas pagadas: {resumen.get('cuentas_pagadas', 0)}")
+        print("=" * 50)
         
-        # Antigüedad de saldos
-        context['antiguedad'] = ReporteCuentasPorPagar.antiguedad_saldos()
+        # ✅ Antigüedad de saldos
+        antiguedad = ReporteCuentasPorPagar.antiguedad_saldos()
+        context['antiguedad'] = antiguedad
         
-        # Proveedores con deudas vencidas
-        from django.db.models import Sum, Count, Avg
-        context['proveedores_vencidos'] = CuentaPorPagar.objects.filter(
+        # ✅ DEBUG: Imprimir antigüedad
+        print("ANTIGÜEDAD DE SALDOS:")
+        for rango in antiguedad:
+            print(f"  {rango}")
+        print("=" * 50)
+        
+        # ✅ Proveedores con deudas vencidas
+        proveedores_vencidos = CuentaPorPagar.objects.filter(
             estado='VENCIDA'
         ).values(
             'proveedor__id',
@@ -1439,10 +1489,26 @@ class ReporteAntiguedadSaldosPagarView(CreditoAccessMixin, TemplateView):
             dias_promedio=Avg('dias_vencidos')
         ).order_by('-total_vencido')[:10]
         
-        # Top 10 cuentas vencidas
-        context['top_vencidas'] = CuentaPorPagar.objects.filter(
+        context['proveedores_vencidos'] = proveedores_vencidos
+        
+        # ✅ DEBUG: Imprimir proveedores vencidos
+        print("PROVEEDORES VENCIDOS:")
+        for prov in proveedores_vencidos:
+            print(f"  {prov}")
+        print("=" * 50)
+        
+        # ✅ Top 10 cuentas vencidas
+        top_vencidas = CuentaPorPagar.objects.filter(
             estado='VENCIDA'
         ).select_related('proveedor').order_by('-saldo_pendiente')[:10]
+        
+        context['top_vencidas'] = top_vencidas
+        
+        # ✅ DEBUG: Imprimir top vencidas
+        print("TOP CUENTAS VENCIDAS:")
+        for cuenta in top_vencidas:
+            print(f"  {cuenta.numero_cuenta}: ${cuenta.saldo_pendiente}")
+        print("=" * 50)
         
         return context
 
@@ -1630,6 +1696,110 @@ class CuentaPorCobrarDetalleAPIView(CreditoAccessMixin, View):
             'observaciones': cuenta.observaciones or '',
             'pagos': pagos_data,
             'puede_cancelarse': cuenta.puede_cancelarse(),
+        }
+        
+        return JsonResponse(data)
+
+class ProveedoresAPIView(View):
+    """API para obtener lista de proveedores"""
+    
+    def get(self, request):
+        proveedores = Proveedor.objects.filter(activo=True).values(
+            'id', 'nombre_comercial', 'razon_social', 'ruc_nit'  # ✅
+        )
+        
+        data = [
+            {
+                'id': str(p['id']),
+                'nombre': p['nombre_comercial'] or p['razon_social'],
+                'nit': p['ruc_nit'] or 'N/A'  # ✅
+            }
+            for p in proveedores
+        ]
+        
+        return JsonResponse(data, safe=False)
+
+
+class EstadoCreditoProveedorAPIView(CreditoAccessMixin, View):
+    """API para obtener el estado de deuda con un proveedor"""
+    
+    def get(self, request, proveedor_id):
+        from apps.inventory_management.models import Proveedor
+        proveedor = get_object_or_404(Proveedor, pk=proveedor_id)
+        
+        # Cuentas pendientes
+        cuentas_pendientes = CuentaPorPagar.objects.filter(
+            proveedor=proveedor,
+            estado__in=['PENDIENTE', 'PARCIAL', 'VENCIDA']
+        )
+        
+        data = {
+            'proveedor': {
+                'id': str(proveedor.id),
+                'nombre': proveedor.nombre_comercial or proveedor.razon_social,
+                'nit': proveedor.ruc_nit or 'N/A'
+            },
+            'cuentas_pendientes': {
+                'total': float(cuentas_pendientes.aggregate(
+                    total=Sum('saldo_pendiente')
+                )['total'] or 0),
+                'cantidad': cuentas_pendientes.count(),
+                'vencidas': cuentas_pendientes.filter(estado='VENCIDA').count()
+            }
+        }
+        
+        return JsonResponse(data)
+
+
+class CuentaPorPagarDetalleAPIView(CreditoAccessMixin, View):
+    """API para obtener detalle de cuenta por pagar en JSON"""
+    
+    def get(self, request, cuenta_id):
+        cuenta = get_object_or_404(CuentaPorPagar, pk=cuenta_id)
+        
+        # Obtener pagos
+        pagos = cuenta.pagos.all().select_related('usuario').order_by('-fecha_pago')
+        pagos_data = [
+            {
+                'id': str(p.id),
+                'fecha': p.fecha_pago.strftime('%d/%m/%Y %H:%M'),
+                'monto': float(p.monto),
+                'metodo_pago': p.get_metodo_pago_display(),
+                'numero_comprobante': p.numero_comprobante or '-',
+                'usuario': p.usuario.get_full_name() if p.usuario else 'N/A',
+                'observaciones': p.observaciones or ''
+            }
+            for p in pagos
+        ]
+        
+        # Calcular porcentaje pagado
+        porcentaje_pagado = (cuenta.monto_pagado / cuenta.monto_total * 100) if cuenta.monto_total > 0 else 0
+        
+        data = {
+            'id': str(cuenta.id),
+            'numero_cuenta': cuenta.numero_cuenta,
+            'proveedor': {
+                'nombre': cuenta.proveedor.nombre_comercial or cuenta.proveedor.razon_social,
+                'nit': cuenta.proveedor.ruc_nit or 'N/A'
+            },
+            'tipo_compra': cuenta.tipo_compra,
+            'tipo_compra_display': cuenta.get_tipo_compra_display(),
+            'numero_factura_proveedor': cuenta.numero_factura_proveedor or '-',
+            'monto_total': float(cuenta.monto_total),
+            'monto_pagado': float(cuenta.monto_pagado),
+            'saldo_pendiente': float(cuenta.saldo_pendiente),
+            'porcentaje_pagado': float(porcentaje_pagado),
+            'estado': cuenta.estado,
+            'estado_display': cuenta.get_estado_display(),
+            'fecha_emision': cuenta.fecha_emision.strftime('%d/%m/%Y'),
+            'fecha_factura': cuenta.fecha_factura.strftime('%d/%m/%Y'),
+            'fecha_vencimiento': cuenta.fecha_vencimiento.strftime('%d/%m/%Y'),
+            'dias_para_vencer': cuenta.dias_para_vencer(),
+            'dias_vencidos': cuenta.dias_vencidos,
+            'esta_vencida': cuenta.esta_vencida(),
+            'descripcion': cuenta.descripcion or '',
+            'observaciones': cuenta.observaciones or '',
+            'pagos': pagos_data
         }
         
         return JsonResponse(data)

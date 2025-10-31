@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.db.models import Sum, Q, F, Count
 from decimal import Decimal
 import uuid
+from datetime import timedelta
 
 
 # ============================================================================
@@ -1594,112 +1595,294 @@ def crear_cuenta_por_cobrar_automatico(sender, instance, created, **kwargs):
 # ============================================================================
 
 class ReporteCuentasPorCobrar:
-    """Clase helper para generar reportes de cuentas por cobrar"""
+    """Clase para generar reportes de cuentas por cobrar"""
     
     @staticmethod
     def resumen_general():
-        """Genera un resumen general de cuentas por cobrar"""
+        """
+        Resumen general de todas las cuentas por cobrar
+        
+        Returns:
+            dict: Diccionario con totales y estadísticas
+        """
+        from .models import CuentaPorCobrar
+        
+        hoy = timezone.now().date()
+        fecha_30_dias = hoy + timedelta(days=30)
+        
+        # Cuentas pendientes (PENDIENTE, PARCIAL, VENCIDA)
+        cuentas_activas = CuentaPorCobrar.objects.filter(
+            estado__in=['PENDIENTE', 'PARCIAL', 'VENCIDA']
+        )
+        
+        # Total por cobrar
+        total_por_cobrar = cuentas_activas.aggregate(
+            total=Sum('saldo_pendiente')
+        )['total'] or Decimal('0')
+        
+        # Total vencido
+        total_vencido = cuentas_activas.filter(
+            estado='VENCIDA'
+        ).aggregate(
+            total=Sum('saldo_pendiente')
+        )['total'] or Decimal('0')
+        
+        # Total por vencer en 30 días
+        total_por_vencer = cuentas_activas.filter(
+            fecha_vencimiento__lte=fecha_30_dias,
+            fecha_vencimiento__gt=hoy
+        ).aggregate(
+            total=Sum('saldo_pendiente')
+        )['total'] or Decimal('0')
+        
+        # Cantidad de cuentas pendientes
+        cuentas_pendientes = cuentas_activas.count()
+        
+        # Cuentas cobradas este mes
+        primer_dia_mes = hoy.replace(day=1)
+        cuentas_cobradas = CuentaPorCobrar.objects.filter(
+            estado='PAGADA',
+            fecha_emision__gte=primer_dia_mes
+        ).count()
+        
         return {
-            'total_pendiente': CuentaPorCobrar.objects.filter(
-                estado__in=['PENDIENTE', 'PARCIAL', 'VENCIDA']
-            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
-            
-            'total_vencidas': CuentaPorCobrar.objects.filter(
-                estado='VENCIDA'
-            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
-            
-            'cantidad_vencidas': CuentaPorCobrar.objects.filter(
-                estado='VENCIDA'
-            ).count(),
-            
-            'total_cobrado_mes': PagoCuentaPorCobrar.objects.filter(
-                fecha_pago__year=timezone.now().year,
-                fecha_pago__month=timezone.now().month
-            ).aggregate(total=Sum('monto'))['total'] or Decimal('0'),
+            'total_por_cobrar': total_por_cobrar,
+            'total_vencido': total_vencido,
+            'total_por_vencer': total_por_vencer,
+            'cuentas_pendientes': cuentas_pendientes,
+            'cuentas_cobradas': cuentas_cobradas
         }
     
     @staticmethod
     def antiguedad_saldos():
-        """Reporte de antigüedad de saldos por cobrar"""
-        from datetime import timedelta
+        """
+        Calcula la antigüedad de los saldos por cobrar
+        
+        Returns:
+            list: Lista de diccionarios con rangos de antigüedad
+        """
+        from .models import CuentaPorCobrar
+        
         hoy = timezone.now().date()
         
-        return {
-            'corriente': CuentaPorCobrar.objects.filter(
-                estado__in=['PENDIENTE', 'PARCIAL'],
-                fecha_vencimiento__gte=hoy
-            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+        # Definir rangos de antigüedad
+        rangos = [
+            {
+                'rango': 'Al corriente (no vencidas)',
+                'dias_min': None,
+                'dias_max': 0,
+                'filtro': Q(fecha_vencimiento__gt=hoy)
+            },
+            {
+                'rango': '1-30 días vencidos',
+                'dias_min': 1,
+                'dias_max': 30,
+                'filtro': Q(fecha_vencimiento__lte=hoy) & 
+                         Q(fecha_vencimiento__gte=hoy - timedelta(days=30))
+            },
+            {
+                'rango': '31-60 días vencidos',
+                'dias_min': 31,
+                'dias_max': 60,
+                'filtro': Q(fecha_vencimiento__lt=hoy - timedelta(days=30)) & 
+                         Q(fecha_vencimiento__gte=hoy - timedelta(days=60))
+            },
+            {
+                'rango': '61-90 días vencidos',
+                'dias_min': 61,
+                'dias_max': 90,
+                'filtro': Q(fecha_vencimiento__lt=hoy - timedelta(days=60)) & 
+                         Q(fecha_vencimiento__gte=hoy - timedelta(days=90))
+            },
+            {
+                'rango': 'Más de 90 días vencidos',
+                'dias_min': 91,
+                'dias_max': None,
+                'filtro': Q(fecha_vencimiento__lt=hoy - timedelta(days=90))
+            }
+        ]
+        
+        # Total general para calcular porcentajes
+        total_general = CuentaPorCobrar.objects.filter(
+            estado__in=['PENDIENTE', 'PARCIAL', 'VENCIDA']
+        ).aggregate(
+            total=Sum('saldo_pendiente')
+        )['total'] or Decimal('0')
+        
+        resultados = []
+        
+        for rango in rangos:
+            # Filtrar cuentas según el rango
+            cuentas = CuentaPorCobrar.objects.filter(
+                estado__in=['PENDIENTE', 'PARCIAL', 'VENCIDA']
+            ).filter(rango['filtro'])
             
-            'vencido_1_30': CuentaPorCobrar.objects.filter(
-                estado__in=['PARCIAL', 'VENCIDA'],
-                fecha_vencimiento__lt=hoy,
-                fecha_vencimiento__gte=hoy - timedelta(days=30)
-            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+            # Calcular totales
+            total = cuentas.aggregate(
+                total=Sum('saldo_pendiente')
+            )['total'] or Decimal('0')
             
-            'vencido_31_60': CuentaPorCobrar.objects.filter(
-                estado__in=['PARCIAL', 'VENCIDA'],
-                fecha_vencimiento__lt=hoy - timedelta(days=30),
-                fecha_vencimiento__gte=hoy - timedelta(days=60)
-            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+            cantidad = cuentas.count()
             
-            'vencido_mas_60': CuentaPorCobrar.objects.filter(
-                estado__in=['PARCIAL', 'VENCIDA'],
-                fecha_vencimiento__lt=hoy - timedelta(days=60)
-            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
-        }
-
-
+            # Calcular porcentaje
+            if total_general > 0:
+                porcentaje = float((total / total_general) * 100)
+            else:
+                porcentaje = 0.0
+            
+            resultados.append({
+                'rango': rango['rango'],
+                'dias_min': rango['dias_min'],
+                'dias_max': rango['dias_max'],
+                'cantidad': cantidad,
+                'total': float(total),
+                'porcentaje': porcentaje
+            })
+        
+        return resultados
 class ReporteCuentasPorPagar:
-    """Clase helper para generar reportes de cuentas por pagar"""
+    """Clase para generar reportes de cuentas por pagar"""
     
     @staticmethod
     def resumen_general():
-        """Genera un resumen general de cuentas por pagar"""
+        """
+        Resumen general de todas las cuentas por pagar
+        
+        Returns:
+            dict: Diccionario con totales y estadísticas
+        """
+        from .models import CuentaPorPagar
+        
+        hoy = timezone.now().date()
+        fecha_30_dias = hoy + timedelta(days=30)
+        
+        # Cuentas pendientes (PENDIENTE, PARCIAL, VENCIDA)
+        cuentas_activas = CuentaPorPagar.objects.filter(
+            estado__in=['PENDIENTE', 'PARCIAL', 'VENCIDA']
+        )
+        
+        # Total por pagar
+        total_por_pagar = cuentas_activas.aggregate(
+            total=Sum('saldo_pendiente')
+        )['total'] or Decimal('0')
+        
+        # Total vencido
+        total_vencido = cuentas_activas.filter(
+            estado='VENCIDA'
+        ).aggregate(
+            total=Sum('saldo_pendiente')
+        )['total'] or Decimal('0')
+        
+        # Total por vencer en 30 días
+        total_por_vencer = cuentas_activas.filter(
+            fecha_vencimiento__lte=fecha_30_dias,
+            fecha_vencimiento__gt=hoy
+        ).aggregate(
+            total=Sum('saldo_pendiente')
+        )['total'] or Decimal('0')
+        
+        # Cantidad de cuentas pendientes
+        cuentas_pendientes = cuentas_activas.count()
+        
+        # Cuentas pagadas este mes
+        primer_dia_mes = hoy.replace(day=1)
+        cuentas_pagadas = CuentaPorPagar.objects.filter(
+            estado='PAGADA',
+            fecha_emision__gte=primer_dia_mes
+        ).count()
+        
         return {
-            'total_pendiente': CuentaPorPagar.objects.filter(
-                estado__in=['PENDIENTE', 'PARCIAL', 'VENCIDA']
-            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
-            
-            'total_vencidas': CuentaPorPagar.objects.filter(
-                estado='VENCIDA'
-            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
-            
-            'cantidad_vencidas': CuentaPorPagar.objects.filter(
-                estado='VENCIDA'
-            ).count(),
-            
-            'total_pagado_mes': PagoCuentaPorPagar.objects.filter(
-                fecha_pago__year=timezone.now().year,
-                fecha_pago__month=timezone.now().month
-            ).aggregate(total=Sum('monto'))['total'] or Decimal('0'),
+            'total_por_pagar': total_por_pagar,
+            'total_vencido': total_vencido,
+            'total_por_vencer': total_por_vencer,
+            'cuentas_pendientes': cuentas_pendientes,
+            'cuentas_pagadas': cuentas_pagadas
         }
     
     @staticmethod
     def antiguedad_saldos():
-        """Reporte de antigüedad de saldos por pagar"""
-        from datetime import timedelta
+        """
+        Calcula la antigüedad de los saldos por pagar
+        
+        Returns:
+            list: Lista de diccionarios con rangos de antigüedad
+        """
+        from .models import CuentaPorPagar
+        
         hoy = timezone.now().date()
         
-        return {
-            'corriente': CuentaPorPagar.objects.filter(
-                estado__in=['PENDIENTE', 'PARCIAL'],
-                fecha_vencimiento__gte=hoy
-            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+        # Definir rangos de antigüedad
+        rangos = [
+            {
+                'rango': 'Al corriente (no vencidas)',
+                'dias_min': None,
+                'dias_max': 0,
+                'filtro': Q(fecha_vencimiento__gt=hoy)
+            },
+            {
+                'rango': '1-30 días vencidos',
+                'dias_min': 1,
+                'dias_max': 30,
+                'filtro': Q(fecha_vencimiento__lte=hoy) & 
+                         Q(fecha_vencimiento__gte=hoy - timedelta(days=30))
+            },
+            {
+                'rango': '31-60 días vencidos',
+                'dias_min': 31,
+                'dias_max': 60,
+                'filtro': Q(fecha_vencimiento__lt=hoy - timedelta(days=30)) & 
+                         Q(fecha_vencimiento__gte=hoy - timedelta(days=60))
+            },
+            {
+                'rango': '61-90 días vencidos',
+                'dias_min': 61,
+                'dias_max': 90,
+                'filtro': Q(fecha_vencimiento__lt=hoy - timedelta(days=60)) & 
+                         Q(fecha_vencimiento__gte=hoy - timedelta(days=90))
+            },
+            {
+                'rango': 'Más de 90 días vencidos',
+                'dias_min': 91,
+                'dias_max': None,
+                'filtro': Q(fecha_vencimiento__lt=hoy - timedelta(days=90))
+            }
+        ]
+        
+        # Total general para calcular porcentajes
+        total_general = CuentaPorPagar.objects.filter(
+            estado__in=['PENDIENTE', 'PARCIAL', 'VENCIDA']
+        ).aggregate(
+            total=Sum('saldo_pendiente')
+        )['total'] or Decimal('0')
+        
+        resultados = []
+        
+        for rango in rangos:
+            # Filtrar cuentas según el rango
+            cuentas = CuentaPorPagar.objects.filter(
+                estado__in=['PENDIENTE', 'PARCIAL', 'VENCIDA']
+            ).filter(rango['filtro'])
             
-            'vencido_1_30': CuentaPorPagar.objects.filter(
-                estado__in=['PARCIAL', 'VENCIDA'],
-                fecha_vencimiento__lt=hoy,
-                fecha_vencimiento__gte=hoy - timedelta(days=30)
-            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+            # Calcular totales
+            total = cuentas.aggregate(
+                total=Sum('saldo_pendiente')
+            )['total'] or Decimal('0')
             
-            'vencido_31_60': CuentaPorPagar.objects.filter(
-                estado__in=['PARCIAL', 'VENCIDA'],
-                fecha_vencimiento__lt=hoy - timedelta(days=30),
-                fecha_vencimiento__gte=hoy - timedelta(days=60)
-            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
+            cantidad = cuentas.count()
             
-            'vencido_mas_60': CuentaPorPagar.objects.filter(
-                estado__in=['PARCIAL', 'VENCIDA'],
-                fecha_vencimiento__lt=hoy - timedelta(days=60)
-            ).aggregate(total=Sum('saldo_pendiente'))['total'] or Decimal('0'),
-        }
+            # Calcular porcentaje
+            if total_general > 0:
+                porcentaje = float((total / total_general) * 100)
+            else:
+                porcentaje = 0.0
+            
+            resultados.append({
+                'rango': rango['rango'],
+                'dias_min': rango['dias_min'],
+                'dias_max': rango['dias_max'],
+                'cantidad': cantidad,
+                'total': float(total),
+                'porcentaje': porcentaje
+            })
+        
+        return resultados
