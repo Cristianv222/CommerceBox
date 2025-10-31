@@ -2,7 +2,7 @@
 
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
-from django.db.models import Sum  # ✅ Agregar esta importación
+from django.db.models import Sum
 from decimal import Decimal
 
 from .models import Venta, DetalleVenta, Pago
@@ -28,35 +28,38 @@ def detalle_venta_post_save(sender, instance, created, **kwargs):
     - Descontar del inventario (si es nuevo)
     - Recalcular totales de la venta
     """
-    from django.db import transaction
+    # ❌ ELIMINAR: from django.db import transaction
     
     if created:  # Solo al crear un nuevo detalle
-        # Descontar del inventario
-        with transaction.atomic():
-            producto = instance.producto
+        # ❌ ELIMINAR: with transaction.atomic():
+        producto = instance.producto
+        
+        if producto.tipo_inventario == 'QUINTAL' and instance.quintal:
+            # Descontar peso del quintal
+            quintal = instance.quintal
+            print(f"🔍 Quintal ANTES: {quintal.peso_actual}")
+            quintal.peso_actual -= instance.peso_vendido
+            if quintal.peso_actual <= 0:
+                quintal.peso_actual = 0
+                quintal.estado = 'AGOTADO'
+            quintal.save()
+            print(f"✅ Quintal {quintal.codigo_quintal} actualizado: {quintal.peso_actual} {quintal.unidad_medida.abreviatura}")
             
-            if producto.tipo_inventario == 'QUINTAL' and instance.quintal:
-                # Descontar peso del quintal
-                quintal = instance.quintal
-                quintal.peso_actual -= instance.peso_vendido
-                if quintal.peso_actual <= 0:
-                    quintal.peso_actual = 0
-                    quintal.estado = 'AGOTADO'
-                quintal.save()
-                print(f"✅ Quintal {quintal.codigo_unico} actualizado: {quintal.peso_actual} {quintal.unidad_medida.abreviatura}")
-                
-            elif producto.tipo_inventario == 'NORMAL' and instance.cantidad_unidades:
-                # Descontar unidades del inventario normal
-                try:
-                    inventario = producto.inventario_normal
-                    if inventario:
-                        inventario.stock_actual -= instance.cantidad_unidades
-                        if inventario.stock_actual < 0:
-                            inventario.stock_actual = 0
-                        inventario.save()
-                        print(f"✅ Stock de {producto.nombre} actualizado: {inventario.stock_actual}")
-                except Exception as e:
-                    print(f"Error al actualizar inventario: {e}")
+        elif producto.tipo_inventario == 'NORMAL' and instance.cantidad_unidades:
+            # Descontar unidades del inventario normal
+            try:
+                inventario = producto.inventario_normal
+                if inventario:
+                    print(f"🔍 Stock ANTES: {inventario.stock_actual}, Descontar: {instance.cantidad_unidades}")
+                    inventario.stock_actual -= instance.cantidad_unidades
+                    if inventario.stock_actual < 0:
+                        inventario.stock_actual = 0
+                    inventario.save()
+                    print(f"✅ Stock de {producto.nombre} actualizado: {inventario.stock_actual}")
+            except Exception as e:
+                print(f"❌ Error al actualizar inventario: {e}")
+                import traceback
+                traceback.print_exc()
     
     # Siempre recalcular totales de la venta
     instance.venta.calcular_totales()
@@ -73,7 +76,7 @@ def pago_post_save(sender, instance, created, **kwargs):
     
     # Calcular total pagado
     venta.monto_pagado = venta.pagos.aggregate(
-        total=Sum('monto')  # ✅ Cambiar sum() por Sum()
+        total=Sum('monto')
     )['total'] or Decimal('0')
     
     # Calcular cambio si aplica

@@ -435,44 +435,104 @@ def producto_eliminar(request, producto_id):
         producto = Producto.objects.get(id=producto_id)
         nombre = producto.nombre
         
-        # Verificar todas las relaciones protegidas
-        tiene_relaciones = (
-            producto.detalleventa_set.exists() or 
-            producto.detallecompra_set.exists() or
-            producto.quintales.exists()
-        )
+        # ✅ Verificar todas las relaciones de forma segura
+        tiene_relaciones = False
+        relaciones_encontradas = []
+        
+        # Verificar detalles de venta (múltiples nombres posibles)
+        for attr in ['detalleventa_set', 'detalles_venta', 'ventas']:
+            if hasattr(producto, attr):
+                try:
+                    if getattr(producto, attr).exists():
+                        tiene_relaciones = True
+                        relaciones_encontradas.append('ventas')
+                        break
+                except:
+                    pass
+        
+        # Verificar detalles de compra (múltiples nombres posibles)
+        for attr in ['detallecompra_set', 'detalles_compra', 'compras']:
+            if hasattr(producto, attr):
+                try:
+                    if getattr(producto, attr).exists():
+                        tiene_relaciones = True
+                        relaciones_encontradas.append('compras')
+                        break
+                except:
+                    pass
+        
+        # Verificar quintales
+        if hasattr(producto, 'quintales'):
+            try:
+                if producto.quintales.exists():
+                    tiene_relaciones = True
+                    relaciones_encontradas.append('quintales')
+            except:
+                pass
+        
+        # Verificar inventario normal
+        if hasattr(producto, 'inventario_normal'):
+            try:
+                inventario = producto.inventario_normal
+                # Si tiene stock o movimientos, considerar que tiene relaciones
+                if inventario.stock_actual > 0:
+                    tiene_relaciones = True
+                    relaciones_encontradas.append('inventario')
+                    
+                # Verificar movimientos
+                if hasattr(inventario, 'movimientos') and inventario.movimientos.exists():
+                    tiene_relaciones = True
+                    if 'inventario' not in relaciones_encontradas:
+                        relaciones_encontradas.append('movimientos')
+            except:
+                pass
         
         if tiene_relaciones:
             # Tiene relaciones, solo desactivar
             producto.activo = False
             producto.save()
+            
+            relaciones_texto = ', '.join(relaciones_encontradas)
             messages.warning(
                 request, 
-                f'El producto "{nombre}" tiene registros asociados (ventas, compras o quintales) y no puede eliminarse. Se ha desactivado.'
+                f'El producto "{nombre}" tiene registros asociados ({relaciones_texto}) y no puede eliminarse. Se ha desactivado.'
             )
         else:
-            # No tiene relaciones, eliminar
+            # No tiene relaciones, intentar eliminar
             try:
                 producto.delete()
-                messages.success(request, f'Producto "{nombre}" eliminado correctamente.')
+                messages.success(request, f'✅ Producto "{nombre}" eliminado correctamente.')
             except ProtectedError as e:
-                # Si aún así hay error, desactivar
+                # Si aún así hay error de protección, desactivar
                 producto.activo = False
                 producto.save()
                 messages.warning(
                     request, 
-                    f'El producto "{nombre}" tiene registros asociados y no puede eliminarse. Se ha desactivado.'
+                    f'El producto "{nombre}" tiene registros protegidos y no puede eliminarse. Se ha desactivado.'
+                )
+            except Exception as e:
+                # Cualquier otro error al eliminar
+                producto.activo = False
+                producto.save()
+                messages.warning(
+                    request, 
+                    f'Error al eliminar el producto "{nombre}": {str(e)}. Se ha desactivado.'
                 )
         
         return HttpResponseRedirect('/panel/inventario/productos/')
         
     except Producto.DoesNotExist:
-        messages.error(request, 'Producto no encontrado.')
+        messages.error(request, '❌ Producto no encontrado.')
         return HttpResponseRedirect('/panel/inventario/productos/')
     except Exception as e:
-        messages.error(request, f'Error al procesar producto: {str(e)}')
+        import traceback
+        error_completo = traceback.format_exc()
+        print("=" * 80)
+        print("❌ ERROR AL ELIMINAR PRODUCTO:")
+        print(error_completo)
+        print("=" * 80)
+        messages.error(request, f'❌ Error al procesar producto: {str(e)}')
         return HttpResponseRedirect('/panel/inventario/productos/')
-
 @ensure_csrf_cookie
 @auth_required
 def quintales_view(request):
@@ -2914,7 +2974,7 @@ def api_procesar_venta(request):
     from apps.inventory_management.models import Producto
     from apps.authentication.models import Usuario
     from apps.hardware_integration.models import TrabajoImpresion, Impresora
-    from apps.system_configuration.models import ConfiguracionSistema  # ✅ AGREGAR
+    from apps.system_configuration.models import ConfiguracionSistema
     from decimal import Decimal
     from django.utils import timezone
     from django.db import transaction
@@ -2969,7 +3029,7 @@ def api_procesar_venta(request):
         # ============================================================================
         subtotal = Decimal('0')
         descuento_total = Decimal('0')
-        impuestos_total = Decimal('0')  # ✅ NUEVO
+        impuestos_total = Decimal('0')
         
         for item in items:
             try:
@@ -3016,7 +3076,7 @@ def api_procesar_venta(request):
                 tipo_venta=tipo_venta,
                 subtotal=subtotal,
                 descuento=descuento_total,
-                impuestos=impuestos_total,  # ✅ CORRECTO
+                impuestos=impuestos_total,
                 total=total,
                 estado='COMPLETADA',
                 monto_pagado=monto_recibido,
@@ -3049,6 +3109,7 @@ def api_procesar_venta(request):
                     
                     item_total = base_imponible + iva_detalle
                     
+                    # ✅ USAR CAMPOS CORRECTOS DEL MODELO
                     detalle_data = {
                         'venta': venta,
                         'producto': producto,
@@ -3057,8 +3118,8 @@ def api_procesar_venta(request):
                         'costo_total': costo_total,
                         'descuento_porcentaje': descuento_porcentaje,
                         'descuento_monto': descuento,
-                        'impuesto_porcentaje': porcentaje_iva if producto.aplica_impuestos else Decimal('0'),  # ✅ NUEVO
-                        'impuesto_monto': iva_detalle,  # ✅ NUEVO
+                        'aplica_iva': producto.aplica_impuestos if iva_activo else False,  # ✅ CORRECTO
+                        'monto_iva': iva_detalle,  # ✅ CORRECTO
                         'subtotal': item_subtotal,
                         'total': item_total,
                     }
@@ -3081,6 +3142,7 @@ def api_procesar_venta(request):
                         detalle_data['cantidad_unidades'] = int(cantidad)
                         detalle_data['precio_unitario'] = precio
                     
+                    # ✅ CREAR DETALLE (el signal se encargará de descontar inventario)
                     detalle = DetalleVenta.objects.create(**detalle_data)
                     orden += 1
                     
@@ -3153,9 +3215,9 @@ def api_procesar_venta(request):
             'success': True,
             'venta_id': str(venta.id),
             'numero_venta': venta.numero_venta,
-            'subtotal': float(subtotal),  # ✅ AGREGADO
-            'descuento': float(descuento_total),  # ✅ AGREGADO
-            'impuestos': float(impuestos_total),  # ✅ AGREGADO
+            'subtotal': float(subtotal),
+            'descuento': float(descuento_total),
+            'impuestos': float(impuestos_total),
             'total': float(total),
             'cambio': float(cambio),
             'monto_recibido': float(monto_recibido),
@@ -3551,7 +3613,9 @@ def entrada_inventario_view(request):
         'proveedores': proveedores,
         'marcas': marcas,
         'unidades_medida': unidades_medida,
-        'iva_porcentaje': iva_porcentaje,
+        'iva_porcentaje': iva_porcentaje,       # ✅ Para usar en la vista si es necesario
+        'iva_default': iva_porcentaje,          # ✅ AGREGAR: Para el HTML del select
+        'porcentaje_iva': iva_porcentaje,       # ✅ AGREGAR: Para el JavaScript
     }
     
     return render(request, 'custom_admin/inventario/entrada_inventario.html', context)
@@ -4008,12 +4072,13 @@ def api_procesar_entrada_unificada(request):
     
     import json
     from django.db import transaction
-    from django.db.models import Q  # ✅ IMPORT NECESARIO PARA FILTROS
+    from django.db.models import Q
     from apps.inventory_management.models import (
         Producto, Categoria, Marca, Proveedor, ProductoNormal, MovimientoInventario,
-        Quintal, UnidadMedida  # ✅ AGREGAR QUINTAL Y UNIDADMEDIDA
+        Quintal, UnidadMedida
     )
     from apps.authentication.models import Usuario
+    from apps.system_configuration.models import ConfiguracionSistema
     from decimal import Decimal
     from django.utils import timezone
     
@@ -4062,8 +4127,8 @@ def api_procesar_entrada_unificada(request):
         
         productos_creados = 0
         productos_reabastecidos = 0
-        quintales_creados = 0  # ✅ NUEVO CONTADOR
-        quintales_reabastecidos = 0  # ✅ NUEVO CONTADOR
+        quintales_creados = 0
+        quintales_reabastecidos = 0
         codigos_generados = []
         errores = []
         
@@ -4131,6 +4196,18 @@ def api_procesar_entrada_unificada(request):
                         continue
                     
                     tipo_inventario = prod_data.get('tipo_inventario', 'NORMAL')
+                    
+                    # ✅ OBTENER ESTADO DE IVA (solo booleano)
+                    aplica_impuestos = prod_data.get('aplica_impuestos', False)
+                    
+                    # Obtener porcentaje solo para logging
+                    if aplica_impuestos:
+                        config = ConfiguracionSistema.get_config()
+                        iva_porcentaje = config.porcentaje_iva
+                        print(f"✅ IVA activado: {iva_porcentaje}%")
+                    else:
+                        iva_porcentaje = Decimal('0.00')
+                        print(f"⚠️ IVA desactivado")
                     
                     # ========================================
                     # 🌾 PROCESAR QUINTAL
@@ -4203,7 +4280,7 @@ def api_procesar_entrada_unificada(request):
                                 'tipo_inventario': 'QUINTAL',
                                 'unidad_medida_base': unidad_medida,
                                 'precio_por_unidad_peso': precio_por_unidad_peso,
-                                'aplica_impuestos': prod_data.get('aplica_impuestos', False),  # ✅ CAMBIADO: usar aplica_impuestos en vez de iva
+                                'aplica_impuestos': aplica_impuestos,  # ✅ Solo booleano
                                 'activo': True,
                                 'usuario_registro': usuario
                             }
@@ -4213,14 +4290,24 @@ def api_procesar_entrada_unificada(request):
                             
                             producto = Producto.objects.create(**producto_data)
                             print(f"✅ Producto QUINTAL creado: {producto.nombre}")
+                            print(f"   Aplica IVA: {producto.aplica_impuestos} ({iva_porcentaje}% del sistema)")
                             productos_creados += 1
                         else:
                             producto = producto_existente
                             print(f"✅ Producto QUINTAL existente: {producto.nombre}")
                             
-                            # Actualizar precio si cambió
+                            # ✅ Actualizar precio y aplica_impuestos si cambió
+                            actualizado = False
                             if producto.precio_por_unidad_peso != precio_por_unidad_peso:
                                 producto.precio_por_unidad_peso = precio_por_unidad_peso
+                                actualizado = True
+                            
+                            if producto.aplica_impuestos != aplica_impuestos:
+                                producto.aplica_impuestos = aplica_impuestos
+                                actualizado = True
+                                print(f"   Aplica IVA actualizado: {aplica_impuestos}")
+                            
+                            if actualizado:
                                 producto.save()
                             
                             productos_reabastecidos += 1
@@ -4295,15 +4382,25 @@ def api_procesar_entrada_unificada(request):
                             # REABASTECER
                             producto = producto_existente
                             
+                            # ✅ Actualizar precio y aplica_impuestos
+                            actualizado = False
                             if producto.precio_venta != precio_venta:
                                 producto.precio_venta = precio_venta
+                                actualizado = True
+                            
+                            if producto.aplica_impuestos != aplica_impuestos:
+                                producto.aplica_impuestos = aplica_impuestos
+                                actualizado = True
+                                print(f"   Aplica IVA actualizado: {aplica_impuestos}")
                             
                             if imagen_file:
                                 if producto.imagen:
                                     producto.imagen.delete(save=False)
                                 producto.imagen = imagen_file
+                                actualizado = True
                             
-                            producto.save()
+                            if actualizado:
+                                producto.save()
                             
                             # Reabastecer inventario
                             try:
@@ -4383,7 +4480,7 @@ def api_procesar_entrada_unificada(request):
                                 'categoria': categoria,
                                 'tipo_inventario': 'NORMAL',
                                 'precio_venta': precio_venta,
-                                'aplica_impuestos': prod_data.get('aplica_impuestos', False),  # ✅ CAMBIADO: usar aplica_impuestos en vez de iva
+                                'aplica_impuestos': aplica_impuestos,  # ✅ Solo booleano
                                 'activo': True,
                                 'usuario_registro': usuario
                             }
@@ -4392,6 +4489,8 @@ def api_procesar_entrada_unificada(request):
                                 producto_data['imagen'] = imagen_file
                             
                             producto = Producto.objects.create(**producto_data)
+                            print(f"✅ Producto NORMAL creado: {producto.nombre}")
+                            print(f"   Aplica IVA: {producto.aplica_impuestos} ({iva_porcentaje}% del sistema)")
                             
                             producto_normal = ProductoNormal.objects.create(
                                 producto=producto,

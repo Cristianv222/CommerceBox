@@ -1684,7 +1684,7 @@ class QuintalesDisponiblesTodosAPIView(View):
                 'producto__marca',
                 'proveedor',
                 'unidad_medida'
-            ).order_by('-fecha_recepcion')
+            ).order_by('-fecha_ingreso')  # ✅ CORREGIDO: fecha_ingreso en lugar de fecha_recepcion
             
             quintales_data = []
             for quintal in quintales:
@@ -1695,7 +1695,7 @@ class QuintalesDisponiblesTodosAPIView(View):
                     porcentaje = 0
                 
                 quintales_data.append({
-                    'codigo_unico': quintal.codigo_unico,
+                    'codigo_unico': quintal.codigo_quintal,  # ✅ CORREGIDO: codigo_quintal en lugar de codigo_unico
                     'producto_nombre': quintal.producto.nombre,
                     'marca_nombre': quintal.producto.marca.nombre if quintal.producto.marca else 'Sin marca',
                     'estado': quintal.estado,
@@ -1704,7 +1704,7 @@ class QuintalesDisponiblesTodosAPIView(View):
                     'porcentaje_restante': round(porcentaje, 2),
                     'unidad_medida': quintal.unidad_medida.abreviatura if quintal.unidad_medida else 'KG',
                     'proveedor_nombre': quintal.proveedor.nombre_comercial,
-                    'fecha_recepcion': quintal.fecha_recepcion.strftime('%d/%m/%Y') if quintal.fecha_recepcion else ''
+                    'fecha_recepcion': quintal.fecha_ingreso.strftime('%d/%m/%Y') if quintal.fecha_ingreso else ''  # ✅ CORREGIDO: fecha_ingreso
                 })
             
             return JsonResponse({

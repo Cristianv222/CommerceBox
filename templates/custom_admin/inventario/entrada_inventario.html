@@ -1918,12 +1918,6 @@ console.log('✅ IVA configurado:', IVA_DEFAULT + '%');
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Sistema de entrada de inventario iniciado');
     
-    // ✅ Listener para checkbox de IVA
-    const ivaCheckbox = document.getElementById('input_iva');
-    if (ivaCheckbox) {
-        ivaCheckbox.addEventListener('change', mostrarInfoIVA);
-    }
-    
     // Listener para tipo de inventario
     document.getElementById('input_tipo_inventario').addEventListener('change', function() {
         const valor = this.value;
@@ -2203,12 +2197,16 @@ function filtrarQuintales(busqueda) {
 // FUNCIÓN PARA MOSTRAR INFO DE IVA - ✅ ACTUALIZADA PARA CHECKBOX
 // ========================================
 function mostrarInfoIVA() {
-    const ivaCheckbox = document.getElementById('input_iva');
+    const ivaSelect = document.getElementById('input_iva');  // ✅ Cambié nombre
     const infoDiv = document.getElementById('info-iva');
     
-    if (!ivaCheckbox || !infoDiv) return;
+    if (!ivaSelect || !infoDiv) return;
     
-    if (ivaCheckbox.checked) {
+    // ✅ Verificar el VALUE del SELECT (no .checked)
+    const valorIva = parseFloat(ivaSelect.value);
+    const aplicaIva = valorIva > 0;
+    
+    if (aplicaIva) {
         infoDiv.style.display = 'flex';
         infoDiv.style.background = 'rgba(34, 197, 94, 0.1)';
         infoDiv.style.border = '2px solid rgba(34, 197, 94, 0.3)';
@@ -2219,7 +2217,7 @@ function mostrarInfoIVA() {
         infoDiv.innerHTML = `
             <i class="bi bi-info-circle-fill" style="color: #16a34a; font-size: 1.2rem;"></i>
             <span style="color: #16a34a; font-weight: 600; font-size: 0.9rem;">
-                Se aplicará <strong>${IVA_DEFAULT}%</strong> de IVA al precio del producto
+                Se aplicará <strong>${valorIva}%</strong> de IVA al precio del producto
             </span>
         `;
     } else {
@@ -2450,7 +2448,8 @@ function agregarProducto() {
     const descripcion = document.getElementById('input_descripcion').value.trim();
     
     // ✅ IVA ahora es checkbox
-    const aplica_iva = document.getElementById('input_iva').checked;
+    const valorIva = parseFloat(document.getElementById('input_iva').value);
+    const aplica_iva = valorIva > 0;
     
     const inputImagen = document.getElementById('input_imagen');
     const imagenFile = inputImagen.files[0];
@@ -2497,7 +2496,7 @@ function agregarProducto() {
         cantidad, cantidad_codigos: cantidad,
         costo_unitario: costo, precio_venta: precio,
         lote, fecha_vencimiento, descripcion,
-        aplica_iva: aplica_iva, // ✅ Guardar checkbox
+        aplica_impuestos: aplica_iva, // ✅ Guardar checkbox
         quintal_codigo_unico: quintal_codigo_unico,
         es_nuevo_quintal: es_nuevo_quintal,
         peso_inicial_quintal: peso_inicial_quintal,
@@ -2680,7 +2679,12 @@ function editarProducto(id) {
     document.getElementById('edit_descripcion').value = producto.descripcion;
     
     // ✅ Cargar checkbox en lugar de value
-    document.getElementById('edit_iva').checked = producto.aplica_iva;
+    const selectIvaEdit = document.getElementById('edit_iva');
+    if (producto.aplica_impuestos) {
+        selectIvaEdit.value = "{{ iva_default }}";
+    } else {
+        selectIvaEdit.value = "0";
+    }
     
     if (producto.imagen_preview) {
         document.getElementById('edit-preview').src = producto.imagen_preview;
@@ -2732,7 +2736,8 @@ function guardarEdicion() {
     producto.descripcion = document.getElementById('edit_descripcion').value.trim();
     
     // ✅ Guardar checkbox
-    producto.aplica_iva = document.getElementById('edit_iva').checked;
+    const valorIvaEdit = parseFloat(document.getElementById('edit_iva').value);
+    producto.aplica_impuestos = valorIvaEdit > 0;
     
     producto.subtotal = producto.cantidad * costo;
 
@@ -2830,7 +2835,7 @@ async function confirmarProcesamiento() {
         fecha_vencimiento: p.fecha_vencimiento,
         descripcion: p.descripcion, 
         tiene_imagen: p.imagen_file ? true : false,
-        aplica_iva: p.aplica_iva, // ✅ Enviar checkbox
+        aplica_impuestos: p.aplica_impuestos, // ✅ Enviar checkbox
         quintal_codigo_unico: p.quintal_codigo_unico,
         es_nuevo_quintal: p.es_nuevo_quintal,
         peso_inicial_quintal: p.peso_inicial_quintal
