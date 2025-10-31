@@ -673,22 +673,32 @@ class ParametroSistema(models.Model):
     
     def get_valor_typed(self):
         """Retorna el valor convertido al tipo correcto"""
-        if self.tipo_dato == 'INTEGER':
-            return int(self.valor)
-        elif self.tipo_dato == 'DECIMAL':
-            return Decimal(self.valor)
-        elif self.tipo_dato == 'BOOLEAN':
-            return self.valor.lower() in ['true', '1', 'yes', 'si']
-        elif self.tipo_dato == 'JSON':
-            return json.loads(self.valor)
-        elif self.tipo_dato == 'DATE':
-            from django.utils.dateparse import parse_date
-            return parse_date(self.valor)
-        elif self.tipo_dato == 'DATETIME':
-            from django.utils.dateparse import parse_datetime
-            return parse_datetime(self.valor)
-        else:
-            return self.valor
+        if not self.valor:
+            return None
+            
+        try:
+            if self.tipo_dato == 'INTEGER':
+                return int(self.valor)
+            elif self.tipo_dato == 'DECIMAL':
+                return Decimal(self.valor)
+            elif self.tipo_dato == 'BOOLEAN':
+                return self.valor.lower() in ['true', '1', 'yes', 'si']
+            elif self.tipo_dato == 'JSON':
+                return json.loads(self.valor)
+            elif self.tipo_dato == 'DATE':
+                from django.utils.dateparse import parse_date
+                return parse_date(self.valor)
+            elif self.tipo_dato == 'DATETIME':
+                from django.utils.dateparse import parse_datetime
+                return parse_datetime(self.valor)
+            else:
+                return self.valor
+        except (ValueError, json.JSONDecodeError):
+            return None
+    
+    def get_valor(self):
+        """Alias para get_valor_typed - compatibilidad con admin"""
+        return self.get_valor_typed()
     
     def set_valor_typed(self, valor):
         """Establece el valor desde un tipo Python"""

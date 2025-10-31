@@ -228,86 +228,148 @@ class ParametroSistemaAdmin(admin.ModelAdmin):
     """Admin para parámetros personalizados del sistema"""
     
     list_display = [
-        'clave', 'tipo_dato_badge', 'valor_display', 
+        'clave', 'modulo', 'tipo_dato_badge', 'valor_display', 
         'descripcion_corta', 'activo', 'fecha_actualizacion'
     ]
-    list_filter = ['tipo_dato', 'activo', 'fecha_creacion']
-    search_fields = ['clave', 'descripcion', 'valor_texto']
-    ordering = ['clave']
+    list_filter = ['modulo', 'tipo_dato', 'activo', 'grupo', 'fecha_creacion']
+    search_fields = ['clave', 'nombre', 'descripcion', 'valor']
+    ordering = ['modulo', 'grupo', 'orden', 'nombre']
     list_editable = ['activo']
     list_per_page = 50
     
     fieldsets = (
         ('🔑 Identificación', {
-            'fields': ('clave', 'descripcion', 'tipo_dato')
+            'fields': ('modulo', 'clave', 'nombre', 'descripcion')
         }),
         ('📝 Valor', {
-            'fields': (
-                'valor_texto', 'valor_numero', 'valor_boolean',
-                'valor_fecha', 'valor_json'
-            ),
+            'fields': ('tipo_dato', 'valor', 'valor_default'),
             'description': 'Configure el valor según el tipo de dato seleccionado'
         }),
+        ('✅ Validación', {
+            'fields': ('requerido', 'validacion_regex'),
+            'classes': ('collapse',)
+        }),
+        ('📁 Organización', {
+            'fields': ('grupo', 'orden'),
+            'classes': ('collapse',)
+        }),
         ('⚙️ Configuración', {
-            'fields': ('activo', 'solo_lectura'),
+            'fields': ('activo', 'editable'),
             'classes': ('collapse',)
         }),
         ('👤 Auditoría', {
-            'fields': (
-                'fecha_creacion', 'actualizado_por', 'fecha_actualizacion'
-            ),
+            'fields': ('fecha_creacion', 'actualizado_por', 'fecha_actualizacion'),
             'classes': ('collapse',)
         }),
     )
     
-    readonly_fields = [
-        'fecha_creacion', 'fecha_actualizacion', 'actualizado_por'
-    ]
+    readonly_fields = ['fecha_creacion', 'fecha_actualizacion', 'actualizado_por']
     
     def tipo_dato_badge(self, obj):
-        """Muestra el tipo de dato con badge"""
+        """Muestra el tipo de dato con badge estilizado"""
         tipos_config = {
-            'TEXTO': ('#007bff', '📝', 'TEXTO'),
-            'NUMERO': ('#28a745', '🔢', 'NÚMERO'),
-            'BOOLEAN': ('#17a2b8', '✓', 'BOOLEAN'),
-            'FECHA': ('#ffc107', '📅', 'FECHA'),
-            'JSON': ('#6f42c1', '{}', 'JSON'),
+            'STRING': ('badge-primary', 'bi-fonts', 'TEXTO'),
+            'INTEGER': ('badge-success', 'bi-123', 'ENTERO'),
+            'DECIMAL': ('badge-success', 'bi-calculator', 'DECIMAL'),
+            'BOOLEAN': ('badge-info', 'bi-toggle-on', 'BOOLEAN'),
+            'JSON': ('badge-primary', 'bi-braces', 'JSON'),
+            'DATE': ('badge-warning', 'bi-calendar-date', 'FECHA'),
+            'DATETIME': ('badge-warning', 'bi-calendar-event', 'FECHA/HORA'),
         }
-        color, icono, texto = tipos_config.get(obj.tipo_dato, ('#000', '●', obj.tipo_dato))
-        return format_html(
-            '<span style="background: {}; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px;">{} {}</span>',
-            color, icono, texto
+        
+        badge_class, icono, texto = tipos_config.get(
+            obj.tipo_dato, 
+            ('badge-secondary', 'bi-question-circle', obj.tipo_dato)
         )
-    tipo_dato_badge.short_description = 'Tipo'
+        
+        return format_html(
+            '<span class="badge-admin {}">'
+            '<i class="bi {}"></i> {}'
+            '</span>',
+            badge_class, icono, texto
+        )
+    tipo_dato_badge.short_description = 'Tipo de Dato'
     tipo_dato_badge.admin_order_field = 'tipo_dato'
     
     def valor_display(self, obj):
-        """Muestra el valor configurado"""
+        """Muestra el valor configurado con estilo mejorado"""
         valor = obj.get_valor()
-        if valor is None:
-            return format_html('<span style="color: #999; font-style: italic;">Sin valor</span>')
         
-        if obj.tipo_dato == 'JSON':
-            return format_html('<code style="font-size: 11px;">{}</code>', str(valor)[:50])
-        elif obj.tipo_dato == 'BOOLEAN':
+        if valor is None or valor == '':
             return format_html(
-                '<span style="color: {};">{}</span>',
-                'green' if valor else 'red',
-                '✓ Sí' if valor else '✗ No'
+                '<span class="badge-admin badge-secondary">'
+                '<i class="bi bi-dash-circle"></i> Sin valor'
+                '</span>'
             )
-        else:
-            return str(valor)[:50]
-    valor_display.short_description = 'Valor'
+        
+        try:
+            if obj.tipo_dato == 'JSON':
+                valor_str = str(valor)[:50]
+                return format_html(
+                    '<code class="code-badge">{}</code>',
+                    valor_str + ('...' if len(str(valor)) > 50 else '')
+                )
+            
+            elif obj.tipo_dato == 'BOOLEAN':
+                return format_html(
+                    '<span class="badge-admin badge-{}">'
+                    '<i class="bi bi-{}"></i> {}'
+                    '</span>',
+                    'success' if valor else 'danger',
+                    'check-circle-fill' if valor else 'x-circle-fill',
+                    'Sí' if valor else 'No'
+                )
+            
+            elif obj.tipo_dato in ('INTEGER', 'DECIMAL'):
+                return format_html(
+                    '<span class="code-badge">'
+                    '<i class="bi bi-hash"></i> {}'
+                    '</span>',
+                    valor
+                )
+            
+            elif obj.tipo_dato == 'DATE':
+                fecha_formateada = valor.strftime('%d/%m/%Y') if hasattr(valor, 'strftime') else str(valor)
+                return format_html(
+                    '<span class="badge-admin badge-info">'
+                    '<i class="bi bi-calendar-date"></i> {}'
+                    '</span>',
+                    fecha_formateada
+                )
+            
+            elif obj.tipo_dato == 'DATETIME':
+                fecha_formateada = valor.strftime('%d/%m/%Y %H:%M') if hasattr(valor, 'strftime') else str(valor)
+                return format_html(
+                    '<span class="badge-admin badge-info">'
+                    '<i class="bi bi-calendar-event"></i> {}'
+                    '</span>',
+                    fecha_formateada
+                )
+            
+            else:  # STRING
+                valor_str = str(valor)[:50]
+                return format_html(
+                    '<span>{}</span>',
+                    valor_str + ('...' if len(str(valor)) > 50 else '')
+                )
+        except Exception as e:
+            return format_html(
+                '<span class="badge-admin badge-danger">'
+                '<i class="bi bi-exclamation-triangle"></i> Error'
+                '</span>'
+            )
+    valor_display.short_description = 'Valor Actual'
     
     def descripcion_corta(self, obj):
-        """Muestra una descripción corta"""
-        if len(obj.descripcion) > 50:
+        """Muestra una descripción corta con tooltip"""
+        texto = obj.descripcion or obj.nombre
+        if len(texto) > 50:
             return format_html(
                 '<span title="{}">{}</span>',
-                obj.descripcion,
-                f"{obj.descripcion[:50]}..."
+                texto,
+                f"{texto[:50]}..."
             )
-        return obj.descripcion
+        return texto
     descripcion_corta.short_description = 'Descripción'
     
     def save_model(self, request, obj, form, change):
@@ -590,36 +652,63 @@ class HealthCheckAdmin(admin.ModelAdmin):
     def disco_status(self, obj):
         """Muestra el estado del disco"""
         if obj.espacio_disco_libre_gb:
-            if obj.espacio_disco_libre_gb > 10:
-                color = 'green'
-            elif obj.espacio_disco_libre_gb > 5:
-                color = 'orange'
-            else:
-                color = 'red'
-            return format_html(
-                '<span style="color: {};">{:.2f} GB libres</span>',
-                color, float(obj.espacio_disco_libre_gb)
-            )
+            try:
+                # Convertir explícitamente a float
+                espacio_libre = float(obj.espacio_disco_libre_gb)
+            
+                # Determinar el color según el espacio libre
+                if espacio_libre > 10:
+                    color = 'green'
+                elif espacio_libre > 5:
+                    color = 'orange'
+                else:
+                    color = 'red'
+            
+                # Formatear el número PRIMERO, luego pasarlo como string
+                espacio_formateado = f"{espacio_libre:.2f}"
+            
+                return format_html(
+                    '<span style="color: {};">{} GB libres</span>',
+                    color, 
+                    espacio_formateado
+                )
+            except (ValueError, TypeError):
+                return '-'
         return '-'
     disco_status.short_description = 'Disco'
     
     def memoria_status(self, obj):
-        """Muestra el uso de memoria"""
+        """Muestra el uso de memoria con badge estilizado"""
         if obj.uso_memoria_porcentaje:
-            uso = float(obj.uso_memoria_porcentaje)
-            if uso < 70:
-                color = 'green'
-            elif uso < 85:
-                color = 'orange'
-            else:
-                color = 'red'
-            return format_html(
-                '<span style="color: {};">{:.1f}% usado</span>',
-                color, uso
-            )
+            try:
+                uso = float(obj.uso_memoria_porcentaje)
+            
+                # Determinar badge según el porcentaje de uso
+                if uso < 70:
+                    badge_class = 'badge-success'
+                    icon = 'bi-memory'
+                elif uso < 85:
+                    badge_class = 'badge-warning'
+                    icon = 'bi-exclamation-circle'
+                else:
+                    badge_class = 'badge-danger'
+                    icon = 'bi-exclamation-triangle-fill'
+            
+                # Formatear primero
+                uso_formateado = f"{uso:.1f}"
+            
+                return format_html(
+                    '<span class="badge-admin {}">'
+                    '<i class="bi {}"></i> {}% usado'
+                    '</span>',
+                    badge_class,
+                    icon,
+                    uso_formateado
+                )
+            except (ValueError, TypeError):
+                return format_html('<span class="badge-admin badge-secondary">N/A</span>')
         return '-'
-    memoria_status.short_description = 'Memoria'
-    
+    memoria_status.short_description = 'Memoria'   
     def has_add_permission(self, request):
         """Los health checks se crean automáticamente"""
         return False
