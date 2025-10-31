@@ -274,7 +274,7 @@ urlpatterns = [
     # ========================================
     # CONFIGURACIÓN
     # ========================================
-    path('configuracion/', views.configuracion_view, name='configuracion'),
+    path('configuracion/', lambda request: __import__('django.shortcuts').shortcuts.redirect('/api/configuracion/'), name='configuracion'),
     path('configuracion/empresa/', views.config_empresa_view, name='config_empresa'),
     path('configuracion/facturacion/', views.config_facturacion_view, name='config_facturacion'),
     

@@ -60,30 +60,31 @@ def registrar_cambio_configuracion(tabla, registro_id, tipo_cambio, campo=None,
 @login_required
 @user_passes_test(es_administrador)
 def dashboard_configuracion(request):
-    """Dashboard principal de configuración del sistema"""
+    """Vista principal del dashboard de configuración"""
     
     config = ConfiguracionSistema.get_config()
     
     # Estadísticas de backups
-    backups_recientes = RegistroBackup.objects.filter(
-        fecha_inicio__gte=timezone.now() - timedelta(days=7)
-    ).order_by('-fecha_inicio')[:5]
-    
     total_backups = RegistroBackup.objects.count()
     backups_exitosos = RegistroBackup.objects.filter(estado='EXITOSO').count()
-    ultimo_backup = RegistroBackup.objects.filter(estado='EXITOSO').first()
     
-    # Último health check
-    ultimo_health_check = HealthCheck.objects.first()
-    
-    # Logs recientes
-    logs_recientes = LogConfiguracion.objects.select_related('usuario').order_by('-fecha_cambio')[:10]
+    # ✅ DEBUG: Imprimir valores en consola
+    print("="*60)
+    print("🔍 DEBUG VISTA DASHBOARD:")
+    print(f"   Total backups: {total_backups}")
+    print(f"   Backups exitosos: {backups_exitosos}")
+    print("="*60)
     
     # Parámetros por módulo
-    parametros_por_modulo = ParametroSistema.objects.values('modulo').annotate(
-        total=Count('id'),
-        activos=Count('id', filter=Q(activo=True))
+    from django.db.models import Count
+    parametros_por_modulo = ParametroSistema.objects.filter(
+        activo=True
+    ).values('modulo').annotate(
+        total=Count('id')
     ).order_by('modulo')
+    
+    # Último health check
+    ultimo_health_check = HealthCheck.objects.order_by('-fecha_check').first()
     
     # Estado de módulos
     modulos_estado = {
@@ -94,21 +95,24 @@ def dashboard_configuracion(request):
         'Alertas': config.modulo_alertas_activo,
     }
     
+    # Backups recientes (últimos 5)
+    backups_recientes = RegistroBackup.objects.order_by('-fecha_inicio')[:5]
+    
+    # Logs recientes (últimos 10)
+    logs_recientes = LogConfiguracion.objects.select_related('usuario').order_by('-fecha_cambio')[:10]
+    
     context = {
         'config': config,
-        'backups_recientes': backups_recientes,
         'total_backups': total_backups,
         'backups_exitosos': backups_exitosos,
-        'ultimo_backup': ultimo_backup,
-        'ultimo_health_check': ultimo_health_check,
-        'logs_recientes': logs_recientes,
         'parametros_por_modulo': parametros_por_modulo,
+        'ultimo_health_check': ultimo_health_check,
         'modulos_estado': modulos_estado,
+        'backups_recientes': backups_recientes,
+        'logs_recientes': logs_recientes,
     }
     
     return render(request, 'system_configuration/dashboard.html', context)
-
-
 # ============================================================================
 # CONFIGURACIÓN GENERAL
 # ============================================================================
@@ -1051,3 +1055,59 @@ def exportar_configuracion(request):
     response['Content-Disposition'] = f'attachment; filename="config_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.json"'
     
     return response
+# ============================================================================
+# APIs PARA DASHBOARD (JSON)
+# ============================================================================
+
+@login_required
+@user_passes_test(es_administrador)
+def api_backups_dashboard(request):
+    """API para obtener backups recientes (JSON para dashboard)"""
+    try:
+        backups_recientes = RegistroBackup.objects.order_by('-fecha_inicio')[:5]
+        
+        data = {
+            'success': True,
+            'backups': [
+                {
+                    'id': str(backup.id),
+                    'fecha': backup.fecha_inicio.strftime('%d/%m/%Y %H:%M'),
+                    'tipo': backup.get_tipo_backup_display(),
+                    'estado': backup.get_estado_display(),
+                    'estado_class': 'success' if backup.estado == 'EXITOSO' else 'danger',
+                }
+                for backup in backups_recientes
+            ]
+        }
+        return JsonResponse(data)
+    except Exception as e:
+        logger.error(f"Error en api_backups_dashboard: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(es_administrador)
+def api_logs_dashboard(request):
+    """API para obtener logs recientes (JSON para dashboard)"""
+    try:
+        logs_recientes = LogConfiguracion.objects.select_related('usuario').order_by('-fecha_cambio')[:10]
+        
+        data = {
+            'success': True,
+            'logs': [
+                {
+                    'id': str(log.id),
+                    'fecha': log.fecha_cambio.strftime('%d/%m/%Y %H:%M'),
+                    'usuario': log.usuario.get_full_name() if log.usuario else 'Sistema',
+                    'tipo': log.get_tipo_cambio_display(),
+                    'tipo_class': 'success' if log.tipo_cambio == 'CREACION' else ('info' if log.tipo_cambio == 'MODIFICACION' else 'danger'),
+                    'tabla': log.tabla,
+                    'descripcion': log.descripcion or '-',
+                }
+                for log in logs_recientes
+            ]
+        }
+        return JsonResponse(data)
+    except Exception as e:
+        logger.error(f"Error en api_logs_dashboard: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

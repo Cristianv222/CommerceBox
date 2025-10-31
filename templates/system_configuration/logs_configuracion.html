@@ -5,6 +5,16 @@
 
 {% block extra_css %}
 <style>
+    /* ============================================
+       FIX CRÍTICO: Permitir que los modales estén por encima de todo
+       ============================================ */
+    body.modal-open {
+        position: static !important;
+    }
+
+    /* ============================================
+       HEADER
+       ============================================ */
     .card-title {
         font-size: 2rem;
         font-weight: 800;
@@ -13,6 +23,9 @@
         letter-spacing: -0.5px;
     }
 
+    /* ============================================
+       CARDS CON GLASSMORPHISM
+       ============================================ */
     .filters-card {
         background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(30px) saturate(180%);
@@ -37,6 +50,9 @@
             0 2px 8px rgba(147, 197, 253, 0.1);
     }
 
+    /* ============================================
+       FORM CONTROLS
+       ============================================ */
     .form-control, .form-select {
         border: 1.5px solid rgba(59, 130, 246, 0.2);
         border-radius: 10px;
@@ -59,6 +75,9 @@
         font-size: 0.95rem;
     }
 
+    /* ============================================
+       BOTONES
+       ============================================ */
     .btn-primary {
         background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
         color: white;
@@ -97,6 +116,9 @@
         border-radius: 8px;
     }
 
+    /* ============================================
+       TABLA
+       ============================================ */
     .table-responsive {
         border-radius: 16px;
         overflow: hidden;
@@ -141,6 +163,9 @@
         vertical-align: middle;
     }
 
+    /* ============================================
+       BADGES
+       ============================================ */
     .badge-admin {
         padding: 0.35rem 0.75rem;
         border-radius: 8px;
@@ -173,18 +198,9 @@
         border: 1px solid rgba(6, 182, 212, 0.3);
     }
 
-    .empty-state {
-        text-align: center;
-        padding: 4rem 2rem;
-        color: #64748b;
-    }
-
-    .empty-state i {
-        font-size: 4rem;
-        margin-bottom: 1rem;
-        opacity: 0.3;
-    }
-
+    /* ============================================
+       PAGINACIÓN
+       ============================================ */
     .pagination {
         margin-top: 1.5rem;
         justify-content: center;
@@ -205,34 +221,98 @@
         color: white;
     }
 
+    /* ============================================
+       EMPTY STATE
+       ============================================ */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #64748b;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    /* ============================================
+       MODALES CON GLASSMORPHISM - MEJORADO
+       ============================================ */
+    .modal-dialog {
+        margin-top: 5rem !important;
+    }
+    
     .modal-content {
-        border-radius: 16px;
-        border: none;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        /* FONDO TRANSLÚCIDO CON GLASSMORPHISM */
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px) saturate(180%);
+        
+        /* BORDE SUTIL */
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 20px;
+        
+        /* SOMBRAS MULTICAPA */
+        box-shadow: 
+            0 20px 60px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        
+        /* PREPARACIÓN PARA PSEUDO-ELEMENTO */
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* EFECTO DE LUZ INTERIOR */
+    .modal-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 600px 400px at 50% 50%, 
+                rgba(219, 234, 254, 0.15) 0%, 
+                transparent 70%);
+        pointer-events: none;
+        z-index: 0;
     }
 
     .modal-header {
         background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(96, 165, 250, 0.08) 100%);
-        border-bottom: 2px solid rgba(59, 130, 246, 0.15);
-        border-radius: 16px 16px 0 0;
-        padding: 1.5rem;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.15);
+        border-radius: 20px 20px 0 0;
+        padding: 1rem 1.5rem;
+        position: relative;
+        z-index: 2;
     }
 
     .modal-title {
-        font-weight: 700;
         color: #0f172a;
+        font-weight: 700;
+        font-size: 1.25rem;
     }
 
     .modal-body {
-        padding: 2rem;
+        color: #1e293b;
+        position: relative;
+        z-index: 2;
+        padding: 1.25rem 1.5rem;
+        max-height: calc(100vh - 250px);
+        overflow-y: auto;
     }
 
+    /* ============================================
+       COMPONENTES DE LOG DENTRO DEL MODAL
+       ============================================ */
     .log-detail-item {
         padding: 1rem;
         background: rgba(59, 130, 246, 0.05);
         border-radius: 10px;
         margin-bottom: 1rem;
         border: 1px solid rgba(59, 130, 246, 0.1);
+        position: relative;
+        z-index: 2;
     }
 
     .log-detail-label {
@@ -251,6 +331,9 @@
         word-break: break-word;
     }
 
+    /* ============================================
+       COMPARACIÓN DE VALORES
+       ============================================ */
     .value-comparison {
         display: grid;
         grid-template-columns: 1fr auto 1fr;
@@ -281,6 +364,26 @@
     .value-arrow {
         color: #64748b;
         font-size: 1.5rem;
+    }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 768px) {
+        .modal-dialog {
+            margin: 1rem !important;
+            margin-top: 2rem !important;
+        }
+
+        .value-comparison {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+
+        .value-arrow {
+            transform: rotate(90deg);
+            text-align: center;
+        }
     }
 </style>
 {% endblock %}

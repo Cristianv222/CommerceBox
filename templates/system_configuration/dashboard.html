@@ -200,6 +200,32 @@
         vertical-align: middle;
     }
 
+    .badge-admin {
+        padding: 0.4rem 0.8rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .badge-success {
+        background: rgba(16, 185, 129, 0.15);
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-info {
+        background: rgba(59, 130, 246, 0.15);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
     @keyframes fadeInUp {
         from {
             opacity: 0;
@@ -229,7 +255,7 @@
         <div>
             <h1 class="card-title">⚙️ Configuración del Sistema</h1>
             <p style="color: #64748b; margin: 0; font-weight: 500;">
-                Gestión completa de {{ config.nombre_empresa }}
+                Gestión completa de {{ config.nombre_empresa|default:"CommerceBox" }}
             </p>
         </div>
     </div>
@@ -241,7 +267,7 @@
                 <div class="stat-icon" style="background: rgba(59, 130, 246, 0.2); color: #3b82f6;">
                     <i class="bi bi-database-fill"></i>
                 </div>
-                <div class="stat-value">{{ total_backups }}</div>
+                <div class="stat-value">{{ total_backups|default:0 }}</div>
                 <div class="stat-label">Backups Totales</div>
             </div>
         </div>
@@ -250,7 +276,7 @@
                 <div class="stat-icon" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">
                     <i class="bi bi-check-circle-fill"></i>
                 </div>
-                <div class="stat-value">{{ backups_exitosos }}</div>
+                <div class="stat-value">{{ backups_exitosos|default:0 }}</div>
                 <div class="stat-label">Backups Exitosos</div>
             </div>
         </div>
@@ -259,7 +285,7 @@
                 <div class="stat-icon" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">
                     <i class="bi bi-gear-fill"></i>
                 </div>
-                <div class="stat-value">{{ parametros_por_modulo|length }}</div>
+                <div class="stat-value">{{ parametros_por_modulo|length|default:0 }}</div>
                 <div class="stat-label">Módulos Configurados</div>
             </div>
         </div>
@@ -268,7 +294,7 @@
                 <div class="stat-icon" style="background: {% if ultimo_health_check.estado_general == 'SALUDABLE' %}rgba(16, 185, 129, 0.2); color: #10b981;{% else %}rgba(239, 68, 68, 0.2); color: #ef4444;{% endif %}">
                     <i class="bi bi-heart-pulse-fill"></i>
                 </div>
-                <div class="stat-value">{% if ultimo_health_check %}{{ ultimo_health_check.get_estado_general_display }}{% else %}N/A{% endif %}</div>
+                <div class="stat-value">{% if ultimo_health_check %}{{ ultimo_health_check.get_estado_general_display }}{% else %}OK{% endif %}</div>
                 <div class="stat-label">Estado del Sistema</div>
             </div>
         </div>
@@ -343,17 +369,21 @@
             <div class="admin-card" style="animation-delay: 0.55s; cursor: default;">
                 <h3 class="card-title-small">Estado de Módulos</h3>
                 <div class="mt-3">
-                    {% for modulo, activo in modulos_estado.items %}
-                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2" style="border-bottom: 1px solid rgba(59, 130, 246, 0.1);">
-                        <div>
-                            <i class="bi bi-{% if activo %}check-circle-fill{% else %}x-circle-fill{% endif %} me-2" style="color: {% if activo %}#10b981{% else %}#ef4444{% endif %};"></i>
-                            <strong style="color: #1e293b;">{{ modulo }}</strong>
+                    {% if modulos_estado %}
+                        {% for modulo, activo in modulos_estado.items %}
+                        <div class="d-flex justify-content-between align-items-center mb-3 pb-2" style="border-bottom: 1px solid rgba(59, 130, 246, 0.1);">
+                            <div>
+                                <i class="bi bi-{% if activo %}check-circle-fill{% else %}x-circle-fill{% endif %} me-2" style="color: {% if activo %}#10b981{% else %}#ef4444{% endif %};"></i>
+                                <strong style="color: #1e293b;">{{ modulo }}</strong>
+                            </div>
+                            <span class="badge-admin badge-{% if activo %}success{% else %}danger{% endif %}">
+                                {% if activo %}Activo{% else %}Inactivo{% endif %}
+                            </span>
                         </div>
-                        <span class="badge-admin badge-{% if activo %}success{% else %}danger{% endif %}">
-                            {% if activo %}Activo{% else %}Inactivo{% endif %}
-                        </span>
-                    </div>
-                    {% endfor %}
+                        {% endfor %}
+                    {% else %}
+                        <p style="color: #64748b; text-align: center; padding: 2rem;">No hay módulos configurados</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -375,23 +405,25 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for backup in backups_recientes %}
-                        <tr>
-                            <td style="font-weight: 600;">{{ backup.fecha_inicio|date:"d/m/Y H:i" }}</td>
-                            <td>{{ backup.get_tipo_backup_display }}</td>
-                            <td>
-                                <span class="badge-admin badge-{% if backup.estado == 'EXITOSO' %}success{% else %}danger{% endif %}">
-                                    {{ backup.get_estado_display }}
-                                </span>
-                            </td>
-                        </tr>
-                        {% empty %}
+                        {% if backups_recientes %}
+                            {% for backup in backups_recientes %}
+                            <tr>
+                                <td style="font-weight: 600;">{{ backup.fecha_inicio|date:"d/m/Y H:i" }}</td>
+                                <td>{{ backup.get_tipo_backup_display }}</td>
+                                <td>
+                                    <span class="badge-admin badge-{% if backup.estado == 'EXITOSO' %}success{% else %}danger{% endif %}">
+                                        {{ backup.get_estado_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
                         <tr>
                             <td colspan="3" class="text-center" style="padding: 2rem; color: #64748b;">
                                 No hay backups registrados
                             </td>
                         </tr>
-                        {% endfor %}
+                        {% endif %}
                     </tbody>
                 </table>
             </div>
@@ -419,27 +451,29 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for log in logs_recientes %}
-                        <tr>
-                            <td style="font-weight: 600;">{{ log.fecha_cambio|date:"d/m/Y H:i" }}</td>
-                            <td>{{ log.usuario.get_full_name|default:"Sistema" }}</td>
-                            <td>
-                                <span class="badge-admin badge-{% if log.tipo_cambio == 'CREACION' %}success{% elif log.tipo_cambio == 'MODIFICACION' %}info{% else %}danger{% endif %}">
-                                    {{ log.get_tipo_cambio_display }}
-                                </span>
-                            </td>
-                            <td style="font-weight: 600;">{{ log.tabla }}</td>
-                            <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                {{ log.descripcion }}
-                            </td>
-                        </tr>
-                        {% empty %}
+                        {% if logs_recientes %}
+                            {% for log in logs_recientes %}
+                            <tr>
+                                <td style="font-weight: 600;">{{ log.fecha_cambio|date:"d/m/Y H:i" }}</td>
+                                <td>{{ log.usuario.get_full_name|default:"Sistema" }}</td>
+                                <td>
+                                    <span class="badge-admin badge-{% if log.tipo_cambio == 'CREACION' %}success{% elif log.tipo_cambio == 'MODIFICACION' %}info{% else %}danger{% endif %}">
+                                        {{ log.get_tipo_cambio_display }}
+                                    </span>
+                                </td>
+                                <td style="font-weight: 600;">{{ log.tabla }}</td>
+                                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    {{ log.descripcion }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
                         <tr>
                             <td colspan="5" class="text-center" style="padding: 2rem; color: #64748b;">
                                 No hay logs registrados
                             </td>
                         </tr>
-                        {% endfor %}
+                        {% endif %}
                     </tbody>
                 </table>
             </div>

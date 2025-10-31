@@ -45,4 +45,8 @@ urlpatterns = [
     path('health-check/', views.health_check_dashboard, name='health_check_dashboard'),
     path('health-check/ejecutar/', views.health_check_ejecutar, name='health_check_ejecutar'),
     path('api/health-check/', views.health_check_api, name='health_check_api'),
+    # ✅ NUEVAS RUTAS: APIs para dashboard (JSON)
+    path('api/dashboard/backups/', views.api_backups_dashboard, name='api_dashboard_backups'),
+    path('api/dashboard/logs/', views.api_logs_dashboard, name='api_dashboard_logs'),
+
 ]

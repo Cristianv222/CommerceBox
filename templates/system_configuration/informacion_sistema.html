@@ -1,0 +1,687 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Información del Sistema - CommerceBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
+    }
+
+    .info-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        transition: all 0.3s ease;
+    }
+
+    .info-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(ellipse 300px 200px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .info-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 12px 40px rgba(59, 130, 246, 0.12),
+            0 4px 12px rgba(147, 197, 253, 0.15);
+    }
+
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .section-title i {
+        font-size: 1.5rem;
+        color: #3b82f6;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+        position: relative;
+        z-index: 2;
+    }
+
+    .info-row:last-child {
+        border-bottom: none;
+    }
+
+    .info-label {
+        font-size: 0.9rem;
+        color: #64748b;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .info-value {
+        font-size: 0.95rem;
+        color: #0f172a;
+        font-weight: 700;
+        text-align: right;
+    }
+
+    .stat-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(30px) saturate(180%);
+        border: 1px solid rgba(219, 234, 254, 0.5);
+        border-radius: 16px;
+        padding: 1.5rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 
+            0 8px 32px rgba(59, 130, 246, 0.08),
+            0 2px 8px rgba(147, 197, 253, 0.1);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .stat-card.purple::before {
+        background: radial-gradient(ellipse 200px 150px at 50% 50%, rgba(139, 92, 246, 0.15) 0%, transparent 60%);
+    }
+
+    .stat-card.pink::before {
+        background: radial-gradient(ellipse 200px 150px at 50% 50%, rgba(236, 72, 153, 0.15) 0%, transparent 60%);
+    }
+
+    .stat-card.cyan::before {
+        background: radial-gradient(ellipse 200px 150px at 50% 50%, rgba(6, 182, 212, 0.15) 0%, transparent 60%);
+    }
+
+    .stat-card.green::before {
+        background: radial-gradient(ellipse 200px 150px at 50% 50%, rgba(16, 185, 129, 0.15) 0%, transparent 60%);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 
+            0 12px 40px rgba(59, 130, 246, 0.15),
+            0 4px 12px rgba(96, 165, 250, 0.2);
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        position: relative;
+        z-index: 2;
+    }
+
+    .stat-value.purple { color: #8b5cf6; }
+    .stat-value.pink { color: #ec4899; }
+    .stat-value.cyan { color: #06b6d4; }
+    .stat-value.green { color: #10b981; }
+
+    .badge-version {
+        padding: 0.4rem 0.8rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        background: rgba(59, 130, 246, 0.15);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .badge {
+        padding: 0.35rem 0.65rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .badge.bg-success {
+        background: rgba(16, 185, 129, 0.15) !important;
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge.bg-warning {
+        background: rgba(245, 158, 11, 0.15) !important;
+        color: #d97706;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge.bg-danger {
+        background: rgba(239, 68, 68, 0.15) !important;
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge.bg-info {
+        background: rgba(59, 130, 246, 0.15) !important;
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .text-muted {
+        color: #94a3b8 !important;
+    }
+
+    .btn-secondary {
+        background: rgba(100, 116, 139, 0.1);
+        color: #64748b;
+        border: 1.5px solid rgba(100, 116, 139, 0.2);
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .btn-secondary:hover {
+        background: rgba(100, 116, 139, 0.2);
+        color: #475569;
+        transform: translateY(-2px);
+    }
+
+    .code-block {
+        font-family: 'Monaco', 'Courier New', monospace;
+        font-size: 0.8rem;
+        color: #64748b;
+        background: rgba(100, 116, 139, 0.1);
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        word-break: break-all;
+    }
+
+    /* Animaciones */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .stat-card,
+    .info-card {
+        animation: fadeInUp 0.5s ease-out backwards;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.05s; }
+    .stat-card:nth-child(2) { animation-delay: 0.1s; }
+    .stat-card:nth-child(3) { animation-delay: 0.15s; }
+    .stat-card:nth-child(4) { animation-delay: 0.2s; }
+    .info-card:nth-child(1) { animation-delay: 0.25s; }
+    .info-card:nth-child(2) { animation-delay: 0.3s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="card-title">ℹ️ Información del Sistema</h1>
+            <p style="color: #64748b; margin: 0; font-weight: 500;">
+                Detalles técnicos y configuración del sistema CommerceBox
+            </p>
+        </div>
+        <a href="{% url 'custom_admin:configuracion' %}" class="btn-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Volver
+        </a>
+    </div>
+
+    <!-- Tarjetas de Estadísticas -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card purple">
+                <div class="stat-label">Django</div>
+                <div class="stat-value purple">{{ info.django_version }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card pink">
+                <div class="stat-label">Python</div>
+                <div class="stat-value pink">{{ info.python_version|slice:":3" }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card cyan">
+                <div class="stat-label">Base de Datos</div>
+                <div class="stat-value cyan">{{ db_info.vendor|upper }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card green">
+                <div class="stat-label">S.O.</div>
+                <div class="stat-value green">{{ info.sistema_operativo }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información del Sistema -->
+    <div class="row g-4 mb-4">
+        <!-- Configuración General -->
+        <div class="col-lg-6">
+            <div class="info-card">
+                <h5 class="section-title">
+                    <i class="bi bi-info-circle"></i>
+                    Información General
+                </h5>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-building"></i>
+                        Nombre del Sistema
+                    </span>
+                    <span class="info-value">{{ config.nombre_empresa|default:"CommerceBox" }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-envelope"></i>
+                        Email de Contacto
+                    </span>
+                    <span class="info-value">{{ config.email_empresa|default:"No configurado" }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-telephone"></i>
+                        Teléfono
+                    </span>
+                    <span class="info-value">{{ config.telefono_empresa|default:"No configurado" }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-geo-alt"></i>
+                        Dirección
+                    </span>
+                    <span class="info-value">{{ config.direccion_empresa|default:"No configurado" }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-server"></i>
+                        Hostname
+                    </span>
+                    <span class="info-value">{{ info.hostname }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-calendar-event"></i>
+                        Fecha del Sistema
+                    </span>
+                    <span class="info-value">{% now "d/m/Y H:i:s" %}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Software y Plataforma -->
+        <div class="col-lg-6">
+            <div class="info-card">
+                <h5 class="section-title">
+                    <i class="bi bi-code-square"></i>
+                    Software y Plataforma
+                </h5>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-file-code"></i>
+                        Django
+                    </span>
+                    <span class="info-value">
+                        <span class="badge-version">{{ info.django_version }}</span>
+                    </span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-braces"></i>
+                        Python
+                    </span>
+                    <span class="info-value code-block" style="max-width: 300px;">{{ info.python_version|truncatewords:5 }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-laptop"></i>
+                        Plataforma
+                    </span>
+                    <span class="info-value code-block" style="max-width: 300px;">{{ info.platform }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-cpu"></i>
+                        Procesador
+                    </span>
+                    <span class="info-value">{{ info.processor|default:"N/A" }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-motherboard"></i>
+                        Arquitectura
+                    </span>
+                    <span class="info-value">{{ info.arquitectura }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-hdd-network"></i>
+                        Sistema Operativo
+                    </span>
+                    <span class="info-value">{{ info.sistema_operativo }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información de Base de Datos -->
+    <div class="info-card">
+        <h5 class="section-title">
+            <i class="bi bi-database"></i>
+            Base de Datos
+        </h5>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-server"></i>
+                        Motor
+                    </span>
+                    <span class="info-value">{{ db_info.vendor|upper }}</span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-folder"></i>
+                        Nombre
+                    </span>
+                    <span class="info-value">{{ db_info.settings }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuración del Sistema CommerceBox -->
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="info-card">
+                <h5 class="section-title">
+                    <i class="bi bi-gear"></i>
+                    Configuración de la Empresa
+                </h5>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-building"></i>
+                        Nombre de Empresa
+                    </span>
+                    <span class="info-value">{{ config.nombre_empresa|default:"No configurado" }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-card-text"></i>
+                        RUC/NIT
+                    </span>
+                    <span class="info-value">{{ config.ruc_empresa|default:"No configurado" }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-cash-coin"></i>
+                        Moneda
+                    </span>
+                    <span class="info-value">{{ config.moneda|default:"USD" }} ({{ config.simbolo_moneda|default:"$" }})</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-receipt"></i>
+                        IVA (%)
+                    </span>
+                    <span class="info-value">{{ config.porcentaje_iva|default:"15" }}%</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-globe2"></i>
+                        Sitio Web
+                    </span>
+                    <span class="info-value">
+                        {% if config.sitio_web %}
+                            <a href="{{ config.sitio_web }}" target="_blank" style="color: #3b82f6; text-decoration: none;">{{ config.sitio_web|truncatechars:30 }}</a>
+                        {% else %}
+                            No configurado
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="info-card">
+                <h5 class="section-title">
+                    <i class="bi bi-toggles"></i>
+                    Opciones del Sistema
+                </h5>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-shield-check"></i>
+                        Modo Mantenimiento
+                    </span>
+                    <span class="info-value">
+                        {% if config.mantenimiento_activo %}
+                            <span class="badge bg-warning">Activado</span>
+                        {% else %}
+                            <span class="badge bg-success">Desactivado</span>
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-credit-card"></i>
+                        Ventas a Crédito
+                    </span>
+                    <span class="info-value">
+                        {% if config.permitir_ventas_credito %}
+                            <span class="badge bg-success">Permitidas</span>
+                        {% else %}
+                            <span class="badge bg-danger">No Permitidas</span>
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-receipt"></i>
+                        IVA Activo
+                    </span>
+                    <span class="info-value">
+                        {% if config.iva_activo %}
+                            <span class="badge bg-success">Sí</span>
+                        {% else %}
+                            <span class="badge bg-danger">No</span>
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-clock"></i>
+                        Zona Horaria
+                    </span>
+                    <span class="info-value">{{ config.zona_horaria|default:"UTC" }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-calendar-range"></i>
+                        Fecha de Instalación
+                    </span>
+                    <span class="info-value">{{ config.fecha_creacion|date:"d/m/Y" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Módulos Activos -->
+    <div class="info-card mt-4">
+        <h5 class="section-title">
+            <i class="bi bi-plugin"></i>
+            Módulos del Sistema
+        </h5>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-box-seam"></i>
+                        Inventario
+                    </span>
+                    <span class="info-value">
+                        {% if config.modulo_inventario_activo %}
+                            <span class="badge bg-success">Activo</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactivo</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-cart"></i>
+                        Ventas
+                    </span>
+                    <span class="info-value">
+                        {% if config.modulo_ventas_activo %}
+                            <span class="badge bg-success">Activo</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactivo</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-cash"></i>
+                        Financiero
+                    </span>
+                    <span class="info-value">
+                        {% if config.modulo_financiero_activo %}
+                            <span class="badge bg-success">Activo</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactivo</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-graph-up"></i>
+                        Reportes
+                    </span>
+                    <span class="info-value">
+                        {% if config.modulo_reportes_activo %}
+                            <span class="badge bg-success">Activo</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactivo</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-bell"></i>
+                        Alertas
+                    </span>
+                    <span class="info-value">
+                        {% if config.modulo_alertas_activo %}
+                            <span class="badge bg-success">Activo</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactivo</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="bi bi-shield"></i>
+                        Versión Sistema
+                    </span>
+                    <span class="info-value">
+                        <span class="badge-version">{{ config.version_sistema|default:"1.0.0" }}</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
