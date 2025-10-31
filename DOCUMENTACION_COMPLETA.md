@@ -4,7 +4,7 @@
 
 INFORMACIÓN GENERAL
 -------------------
-Fecha de generación: 2025-10-29 18:34:30
+Fecha de generación: 2025-10-30 21:19:38
 Ubicación: C:\Users\godoy\Desktop\CommerceBox
 Python Version: Python 3.13.7
 Pip Version: pip 25.2 from C:\Users\godoy\AppData\Local\Programs\Python\Python313\Lib\site-packages\pip (python 3.13)
@@ -56,7 +56,7 @@ Usuario: Desconocido
 │   │   ├── tests.py (63.0B)
 │   │   ├── urls.py (18.3KB)
 │   │   ├── urls.py.backup (12.8KB)
-│   │   └── views.py (330.9KB)
+│   │   └── views.py (337.0KB)
 │   ├── financial_management/ (23 elementos)
 │   │   ├── __pycache__/ (excluido)
 │   │   ├── accounting/ (4 elementos)
@@ -253,23 +253,28 @@ Usuario: Desconocido
 │   │   │   ├── commands/ (3 elementos)
 │   │   │   │   ├── __init__.py (0B)
 │   │   │   │   ├── setup_commercebox.py (27.9KB)
-│   │   │   │   └── system_health_check.py (9.1KB)
+│   │   │   │   └── system_health_check.py (10.5KB)
 │   │   │   └── __init__.py (0B)
-│   │   ├── migrations/ (4 elementos)
+│   │   ├── migrations/ (5 elementos)
 │   │   │   ├── 0001_initial.py (37.4KB)
 │   │   │   ├── 0002_remove_configuracionsistema_ambiente_facturacion_and_more.py (789.0B)
 │   │   │   ├── 0003_remove_configuracionsistema_iva_default_and_more.py (1.2KB)
+│   │   │   ├── 0004_healthcheck_uso_cpu_porcentaje_and_more.py (1.7KB)
 │   │   │   └── __init__.py (0B)
 │   │   ├── __init__.py (0B)
-│   │   ├── admin.py (24.3KB)
+│   │   ├── admin.py (28.0KB)
 │   │   ├── apps.py (182.0B)
 │   │   ├── forms.py (15.1KB)
-│   │   ├── models.py (30.3KB)
+│   │   ├── models.py (31.1KB)
 │   │   ├── signals.py (0B)
 │   │   ├── tests.py (63.0B)
-│   │   ├── urls.py (1.7KB)
-│   │   └── views.py (23.6KB)
+│   │   ├── urls.py (2.4KB)
+│   │   └── views.py (42.7KB)
 │   └── context_processors.py (544.0B)
+├── backups/ (3 elementos)
+│   ├── backup_manual_20251030_012504.sql.gz (759.1KB)
+│   ├── backup_manual_20251030_012709.tar.gz (49.8MB)
+│   └── backup_manual_20251030_013103.sql.gz (759.1KB)
 ├── commercebox/ (8 elementos)
 │   ├── __pycache__/ (excluido)
 │   ├── __init__.py (257.0B)
@@ -280,7 +285,7 @@ Usuario: Desconocido
 │   ├── urls.py.backup (2.3KB)
 │   └── wsgi.py (415.0B)
 ├── logs/ (2 elementos)
-│   ├── commercebox.log (7.9MB)
+│   ├── commercebox.log (8.1MB)
 │   └── commercebox_audit.log (0B)
 ├── media/ (7 elementos)
 │   ├── barcodes/ (2 elementos)
@@ -323,8 +328,7 @@ Usuario: Desconocido
 │   ├── authentication/ (1 elementos)
 │   │   └── login.html (22.7KB)
 │   ├── custom_admin/ (14 elementos)
-│   │   ├── configuracion/ (1 elementos)
-│   │   │   └── general.html (16.9KB)
+│   │   ├── configuracion/ (0 elementos)
 │   │   ├── finanzas/ (7 elementos)
 │   │   │   ├── arqueo_detalle.html (13.9KB)
 │   │   │   ├── arqueos_list.html (22.8KB)
@@ -335,15 +339,15 @@ Usuario: Desconocido
 │   │   │   └── movimientos.html (1.4KB)
 │   │   ├── inventario/ (6 elementos)
 │   │   │   ├── categorias_list.html (51.3KB)
-│   │   │   ├── entrada_inventario.html (125.7KB)
+│   │   │   ├── entrada_inventario.html (127.1KB)
 │   │   │   ├── marcas_list.html (53.0KB)
 │   │   │   ├── movimientos_list.html (42.9KB)
-│   │   │   ├── productos_list.html (85.5KB)
+│   │   │   ├── productos_list.html (93.6KB)
 │   │   │   └── proveedores_list.html (42.9KB)
 │   │   ├── logs/ (1 elementos)
 │   │   │   └── accesos.html (33.8KB)
 │   │   ├── pos/ (1 elementos)
-│   │   │   └── punto_venta.html (78.0KB)
+│   │   │   └── punto_venta.html (79.5KB)
 │   │   ├── reportes/ (0 elementos)
 │   │   ├── roles/ (1 elementos)
 │   │   │   └── list.html (54.0KB)
@@ -361,13 +365,19 @@ Usuario: Desconocido
 │   │   ├── dashboard.html (28.9KB)
 │   │   └── dashboard.html.backup (28.9KB)
 │   ├── errors/ (0 elementos)
-│   ├── system_configuration/ (1 elementos)
-│   │   └── configuracion_general.html (47.3KB)
+│   ├── system_configuration/ (7 elementos)
+│   │   ├── backups_lista.html (35.9KB)
+│   │   ├── configuracion_general.html (47.3KB)
+│   │   ├── dashboard.html (18.1KB)
+│   │   ├── health_check_dashboard.html (30.1KB)
+│   │   ├── informacion_sistema.html (23.1KB)
+│   │   ├── logs_configuracion.html (26.2KB)
+│   │   └── parametros_lista.html (44.1KB)
 │   ├── base.html (23.9KB)
 │   └── base_login.html (9.9KB)
 ├── .env (2.1KB)
 ├── .gitignore (2.0KB)
-├── celerybeat-schedule (6.5KB)
+├── celerybeat-schedule (10.5KB)
 ├── create_structure.ps1 (2.8KB)
 ├── docker-compose.yml (3.6KB)
 ├── dockerfile (1.3KB)
@@ -378,7 +388,7 @@ Usuario: Desconocido
 ├── index.html (18.9KB)
 ├── manage.py (689.0B)
 ├── README.md (9.9KB)
-├── requirements.txt (2.4KB)
+├── requirements.txt (2.5KB)
 └── test_endpint.py (7.7KB)
 
 ================================================================================
@@ -388,7 +398,7 @@ Usuario: Desconocido
 ARCHIVOS IMPORTANTES
 --------------------
 manage.py                 ✅ Existe (689.0B)
-requirements.txt          ✅ Existe (2.4KB)
+requirements.txt          ✅ Existe (2.5KB)
 .env                      ✅ Existe (2.1KB)
 .env.example              ❌ Faltante
 .gitignore                ✅ Existe (2.0KB)
@@ -400,21 +410,21 @@ setup.cfg                 ❌ Faltante
 
 ESTADÍSTICAS POR EXTENSIÓN
 --------------------------
-.py                   202 archivos ( 71.6%)
-.html                  27 archivos (  9.6%)
-.backup                13 archivos (  4.6%)
-.jpg                   12 archivos (  4.3%)
+.py                   203 archivos ( 69.8%)
+.html                  32 archivos ( 11.0%)
+.backup                13 archivos (  4.5%)
+.jpg                   12 archivos (  4.1%)
 (sin extensión)         4 archivos (  1.4%)
-.png                    3 archivos (  1.1%)
-.jpeg                   3 archivos (  1.1%)
+.gz                     3 archivos (  1.0%)
+.png                    3 archivos (  1.0%)
+.jpeg                   3 archivos (  1.0%)
 .backup2                2 archivos (  0.7%)
 .log                    2 archivos (  0.7%)
-.md                     2 archivos (  0.7%)
 
 TOTALES
 -------
-Total de archivos: 282
-Total de directorios: 74
+Total de archivos: 291
+Total de directorios: 75
 
 ================================================================================
                            APLICACIONES DJANGO
@@ -433,7 +443,7 @@ notifications        Parcial    4/5      9          models.py, views.py, admin.p
 reports_analytics    Completa   5/5      14         models.py, views.py, urls.py...
 sales_management     Completa   5/5      19         models.py, views.py, urls.py...
 stock_alert_system   Parcial    4/5      12         models.py, views.py, admin.py...
-system_configuration Completa   5/5      13         models.py, views.py, urls.py...
+system_configuration Completa   5/5      14         models.py, views.py, urls.py...
 
 DETALLE POR APP
 ==================================================
@@ -609,13 +619,13 @@ Documentación:           ⚠️  Iniciada (60%)
 
 ESTADÍSTICAS GENERALES
 ---------------------
-Total directorios:       74
-Total archivos:          282
+Total directorios:       75
+Total archivos:          291
 Apps Django:             10
-Archivos Python:         202
+Archivos Python:         203
 Paquetes instalados:     0
 
 ================================================================================
-Reporte generado automáticamente el 2025-10-29 18:34:30
+Reporte generado automáticamente el 2025-10-30 21:19:38
 Para actualizar, ejecuta: python documenter.py
 ================================================================================

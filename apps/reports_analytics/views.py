@@ -8,8 +8,12 @@ from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.contrib import messages
 from datetime import timedelta
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from decimal import Decimal
 import json
-
 from .generators import (
     DashboardDataGenerator,
     InventoryReportGenerator,
@@ -982,3 +986,121 @@ class GuardarConfiguracionView(ReportesAccessMixin, View):
         
         messages.success(request, 'Configuración guardada correctamente')
         return redirect('reports_analytics:configuracion')
+class DashboardSimpleAPIView(APIView):
+    """
+    API simplificado para el dashboard principal del panel
+    Endpoint: /api/reportes/dashboard/
+    Retorna datos en formato JSON compatible con el frontend
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            # Generar datos del dashboard
+            generator = DashboardDataGenerator()
+            
+            # Obtener métricas principales
+            resumen = generator.get_resumen_ejecutivo()
+            metricas_ventas = generator.get_metricas_ventas()
+            metricas_inventario = generator.get_metricas_inventario()
+            alertas = generator.get_alertas_criticas()
+            top_productos = generator.get_productos_mas_vendidos(limite=5)
+            tendencias = generator.get_tendencias_semanales()
+            
+            # Función helper para convertir Decimales a float
+            def decimal_to_float(obj):
+                if isinstance(obj, Decimal):
+                    return float(obj)
+                elif isinstance(obj, dict):
+                    return {k: decimal_to_float(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [decimal_to_float(item) for item in obj]
+                return obj
+            
+            # Preparar datos para el frontend
+            dashboard_data = {
+                # KPIs principales
+                'ventas_hoy': decimal_to_float(resumen['ventas_dia']['total']),
+                'num_ventas': resumen['ventas_dia']['cantidad'],
+                'productos_total': metricas_inventario['productos_normales']['con_stock'] + metricas_inventario['quintales']['total_disponibles'],
+                'alertas_criticas': len(alertas),
+                
+                # Ventas de la semana (para gráfico)
+                'ventas_semana': [
+                    {
+                        'fecha': item['dia'].strftime('%d/%m') if hasattr(item['dia'], 'strftime') else str(item['dia']),
+                        'total': decimal_to_float(item['total'])
+                    }
+                    for item in tendencias
+                ],
+                
+                # Top productos (para gráfico donut)
+                'top_productos': [
+                    {
+                        'nombre': item['producto__nombre'][:20],  # Limitar nombre
+                        'cantidad': decimal_to_float(item['total_vendido'])
+                    }
+                    for item in top_productos
+                ],
+                
+                # Últimas ventas (para tabla)
+                'ultimas_ventas': self._get_ultimas_ventas(),
+                
+                # Alertas (para widget de alertas)
+                'alertas': [
+                    {
+                        'prioridad': alert.get('nivel', 'MEDIO'),
+                        'titulo': alert.get('tipo', 'Alerta'),
+                        'mensaje': alert.get('mensaje', ''),
+                    }
+                    for alert in alertas[:5]  # Solo las 5 más importantes
+                ]
+            }
+            
+            return JsonResponse({
+                'success': True,
+                'data': dashboard_data,
+                'timestamp': timezone.now().isoformat()
+            })
+            
+        except Exception as e:
+            print(f"❌ Error en Dashboard API: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            return JsonResponse({
+                'success': False,
+                'error': str(e),
+                'data': {
+                    'ventas_hoy': 0,
+                    'num_ventas': 0,
+                    'productos_total': 0,
+                    'alertas_criticas': 0,
+                    'ventas_semana': [],
+                    'top_productos': [],
+                    'ultimas_ventas': [],
+                    'alertas': []
+                }
+            }, status=500)
+    
+    def _get_ultimas_ventas(self):
+        """Obtiene las últimas 5 ventas para mostrar en tabla"""
+        try:
+            from apps.sales_management.models import Venta
+            
+            ultimas = Venta.objects.filter(
+                estado='COMPLETADA'
+            ).select_related('cliente').order_by('-fecha_venta')[:5]
+            
+            return [
+                {
+                    'numero_venta': venta.numero_venta,
+                    'cliente': venta.cliente.nombre_completo() if venta.cliente else 'Público General',
+                    'total': float(venta.total),
+                    'estado': venta.estado
+                }
+                for venta in ultimas
+            ]
+        except Exception as e:
+            print(f"Error obteniendo últimas ventas: {e}")
+            return []
