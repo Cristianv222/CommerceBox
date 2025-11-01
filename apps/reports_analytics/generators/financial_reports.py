@@ -118,18 +118,18 @@ class FinancialReportGenerator:
             arqueos_data.append({
                 'numero': arq.numero_arqueo,
                 'caja': arq.caja.nombre,
-                'fecha_apertura': arq.fecha_apertura,
-                'fecha_cierre': arq.fecha_cierre,
-                'monto_apertura': arq.monto_apertura,
-                'total_ventas': arq.total_ventas,
-                'total_ingresos': arq.total_ingresos,
-                'total_retiros': arq.total_retiros,
-                'monto_esperado': arq.monto_esperado,
-                'monto_contado': arq.monto_contado,
-                'diferencia': arq.diferencia,
+                'fecha_apertura': arq.fecha_apertura.isoformat() if arq.fecha_apertura else None,
+                'fecha_cierre': arq.fecha_cierre.isoformat() if arq.fecha_cierre else None,
+                'monto_apertura': float(arq.monto_apertura),
+                'total_ventas': float(arq.total_ventas),
+                'total_ingresos': float(arq.total_ingresos),
+                'total_retiros': float(arq.total_retiros),
+                'monto_esperado': float(arq.monto_esperado),
+                'monto_contado': float(arq.monto_contado),
+                'diferencia': float(arq.diferencia),
                 'estado': arq.get_estado_display(),
-                'usuario_apertura': arq.usuario_apertura.get_full_name(),
-                'usuario_cierre': arq.usuario_cierre.get_full_name()
+                'usuario_apertura': arq.usuario_apertura.get_full_name() if arq.usuario_apertura else 'N/A',
+                'usuario_cierre': arq.usuario_cierre.get_full_name() if arq.usuario_cierre else 'N/A'
             })
         
         # Estadísticas
@@ -141,23 +141,25 @@ class FinancialReportGenerator:
             faltantes=Count('id', filter=Q(estado='FALTANTE'))
         )
         
+        total_arqueos = len(arqueos_data)
+        porcentaje_cuadrados = 0
+        if total_arqueos > 0:
+            porcentaje_cuadrados = float((Decimal(str(totales['cuadrados'])) / Decimal(str(total_arqueos))) * 100)
+        
         return {
             'periodo': {
-                'desde': self.fecha_desde,
-                'hasta': self.fecha_hasta
+                'desde': self.fecha_desde.isoformat() if hasattr(self.fecha_desde, 'isoformat') else str(self.fecha_desde),
+                'hasta': self.fecha_hasta.isoformat() if hasattr(self.fecha_hasta, 'isoformat') else str(self.fecha_hasta)
             },
             'arqueos': arqueos_data,
-            'total_arqueos': len(arqueos_data),
+            'total_arqueos': total_arqueos,
             'estadisticas': {
-                'total_ventas': totales['total_ventas'],
-                'total_diferencias': totales['total_diferencias'],
+                'total_ventas': float(totales['total_ventas']),
+                'total_diferencias': float(totales['total_diferencias']),
                 'cuadrados': totales['cuadrados'],
                 'sobrantes': totales['sobrantes'],
                 'faltantes': totales['faltantes'],
-                'porcentaje_cuadrados': (
-                    (totales['cuadrados'] / len(arqueos_data) * 100)
-                    if len(arqueos_data) > 0 else Decimal('0')
-                ).quantize(Decimal('0.01'))
+                'porcentaje_cuadrados': round(porcentaje_cuadrados, 2)
             }
         }
     
@@ -184,17 +186,17 @@ class FinancialReportGenerator:
             reposiciones=Coalesce(Sum('monto', filter=Q(tipo_movimiento='REPOSICION')), Decimal('0'))
         )
         
-        # Detalle de movimientos
+        # Detalle de movimientos - CONVERTIR TODO
         movimientos_data = []
         for mov in movimientos:
             movimientos_data.append({
-                'fecha': mov.fecha_movimiento,
+                'fecha': mov.fecha_movimiento.isoformat() if mov.fecha_movimiento else None,
                 'caja_chica': mov.caja_chica.nombre,
                 'tipo': mov.get_tipo_movimiento_display(),
                 'categoria': mov.get_categoria_gasto_display() if mov.categoria_gasto else None,
-                'monto': mov.monto,
-                'saldo_anterior': mov.saldo_anterior,
-                'saldo_nuevo': mov.saldo_nuevo,
+                'monto': float(mov.monto),
+                'saldo_anterior': float(mov.saldo_anterior),
+                'saldo_nuevo': float(mov.saldo_nuevo),
                 'descripcion': mov.descripcion,
                 'comprobante': mov.numero_comprobante,
                 'usuario': mov.usuario.get_full_name()
@@ -202,18 +204,24 @@ class FinancialReportGenerator:
         
         return {
             'periodo': {
-                'desde': self.fecha_desde,
-                'hasta': self.fecha_hasta
+                'desde': self.fecha_desde.isoformat() if hasattr(self.fecha_desde, 'isoformat') else str(self.fecha_desde),
+                'hasta': self.fecha_hasta.isoformat() if hasattr(self.fecha_hasta, 'isoformat') else str(self.fecha_hasta)
             },
             'totales': {
-                'gastos': totales['gastos'],
-                'reposiciones': totales['reposiciones']
+                'gastos': float(totales['gastos']),
+                'reposiciones': float(totales['reposiciones'])
             },
-            'gastos_por_categoria': list(gastos_categoria),
+            'gastos_por_categoria': [
+                {
+                    'categoria_gasto': item['categoria_gasto'],
+                    'total': float(item['total']),
+                    'cantidad': item['cantidad']
+                }
+                for item in gastos_categoria
+            ],
             'movimientos': movimientos_data,
             'total_movimientos': len(movimientos_data)
         }
-    
     def reporte_rentabilidad_periodo(self):
         """
         Análisis de rentabilidad del período
@@ -310,6 +318,9 @@ class FinancialReportGenerator:
         """
         Análisis de flujo de efectivo del período
         """
+        if not self.fecha_desde:
+            self.fecha_desde = self.fecha_hasta - timedelta(days=30)
+        
         # Entradas (ventas en efectivo)
         from apps.sales_management.models import Pago
         
@@ -354,25 +365,25 @@ class FinancialReportGenerator:
             ).aggregate(total=Coalesce(Sum('monto'), Decimal('0')))['total']
             
             flujo_diario.append({
-                'fecha': fecha_actual,
-                'entradas': entradas_dia,
-                'salidas': salidas_dia,
-                'neto': entradas_dia - salidas_dia
+                'fecha': fecha_actual.isoformat() if hasattr(fecha_actual, 'isoformat') else str(fecha_actual),
+                'entradas': float(entradas_dia),
+                'salidas': float(salidas_dia),
+                'neto': float(entradas_dia - salidas_dia)
             })
             
             fecha_actual += timedelta(days=1)
         
         return {
             'periodo': {
-                'desde': self.fecha_desde,
-                'hasta': self.fecha_hasta
+                'desde': self.fecha_desde.isoformat() if hasattr(self.fecha_desde, 'isoformat') else str(self.fecha_desde),
+                'hasta': self.fecha_hasta.isoformat() if hasattr(self.fecha_hasta, 'isoformat') else str(self.fecha_hasta)
             },
             'resumen': {
-                'entradas_efectivo': entradas_efectivo,
-                'entradas_tarjeta': entradas_tarjeta,
-                'total_entradas': entradas_efectivo + entradas_tarjeta,
-                'salidas': salidas,
-                'flujo_neto': flujo_neto
+                'entradas_efectivo': float(entradas_efectivo),
+                'entradas_tarjeta': float(entradas_tarjeta),
+                'total_entradas': float(entradas_efectivo + entradas_tarjeta),
+                'salidas': float(salidas),
+                'flujo_neto': float(flujo_neto)
             },
             'flujo_diario': flujo_diario
         }

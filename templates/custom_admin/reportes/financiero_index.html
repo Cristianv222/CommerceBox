@@ -1,4 +1,1198 @@
 {% extends 'custom_admin/base_admin.html' %}
 {% load static %}
 
-{% block title %}Dashboard de ventas - CommerceBox{% endblock %}
+{% block title %}Dashboard de Inventario - CommerceBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ============================================ */
+    /* ESTILOS BASE - CONSISTENTES CON OTROS DASHBOARDS */
+    /* ============================================ */
+    
+    .ventas-dashboard {
+        padding: 2rem;
+        background: #f8fafc;
+        min-height: 100vh;
+    }
+    
+    .dashboard-header {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-left: 4px solid #3b82f6;
+    }
+    
+    .dashboard-title {
+        font-size: 1.875rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0 0 0.5rem 0;
+    }
+    
+    .dashboard-subtitle {
+        color: #64748b;
+        font-size: 0.95rem;
+    }
+    
+    /* ============================================ */
+    /* FILTROS */
+    /* ============================================ */
+    
+    .filters-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        align-items: end;
+    }
+    
+    .form-group {
+        margin-bottom: 0;
+    }
+    
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.625rem 0.875rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.9375rem;
+        transition: all 0.2s;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .btn-primary {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 0.625rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.9375rem;
+    }
+    
+    .btn-primary:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    
+    /* ============================================ */
+    /* TARJETAS DE MÉTRICAS */
+    /* ============================================ */
+    
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .metric-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: all 0.2s;
+        border-left: 4px solid #e2e8f0;
+    }
+    
+    .metric-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    
+    .metric-card.primary { border-left-color: #3b82f6; }
+    .metric-card.success { border-left-color: #10b981; }
+    .metric-card.warning { border-left-color: #f59e0b; }
+    .metric-card.danger { border-left-color: #ef4444; }
+    .metric-card.purple { border-left-color: #8b5cf6; }
+    .metric-card.cyan { border-left-color: #06b6d4; }
+    
+    .metric-label {
+        font-size: 0.875rem;
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0.5rem 0;
+        line-height: 1;
+    }
+    
+    .metric-subtitle {
+        font-size: 0.875rem;
+        color: #94a3b8;
+        margin-top: 0.5rem;
+    }
+    
+    .metric-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-top: 0.5rem;
+    }
+    
+    .badge-success {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+    
+    .badge-warning {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    
+    .badge-danger {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    
+    .badge-info {
+        background: #dbeafe;
+        color: #2563eb;
+    }
+    
+    /* ============================================ */
+    /* TARJETAS DE GRÁFICOS */
+    /* ============================================ */
+    
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .chart-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .chart-card.full-width {
+        grid-column: 1 / -1;
+    }
+    
+    .chart-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #f1f5f9;
+    }
+    
+    .chart-title {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0 0 0.25rem 0;
+    }
+    
+    .chart-subtitle {
+        font-size: 0.875rem;
+        color: #64748b;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 350px;
+    }
+    
+    /* ============================================ */
+    /* TABLAS */
+    /* ============================================ */
+    
+    .table-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .table-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #f1f5f9;
+    }
+    
+    .table-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+    }
+    
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .data-table thead th {
+        background: #f8fafc;
+        padding: 0.875rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #475569;
+        border-bottom: 2px solid #e2e8f0;
+        white-space: nowrap;
+    }
+    
+    .data-table tbody td {
+        padding: 0.875rem;
+        border-bottom: 1px solid #f1f5f9;
+        color: #64748b;
+        font-size: 0.875rem;
+    }
+    
+    .data-table tbody tr:hover {
+        background: #f8fafc;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    
+    .status-pendiente {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    
+    .status-vencido {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    
+    .status-pagado {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+    
+    .status-cuadrado {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+    
+    .status-sobrante {
+        background: #dbeafe;
+        color: #2563eb;
+    }
+    
+    .status-faltante {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    
+    /* ============================================ */
+    /* LOADING */
+    /* ============================================ */
+    
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+    
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 3px solid #e2e8f0;
+        border-top: 3px solid #3b82f6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* ============================================ */
+    /* RESPONSIVE */
+    /* ============================================ */
+    
+    @media (max-width: 768px) {
+        .ventas-dashboard {
+            padding: 1rem;
+        }
+        
+        .dashboard-title {
+            font-size: 1.5rem;
+        }
+        
+        .metrics-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .filters-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ventas-dashboard">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Header -->
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">Dashboard Financiero</h1>
+        <p class="dashboard-subtitle">Análisis completo de movimientos, rentabilidad y flujo de efectivo</p>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters-card">
+        <div class="filters-grid">
+            <div class="form-group">
+                <label>Fecha Desde</label>
+                <input type="date" id="fechaDesde" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Fecha Hasta</label>
+                <input type="date" id="fechaHasta" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Caja (Opcional)</label>
+                <select id="cajaFiltro" class="form-control">
+                    <option value="">Todas las cajas</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <button class="btn-primary" onclick="aplicarFiltros()">Aplicar Filtros</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Métricas Principales -->
+    <div class="metrics-grid">
+        <!-- Efectivo en Caja -->
+        <div class="metric-card success">
+            <div class="metric-label">Efectivo en Caja</div>
+            <div class="metric-value" id="kpiEfectivo">$0.00</div>
+            <div class="metric-subtitle" id="kpiEfectivoSub">Cargando...</div>
+        </div>
+
+        <!-- Total Ingresos -->
+        <div class="metric-card primary">
+            <div class="metric-label">Total Ingresos</div>
+            <div class="metric-value" id="kpiIngresos">$0.00</div>
+            <div class="metric-subtitle" id="kpiIngresosSub">Período seleccionado</div>
+        </div>
+
+        <!-- Total Egresos -->
+        <div class="metric-card danger">
+            <div class="metric-label">Total Egresos</div>
+            <div class="metric-value" id="kpiEgresos">$0.00</div>
+            <div class="metric-subtitle" id="kpiEgresosSub">Período seleccionado</div>
+        </div>
+
+        <!-- Créditos Pendientes -->
+        <div class="metric-card warning">
+            <div class="metric-label">Créditos Pendientes</div>
+            <div class="metric-value" id="kpiCreditos">$0.00</div>
+            <div class="metric-subtitle" id="kpiCreditosSub">0 cuentas</div>
+        </div>
+
+        <!-- Rentabilidad -->
+        <div class="metric-card purple">
+            <div class="metric-label">Rentabilidad</div>
+            <div class="metric-value" id="kpiRentabilidad">0%</div>
+            <div class="metric-subtitle" id="kpiRentabilidadSub">Margen neto</div>
+        </div>
+
+        <!-- Arqueos -->
+        <div class="metric-card cyan">
+            <div class="metric-label">Arqueos Cuadrados</div>
+            <div class="metric-value" id="kpiArqueos">0%</div>
+            <div class="metric-subtitle" id="kpiArqueosSub">Del período</div>
+        </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="charts-grid">
+        <!-- Flujo de Efectivo -->
+        <div class="chart-card full-width">
+            <div class="chart-header">
+                <h3 class="chart-title">Flujo de Efectivo Diario</h3>
+                <p class="chart-subtitle">Entradas y salidas por día</p>
+            </div>
+            <div class="chart-container">
+                <canvas id="chartFlujoEfectivo"></canvas>
+            </div>
+        </div>
+
+        <!-- Movimientos por Tipo -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <h3 class="chart-title">Movimientos por Tipo</h3>
+                <p class="chart-subtitle">Distribución de movimientos</p>
+            </div>
+            <div class="chart-container">
+                <canvas id="chartMovimientosTipo"></canvas>
+            </div>
+        </div>
+
+        <!-- Rentabilidad -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <h3 class="chart-title">Análisis de Rentabilidad</h3>
+                <p class="chart-subtitle">Ventas vs Costos</p>
+            </div>
+            <div class="chart-container">
+                <canvas id="chartRentabilidad"></canvas>
+            </div>
+        </div>
+
+        <!-- Gastos Caja Chica -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <h3 class="chart-title">Gastos de Caja Chica</h3>
+                <p class="chart-subtitle">Por categoría</p>
+            </div>
+            <div class="chart-container">
+                <canvas id="chartCajaChica"></canvas>
+            </div>
+        </div>
+
+        <!-- Estado Financiero -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <h3 class="chart-title">Estado Financiero</h3>
+                <p class="chart-subtitle">Activos vs Pasivos</p>
+            </div>
+            <div class="chart-container">
+                <canvas id="chartEstadoFinanciero"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tablas -->
+    <div class="tables-section">
+        <!-- Créditos Vencidos -->
+        <div class="table-card">
+            <div class="table-header">
+                <h3 class="table-title">Créditos Vencidos</h3>
+                <span class="metric-badge badge-danger" id="badgeCreditosVencidos">0 créditos</span>
+            </div>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>N° Venta</th>
+                            <th>Fecha Venta</th>
+                            <th>Vencimiento</th>
+                            <th>Días Vencido</th>
+                            <th>Saldo</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaCreditosVencidos">
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                Cargando datos...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Próximos Vencimientos -->
+        <div class="table-card">
+            <div class="table-header">
+                <h3 class="table-title">Próximos Vencimientos (7 días)</h3>
+                <span class="metric-badge badge-warning" id="badgeProximosVencimientos">0 créditos</span>
+            </div>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>N° Venta</th>
+                            <th>Fecha Venta</th>
+                            <th>Vencimiento</th>
+                            <th>Días Restantes</th>
+                            <th>Saldo</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaProximosVencimientos">
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                Cargando datos...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Últimos Arqueos -->
+        <div class="table-card">
+            <div class="table-header">
+                <h3 class="table-title">Últimos Arqueos de Caja</h3>
+                <span class="metric-badge badge-info" id="badgeArqueos">Últimos 10</span>
+            </div>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>N° Arqueo</th>
+                            <th>Caja</th>
+                            <th>Fecha Cierre</th>
+                            <th>Esperado</th>
+                            <th>Contado</th>
+                            <th>Diferencia</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaArqueos">
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                Cargando datos...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// ============================================================================
+// VARIABLES GLOBALES
+// ============================================================================
+
+let chartFlujoEfectivo, chartMovimientosTipo, chartRentabilidad;
+let chartCajaChica, chartEstadoFinanciero;
+
+// ============================================================================
+// INICIALIZACIÓN
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Inicializando Dashboard Financiero...');
+    
+    // Configurar fechas por defecto (últimos 30 días)
+    const hoy = new Date();
+    const hace30dias = new Date();
+    hace30dias.setDate(hoy.getDate() - 30);
+    
+    document.getElementById('fechaHasta').valueAsDate = hoy;
+    document.getElementById('fechaDesde').valueAsDate = hace30dias;
+    
+    // Cargar datos iniciales
+    cargarDashboard();
+    
+    // Auto-actualizar cada 5 minutos
+    setInterval(cargarDashboard, 300000);
+});
+
+// ============================================================================
+// CARGA DE DATOS
+// ============================================================================
+
+async function cargarDashboard() {
+    mostrarLoading(true);
+    
+    try {
+        const fechaDesde = document.getElementById('fechaDesde').value;
+        const fechaHasta = document.getElementById('fechaHasta').value;
+        const cajaId = document.getElementById('cajaFiltro').value;
+        
+        const params = new URLSearchParams({
+            fecha_desde: fechaDesde,
+            fecha_hasta: fechaHasta
+        });
+        
+        if (cajaId) {
+            params.append('caja_id', cajaId);
+        }
+        
+        // Cargar todos los datos en paralelo
+        // DESPUÉS (CORRECTO):
+        const [
+            movimientos,
+            arqueos,
+            cajaChica,
+            rentabilidad,
+            flujoEfectivo,
+            creditos,
+            estadoFinanciero
+        ] = await Promise.all([
+            fetch(`/panel/reportes-analitica/api/financiero/movimientos-caja/?${params}`).then(r => r.json()),
+            fetch(`/panel/reportes-analitica/api/financiero/arqueos/?${params}`).then(r => r.json()),
+            fetch(`/panel/reportes-analitica/api/financiero/caja-chica/?${params}`).then(r => r.json()),
+            fetch(`/panel/reportes-analitica/api/financiero/rentabilidad/?${params}`).then(r => r.json()),
+            fetch(`/panel/reportes-analitica/api/financiero/flujo-efectivo/?${params}`).then(r => r.json()),
+            fetch(`/panel/reportes-analitica/api/financiero/creditos-pendientes/`).then(r => r.json()),
+            fetch(`/panel/reportes-analitica/api/financiero/estado-financiero/`).then(r => r.json())
+        ]);
+        
+        // Actualizar KPIs
+        actualizarKPIs(movimientos, creditos, rentabilidad, arqueos, estadoFinanciero);
+        
+        // Actualizar gráficos
+        actualizarGraficos(flujoEfectivo, movimientos, rentabilidad, cajaChica, estadoFinanciero);
+        
+        // Actualizar tablas
+        actualizarTablas(creditos, arqueos);
+        
+        console.log('Dashboard cargado exitosamente');
+        
+    } catch (error) {
+        console.error('Error cargando dashboard:', error);
+        alert('Error al cargar los datos. Por favor, recarga la página.');
+    } finally {
+        mostrarLoading(false);
+    }
+}
+
+// ============================================================================
+// ACTUALIZACIÓN DE KPIs
+// ============================================================================
+
+function actualizarKPIs(movimientos, creditos, rentabilidad, arqueos, estadoFinanciero) {
+    // Efectivo en Caja
+    const efectivo = estadoFinanciero.activos?.efectivo_caja || 0;
+    document.getElementById('kpiEfectivo').textContent = `$${efectivo.toFixed(2)}`;
+    document.getElementById('kpiEfectivoSub').textContent = 'Disponible ahora';
+    
+    // Ingresos
+    const ingresos = movimientos.totales?.ingresos || 0;
+    document.getElementById('kpiIngresos').textContent = `$${ingresos.toFixed(2)}`;
+    document.getElementById('kpiIngresosSub').innerHTML = 
+        `<span class="metric-badge badge-success">+${movimientos.total_movimientos || 0} movimientos</span>`;
+    
+    // Egresos
+    const egresos = movimientos.totales?.egresos || 0;
+    document.getElementById('kpiEgresos').textContent = `$${egresos.toFixed(2)}`;
+    document.getElementById('kpiEgresosSub').innerHTML = 
+        `<span class="metric-badge badge-danger">Gastos del período</span>`;
+    
+    // Créditos Pendientes
+    const totalCreditos = creditos.resumen?.total_cartera || 0;
+    const cantidadCreditos = 
+        (creditos.resumen?.vencidos?.cantidad || 0) +
+        (creditos.resumen?.por_vencer?.cantidad || 0) +
+        (creditos.resumen?.vigentes?.cantidad || 0);
+    
+    document.getElementById('kpiCreditos').textContent = `$${totalCreditos.toFixed(2)}`;
+    document.getElementById('kpiCreditosSub').textContent = `${cantidadCreditos} cuentas`;
+    
+    // Rentabilidad
+    const margenNeto = rentabilidad.utilidad?.margen_neto_porcentaje || 0;
+    document.getElementById('kpiRentabilidad').textContent = `${margenNeto.toFixed(1)}%`;
+    
+    let badgeRentabilidad = 'badge-success';
+    if (margenNeto < 10) badgeRentabilidad = 'badge-danger';
+    else if (margenNeto < 20) badgeRentabilidad = 'badge-warning';
+    
+    document.getElementById('kpiRentabilidadSub').innerHTML = 
+        `<span class="metric-badge ${badgeRentabilidad}">Margen neto</span>`;
+    
+    // Arqueos
+    const totalArqueos = arqueos.total_arqueos || 0;
+    const cuadrados = arqueos.estadisticas?.cuadrados || 0;
+    const porcentajeCuadrados = totalArqueos > 0 ? (cuadrados / totalArqueos * 100) : 0;
+    
+    document.getElementById('kpiArqueos').textContent = `${porcentajeCuadrados.toFixed(0)}%`;
+    
+    let badgeArqueos = 'badge-success';
+    if (porcentajeCuadrados < 80) badgeArqueos = 'badge-danger';
+    else if (porcentajeCuadrados < 95) badgeArqueos = 'badge-warning';
+    
+    document.getElementById('kpiArqueosSub').innerHTML = 
+        `<span class="metric-badge ${badgeArqueos}">${cuadrados}/${totalArqueos} cuadrados</span>`;
+}
+
+// ============================================================================
+// ACTUALIZACIÓN DE GRÁFICOS
+// ============================================================================
+
+function actualizarGraficos(flujoEfectivo, movimientos, rentabilidad, cajaChica, estadoFinanciero) {
+    actualizarGraficoFlujo(flujoEfectivo);
+    actualizarGraficoMovimientosTipo(movimientos);
+    actualizarGraficoRentabilidad(rentabilidad);
+    actualizarGraficoCajaChica(cajaChica);
+    actualizarGraficoEstadoFinanciero(estadoFinanciero);
+}
+
+function actualizarGraficoFlujo(data) {
+    const ctx = document.getElementById('chartFlujoEfectivo');
+    
+    if (chartFlujoEfectivo) {
+        chartFlujoEfectivo.destroy();
+    }
+    
+    const labels = data.flujo_diario?.map(d => {
+        const fecha = new Date(d.fecha);
+        return fecha.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+    }) || [];
+    
+    const entradas = data.flujo_diario?.map(d => d.entradas) || [];
+    const salidas = data.flujo_diario?.map(d => d.salidas) || [];
+    const neto = data.flujo_diario?.map(d => d.neto) || [];
+    
+    chartFlujoEfectivo = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Entradas',
+                    data: entradas,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Salidas',
+                    data: salidas,
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Flujo Neto',
+                    data: neto,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': $' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toFixed(0);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function actualizarGraficoMovimientosTipo(data) {
+    const ctx = document.getElementById('chartMovimientosTipo');
+    
+    if (chartMovimientosTipo) {
+        chartMovimientosTipo.destroy();
+    }
+    
+    const porTipo = data.por_tipo || [];
+    const labels = porTipo.map(t => t.tipo_movimiento);
+    const valores = porTipo.map(t => t.total);
+    
+    const colores = [
+        '#10b981', '#3b82f6', '#ef4444', '#f59e0b',
+        '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'
+    ];
+    
+    chartMovimientosTipo = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: valores,
+                backgroundColor: colores,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': $' + context.parsed.toFixed(2);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function actualizarGraficoRentabilidad(data) {
+    const ctx = document.getElementById('chartRentabilidad');
+    
+    if (chartRentabilidad) {
+        chartRentabilidad.destroy();
+    }
+    
+    const ventas = data.ventas?.total || 0;
+    const costos = data.costos?.total || 0;
+    const utilidadNeta = data.utilidad?.neta || 0;
+    
+    chartRentabilidad = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Ventas', 'Costos', 'Utilidad Neta'],
+            datasets: [{
+                label: 'Monto ($)',
+                data: [ventas, costos, utilidadNeta],
+                backgroundColor: [
+                    'rgba(16, 185, 129, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(59, 130, 246, 0.8)'
+                ],
+                borderColor: [
+                    '#10b981',
+                    '#ef4444',
+                    '#3b82f6'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return '$' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toFixed(0);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function actualizarGraficoCajaChica(data) {
+    const ctx = document.getElementById('chartCajaChica');
+    
+    if (chartCajaChica) {
+        chartCajaChica.destroy();
+    }
+    
+    const gastosPorCategoria = data.gastos_por_categoria || [];
+    const labels = gastosPorCategoria.map(g => g.categoria_gasto);
+    const valores = gastosPorCategoria.map(g => g.total);
+    
+    const colores = [
+        '#ef4444', '#f59e0b', '#10b981', '#3b82f6',
+        '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6'
+    ];
+    
+    chartCajaChica = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: valores,
+                backgroundColor: colores,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': $' + context.parsed.toFixed(2);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function actualizarGraficoEstadoFinanciero(data) {
+    const ctx = document.getElementById('chartEstadoFinanciero');
+    
+    if (chartEstadoFinanciero) {
+        chartEstadoFinanciero.destroy();
+    }
+    
+    const inventario = data.activos?.inventario || 0;
+    const efectivo = data.activos?.efectivo_caja || 0;
+    const cuentasCobrar = data.activos?.cuentas_por_cobrar || 0;
+    const pasivos = data.pasivos?.total || 0;
+    const patrimonio = data.patrimonio || 0;
+    
+    chartEstadoFinanciero = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Inventario', 'Efectivo', 'Ctas x Cobrar', 'Pasivos', 'Patrimonio'],
+            datasets: [{
+                label: 'Monto ($)',
+                data: [inventario, efectivo, cuentasCobrar, pasivos, patrimonio],
+                backgroundColor: [
+                    'rgba(139, 92, 246, 0.8)',
+                    'rgba(16, 185, 129, 0.8)',
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(245, 158, 11, 0.8)'
+                ],
+                borderColor: [
+                    '#8b5cf6',
+                    '#10b981',
+                    '#3b82f6',
+                    '#ef4444',
+                    '#f59e0b'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return '$' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toFixed(0);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ============================================================================
+// ACTUALIZACIÓN DE TABLAS
+// ============================================================================
+
+function actualizarTablas(creditos, arqueos) {
+    // 1. Créditos Vencidos
+    const creditosVencidos = creditos.detalle?.vencidos || [];
+    const tablaCreditosVencidos = document.getElementById('tablaCreditosVencidos');
+    const badgeCreditosVencidos = document.getElementById('badgeCreditosVencidos');
+    
+    badgeCreditosVencidos.textContent = `${creditosVencidos.length} créditos`;
+    
+    if (creditosVencidos.length === 0) {
+        tablaCreditosVencidos.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 2rem; color: #10b981;">
+                    No hay créditos vencidos
+                </td>
+            </tr>
+        `;
+    } else {
+        tablaCreditosVencidos.innerHTML = creditosVencidos.map(c => `
+            <tr>
+                <td><strong>${c.cliente}</strong></td>
+                <td>${c.numero_venta}</td>
+                <td>${new Date(c.fecha_venta).toLocaleDateString('es-ES')}</td>
+                <td>${new Date(c.fecha_vencimiento).toLocaleDateString('es-ES')}</td>
+                <td><span class="status-badge status-vencido">${c.dias_vencido} días</span></td>
+                <td><strong>$${c.saldo.toFixed(2)}</strong></td>
+                <td><span class="status-badge status-vencido">Vencido</span></td>
+            </tr>
+        `).join('');
+    }
+    
+    // 2. Próximos Vencimientos
+    const proximosVencer = creditos.detalle?.por_vencer || [];
+    const tablaProximosVencimientos = document.getElementById('tablaProximosVencimientos');
+    const badgeProximosVencimientos = document.getElementById('badgeProximosVencimientos');
+    
+    badgeProximosVencimientos.textContent = `${proximosVencer.length} créditos`;
+    
+    if (proximosVencer.length === 0) {
+        tablaProximosVencimientos.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 2rem; color: #64748b;">
+                    No hay créditos próximos a vencer
+                </td>
+            </tr>
+        `;
+    } else {
+        tablaProximosVencimientos.innerHTML = proximosVencer.map(c => `
+            <tr>
+                <td><strong>${c.cliente}</strong></td>
+                <td>${c.numero_venta}</td>
+                <td>${new Date(c.fecha_venta).toLocaleDateString('es-ES')}</td>
+                <td>${new Date(c.fecha_vencimiento).toLocaleDateString('es-ES')}</td>
+                <td><span class="status-badge status-pendiente">${c.dias_restantes} días</span></td>
+                <td><strong>$${c.saldo.toFixed(2)}</strong></td>
+                <td><span class="status-badge status-pendiente">Por vencer</span></td>
+            </tr>
+        `).join('');
+    }
+    
+    // 3. Últimos Arqueos
+    const ultimosArqueos = (arqueos.arqueos || []).slice(0, 10);
+    const tablaArqueos = document.getElementById('tablaArqueos');
+    
+    if (ultimosArqueos.length === 0) {
+        tablaArqueos.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 2rem; color: #64748b;">
+                    No hay arqueos registrados
+                </td>
+            </tr>
+        `;
+    } else {
+        tablaArqueos.innerHTML = ultimosArqueos.map(a => {
+            const estadoClass = a.estado === 'Cuadrado - Sin diferencias' ? 'status-cuadrado' :
+                              a.estado.includes('Sobrante') ? 'status-sobrante' : 'status-faltante';
+            
+            const estadoTexto = a.estado === 'Cuadrado - Sin diferencias' ? 'Cuadrado' :
+                              a.estado.includes('Sobrante') ? 'Sobrante' : 'Faltante';
+            
+            return `
+                <tr>
+                    <td><strong>${a.numero}</strong></td>
+                    <td>${a.caja}</td>
+                    <td>${new Date(a.fecha_cierre).toLocaleDateString('es-ES')}</td>
+                    <td>$${a.monto_esperado.toFixed(2)}</td>
+                    <td>$${a.monto_contado.toFixed(2)}</td>
+                    <td><strong>${a.diferencia >= 0 ? '+' : ''}$${a.diferencia.toFixed(2)}</strong></td>
+                    <td><span class="status-badge ${estadoClass}">${estadoTexto}</span></td>
+                </tr>
+            `;
+        }).join('');
+    }
+}
+
+// ============================================================================
+// UTILIDADES
+// ============================================================================
+
+function aplicarFiltros() {
+    cargarDashboard();
+}
+
+function mostrarLoading(mostrar) {
+    document.getElementById('loadingOverlay').style.display = mostrar ? 'flex' : 'none';
+}
+
+document.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        aplicarFiltros();
+    }
+});
+
+console.log('Dashboard Financiero inicializado correctamente');
+</script>
+{% endblock %}

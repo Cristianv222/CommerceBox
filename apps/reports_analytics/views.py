@@ -1666,3 +1666,241 @@ class InventarioProveedoresAPIView(ReportesAccessMixin, View):
 class DashboardInventarioCompletView(ReportesAccessMixin, TemplateView):
     """Vista del dashboard completo de inventario"""
     template_name = 'reports/inventario/dashboard_inventario.html'
+# ============================================================================
+# 🆕 API ENDPOINTS - DASHBOARD FINANCIERO COMPLETO
+# ============================================================================
+
+class MovimientosCajaAPIView(ReportesAccessMixin, View):
+    """API: Movimientos de caja"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            caja_id = request.GET.get('caja_id')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = FinancialReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_movimientos_caja(caja_id=caja_id)
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+
+
+class ArqueosCajaAPIView(ReportesAccessMixin, View):
+    """API: Arqueos de caja"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = FinancialReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_arqueos_caja()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+
+
+class CajaChicaAPIView(ReportesAccessMixin, View):
+    """API: Caja chica"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = FinancialReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_caja_chica()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+
+
+class RentabilidadAPIView(ReportesAccessMixin, View):
+    """API: Rentabilidad"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = FinancialReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_rentabilidad_periodo()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        return obj
+
+
+class FlujoEfectivoAPIView(ReportesAccessMixin, View):
+    """API: Flujo de efectivo"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = FinancialReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_flujo_efectivo()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+
+
+class CreditosPendientesAPIView(ReportesAccessMixin, View):
+    """API: Créditos pendientes"""
+    def get(self, request):
+        try:
+            generator = FinancialReportGenerator()
+            data = generator.reporte_creditos_pendientes()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+
+
+class EstadoFinancieroAPIView(ReportesAccessMixin, View):
+    """API: Estado financiero"""
+    def get(self, request):
+        try:
+            generator = FinancialReportGenerator()
+            data = generator.reporte_estado_financiero()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+
+
+class DashboardFinancieroCompletView(ReportesAccessMixin, TemplateView):
+    """Vista del dashboard completo financiero"""
+    template_name = 'reports/financiero/dashboard_financiero.html'

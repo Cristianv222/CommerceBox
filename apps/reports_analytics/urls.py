@@ -79,14 +79,14 @@ urlpatterns = [
     path('configuracion/guardar/', views.GuardarConfiguracionView.as_view(), name='guardar_configuracion'),
     
     # ============================================================================
-    # 🔥 API ENDPOINTS - DASHBOARD PRINCIPAL (nombres correctos)
+    # API ENDPOINTS - DASHBOARD PRINCIPAL
     # ============================================================================
     path('api/dashboard/', views.DashboardAPIView.as_view(), name='dashboard_api'),
     path('api/ventas/grafico/', views.VentasGraficoAPIView.as_view(), name='ventas_grafico_api'),
     path('api/inventario/estado/', views.InventarioEstadoAPIView.as_view(), name='inventario_estado_api'),
     
     # ============================================================================
-    # 🆕 API ENDPOINTS - DASHBOARD DE VENTAS COMPLETO
+    # API ENDPOINTS - DASHBOARD DE VENTAS COMPLETO
     # ============================================================================
     path('api/ventas/periodo/', views.VentasPeriodoAPIView.as_view(), name='api_ventas_periodo'),
     path('api/ventas/diarias/', views.VentasDiariasAPIView.as_view(), name='api_ventas_diarias'),
@@ -98,8 +98,9 @@ urlpatterns = [
     path('api/ventas/devoluciones/', views.DevolucionesAPIView.as_view(), name='api_devoluciones'),
     path('api/ventas/comparativo/', views.ComparativoAPIView.as_view(), name='api_comparativo'),
     path('api/ventas/margenes/', views.MargenesAPIView.as_view(), name='api_margenes'),
+    
     # ============================================================================
-    # 🆕 API ENDPOINTS - DASHBOARD DE INVENTARIO COMPLETO
+    # API ENDPOINTS - DASHBOARD DE INVENTARIO COMPLETO
     # ============================================================================
     path('api/inventario/valorizado/', views.InventarioValorizadoAPIView.as_view(), name='api_inventario_valorizado'),
     path('api/inventario/categorias/', views.InventarioCategoriasAPIView.as_view(), name='api_inventario_categorias'),
@@ -107,9 +108,22 @@ urlpatterns = [
     path('api/inventario/movimientos/', views.MovimientosInventarioAPIView.as_view(), name='api_movimientos_inventario'),
     path('api/inventario/rotacion/', views.RotacionInventarioAPIView.as_view(), name='api_rotacion_inventario'),
     path('api/inventario/proveedores/', views.InventarioProveedoresAPIView.as_view(), name='api_inventario_proveedores'),
+    
+    # ============================================================================
+    # API ENDPOINTS - DASHBOARD FINANCIERO COMPLETO
+    # ============================================================================
+    path('api/financiero/movimientos-caja/', views.MovimientosCajaAPIView.as_view(), name='api_movimientos_caja'),
+    path('api/financiero/arqueos/', views.ArqueosCajaAPIView.as_view(), name='api_arqueos'),
+    path('api/financiero/caja-chica/', views.CajaChicaAPIView.as_view(), name='api_caja_chica'),
+    path('api/financiero/rentabilidad/', views.RentabilidadAPIView.as_view(), name='api_rentabilidad'),
+    path('api/financiero/flujo-efectivo/', views.FlujoEfectivoAPIView.as_view(), name='api_flujo_efectivo'),
+    path('api/financiero/creditos-pendientes/', views.CreditosPendientesAPIView.as_view(), name='api_creditos_pendientes'),
+    path('api/financiero/estado-financiero/', views.EstadoFinancieroAPIView.as_view(), name='api_estado_financiero'),
 
     # ============================================================================
-    # 🆕 VISTA DEL DASHBOARD DE VENTAS COMPLETO
+    # VISTAS DE DASHBOARDS COMPLETOS
     # ============================================================================
     path('ventas/dashboard-completo/', views.DashboardVentasCompletView.as_view(), name='dashboard_ventas_completo'),
+    path('inventario/dashboard-completo/', views.DashboardInventarioCompletView.as_view(), name='dashboard_inventario_completo'),
+    path('financiero/dashboard-completo/', views.DashboardFinancieroCompletView.as_view(), name='dashboard_financiero_completo'),
 ]
