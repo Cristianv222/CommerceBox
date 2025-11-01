@@ -4,7 +4,7 @@
 
 INFORMACIÓN GENERAL
 -------------------
-Fecha de generación: 2025-10-31 22:14:21
+Fecha de generación: 2025-11-01 13:32:29
 Ubicación: C:\Users\godoy\Desktop\CommerceBox
 Python Version: Python 3.13.7
 Pip Version: pip 25.2 from C:\Users\godoy\AppData\Local\Programs\Python\Python313\Lib\site-packages\pip (python 3.13)
@@ -56,7 +56,7 @@ Usuario: Desconocido
 │   │   ├── tests.py (63.0B)
 │   │   ├── urls.py (17.2KB)
 │   │   ├── urls.py.backup (12.8KB)
-│   │   └── views.py (341.8KB)
+│   │   └── views.py (354.4KB)
 │   ├── financial_management/ (23 elementos)
 │   │   ├── __pycache__/ (excluido)
 │   │   ├── accounting/ (4 elementos)
@@ -154,7 +154,7 @@ Usuario: Desconocido
 │   │   ├── decorators.py (2.3KB)
 │   │   ├── forms.py (26.3KB)
 │   │   ├── mixins.py (3.9KB)
-│   │   ├── models.py (52.8KB)
+│   │   ├── models.py (53.6KB)
 │   │   ├── signals.py (8.2KB)
 │   │   ├── tests.py (63.0B)
 │   │   ├── urls.py (8.3KB)
@@ -183,10 +183,10 @@ Usuario: Desconocido
 │   ├── reports_analytics/ (12 elementos)
 │   │   ├── generators/ (6 elementos)
 │   │   │   ├── __init__.py (507.0B)
-│   │   │   ├── dashboard_data.py (17.5KB)
-│   │   │   ├── financial_reports.py (19.4KB)
-│   │   │   ├── inventory_reports.py (17.8KB)
-│   │   │   ├── sales_reports.py (19.1KB)
+│   │   │   ├── dashboard_data.py (23.9KB)
+│   │   │   ├── financial_reports.py (20.8KB)
+│   │   │   ├── inventory_reports.py (18.8KB)
+│   │   │   ├── sales_reports.py (30.7KB)
 │   │   │   └── traceability_reports.py (21.3KB)
 │   │   ├── migrations/ (2 elementos)
 │   │   │   ├── 0001_initial.py (10.9KB)
@@ -198,8 +198,8 @@ Usuario: Desconocido
 │   │   ├── models.py (8.0KB)
 │   │   ├── signals.py (16.7KB)
 │   │   ├── tests.py (63.0B)
-│   │   ├── urls.py (6.5KB)
-│   │   ├── views.py (36.7KB)
+│   │   ├── urls.py (9.7KB)
+│   │   ├── views.py (67.5KB)
 │   │   └── views.py.backup (49.8KB)
 │   ├── sales_management/ (17 elementos)
 │   │   ├── __pycache__/ (excluido)
@@ -216,7 +216,7 @@ Usuario: Desconocido
 │   │   │   └── __init__.py (0B)
 │   │   ├── pos/ (4 elementos)
 │   │   │   ├── __init__.py (0B)
-│   │   │   ├── pos_service.py (24.2KB)
+│   │   │   ├── pos_service.py (26.2KB)
 │   │   │   ├── pos_service.py.backup_duplicados (24.1KB)
 │   │   │   └── pricing_calculator.py (8.4KB)
 │   │   ├── __init__.py (110.0B)
@@ -227,7 +227,7 @@ Usuario: Desconocido
 │   │   ├── models.py.backup3 (22.5KB)
 │   │   ├── models.py.backup_final (22.5KB)
 │   │   ├── quintal_service.py (2.1KB)
-│   │   ├── signals.py (3.3KB)
+│   │   ├── signals.py (5.4KB)
 │   │   ├── tasks.py (2.1KB)
 │   │   ├── tests.py (63.0B)
 │   │   ├── urls.py (3.8KB)
@@ -291,7 +291,7 @@ Usuario: Desconocido
 │   ├── urls.py.backup (2.3KB)
 │   └── wsgi.py (415.0B)
 ├── logs/ (2 elementos)
-│   ├── commercebox.log (8.5MB)
+│   ├── commercebox.log (8.9MB)
 │   └── commercebox_audit.log (0B)
 ├── media/ (7 elementos)
 │   ├── barcodes/ (2 elementos)
@@ -362,12 +362,12 @@ Usuario: Desconocido
 │   │   ├── notificaciones/ (1 elementos)
 │   │   │   └── list.html (53.7KB)
 │   │   ├── pos/ (1 elementos)
-│   │   │   └── punto_venta.html (79.5KB)
+│   │   │   └── punto_venta.html (84.4KB)
 │   │   ├── reportes/ (4 elementos)
-│   │   │   ├── dashboard.html (42.2KB)
-│   │   │   ├── financiero_index.html (131.0B)
-│   │   │   ├── inventario_index.html (131.0B)
-│   │   │   └── ventas_index.html (131.0B)
+│   │   │   ├── dashboard.html (59.1KB)
+│   │   │   ├── financiero_index.html (38.8KB)
+│   │   │   ├── inventario_index.html (44.1KB)
+│   │   │   └── ventas_index.html (50.5KB)
 │   │   ├── roles/ (1 elementos)
 │   │   │   └── list.html (54.0KB)
 │   │   ├── sesiones/ (1 elementos)
@@ -646,6 +646,6 @@ Archivos Python:         206
 Paquetes instalados:     0
 
 ================================================================================
-Reporte generado automáticamente el 2025-10-31 22:14:21
+Reporte generado automáticamente el 2025-11-01 13:32:29
 Para actualizar, ejecuta: python documenter.py
 ================================================================================
