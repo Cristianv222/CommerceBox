@@ -40,13 +40,9 @@ from .models import ReporteGuardado, ConfiguracionReporte
 class ReportesAccessMixin(LoginRequiredMixin):
     """
     Mixin para verificar acceso a reportes
+    Solo verifica que esté autenticado (sin permisos específicos)
     """
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.tiene_permiso('ver_reportes'):
-            messages.error(request, 'No tienes permiso para ver reportes')
-            return redirect('dashboard:index')
-        return super().dispatch(request, *args, **kwargs)
-
+    pass
 
 # ============================================================================
 # DASHBOARD
