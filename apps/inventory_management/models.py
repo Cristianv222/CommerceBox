@@ -1305,9 +1305,28 @@ class DetalleCompra(models.Model):
         verbose_name_plural = 'Detalles de Compra'
         db_table = 'inv_detalle_compra'
     
+    def save(self, *args, **kwargs):
+        """
+        Calcula automáticamente el subtotal antes de guardar.
+        Maneja tanto productos por peso (quintales) como productos por unidad.
+        """
+        if self.costo_unitario:
+            # Si es producto por peso (quintal)
+            if self.peso_comprado:
+                self.subtotal = self.peso_comprado * self.costo_unitario
+            # Si es producto por unidad
+            elif self.cantidad_unidades:
+                self.subtotal = self.cantidad_unidades * self.costo_unitario
+            else:
+                # Si no hay cantidad, el subtotal es 0
+                self.subtotal = 0
+        else:
+            self.subtotal = 0
+        
+        super().save(*args, **kwargs)
+    
     def __str__(self):
         return f"{self.producto.nombre} - {self.subtotal}"
-
 
 class ConversionUnidad(models.Model):
     """

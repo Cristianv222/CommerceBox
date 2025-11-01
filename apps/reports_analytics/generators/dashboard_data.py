@@ -50,13 +50,14 @@ class DashboardDataGenerator:
             'ventas_por_categoria': self.get_ventas_por_categoria(),
             'tendencias': self.get_tendencias_semanales(),
             'comparativas': self.get_comparativas(),
+            'utilidad_diaria': self.get_utilidad_diaria_semanal(),
+            'balance_compras_ventas': self.get_balance_compras_ventas_semanal(),
         }
     
     def get_resumen_ejecutivo(self):
         """
         Resumen ejecutivo con KPIs principales
         """
-        # Ventas del día
         ventas_dia = Venta.objects.filter(
             fecha_venta__gte=self.inicio_dia,
             estado='COMPLETADA'
@@ -65,7 +66,6 @@ class DashboardDataGenerator:
             cantidad=Count('id')
         )
         
-        # Ventas del mes
         ventas_mes = Venta.objects.filter(
             fecha_venta__gte=self.inicio_mes,
             estado='COMPLETADA'
@@ -74,17 +74,14 @@ class DashboardDataGenerator:
             cantidad=Count('id')
         )
         
-        # Ticket promedio
         ticket_promedio_dia = (
             ventas_dia['total'] / ventas_dia['cantidad'] 
             if ventas_dia['cantidad'] > 0 else Decimal('0')
         )
         
-        # Valor del inventario
         from apps.inventory_management.services.stock_service import StockService
         valor_inventario = StockService.calcular_valor_inventario()
         
-        # Caja actual
         caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
         efectivo_caja = caja_abierta.monto_actual if caja_abierta else Decimal('0')
         
@@ -113,13 +110,11 @@ class DashboardDataGenerator:
         """
         Métricas detalladas de ventas
         """
-        # Ventas del día
         ventas_dia = DetalleVenta.objects.filter(
             venta__fecha_venta__gte=self.inicio_dia,
             venta__estado='COMPLETADA'
         )
         
-        # Calcular utilidad del día
         utilidad_dia = ventas_dia.aggregate(
             ventas=Coalesce(Sum('total'), Decimal('0')),
             costos=Coalesce(Sum('costo_total'), Decimal('0'))
@@ -130,7 +125,6 @@ class DashboardDataGenerator:
             if utilidad_dia['ventas'] > 0 else Decimal('0')
         )
         
-        # Ventas por tipo de producto
         ventas_quintales = ventas_dia.filter(
             producto__tipo_inventario='QUINTAL'
         ).aggregate(total=Coalesce(Sum('total'), Decimal('0')))
@@ -139,7 +133,6 @@ class DashboardDataGenerator:
             producto__tipo_inventario='NORMAL'
         ).aggregate(total=Coalesce(Sum('total'), Decimal('0')))
         
-        # Ventas por forma de pago
         from apps.sales_management.models import Pago
         pagos_dia = Pago.objects.filter(
             venta__fecha_venta__gte=self.inicio_dia,
@@ -149,7 +142,6 @@ class DashboardDataGenerator:
             cantidad=Count('id')
         )
         
-        # Comparativa con ayer
         ayer = self.inicio_dia - timedelta(days=1)
         ventas_ayer = Venta.objects.filter(
             fecha_venta__gte=ayer,
@@ -184,7 +176,6 @@ class DashboardDataGenerator:
         """
         Métricas de inventario
         """
-        # Quintales
         quintales_stats = Quintal.objects.filter(estado='DISPONIBLE').aggregate(
             total=Count('id'),
             peso_total=Coalesce(Sum('peso_actual'), Decimal('0')),
@@ -196,7 +187,6 @@ class DashboardDataGenerator:
             peso_actual__lte=F('peso_inicial') * 0.1
         ).count()
         
-        # Productos Normales
         productos_stats = ProductoNormal.objects.aggregate(
             total=Count('id'),
             con_stock=Count('id', filter=Q(stock_actual__gt=0)),
@@ -212,12 +202,10 @@ class DashboardDataGenerator:
             stock_actual=0
         ).count()
         
-        # Alertas de stock
         alertas_activas = AlertaStock.objects.filter(
             resuelta=False
         ).count()
         
-        # Productos próximos a vencer
         proximos_vencer = Quintal.objects.filter(
             estado='DISPONIBLE',
             fecha_vencimiento__isnull=False,
@@ -250,7 +238,6 @@ class DashboardDataGenerator:
         """
         Métricas financieras
         """
-        # Caja principal
         caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
         
         if caja_abierta:
@@ -281,7 +268,6 @@ class DashboardDataGenerator:
                 'mensaje': 'No hay caja abierta'
             }
         
-        # Caja Chica
         caja_chica = CajaChica.objects.filter(estado='ACTIVA').first()
         if caja_chica:
             necesita_reposicion = caja_chica.necesita_reposicion()
@@ -294,8 +280,6 @@ class DashboardDataGenerator:
         else:
             caja_chica_data = None
         
-        # Créditos pendientes
-        from apps.sales_management.models import Venta
         creditos_pendientes = Venta.objects.filter(
             tipo_venta='CREDITO',
             estado='COMPLETADA'
@@ -318,7 +302,6 @@ class DashboardDataGenerator:
         """
         alertas = []
         
-        # Productos agotados
         agotados = ProductoNormal.objects.filter(
             stock_actual=0,
             producto__activo=True
@@ -332,7 +315,6 @@ class DashboardDataGenerator:
                 'cantidad': agotados
             })
         
-        # Productos críticos
         criticos = ProductoNormal.objects.filter(
             stock_actual__lte=F('stock_minimo'),
             stock_actual__gt=0
@@ -346,7 +328,6 @@ class DashboardDataGenerator:
                 'cantidad': criticos
             })
         
-        # Quintales próximos a vencer
         proximos_vencer = Quintal.objects.filter(
             estado='DISPONIBLE',
             fecha_vencimiento__isnull=False,
@@ -362,7 +343,6 @@ class DashboardDataGenerator:
                 'cantidad': proximos_vencer
             })
         
-        # Caja chica baja
         caja_chica = CajaChica.objects.filter(estado='ACTIVA').first()
         if caja_chica and caja_chica.necesita_reposicion():
             alertas.append({
@@ -377,9 +357,7 @@ class DashboardDataGenerator:
     def get_productos_mas_vendidos(self, limite=10):
         """
         Top productos más vendidos
-        Busca primero del día, si no hay, busca de la semana
         """
-        # Intentar productos del día
         productos_dia = DetalleVenta.objects.filter(
             venta__fecha_venta__gte=self.inicio_dia,
             venta__estado='COMPLETADA'
@@ -392,7 +370,6 @@ class DashboardDataGenerator:
             cantidad_ventas=Count('id')
         ).order_by('-total_vendido')[:limite]
     
-        # Si no hay ventas del día, buscar de la semana
         if not productos_dia.exists():
             hace_7_dias = self.inicio_dia - timedelta(days=7)
             productos_dia = DetalleVenta.objects.filter(
@@ -421,10 +398,9 @@ class DashboardDataGenerator:
         ).annotate(
             total=Sum('total'),
             cantidad=Count('id'),
-            total_costos=Sum('costo_total')  # ✅ Agregamos costos por separado
+            total_costos=Sum('costo_total')
         ).order_by('-total')
         
-        # Calcular utilidad en Python
         resultados = []
         for item in ventas_cat:
             item['utilidad'] = (item['total'] or Decimal('0')) - (item['total_costos'] or Decimal('0'))
@@ -454,7 +430,6 @@ class DashboardDataGenerator:
         """
         Comparativas entre períodos
         """
-        # Mes actual vs mes anterior
         inicio_mes_anterior = (self.inicio_mes - timedelta(days=1)).replace(day=1)
         
         ventas_mes_actual = Venta.objects.filter(
@@ -479,3 +454,172 @@ class DashboardDataGenerator:
             'mes_anterior': ventas_mes_anterior['total'],
             'variacion_porcentaje': variacion_mensual.quantize(Decimal('0.01'))
         }
+    
+    def get_utilidad_diaria_semanal(self):
+        """
+        Calcula la utilidad REAL de los últimos 7 días
+        """
+        try:
+            hoy = timezone.now().date()
+            hace_7_dias = hoy - timedelta(days=6)
+            
+            utilidad_por_dia = []
+            
+            for i in range(7):
+                dia = hace_7_dias + timedelta(days=i)
+                
+                ventas_dia = Venta.objects.filter(
+                    fecha_venta__date=dia,
+                    estado='COMPLETADA'
+                )
+                
+                total_ventas = ventas_dia.aggregate(
+                    total=Coalesce(Sum('total'), Decimal('0'))
+                )['total']
+                
+                detalles_dia = DetalleVenta.objects.filter(
+                    venta__fecha_venta__date=dia,
+                    venta__estado='COMPLETADA'
+                ).select_related('producto')
+                
+                costo_total = Decimal('0')
+                
+                if detalles_dia.exists():
+                    detalle_ejemplo = detalles_dia.first()
+                    tiene_costo_total = hasattr(detalle_ejemplo, 'costo_total')
+                    
+                    if tiene_costo_total:
+                        costo_total = detalles_dia.aggregate(
+                            total=Coalesce(Sum('costo_total'), Decimal('0'))
+                        )['total']
+                    else:
+                        for detalle in detalles_dia:
+                            costo_unitario = Decimal('0')
+                            
+                            if hasattr(detalle.producto, 'costo_unitario') and detalle.producto.costo_unitario:
+                                costo_unitario = detalle.producto.costo_unitario
+                            elif hasattr(detalle.producto, 'precio_compra') and detalle.producto.precio_compra:
+                                costo_unitario = detalle.producto.precio_compra
+                            elif hasattr(detalle.producto, 'productonormal') and hasattr(detalle.producto.productonormal, 'costo_unitario'):
+                                costo_unitario = detalle.producto.productonormal.costo_unitario
+                            
+                            costo_total += costo_unitario * detalle.cantidad
+                
+                utilidad_total = total_ventas - costo_total
+                margen_porcentaje = float((utilidad_total / total_ventas) * 100) if total_ventas > 0 else 0
+                
+                utilidad_por_dia.append({
+                    'dia': dia.strftime('%Y-%m-%d'),
+                    'utilidad_total': utilidad_total,
+                    'ventas_total': total_ventas,
+                    'costo_total': costo_total,
+                    'margen_porcentaje': margen_porcentaje
+                })
+            
+            return utilidad_por_dia
+            
+        except Exception as e:
+            print(f"ERROR en get_utilidad_diaria_semanal: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            hoy = timezone.now().date()
+            return [
+                {
+                    'dia': (hoy - timedelta(days=i)).strftime('%Y-%m-%d'),
+                    'utilidad_total': Decimal('0'),
+                    'ventas_total': Decimal('0'),
+                    'costo_total': Decimal('0'),
+                    'margen_porcentaje': 0
+                }
+                for i in range(6, -1, -1)
+            ]
+    def get_balance_compras_ventas_semanal(self):
+            """
+            Balance REAL de compras vs ventas de los últimos 7 días
+            ✅ CORREGIDO: Ahora lee correctamente desde el modelo Compra
+            """
+            try:
+                from apps.inventory_management.models import Compra
+                
+                hoy = timezone.now().date()
+                hace_7_dias = hoy - timedelta(days=6)
+                
+                balance_por_dia = []
+                
+                for i in range(7):
+                    dia = hace_7_dias + timedelta(days=i)
+                    
+                    # ✅ VENTAS del día
+                    total_ventas = Venta.objects.filter(
+                        fecha_venta__date=dia,
+                        estado='COMPLETADA'
+                    ).aggregate(
+                        total=Coalesce(Sum('total'), Decimal('0'))
+                    )['total']
+                    
+                    # ✅ COMPRAS del día - MÉTODO CORRECTO
+                    total_compras = Compra.objects.filter(
+                        fecha_compra=dia,  # ✅ Coincide con tu modelo
+                        estado__in=['RECIBIDA', 'PARCIAL']  # ✅ Solo compras recibidas
+                    ).aggregate(
+                        total=Coalesce(Sum('total'), Decimal('0'))
+                    )['total']
+                    
+                    # Calcular balance
+                    balance = total_ventas - total_compras
+                    
+                    # Determinar estado
+                    if balance > 0:
+                        estado = 'POSITIVO'
+                    elif balance < 0:
+                        estado = 'NEGATIVO'
+                    else:
+                        estado = 'EQUILIBRADO'
+                    
+                    # Calcular ratio (ventas/compras)
+                    ratio = float((total_ventas / total_compras * 100)) if total_compras > 0 else 0
+                    
+                    balance_por_dia.append({
+                        'dia': dia.strftime('%Y-%m-%d'),
+                        'total_ventas': total_ventas,
+                        'total_compras': total_compras,
+                        'balance': balance,
+                        'estado': estado,
+                        'ratio_ventas_compras': ratio
+                    })
+                
+                return balance_por_dia
+                
+            except Exception as e:
+                print(f"❌ ERROR en get_balance_compras_ventas_semanal: {e}")
+                import traceback
+                traceback.print_exc()
+                
+                # Fallback: retornar datos vacíos
+                hoy = timezone.now().date()
+                return [
+                    {
+                        'dia': (hoy - timedelta(days=i)).strftime('%Y-%m-%d'),
+                        'total_ventas': Decimal('0'),
+                        'total_compras': Decimal('0'),
+                        'balance': Decimal('0'),
+                        'estado': 'EQUILIBRADO',
+                        'ratio_ventas_compras': 0
+                    }
+                    for i in range(6, -1, -1)
+                ]
+
+    def _decimal_to_float(self, obj):
+        """
+        Convierte recursivamente objetos Decimal a float para serialización JSON
+        """
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._decimal_to_float(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._decimal_to_float(item) for item in obj]
+        elif isinstance(obj, datetime):
+            return obj.isoformat()
+        return obj

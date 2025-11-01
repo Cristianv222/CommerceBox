@@ -792,19 +792,70 @@ class ReportesGuardadosView(ReportesAccessMixin, ListView):
 # API ENDPOINTS (JSON)
 # ============================================================================
 
+# Reemplaza la clase DashboardAPIView en apps/reports_analytics/views.py con esta:
+
 class DashboardAPIView(ReportesAccessMixin, View):
     """
     API endpoint para datos del dashboard (JSON)
+    Compatible con el template dashboard.html
     """
     def get(self, request):
-        generator = DashboardDataGenerator()
-        dashboard_data = generator.generar_dashboard_completo()
-        
-        return JsonResponse({
-            'success': True,
-            'data': dashboard_data,
-            'timestamp': timezone.now().isoformat()
-        })
+        try:
+            generator = DashboardDataGenerator()
+            dashboard_data = generator.generar_dashboard_completo()
+            
+            # Convertir Decimal a float para JSON
+            def decimal_to_float(obj):
+                if isinstance(obj, Decimal):
+                    return float(obj)
+                elif isinstance(obj, dict):
+                    return {k: decimal_to_float(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [decimal_to_float(item) for item in obj]
+                return obj
+            
+            # Convertir todos los Decimales a float
+            dashboard_data = decimal_to_float(dashboard_data)
+            
+            return JsonResponse({
+                'success': True,
+                'data': dashboard_data,
+                'timestamp': timezone.now().isoformat()
+            })
+            
+        except Exception as e:
+            import traceback
+            print(f"❌ Error en Dashboard API: {e}")
+            traceback.print_exc()
+            
+            return JsonResponse({
+                'success': False,
+                'error': str(e),
+                'data': {
+                    'resumen_ejecutivo': {
+                        'ventas_dia': {'total': 0, 'cantidad': 0, 'ticket_promedio': 0},
+                        'ventas_mes': {'total': 0, 'cantidad': 0},
+                        'caja': {'efectivo_disponible': 0, 'estado_caja': 'CERRADA'},
+                        'inventario': {'valor_total': 0}
+                    },
+                    'ventas': {
+                        'dia': {'ventas_totales': 0, 'utilidad_bruta': 0, 'margen_porcentaje': 0},
+                        'comparativa': {'variacion_porcentaje': 0}
+                    },
+                    'inventario': {
+                        'quintales': {'valor_total': 0},
+                        'productos_normales': {'valor_total': 0, 'criticos': 0, 'agotados': 0}
+                    },
+                    'financiero': {
+                        'creditos_pendientes': {'total': 0, 'cantidad': 0}
+                    },
+                    'tendencias': [],
+                    'ventas_por_categoria': [],
+                    'top_productos': [],
+                    'alertas': [],
+                    'comparativas': {'variacion_porcentaje': 0}
+                }
+            }, status=500)
 
 
 class VentasGraficoAPIView(ReportesAccessMixin, View):

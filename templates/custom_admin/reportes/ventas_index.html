@@ -1,4 +1,1777 @@
 {% extends 'custom_admin/base_admin.html' %}
 {% load static %}
 
-{% block title %}Dashboard de ventas - CommerceBox{% endblock %}
+{% block title %}Reportes de Ventas - CommerceBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* =====================================================
+       ESTILOS GENERALES
+    ===================================================== */
+    .report-container {
+        padding: 2rem;
+    }
+
+    .report-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border: none;
+        border-radius: 15px;
+        overflow: hidden;
+        height: 100%;
+    }
+    
+    .report-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+    
+    .report-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        display: inline-block;
+    }
+    
+    .category-section {
+        margin-bottom: 3rem;
+    }
+    
+    .category-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 3px solid #3498db;
+        display: flex;
+        align-items: center;
+    }
+
+    /* =====================================================
+       CARDS DE REPORTES
+    ===================================================== */
+    .card-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .card-gradient-success {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+    }
+
+    .card-gradient-info {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+    }
+
+    .card-gradient-warning {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        color: white;
+    }
+
+    .card-gradient-danger {
+        background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+        color: white;
+    }
+
+    .card-gradient-secondary {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        color: #333;
+    }
+
+    /* =====================================================
+       MODALES
+    ===================================================== */
+    .modal-xl {
+        max-width: 95%;
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .modal-header .btn-close {
+        filter: brightness(0) invert(1);
+    }
+
+    /* =====================================================
+       FILTROS
+    ===================================================== */
+    .filters-container {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1.5rem;
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: end;
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    /* =====================================================
+       TABS
+    ===================================================== */
+    .nav-tabs .nav-link {
+        border-radius: 10px 10px 0 0;
+        font-weight: 500;
+    }
+
+    .nav-tabs .nav-link.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+    }
+
+    /* =====================================================
+       TABLAS
+    ===================================================== */
+    .table-report {
+        margin-top: 1.5rem;
+    }
+
+    .table-report thead {
+        background: #f8f9fa;
+    }
+
+    .table-report th {
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #f1f3ff;
+        transition: background-color 0.2s;
+    }
+
+    /* =====================================================
+       MÉTRICAS / KPIs
+    ===================================================== */
+    .kpi-card {
+        border-radius: 10px;
+        padding: 1.5rem;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+
+    .kpi-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+    }
+
+    .kpi-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .kpi-change {
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+    }
+
+    .kpi-change.positive {
+        color: #28a745;
+    }
+
+    .kpi-change.negative {
+        color: #dc3545;
+    }
+
+    /* =====================================================
+       GRÁFICOS
+    ===================================================== */
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin: 2rem 0;
+    }
+
+    .chart-small {
+        height: 300px;
+    }
+
+    /* =====================================================
+       LOADING
+    ===================================================== */
+    .loading-overlay {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.9);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .loading-overlay.active {
+        display: flex;
+    }
+
+    .spinner-border-custom {
+        width: 3rem;
+        height: 3rem;
+        border-width: 0.3rem;
+    }
+
+    /* =====================================================
+       BADGES Y ESTADOS
+    ===================================================== */
+    .badge-custom {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+
+    /* =====================================================
+       BOTONES
+    ===================================================== */
+    .btn-export {
+        margin-left: 0.5rem;
+    }
+
+    .btn-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+    }
+
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        color: white;
+    }
+
+    /* =====================================================
+       RESPONSIVE
+    ===================================================== */
+    @media (max-width: 768px) {
+        .filter-row {
+            flex-direction: column;
+        }
+        
+        .filter-group {
+            width: 100%;
+        }
+
+        .kpi-value {
+            font-size: 1.5rem;
+        }
+
+        .chart-container {
+            height: 300px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-container">
+    <!-- =====================================================
+         HEADER
+    ===================================================== -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-2">📊 Reportes de Ventas</h1>
+            <p class="text-muted">Análisis completo de ventas, rentabilidad y tendencias comerciales</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-primary" onclick="location.reload()">
+                <i class="fas fa-sync-alt me-2"></i>Actualizar
+            </button>
+            <a href="{% url 'reports_analytics:dashboard' %}" class="btn btn-outline-secondary ms-2">
+                <i class="fas fa-arrow-left me-2"></i>Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         FILTROS RÁPIDOS GLOBALES
+    ===================================================== -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">
+                <i class="fas fa-filter me-2"></i>Filtros Rápidos
+            </h5>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Período</label>
+                    <select class="form-select" id="periodoRapido">
+                        <option value="hoy">Hoy</option>
+                        <option value="ayer">Ayer</option>
+                        <option value="semana">Esta Semana</option>
+                        <option value="mes" selected>Este Mes</option>
+                        <option value="mes_anterior">Mes Anterior</option>
+                        <option value="trimestre">Este Trimestre</option>
+                        <option value="anio">Este Año</option>
+                        <option value="personalizado">Personalizado</option>
+                    </select>
+                </div>
+                <div class="col-md-3" id="fechaDesdeContainer" style="display: none;">
+                    <label class="form-label">Desde</label>
+                    <input type="date" class="form-control" id="fechaDesde">
+                </div>
+                <div class="col-md-3" id="fechaHastaContainer" style="display: none;">
+                    <label class="form-label">Hasta</label>
+                    <input type="date" class="form-control" id="fechaHasta">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-gradient w-100" onclick="aplicarFiltrosGlobales()">
+                        <i class="fas fa-search me-2"></i>Aplicar Filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         SECCIÓN: REPORTES GENERALES
+    ===================================================== -->
+    <div class="category-section">
+        <h2 class="category-title">
+            <i class="fas fa-chart-line me-2"></i>Reportes Generales
+        </h2>
+        <div class="row g-4">
+            <!-- Ventas por Período -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card report-card card-gradient-primary shadow" onclick="abrirReporteVentasPeriodo()">
+                    <div class="card-body text-center">
+                        <div class="report-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <h5 class="card-title mb-2">Ventas por Período</h5>
+                        <p class="card-text small">
+                            Análisis general con métricas clave
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ventas Diarias -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card report-card card-gradient-success shadow" onclick="abrirReporteVentasDiarias()">
+                    <div class="card-body text-center">
+                        <div class="report-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h5 class="card-title mb-2">Ventas Diarias</h5>
+                        <p class="card-text small">
+                            Desglose día por día con tendencias
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparativo -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card report-card card-gradient-info shadow" onclick="abrirReporteComparativo()">
+                    <div class="card-body text-center">
+                        <div class="report-icon">
+                            <i class="fas fa-balance-scale"></i>
+                        </div>
+                        <h5 class="card-title mb-2">Comparativo</h5>
+                        <p class="card-text small">
+                            Comparar períodos anteriores
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Horarios -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card report-card card-gradient-warning shadow" onclick="abrirReporteHorarios()">
+                    <div class="card-body text-center">
+                        <div class="report-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h5 class="card-title mb-2">Horarios Pico</h5>
+                        <p class="card-text small">
+                            Análisis por hora y día de semana
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         SECCIÓN: ANÁLISIS DE PRODUCTOS
+    ===================================================== -->
+    <div class="category-section">
+        <h2 class="category-title">
+            <i class="fas fa-box me-2"></i>Análisis de Productos
+        </h2>
+        <div class="row g-4">
+            <!-- Productos Más Vendidos -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card report-card card-gradient-danger shadow" onclick="abrirReporteProductosTop()">
+                    <div class="card-body text-center">
+                        <div class="report-icon">
+                            <i class="fas fa-trophy"></i>
+                        </div>
+                        <h5 class="card-title mb-2">Top Productos</h5>
+                        <p class="card-text small">
+                            Productos más vendidos del período
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ventas por Categoría -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card report-card card-gradient-secondary shadow" onclick="abrirReporteCategorias()">
+                    <div class="card-body text-center">
+                        <div class="report-icon">
+                            <i class="fas fa-tags"></i>
+                        </div>
+                        <h5 class="card-title mb-2">Por Categoría</h5>
+                        <p class="card-text small">
+                            Participación por categorías
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Análisis de Márgenes -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card report-card card-gradient-info shadow" onclick="abrirReporteMargenes()">
+                    <div class="card-body text-center">
+                        <div class="report-icon">
+                            <i class="fas fa-percentage"></i>
+                        </div>
+                        <h5 class="card-title mb-2">Márgenes</h5>
+                        <p class="card-text small">
+                            Rentabilidad por producto
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         SECCIÓN: ANÁLISIS DE CLIENTES Y VENDEDORES
+    ===================================================== -->
+    <div class="category-section">
+        <h2 class="category-title">
+            <i class="fas fa-users me-2"></i>Clientes y Vendedores
+        </h2>
+        <div class="row g-4">
+            <!-- Top Clientes -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card report-card card-gradient-primary shadow" onclick="abrirReporteClientesTop()">
+                    <div class="card-body text-center">
+                        <div class="report-icon">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                        <h5 class="card-title mb-2">Top Clientes</h5>
+                        <p class="card-text small">
+                            Mejores clientes por volumen
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ventas por Vendedor -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card report-card card-gradient-success shadow" onclick="abrirReporteVendedores()">
+                    <div class="card-body text-center">
+                        <div class="report-icon">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <h5 class="card-title mb-2">Por Vendedor</h5>
+                        <p class="card-text small">
+                            Desempeño de vendedores
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Devoluciones -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card report-card card-gradient-warning shadow" onclick="abrirReporteDevoluciones()">
+                    <div class="card-body text-center">
+                        <div class="report-icon">
+                            <i class="fas fa-undo-alt"></i>
+                        </div>
+                        <h5 class="card-title mb-2">Devoluciones</h5>
+                        <p class="card-text small">
+                            Análisis de devoluciones
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =====================================================
+     MODAL: REPORTE GENERAL (Todos usan este modal)
+===================================================== -->
+<div class="modal fade" id="modalReporte" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalReporteTitulo">
+                    <i class="fas fa-chart-bar me-2"></i>Reporte
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Loading Overlay -->
+                <div class="loading-overlay" id="loadingOverlay">
+                    <div class="text-center">
+                        <div class="spinner-border spinner-border-custom text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Generando reporte...</p>
+                    </div>
+                </div>
+
+                <!-- Contenido del Reporte -->
+                <div id="reporteContenido">
+                    <!-- Aquí se cargará dinámicamente el contenido -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cerrar
+                </button>
+                <button type="button" class="btn btn-success btn-export" onclick="exportarExcel()">
+                    <i class="fas fa-file-excel me-2"></i>Exportar Excel
+                </button>
+                <button type="button" class="btn btn-danger btn-export" onclick="exportarPDF()">
+                    <i class="fas fa-file-pdf me-2"></i>Exportar PDF
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+// =====================================================
+// VARIABLES GLOBALES
+// =====================================================
+let filtrosGlobales = {
+    fecha_desde: null,
+    fecha_hasta: null
+};
+
+let chartInstances = {}; // Para almacenar instancias de gráficos
+
+// =====================================================
+// INICIALIZACIÓN
+// =====================================================
+document.addEventListener('DOMContentLoaded', function() {
+    // Configurar fechas por defecto (este mes)
+    const hoy = new Date();
+    const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    
+    document.getElementById('fechaDesde').valueAsDate = primerDiaMes;
+    document.getElementById('fechaHasta').valueAsDate = hoy;
+    
+    filtrosGlobales.fecha_desde = formatearFecha(primerDiaMes);
+    filtrosGlobales.fecha_hasta = formatearFecha(hoy);
+    
+    // Listener para período rápido
+    document.getElementById('periodoRapido').addEventListener('change', function() {
+        if (this.value === 'personalizado') {
+            document.getElementById('fechaDesdeContainer').style.display = 'block';
+            document.getElementById('fechaHastaContainer').style.display = 'block';
+        } else {
+            document.getElementById('fechaDesdeContainer').style.display = 'none';
+            document.getElementById('fechaHastaContainer').style.display = 'none';
+            calcularFechasPeriodoRapido(this.value);
+        }
+    });
+});
+
+// =====================================================
+// FUNCIONES DE UTILIDAD
+// =====================================================
+
+function formatearFecha(fecha) {
+    const año = fecha.getFullYear();
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    return `${año}-${mes}-${dia}`;
+}
+
+function formatearMoneda(valor) {
+    return new Intl.NumberFormat('es-BO', {
+        style: 'currency',
+        currency: 'BOB'
+    }).format(valor);
+}
+
+function formatearNumero(valor, decimales = 2) {
+    return new Intl.NumberFormat('es-BO', {
+        minimumFractionDigits: decimales,
+        maximumFractionDigits: decimales
+    }).format(valor);
+}
+
+function calcularFechasPeriodoRapido(periodo) {
+    const hoy = new Date();
+    let fechaDesde, fechaHasta = hoy;
+    
+    switch(periodo) {
+        case 'hoy':
+            fechaDesde = hoy;
+            break;
+        case 'ayer':
+            fechaDesde = new Date(hoy);
+            fechaDesde.setDate(hoy.getDate() - 1);
+            fechaHasta = fechaDesde;
+            break;
+        case 'semana':
+            fechaDesde = new Date(hoy);
+            fechaDesde.setDate(hoy.getDate() - hoy.getDay());
+            break;
+        case 'mes':
+            fechaDesde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+            break;
+        case 'mes_anterior':
+            fechaDesde = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+            fechaHasta = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+            break;
+        case 'trimestre':
+            const mesActual = hoy.getMonth();
+            const primerMesTrimestre = Math.floor(mesActual / 3) * 3;
+            fechaDesde = new Date(hoy.getFullYear(), primerMesTrimestre, 1);
+            break;
+        case 'anio':
+            fechaDesde = new Date(hoy.getFullYear(), 0, 1);
+            break;
+    }
+    
+    filtrosGlobales.fecha_desde = formatearFecha(fechaDesde);
+    filtrosGlobales.fecha_hasta = formatearFecha(fechaHasta);
+}
+
+function aplicarFiltrosGlobales() {
+    const periodo = document.getElementById('periodoRapido').value;
+    
+    if (periodo === 'personalizado') {
+        const fechaDesde = document.getElementById('fechaDesde').value;
+        const fechaHasta = document.getElementById('fechaHasta').value;
+        
+        if (!fechaDesde || !fechaHasta) {
+            alert('Por favor seleccione ambas fechas');
+            return;
+        }
+        
+        filtrosGlobales.fecha_desde = fechaDesde;
+        filtrosGlobales.fecha_hasta = fechaHasta;
+    } else {
+        calcularFechasPeriodoRapido(periodo);
+    }
+    
+    console.log('Filtros aplicados:', filtrosGlobales);
+    alert('Filtros aplicados. Los reportes usarán este período.');
+}
+
+function mostrarLoading() {
+    document.getElementById('loadingOverlay').classList.add('active');
+}
+
+function ocultarLoading() {
+    document.getElementById('loadingOverlay').classList.remove('active');
+}
+
+function destruirGraficos() {
+    Object.values(chartInstances).forEach(chart => {
+        if (chart) chart.destroy();
+    });
+    chartInstances = {};
+}
+
+// =====================================================
+// FUNCIONES DE REPORTES
+// =====================================================
+
+function abrirReporteVentasPeriodo() {
+    const modal = new bootstrap.Modal(document.getElementById('modalReporte'));
+    document.getElementById('modalReporteTitulo').innerHTML = '<i class="fas fa-calendar-alt me-2"></i>Ventas por Período';
+    
+    mostrarLoading();
+    destruirGraficos();
+    modal.show();
+    
+    // Llamada AJAX
+    fetch(`/reportes/api/ventas/periodo/?fecha_desde=${filtrosGlobales.fecha_desde}&fecha_hasta=${filtrosGlobales.fecha_hasta}`)
+        .then(response => response.json())
+        .then(data => {
+            ocultarLoading();
+            renderizarReporteVentasPeriodo(data);
+        })
+        .catch(error => {
+            ocultarLoading();
+            console.error('Error:', error);
+            document.getElementById('reporteContenido').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error al cargar el reporte. Por favor intente nuevamente.
+                </div>
+            `;
+        });
+}
+
+function renderizarReporteVentasPeriodo(data) {
+    const html = `
+        <!-- KPIs Principales -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="kpi-card bg-light">
+                    <div class="kpi-label">Total Ventas</div>
+                    <div class="kpi-value text-primary">${formatearMoneda(data.metricas_generales.total_ventas)}</div>
+                    <div class="kpi-change">
+                        <i class="fas fa-shopping-cart me-1"></i>
+                        ${data.metricas_generales.cantidad_ventas} ventas
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card bg-light">
+                    <div class="kpi-label">Ticket Promedio</div>
+                    <div class="kpi-value text-success">${formatearMoneda(data.metricas_generales.ticket_promedio)}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card bg-light">
+                    <div class="kpi-label">Utilidad Bruta</div>
+                    <div class="kpi-value text-info">${formatearMoneda(data.rentabilidad.utilidad_bruta)}</div>
+                    <div class="kpi-change positive">
+                        <i class="fas fa-arrow-up me-1"></i>
+                        Margen: ${formatearNumero(data.rentabilidad.margen_porcentaje)}%
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card bg-light">
+                    <div class="kpi-label">IVA Recaudado</div>
+                    <div class="kpi-value text-warning">${formatearMoneda(data.metricas_generales.total_iva_recaudado)}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-3" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabResumen">
+                    <i class="fas fa-chart-pie me-2"></i>Resumen
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDetalles">
+                    <i class="fas fa-list me-2"></i>Detalles
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Tab Resumen -->
+            <div class="tab-pane fade show active" id="tabResumen">
+                <div class="row">
+                    <!-- Gráfico de Formas de Pago -->
+                    <div class="col-md-6">
+                        <h6 class="mb-3">Formas de Pago</h6>
+                        <div class="chart-container chart-small">
+                            <canvas id="chartFormasPago"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico de Tipo de Venta -->
+                    <div class="col-md-6">
+                        <h6 class="mb-3">Tipo de Venta</h6>
+                        <div class="chart-container chart-small">
+                            <canvas id="chartTipoVenta"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Detalles -->
+            <div class="tab-pane fade" id="tabDetalles">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="mb-3">Por Tipo de Producto</h6>
+                        <table class="table table-hover table-report">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th class="text-end">Total</th>
+                                    <th class="text-end">Items</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>🌾 Quintales</td>
+                                    <td class="text-end">${formatearMoneda(data.por_tipo_producto.quintales.total)}</td>
+                                    <td class="text-end">${data.por_tipo_producto.quintales.cantidad_items}</td>
+                                </tr>
+                                <tr>
+                                    <td>📦 Productos Normales</td>
+                                    <td class="text-end">${formatearMoneda(data.por_tipo_producto.productos_normales.total)}</td>
+                                    <td class="text-end">${data.por_tipo_producto.productos_normales.cantidad_items}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h6 class="mb-3">Top Marcas</h6>
+                        <table class="table table-hover table-report">
+                            <thead>
+                                <tr>
+                                    <th>Marca</th>
+                                    <th class="text-end">Total</th>
+                                    <th class="text-end">Items</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.top_marcas.slice(0, 5).map(marca => `
+                                    <tr>
+                                        <td>${marca.producto__marca__nombre}</td>
+                                        <td class="text-end">${formatearMoneda(marca.total)}</td>
+                                        <td class="text-end">${marca.cantidad}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('reporteContenido').innerHTML = html;
+    
+    // Crear gráficos
+    crearGraficoFormasPago(data.formas_pago);
+    crearGraficoTipoVenta(data.por_tipo_venta);
+}
+
+function abrirReporteVentasDiarias() {
+    const modal = new bootstrap.Modal(document.getElementById('modalReporte'));
+    document.getElementById('modalReporteTitulo').innerHTML = '<i class="fas fa-chart-line me-2"></i>Ventas Diarias';
+    
+    mostrarLoading();
+    destruirGraficos();
+    modal.show();
+    
+    fetch(`/reportes/api/ventas/diarias/?fecha_desde=${filtrosGlobales.fecha_desde}&fecha_hasta=${filtrosGlobales.fecha_hasta}`)
+        .then(response => response.json())
+        .then(data => {
+            ocultarLoading();
+            renderizarReporteVentasDiarias(data);
+        })
+        .catch(error => {
+            ocultarLoading();
+            console.error('Error:', error);
+            mostrarError();
+        });
+}
+
+function renderizarReporteVentasDiarias(data) {
+    const html = `
+        <!-- Gráfico de Tendencia -->
+        <div class="chart-container mb-4">
+            <canvas id="chartVentasDiarias"></canvas>
+        </div>
+
+        <!-- Tabla de Detalles -->
+        <div class="table-responsive">
+            <table class="table table-hover table-report">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th class="text-end">Total Ventas</th>
+                        <th class="text-end"># Ventas</th>
+                        <th class="text-end">Ticket Prom.</th>
+                        <th class="text-end">Utilidad</th>
+                        <th class="text-end">Margen %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.ventas_diarias.map(dia => `
+                        <tr>
+                            <td>${new Date(dia.fecha).toLocaleDateString('es-BO')}</td>
+                            <td class="text-end">${formatearMoneda(dia.total_ventas)}</td>
+                            <td class="text-end">${dia.cantidad_ventas}</td>
+                            <td class="text-end">${formatearMoneda(dia.ticket_promedio)}</td>
+                            <td class="text-end text-success">${formatearMoneda(dia.utilidad)}</td>
+                            <td class="text-end">${formatearNumero(dia.margen_porcentaje)}%</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    document.getElementById('reporteContenido').innerHTML = html;
+    
+    // Crear gráfico de líneas
+    crearGraficoVentasDiarias(data.ventas_diarias);
+}
+
+function abrirReporteProductosTop() {
+    const modal = new bootstrap.Modal(document.getElementById('modalReporte'));
+    document.getElementById('modalReporteTitulo').innerHTML = '<i class="fas fa-trophy me-2"></i>Top Productos';
+    
+    mostrarLoading();
+    destruirGraficos();
+    modal.show();
+    
+    fetch(`/reportes/api/ventas/productos-top/?fecha_desde=${filtrosGlobales.fecha_desde}&fecha_hasta=${filtrosGlobales.fecha_hasta}`)
+        .then(response => response.json())
+        .then(data => {
+            ocultarLoading();
+            renderizarReporteProductosTop(data);
+        })
+        .catch(error => {
+            ocultarLoading();
+            console.error('Error:', error);
+            mostrarError();
+        });
+}
+
+function renderizarReporteProductosTop(data) {
+    const html = `
+        <!-- Gráfico de Barras -->
+        <div class="chart-container mb-4">
+            <canvas id="chartProductosTop"></canvas>
+        </div>
+
+        <!-- Tabla Detallada -->
+        <div class="table-responsive">
+            <table class="table table-hover table-report">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Producto</th>
+                        <th>Categoría</th>
+                        <th>Marca</th>
+                        <th class="text-end">Total Vendido</th>
+                        <th class="text-end">Utilidad</th>
+                        <th class="text-end">Margen %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.productos.map((prod, idx) => `
+                        <tr>
+                            <td>
+                                ${idx < 3 ? `<span class="badge bg-warning">🏆 ${idx + 1}</span>` : idx + 1}
+                            </td>
+                            <td>${prod.producto__nombre}</td>
+                            <td><span class="badge bg-secondary">${prod.producto__categoria__nombre}</span></td>
+                            <td>${prod.producto__marca__nombre || '-'}</td>
+                            <td class="text-end fw-bold">${formatearMoneda(prod.total_vendido)}</td>
+                            <td class="text-end text-success">${formatearMoneda(prod.utilidad)}</td>
+                            <td class="text-end">${formatearNumero(prod.margen)}%</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    document.getElementById('reporteContenido').innerHTML = html;
+    
+    // Crear gráfico de barras
+    crearGraficoProductosTop(data.productos);
+}
+
+function abrirReporteCategorias() {
+    const modal = new bootstrap.Modal(document.getElementById('modalReporte'));
+    document.getElementById('modalReporteTitulo').innerHTML = '<i class="fas fa-tags me-2"></i>Ventas por Categoría';
+    
+    mostrarLoading();
+    destruirGraficos();
+    modal.show();
+    
+    fetch(`/reportes/api/ventas/categorias/?fecha_desde=${filtrosGlobales.fecha_desde}&fecha_hasta=${filtrosGlobales.fecha_hasta}`)
+        .then(response => response.json())
+        .then(data => {
+            ocultarLoading();
+            renderizarReporteCategorias(data);
+        })
+        .catch(error => {
+            ocultarLoading();
+            console.error('Error:', error);
+            mostrarError();
+        });
+}
+
+function renderizarReporteCategorias(data) {
+    const html = `
+        <!-- Gráfico de Donut -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <canvas id="chartCategorias"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h6 class="mb-3">Desglose por Categoría</h6>
+                <div class="table-responsive">
+                    <table class="table table-hover table-report">
+                        <thead>
+                            <tr>
+                                <th>Categoría</th>
+                                <th class="text-end">Total</th>
+                                <th class="text-end">Participación</th>
+                                <th class="text-end">Margen %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.categorias.map(cat => `
+                                <tr>
+                                    <td>${cat.categoria}</td>
+                                    <td class="text-end">${formatearMoneda(cat.total_ventas)}</td>
+                                    <td class="text-end">
+                                        <span class="badge bg-primary">${formatearNumero(cat.participacion_porcentaje)}%</span>
+                                    </td>
+                                    <td class="text-end">${formatearNumero(cat.margen_porcentaje)}%</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('reporteContenido').innerHTML = html;
+    crearGraficoCategorias(data.categorias);
+}
+
+function abrirReporteVendedores() {
+    const modal = new bootstrap.Modal(document.getElementById('modalReporte'));
+    document.getElementById('modalReporteTitulo').innerHTML = '<i class="fas fa-user-check me-2"></i>Desempeño de Vendedores';
+    
+    mostrarLoading();
+    destruirGraficos();
+    modal.show();
+    
+    fetch(`/reportes/api/ventas/vendedores/?fecha_desde=${filtrosGlobales.fecha_desde}&fecha_hasta=${filtrosGlobales.fecha_hasta}`)
+        .then(response => response.json())
+        .then(data => {
+            ocultarLoading();
+            renderizarReporteVendedores(data);
+        })
+        .catch(error => {
+            ocultarLoading();
+            console.error('Error:', error);
+            mostrarError();
+        });
+}
+
+function renderizarReporteVendedores(data) {
+    const html = `
+        <div class="table-responsive">
+            <table class="table table-hover table-report">
+                <thead>
+                    <tr>
+                        <th>Ranking</th>
+                        <th>Vendedor</th>
+                        <th class="text-end">Total Ventas</th>
+                        <th class="text-end"># Ventas</th>
+                        <th class="text-end">Ticket Prom.</th>
+                        <th class="text-end">Utilidad</th>
+                        <th class="text-end">Margen %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.vendedores.map(vend => `
+                        <tr>
+                            <td>
+                                ${vend.ranking <= 3 ? `<span class="badge bg-warning">${vend.ranking}°</span>` : vend.ranking + '°'}
+                            </td>
+                            <td>${vend.vendedor}</td>
+                            <td class="text-end fw-bold">${formatearMoneda(vend.total_ventas)}</td>
+                            <td class="text-end">${vend.cantidad_ventas}</td>
+                            <td class="text-end">${formatearMoneda(vend.ticket_promedio)}</td>
+                            <td class="text-end text-success">${formatearMoneda(vend.utilidad_generada)}</td>
+                            <td class="text-end">${formatearNumero(vend.margen_porcentaje)}%</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    document.getElementById('reporteContenido').innerHTML = html;
+}
+
+function abrirReporteClientesTop() {
+    const modal = new bootstrap.Modal(document.getElementById('modalReporte'));
+    document.getElementById('modalReporteTitulo').innerHTML = '<i class="fas fa-user-tie me-2"></i>Top Clientes';
+    
+    mostrarLoading();
+    destruirGraficos();
+    modal.show();
+    
+    fetch(`/reportes/api/ventas/clientes-top/?fecha_desde=${filtrosGlobales.fecha_desde}&fecha_hasta=${filtrosGlobales.fecha_hasta}`)
+        .then(response => response.json())
+        .then(data => {
+            ocultarLoading();
+            renderizarReporteClientesTop(data);
+        })
+        .catch(error => {
+            ocultarLoading();
+            console.error('Error:', error);
+            mostrarError();
+        });
+}
+
+function renderizarReporteClientesTop(data) {
+    const html = `
+        <div class="table-responsive">
+            <table class="table table-hover table-report">
+                <thead>
+                    <tr>
+                        <th>Ranking</th>
+                        <th>Cliente</th>
+                        <th>Documento</th>
+                        <th>Tipo</th>
+                        <th class="text-end">Total Compras</th>
+                        <th class="text-end"># Compras</th>
+                        <th class="text-end">Ticket Prom.</th>
+                        <th class="text-end">Últ. Compra</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.clientes.map(cliente => `
+                        <tr>
+                            <td>
+                                ${cliente.ranking <= 3 ? `<span class="badge bg-warning">🏆 ${cliente.ranking}</span>` : cliente.ranking}
+                            </td>
+                            <td>${cliente.cliente}</td>
+                            <td>${cliente.documento}</td>
+                            <td><span class="badge bg-info">${cliente.tipo_cliente}</span></td>
+                            <td class="text-end fw-bold">${formatearMoneda(cliente.total_compras)}</td>
+                            <td class="text-end">${cliente.cantidad_compras}</td>
+                            <td class="text-end">${formatearMoneda(cliente.ticket_promedio)}</td>
+                            <td class="text-end">${cliente.dias_ultima_compra} días</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    document.getElementById('reporteContenido').innerHTML = html;
+}
+
+function abrirReporteDevoluciones() {
+    const modal = new bootstrap.Modal(document.getElementById('modalReporte'));
+    document.getElementById('modalReporteTitulo').innerHTML = '<i class="fas fa-undo-alt me-2"></i>Análisis de Devoluciones';
+    
+    mostrarLoading();
+    destruirGraficos();
+    modal.show();
+    
+    fetch(`/reportes/api/ventas/devoluciones/?fecha_desde=${filtrosGlobales.fecha_desde}&fecha_hasta=${filtrosGlobales.fecha_hasta}`)
+        .then(response => response.json())
+        .then(data => {
+            ocultarLoading();
+            renderizarReporteDevoluciones(data);
+        })
+        .catch(error => {
+            ocultarLoading();
+            console.error('Error:', error);
+            mostrarError();
+        });
+}
+
+function renderizarReporteDevoluciones(data) {
+    const html = `
+        <!-- Resumen -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="kpi-card bg-light">
+                    <div class="kpi-label">Total Devoluciones</div>
+                    <div class="kpi-value text-danger">${data.resumen.cantidad_total}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="kpi-card bg-light">
+                    <div class="kpi-label">Monto Total</div>
+                    <div class="kpi-value text-danger">${formatearMoneda(data.resumen.monto_total)}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="kpi-card bg-light">
+                    <div class="kpi-label">% de Ventas</div>
+                    <div class="kpi-value text-warning">${formatearNumero(data.resumen.porcentaje_ventas)}%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="mb-3">Por Motivo</h6>
+                <div class="chart-container chart-small">
+                    <canvas id="chartDevolucionesMotivo"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h6 class="mb-3">Productos Más Devueltos</h6>
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th class="text-end">Cantidad</th>
+                            <th class="text-end">Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.por_producto.slice(0, 5).map(prod => `
+                            <tr>
+                                <td>${prod.detalle_venta__producto__nombre}</td>
+                                <td class="text-end">${prod.cantidad}</td>
+                                <td class="text-end">${formatearMoneda(prod.monto_total)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('reporteContenido').innerHTML = html;
+    crearGraficoDevolucionesMotivo(data.por_motivo);
+}
+
+function abrirReporteComparativo() {
+    const modal = new bootstrap.Modal(document.getElementById('modalReporte'));
+    document.getElementById('modalReporteTitulo').innerHTML = '<i class="fas fa-balance-scale me-2"></i>Comparativo de Períodos';
+    
+    mostrarLoading();
+    destruirGraficos();
+    modal.show();
+    
+    fetch(`/reportes/api/ventas/comparativo/?fecha_desde=${filtrosGlobales.fecha_desde}&fecha_hasta=${filtrosGlobales.fecha_hasta}`)
+        .then(response => response.json())
+        .then(data => {
+            ocultarLoading();
+            renderizarReporteComparativo(data);
+        })
+        .catch(error => {
+            ocultarLoading();
+            console.error('Error:', error);
+            mostrarError();
+        });
+}
+
+function renderizarReporteComparativo(data) {
+    const html = `
+        <div class="row g-4">
+            <!-- Período Actual -->
+            <div class="col-md-6">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Período Actual</h5>
+                        <p class="small">${new Date(data.periodo_actual.desde).toLocaleDateString('es-BO')} - ${new Date(data.periodo_actual.hasta).toLocaleDateString('es-BO')}</p>
+                        <hr class="bg-white">
+                        <div class="row text-center">
+                            <div class="col-6 mb-3">
+                                <div class="small">Total Ventas</div>
+                                <div class="h4">${formatearMoneda(data.periodo_actual.total_ventas)}</div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="small"># Ventas</div>
+                                <div class="h4">${data.periodo_actual.cantidad_ventas}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="small">Ticket Promedio</div>
+                                <div class="h4">${formatearMoneda(data.periodo_actual.ticket_promedio)}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="small">Total IVA</div>
+                                <div class="h4">${formatearMoneda(data.periodo_actual.total_iva)}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Período Anterior -->
+            <div class="col-md-6">
+                <div class="card bg-secondary text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Período Anterior</h5>
+                        <p class="small">${new Date(data.periodo_anterior.desde).toLocaleDateString('es-BO')} - ${new Date(data.periodo_anterior.hasta).toLocaleDateString('es-BO')}</p>
+                        <hr class="bg-white">
+                        <div class="row text-center">
+                            <div class="col-6 mb-3">
+                                <div class="small">Total Ventas</div>
+                                <div class="h4">${formatearMoneda(data.periodo_anterior.total_ventas)}</div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="small"># Ventas</div>
+                                <div class="h4">${data.periodo_anterior.cantidad_ventas}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="small">Ticket Promedio</div>
+                                <div class="h4">${formatearMoneda(data.periodo_anterior.ticket_promedio)}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="small">Total IVA</div>
+                                <div class="h4">${formatearMoneda(data.periodo_anterior.total_iva)}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Variaciones -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <h5 class="mb-3">Variaciones</h5>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="kpi-card bg-light">
+                            <div class="kpi-label">Variación Ventas</div>
+                            <div class="kpi-value ${data.variaciones.ventas_porcentaje >= 0 ? 'text-success' : 'text-danger'}">
+                                ${data.variaciones.ventas_porcentaje >= 0 ? '↑' : '↓'} ${Math.abs(data.variaciones.ventas_porcentaje)}%
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card bg-light">
+                            <div class="kpi-label">Variación Cantidad</div>
+                            <div class="kpi-value ${data.variaciones.cantidad_porcentaje >= 0 ? 'text-success' : 'text-danger'}">
+                                ${data.variaciones.cantidad_porcentaje >= 0 ? '↑' : '↓'} ${Math.abs(data.variaciones.cantidad_porcentaje)}%
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card bg-light">
+                            <div class="kpi-label">Variación Ticket</div>
+                            <div class="kpi-value ${data.variaciones.ticket_porcentaje >= 0 ? 'text-success' : 'text-danger'}">
+                                ${data.variaciones.ticket_porcentaje >= 0 ? '↑' : '↓'} ${Math.abs(data.variaciones.ticket_porcentaje)}%
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card bg-light">
+                            <div class="kpi-label">Variación IVA</div>
+                            <div class="kpi-value ${data.variaciones.iva_porcentaje >= 0 ? 'text-success' : 'text-danger'}">
+                                ${data.variaciones.iva_porcentaje >= 0 ? '↑' : '↓'} ${Math.abs(data.variaciones.iva_porcentaje)}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('reporteContenido').innerHTML = html;
+}
+
+function abrirReporteHorarios() {
+    const modal = new bootstrap.Modal(document.getElementById('modalReporte'));
+    document.getElementById('modalReporteTitulo').innerHTML = '<i class="fas fa-clock me-2"></i>Análisis de Horarios';
+    
+    mostrarLoading();
+    destruirGraficos();
+    modal.show();
+    
+    fetch(`/reportes/api/ventas/horarios/?fecha_desde=${filtrosGlobales.fecha_desde}&fecha_hasta=${filtrosGlobales.fecha_hasta}`)
+        .then(response => response.json())
+        .then(data => {
+            ocultarLoading();
+            renderizarReporteHorarios(data);
+        })
+        .catch(error => {
+            ocultarLoading();
+            console.error('Error:', error);
+            mostrarError();
+        });
+}
+
+function renderizarReporteHorarios(data) {
+    const html = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="mb-3">Ventas por Hora del Día</h6>
+                <div class="chart-container">
+                    <canvas id="chartVentasHora"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h6 class="mb-3">Ventas por Día de la Semana</h6>
+                <div class="chart-container">
+                    <canvas id="chartVentasDiaSemana"></canvas>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('reporteContenido').innerHTML = html;
+    crearGraficoVentasHora(data.ventas_por_hora);
+    crearGraficoVentasDiaSemana(data.ventas_por_dia_semana);
+}
+
+function abrirReporteMargenes() {
+    alert('Reporte de Márgenes - Próximamente');
+}
+
+function mostrarError() {
+    document.getElementById('reporteContenido').innerHTML = `
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Error al cargar el reporte. Por favor intente nuevamente.
+        </div>
+    `;
+}
+
+// =====================================================
+// FUNCIONES DE GRÁFICOS CON CHART.JS
+// =====================================================
+
+function crearGraficoFormasPago(data) {
+    const ctx = document.getElementById('chartFormasPago');
+    if (!ctx) return;
+    
+    chartInstances.formasPago = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: data.map(p => p.forma_pago),
+            datasets: [{
+                data: data.map(p => p.total),
+                backgroundColor: [
+                    '#667eea', '#764ba2', '#f093fb', '#f5576c',
+                    '#4facfe', '#00f2fe', '#fa709a', '#fee140'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + formatearMoneda(context.parsed);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function crearGraficoTipoVenta(data) {
+    const ctx = document.getElementById('chartTipoVenta');
+    if (!ctx) return;
+    
+    chartInstances.tipoVenta = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.map(t => t.tipo_venta),
+            datasets: [{
+                data: data.map(t => t.total),
+                backgroundColor: ['#28a745', '#ffc107']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + formatearMoneda(context.parsed);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function crearGraficoVentasDiarias(data) {
+    const ctx = document.getElementById('chartVentasDiarias');
+    if (!ctx) return;
+    
+    chartInstances.ventasDiarias = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(d => new Date(d.fecha).toLocaleDateString('es-BO', { month: 'short', day: 'numeric' })),
+            datasets: [{
+                label: 'Ventas',
+                data: data.map(d => d.total_ventas),
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                tension: 0.4,
+                fill: true
+            },
+            {
+                label: 'Promedio Móvil 3D',
+                data: data.map(d => d.promedio_movil_3d),
+                borderColor: '#f5576c',
+                borderDash: [5, 5],
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + formatearMoneda(context.parsed.y);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatearMoneda(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function crearGraficoProductosTop(data) {
+    const ctx = document.getElementById('chartProductosTop');
+    if (!ctx) return;
+    
+    chartInstances.productosTop = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.slice(0, 10).map(p => p.producto__nombre.substring(0, 20)),
+            datasets: [{
+                label: 'Total Vendido',
+                data: data.slice(0, 10).map(p => p.total_vendido),
+                backgroundColor: '#667eea'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Vendido: ' + formatearMoneda(context.parsed.x);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatearMoneda(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function crearGraficoCategorias(data) {
+    const ctx = document.getElementById('chartCategorias');
+    if (!ctx) return;
+    
+    chartInstances.categorias = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.map(c => c.categoria),
+            datasets: [{
+                data: data.map(c => c.total_ventas),
+                backgroundColor: [
+                    '#667eea', '#764ba2', '#f093fb', '#f5576c',
+                    '#4facfe', '#00f2fe', '#fa709a', '#fee140',
+                    '#30cfd0', '#330867'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = formatearMoneda(context.parsed);
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percent = ((context.parsed / total) * 100).toFixed(1);
+                            return label + ': ' + value + ' (' + percent + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function crearGraficoDevolucionesMotivo(data) {
+    const ctx = document.getElementById('chartDevolucionesMotivo');
+    if (!ctx) return;
+    
+    chartInstances.devolucionesMotivo = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(d => d.motivo),
+            datasets: [{
+                label: 'Cantidad',
+                data: data.map(d => d.cantidad),
+                backgroundColor: '#dc3545'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function crearGraficoVentasHora(data) {
+    const ctx = document.getElementById('chartVentasHora');
+    if (!ctx) return;
+    
+    chartInstances.ventasHora = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(h => h.hora + ':00'),
+            datasets: [{
+                label: 'Ventas',
+                data: data.map(h => h.total),
+                backgroundColor: '#667eea'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatearMoneda(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function crearGraficoVentasDiaSemana(data) {
+    const ctx = document.getElementById('chartVentasDiaSemana');
+    if (!ctx) return;
+    
+    chartInstances.ventasDiaSemana = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(d => d.dia_nombre),
+            datasets: [{
+                label: 'Total Ventas',
+                data: data.map(d => d.total),
+                backgroundColor: '#f5576c'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatearMoneda(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// =====================================================
+// EXPORTACIÓN
+// =====================================================
+
+function exportarExcel() {
+    alert('Exportación a Excel - Próximamente');
+}
+
+function exportarPDF() {
+    alert('Exportación a PDF - Próximamente');
+}
+</script>
+{% endblock %}

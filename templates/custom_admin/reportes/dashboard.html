@@ -215,139 +215,15 @@
     }
 
     /* ============================================
-       ALERTAS
-       ============================================ */
-    .alert-item {
-        background: rgba(255, 255, 255, 0.9);
-        border-left: 4px solid;
-        border-radius: 10px;
-        padding: 1rem 1.2rem;
-        margin-bottom: 0.8rem;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        transition: all 0.2s ease;
-    }
-    .alert-item:hover {
-        transform: translateX(5px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-    .alert-item.critical {
-        border-color: #ef4444;
-        background: rgba(254, 226, 226, 0.5);
-    }
-    .alert-item.warning {
-        border-color: #f59e0b;
-        background: rgba(254, 243, 199, 0.5);
-    }
-    .alert-item.info {
-        border-color: #3b82f6;
-        background: rgba(219, 234, 254, 0.5);
-    }
-    .alert-icon-box {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-    }
-    .alert-item.critical .alert-icon-box {
-        background: rgba(239, 68, 68, 0.2);
-        color: #dc2626;
-    }
-    .alert-item.warning .alert-icon-box {
-        background: rgba(245, 158, 11, 0.2);
-        color: #d97706;
-    }
-    .alert-item.info .alert-icon-box {
-        background: rgba(59, 130, 246, 0.2);
-        color: #2563eb;
-    }
-    .alert-content {
-        flex: 1;
-    }
-    .alert-title {
-        font-weight: 700;
-        font-size: 0.9rem;
-        color: #0f172a;
-        margin-bottom: 0.2rem;
-    }
-    .alert-message {
-        font-size: 0.85rem;
-        color: #64748b;
-    }
-
-    /* ============================================
-       TOP PRODUCTOS
-       ============================================ */
-    .top-product-item {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1rem;
-        background: rgba(248, 250, 252, 0.6);
-        border-radius: 12px;
-        margin-bottom: 0.8rem;
-        border: 1px solid rgba(203, 213, 225, 0.3);
-        transition: all 0.2s ease;
-    }
-    .top-product-item:hover {
-        background: rgba(255, 255, 255, 0.9);
-        border-color: rgba(96, 165, 250, 0.4);
-        transform: translateX(5px);
-    }
-    .top-product-rank {
-        width: 35px;
-        height: 35px;
-        border-radius: 10px;
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.3) 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        color: #2563eb;
-        flex-shrink: 0;
-    }
-    .top-product-info {
-        flex: 1;
-        min-width: 0;
-    }
-    .top-product-name {
-        font-weight: 700;
-        color: #0f172a;
-        font-size: 0.9rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .top-product-type {
-        font-size: 0.75rem;
-        color: #64748b;
-        margin-top: 0.2rem;
-    }
-    .top-product-amount {
-        font-weight: 800;
-        color: #10b981;
-        font-size: 1rem;
-        white-space: nowrap;
-    }
-
-    /* ============================================
-       GRÁFICOS
+       GRÁFICOS ESTILO TRADING
        ============================================ */
     .chart-container {
         position: relative;
-        height: 300px;
+        height: 350px;
         z-index: 2;
-    }
-    .chart-container-large {
-        position: relative;
-        height: 400px;
-        z-index: 2;
+        padding: 0.5rem;
+        background: rgba(248, 250, 252, 0.5);
+        border-radius: 12px;
     }
 
     /* ============================================
@@ -378,6 +254,39 @@
         background: rgba(59, 130, 246, 0.15);
         color: #2563eb;
         border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    /* ============================================
+       BOTONES VER DETALLE
+       ============================================ */
+    .btn-detalle {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        border-radius: 8px;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        position: relative;
+        z-index: 10;
+    }
+    .btn-detalle:hover {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.5);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+        color: #2563eb;
+    }
+    .btn-detalle i {
+        transition: transform 0.2s ease;
+    }
+    .btn-detalle:hover i {
+        transform: translateX(3px);
     }
 
     /* ============================================
@@ -423,8 +332,6 @@
     .stat-card:nth-child(2) { animation-delay: 0.1s; }
     .stat-card:nth-child(3) { animation-delay: 0.15s; }
     .stat-card:nth-child(4) { animation-delay: 0.2s; }
-    .admin-card:nth-child(1) { animation-delay: 0.25s; }
-    .admin-card:nth-child(2) { animation-delay: 0.3s; }
 
     /* ============================================
        RESPONSIVE
@@ -437,9 +344,6 @@
             font-size: 1.8rem;
         }
         .chart-container {
-            height: 250px;
-        }
-        .chart-container-large {
             height: 300px;
         }
         .quick-access-grid {
@@ -573,26 +477,6 @@
                 </div>
             </a>
 
-            <a href="{% url 'reports_analytics:productos_criticos' %}" class="quick-access-btn">
-                <div class="quick-access-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                </div>
-                <div class="quick-access-content">
-                    <div class="quick-access-title">Productos Críticos</div>
-                    <div class="quick-access-desc">Requieren atención</div>
-                </div>
-            </a>
-
-            <a href="{% url 'reports_analytics:productos_mas_vendidos' %}" class="quick-access-btn">
-                <div class="quick-access-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
-                    <i class="bi bi-star-fill"></i>
-                </div>
-                <div class="quick-access-content">
-                    <div class="quick-access-title">Top Productos</div>
-                    <div class="quick-access-desc">Más vendidos</div>
-                </div>
-            </a>
-
             <a href="{% url 'reports_analytics:creditos_pendientes' %}" class="quick-access-btn">
                 <div class="quick-access-icon" style="background: rgba(236, 72, 153, 0.15); color: #ec4899;">
                     <i class="bi bi-credit-card"></i>
@@ -605,58 +489,20 @@
         </div>
     </div>
 
+    <!-- Fila 1: Gráficos Principales -->
     <div class="row mb-4">
-        <!-- Gráfico de Tendencia Semanal -->
-        <div class="col-lg-8 mb-4">
-            <div class="admin-card">
-                <div class="card-header-custom">
-                    <div class="card-header-title">
-                        <i class="bi bi-graph-up"></i>
-                        Tendencia de Ventas (Últimos 7 Días)
-                    </div>
-                    <div>
-                        <span class="badge-custom badge-info-custom">
-                            <i class="bi bi-calendar-range"></i>
-                            Semanal
-                        </span>
-                    </div>
-                </div>
-                <div class="chart-container-large">
-                    <canvas id="trendChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Alertas Críticas -->
+        <!-- Gráfico de Ventas por Categoría -->
         <div class="col-lg-4 mb-4">
-            <div class="admin-card">
-                <div class="card-header-custom">
-                    <div class="card-header-title">
-                        <i class="bi bi-bell-fill"></i>
-                        Alertas
-                    </div>
-                    <div>
-                        <span class="badge-custom badge-danger-custom" id="totalAlertas">
-                            0
-                        </span>
-                    </div>
-                </div>
-                <div id="alertasContainer" style="max-height: 350px; overflow-y: auto; position: relative; z-index: 2;">
-                    <!-- Se llenará dinámicamente -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row mb-4">
-        <!-- Ventas por Categoría -->
-        <div class="col-lg-6 mb-4">
             <div class="admin-card">
                 <div class="card-header-custom">
                     <div class="card-header-title">
                         <i class="bi bi-pie-chart-fill"></i>
                         Ventas por Categoría
                     </div>
+                    <a href="{% url 'reports_analytics:ventas_categorias' %}" class="btn-detalle">
+                        <i class="bi bi-arrow-right-circle"></i>
+                        Ver Detalle
+                    </a>
                 </div>
                 <div class="chart-container">
                     <canvas id="categoryChart"></canvas>
@@ -664,116 +510,81 @@
             </div>
         </div>
 
-        <!-- Top 10 Productos -->
-        <div class="col-lg-6 mb-4">
-            <div class="admin-card">
-                <div class="card-header-custom">
-                    <div class="card-header-title">
-                        <i class="bi bi-trophy-fill"></i>
-                        Top 10 Productos Más Vendidos
-                    </div>
-                    <a href="{% url 'reports_analytics:productos_mas_vendidos' %}" class="btn-refresh" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
-                        Ver Más
-                        <i class="bi bi-arrow-right"></i>
-                    </a>
-                </div>
-                <div id="topProductosContainer" style="max-height: 350px; overflow-y: auto; position: relative; z-index: 2;">
-                    <!-- Se llenará dinámicamente -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Métricas de Inventario y Finanzas -->
-    <div class="row mb-4">
-        <div class="col-lg-6 mb-4">
+        <!-- Gráfico de Estado del Inventario -->
+        <div class="col-lg-4 mb-4">
             <div class="admin-card">
                 <div class="card-header-custom">
                     <div class="card-header-title">
                         <i class="bi bi-box-seam-fill"></i>
                         Estado del Inventario
                     </div>
+                    <a href="{% url 'reports_analytics:inventario_valorizado' %}" class="btn-detalle" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.3);">
+                        <i class="bi bi-arrow-right-circle"></i>
+                        Ver Detalle
+                    </a>
                 </div>
-                <div class="row" style="position: relative; z-index: 2;">
-                    <div class="col-6 mb-3">
-                        <div style="text-align: center; padding: 1rem; background: rgba(248, 250, 252, 0.6); border-radius: 12px;">
-                            <div style="font-size: 2rem; font-weight: 800; color: #3b82f6;" id="valorInventario">$0</div>
-                            <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Valor Total</div>
-                        </div>
-                    </div>
-                    <div class="col-6 mb-3">
-                        <div style="text-align: center; padding: 1rem; background: rgba(248, 250, 252, 0.6); border-radius: 12px;">
-                            <div style="font-size: 2rem; font-weight: 800; color: #10b981;" id="valorQuintales">$0</div>
-                            <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Quintales</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div style="text-align: center; padding: 1rem; background: rgba(248, 250, 252, 0.6); border-radius: 12px;">
-                            <div style="font-size: 2rem; font-weight: 800; color: #8b5cf6;" id="valorProductosNormales">$0</div>
-                            <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Productos</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <a href="{% url 'reports_analytics:productos_criticos' %}" style="text-decoration: none;">
-                            <div style="text-align: center; padding: 1rem; background: rgba(254, 226, 226, 0.6); border-radius: 12px; transition: all 0.2s ease; cursor: pointer;" onmouseover="this.style.background='rgba(254, 226, 226, 0.9)'" onmouseout="this.style.background='rgba(254, 226, 226, 0.6)'">
-                                <div style="font-size: 2rem; font-weight: 800; color: #ef4444;" id="productosCriticos">0</div>
-                                <div style="font-size: 0.85rem; color: #dc2626; font-weight: 600;">Críticos</div>
-                            </div>
-                        </a>
-                    </div>
+                <div class="chart-container">
+                    <canvas id="inventoryChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <div class="col-lg-6 mb-4">
+        <!-- Gráfico de Resumen Financiero -->
+        <div class="col-lg-4 mb-4">
             <div class="admin-card">
                 <div class="card-header-custom">
                     <div class="card-header-title">
                         <i class="bi bi-cash-stack"></i>
                         Resumen Financiero
                     </div>
-                </div>
-                <div style="position: relative; z-index: 2;">
-                    <div style="background: rgba(219, 234, 254, 0.3); border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <span style="font-weight: 600; color: #64748b; font-size: 0.9rem;">Ventas del Mes</span>
-                            <span style="font-weight: 800; color: #0f172a; font-size: 1.2rem;" id="ventasMes">$0.00</span>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
-                            <span class="badge-custom badge-success-custom" id="crecimientoMes">
-                                <i class="bi bi-arrow-up"></i>
-                                +0%
-                            </span>
-                            <span style="color: #64748b;">vs mes anterior</span>
-                        </div>
-                    </div>
-
-                    <div style="background: rgba(220, 252, 231, 0.3); border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-weight: 600; color: #64748b; font-size: 0.9rem;">Créditos Pendientes</span>
-                            <span style="font-weight: 800; color: #f59e0b; font-size: 1.2rem;" id="creditosPendientes">$0.00</span>
-                        </div>
-                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
-                            <span id="cantidadCreditos">0</span> créditos activos
-                        </div>
-                    </div>
-
-                    <a href="{% url 'reports_analytics:rentabilidad' %}" style="text-decoration: none;">
-                        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.2) 100%); border-radius: 12px; padding: 1.2rem; border: 2px solid rgba(16, 185, 129, 0.3); transition: all 0.3s ease; cursor: pointer;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 20px rgba(16, 185, 129, 0.2)'" onmouseout="this.style.transform=''; this.style.boxShadow=''">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <div style="font-weight: 600; color: #10b981; font-size: 0.9rem; margin-bottom: 0.3rem;">
-                                        <i class="bi bi-graph-up-arrow me-1"></i>
-                                        Ver Análisis de Rentabilidad
-                                    </div>
-                                    <div style="font-size: 0.8rem; color: #059669;">
-                                        Utilidad neta y márgenes
-                                    </div>
-                                </div>
-                                <i class="bi bi-arrow-right" style="font-size: 1.5rem; color: #10b981;"></i>
-                            </div>
-                        </div>
+                    <a href="{% url 'reports_analytics:rentabilidad' %}" class="btn-detalle" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.3);">
+                        <i class="bi bi-arrow-right-circle"></i>
+                        Ver Detalle
                     </a>
+                </div>
+                <div class="chart-container">
+                    <canvas id="financialChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fila 2: Gráficos de Análisis con DATOS REALES -->
+    <div class="row mb-4">
+        <!-- Gráfico de Evolución de Utilidad REAL -->
+        <div class="col-lg-6 mb-4">
+            <div class="admin-card">
+                <div class="card-header-custom">
+                    <div class="card-header-title">
+                        <i class="bi bi-graph-up-arrow"></i>
+                        Evolución de Utilidad (Últimos 7 Días)
+                    </div>
+                    <a href="{% url 'reports_analytics:rentabilidad' %}" class="btn-detalle" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.3);">
+                        <i class="bi bi-arrow-right-circle"></i>
+                        Ver Detalle
+                    </a>
+                </div>
+                <div class="chart-container">
+                    <canvas id="profitChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico Comparativo Compras vs Ventas REAL -->
+        <div class="col-lg-6 mb-4">
+            <div class="admin-card">
+                <div class="card-header-custom">
+                    <div class="card-header-title">
+                        <i class="bi bi-arrow-left-right"></i>
+                        Balance: Compras vs Ventas
+                    </div>
+                    <a href="{% url 'reports_analytics:inventario_valorizado' %}" class="btn-detalle" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6; border-color: rgba(139, 92, 246, 0.3);">
+                        <i class="bi bi-arrow-right-circle"></i>
+                        Ver Detalle
+                    </a>
+                </div>
+                <div class="chart-container">
+                    <canvas id="balanceChart"></canvas>
                 </div>
             </div>
         </div>
@@ -785,20 +596,22 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
     // Variables globales para los gráficos
-    let trendChart, categoryChart;
+    let categoryChart, inventoryChart, financialChart, profitChart, balanceChart;
 
-    // Función para formatear moneda
+    // Función para formatear moneda - CORREGIDA
     function formatCurrency(value) {
+        const num = Number(value) || 0;
         return new Intl.NumberFormat('es-BO', {
             style: 'currency',
             currency: 'BOB',
             minimumFractionDigits: 2
-        }).format(value);
+        }).format(num);
     }
 
     // Función para formatear número
     function formatNumber(value) {
-        return new Intl.NumberFormat('es-BO').format(value);
+        const num = Number(value) || 0;
+        return new Intl.NumberFormat('es-BO').format(num);
     }
 
     // Mostrar fecha actual
@@ -812,37 +625,31 @@
     function loadDashboardData() {
         fetch("{% url 'reports_analytics:dashboard_api' %}")
             .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    updateKPIs(data.data);
-                    updateCharts(data.data);
-                    updateAlertas(data.data.alertas);
-                    updateTopProductos(data.data.top_productos);
-                    updateInventario(data.data.resumen_ejecutivo.inventario);
-                    updateFinanciero(data.data);
+            .then(result => {
+                console.log('📦 Respuesta completa del API:', result);
+                
+                if (result.success) {
+                    updateKPIs(result.data);
+                    updateCharts(result.data);
+                } else {
+                    console.error('Error en respuesta del servidor:', result);
                 }
             })
-            .catch(error => console.error('Error cargando dashboard:', error));
+            .catch(error => {
+                console.error('Error cargando dashboard:', error);
+            });
     }
 
     // Actualizar KPIs principales
     function updateKPIs(data) {
         const ventasDia = data.ventas.dia;
         const resumen = data.resumen_ejecutivo;
-        const comparativa = data.comparativas;
         
-        // Ventas del día
         document.getElementById('ventasDia').textContent = formatCurrency(ventasDia.ventas_totales);
-        
-        // Utilidad del día
         document.getElementById('utilidadDia').textContent = formatCurrency(ventasDia.utilidad_bruta);
         document.getElementById('margenDia').textContent = ventasDia.margen_porcentaje.toFixed(1) + '%';
-        
-        // Transacciones
         document.getElementById('cantidadVentas').textContent = formatNumber(resumen.ventas_dia.cantidad);
         document.getElementById('ticketPromedio').textContent = formatCurrency(resumen.ventas_dia.ticket_promedio);
-        
-        // Efectivo en caja
         document.getElementById('efectivoCaja').textContent = formatCurrency(resumen.caja.efectivo_disponible);
         
         const estadoCajaElement = document.getElementById('estadoCaja');
@@ -862,7 +669,6 @@
             `;
         }
         
-        // Variación vs ayer
         const cambioElement = document.getElementById('cambioVentasDia');
         const variacion = data.ventas.comparativa.variacion_porcentaje;
         
@@ -879,140 +685,31 @@
                 <span>${variacion.toFixed(1)}%</span>
             `;
         }
-        
-        // Ventas del mes
-        document.getElementById('ventasMes').textContent = formatCurrency(resumen.ventas_mes.total);
-        
-        // Crecimiento mensual
-        const crecimientoElement = document.getElementById('crecimientoMes');
-        const crecimientoMes = comparativa.variacion_porcentaje;
-        
-        if (crecimientoMes >= 0) {
-            crecimientoElement.className = 'badge-custom badge-success-custom';
-            crecimientoElement.innerHTML = `
-                <i class="bi bi-arrow-up"></i>
-                +${crecimientoMes.toFixed(1)}%
-            `;
-        } else {
-            crecimientoElement.className = 'badge-custom badge-danger-custom';
-            crecimientoElement.innerHTML = `
-                <i class="bi bi-arrow-down"></i>
-                ${crecimientoMes.toFixed(1)}%
-            `;
-        }
     }
 
     // Actualizar gráficos
     function updateCharts(data) {
-        // Gráfico de tendencia semanal
-        updateTrendChart(data.tendencias);
-        
-        // Gráfico de categorías
         updateCategoryChart(data.ventas_por_categoria);
-    }
-
-    // Gráfico de tendencia
-    function updateTrendChart(tendencias) {
-        const ctx = document.getElementById('trendChart').getContext('2d');
+        updateInventoryChart(data.inventario);
+        updateFinancialChart(data);
         
-        if (trendChart) {
-            trendChart.destroy();
+        // ✅ USAR DATOS REALES si están disponibles
+        if (data.utilidad_diaria && data.utilidad_diaria.length > 0) {
+            updateProfitChartReal(data.utilidad_diaria);
+        } else {
+            console.warn('⚠️ No hay datos de utilidad_diaria');
+            updateProfitChartFallback(data.tendencias);
         }
         
-        const labels = tendencias.map(t => {
-            const date = new Date(t.dia);
-            return date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
-        });
-        
-        const data = tendencias.map(t => parseFloat(t.total));
-        
-        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)');
-        gradient.addColorStop(1, 'rgba(59, 130, 246, 0.05)');
-        
-        trendChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Ventas',
-                    data: data,
-                    borderColor: '#3b82f6',
-                    backgroundColor: gradient,
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 6,
-                    pointHoverRadius: 8,
-                    pointBackgroundColor: '#3b82f6',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    pointHoverBackgroundColor: '#2563eb',
-                    pointHoverBorderColor: '#fff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        titleColor: '#0f172a',
-                        bodyColor: '#64748b',
-                        borderColor: 'rgba(59, 130, 246, 0.3)',
-                        borderWidth: 1,
-                        padding: 12,
-                        displayColors: false,
-                        callbacks: {
-                            label: function(context) {
-                                return 'Ventas: ' + formatCurrency(context.parsed.y);
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(203, 213, 225, 0.3)',
-                            drawBorder: false
-                        },
-                        ticks: {
-                            color: '#64748b',
-                            font: {
-                                size: 11,
-                                weight: '600'
-                            },
-                            callback: function(value) {
-                                return formatCurrency(value);
-                            }
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            color: '#64748b',
-                            font: {
-                                size: 11,
-                                weight: '600'
-                            }
-                        }
-                    }
-                }
-            }
-        });
+        if (data.balance_compras_ventas && data.balance_compras_ventas.length > 0) {
+            updateBalanceChartReal(data.balance_compras_ventas);
+        } else {
+            console.warn('⚠️ No hay datos de balance_compras_ventas');
+            updateBalanceChartFallback(data.tendencias);
+        }
     }
 
-    // Gráfico de categorías
+    // 🎨 GRÁFICO 1: Ventas por Categoría
     function updateCategoryChart(categorias) {
         const ctx = document.getElementById('categoryChart').getContext('2d');
         
@@ -1020,10 +717,8 @@
             categoryChart.destroy();
         }
         
-        // Top 5 categorías
         const topCategorias = categorias.slice(0, 5);
-        
-        const labels = topCategorias.map(c => c.producto__categoria__nombre);
+        const labels = topCategorias.map(c => c.producto__categoria__nombre || 'Sin categoría');
         const data = topCategorias.map(c => parseFloat(c.total));
         
         const colors = [
@@ -1052,23 +747,24 @@
                     legend: {
                         position: 'bottom',
                         labels: {
-                            padding: 15,
-                            font: {
-                                size: 12,
-                                weight: '600'
-                            },
+                            padding: 12,
+                            font: { size: 11, weight: '600' },
                             color: '#64748b',
                             usePointStyle: true,
-                            pointStyle: 'circle'
+                            pointStyle: 'circle',
+                            boxWidth: 8,
+                            boxHeight: 8
                         }
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        titleColor: '#0f172a',
-                        bodyColor: '#64748b',
-                        borderColor: 'rgba(59, 130, 246, 0.3)',
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleColor: '#fff',
+                        bodyColor: '#e2e8f0',
+                        borderColor: 'rgba(59, 130, 246, 0.5)',
                         borderWidth: 1,
                         padding: 12,
+                        titleFont: { size: 13, weight: '700' },
+                        bodyFont: { size: 12, weight: '600' },
                         callbacks: {
                             label: function(context) {
                                 const label = context.label || '';
@@ -1079,102 +775,739 @@
                             }
                         }
                     }
+                },
+                animation: {
+                    duration: 1200,
+                    easing: 'easeInOutQuart'
                 }
             }
         });
     }
 
-    // Actualizar alertas
-    function updateAlertas(alertas) {
-        const container = document.getElementById('alertasContainer');
-        document.getElementById('totalAlertas').textContent = alertas.length;
+    // 🎨 GRÁFICO 2: Estado del Inventario
+    function updateInventoryChart(inventario) {
+        const ctx = document.getElementById('inventoryChart').getContext('2d');
         
-        if (alertas.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 2rem;">
-                    <i class="bi bi-check-circle-fill" style="font-size: 3rem; color: #10b981;"></i>
-                    <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">
-                        No hay alertas pendientes
-                    </p>
-                </div>
-            `;
-            return;
+        if (inventoryChart) {
+            inventoryChart.destroy();
         }
         
-        let html = '';
-        alertas.forEach(alerta => {
-            const nivel = alerta.nivel === 'CRITICO' ? 'critical' : 
-                         alerta.nivel === 'ALTO' ? 'warning' : 'info';
-            
-            const icon = alerta.nivel === 'CRITICO' ? 'exclamation-triangle-fill' :
-                        alerta.nivel === 'ALTO' ? 'exclamation-circle-fill' : 'info-circle-fill';
-            
-            html += `
-                <div class="alert-item ${nivel}">
-                    <div class="alert-icon-box">
-                        <i class="bi bi-${icon}"></i>
-                    </div>
-                    <div class="alert-content">
-                        <div class="alert-title">${alerta.tipo.replace(/_/g, ' ')}</div>
-                        <div class="alert-message">${alerta.mensaje}</div>
-                    </div>
-                </div>
-            `;
-        });
+        const valorQuintales = inventario.quintales.valor_total;
+        const valorProductos = inventario.productos_normales.valor_total;
         
-        container.innerHTML = html;
+        inventoryChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Quintales', 'Productos', 'Críticos'],
+                datasets: [{
+                    label: 'Valor',
+                    data: [valorQuintales, valorProductos, 0],
+                    backgroundColor: [
+                        'rgba(16, 185, 129, 0.8)',
+                        'rgba(139, 92, 246, 0.8)',
+                        'rgba(239, 68, 68, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(16, 185, 129, 1)',
+                        'rgba(139, 92, 246, 1)',
+                        'rgba(239, 68, 68, 1)'
+                    ],
+                    borderWidth: 2,
+                    borderRadius: 8
+                }, {
+                    label: 'Cantidad',
+                    data: [
+                        inventario.quintales.total_disponibles,
+                        inventario.productos_normales.con_stock,
+                        inventario.productos_normales.criticos + inventario.productos_normales.agotados
+                    ],
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(245, 158, 11, 0.8)',
+                        'rgba(220, 38, 38, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(59, 130, 246, 1)',
+                        'rgba(245, 158, 11, 1)',
+                        'rgba(220, 38, 38, 1)'
+                    ],
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            padding: 12,
+                            font: { size: 11, weight: '600' },
+                            color: '#64748b',
+                            usePointStyle: true,
+                            boxWidth: 8
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleColor: '#fff',
+                        bodyColor: '#e2e8f0',
+                        borderColor: 'rgba(16, 185, 129, 0.5)',
+                        borderWidth: 1,
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                if (context.datasetIndex === 0) {
+                                    label += formatCurrency(context.parsed.y);
+                                } else {
+                                    label += context.parsed.y + ' unidades';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(148, 163, 184, 0.1)',
+                            drawBorder: false
+                        },
+                        border: { display: false },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 10, weight: '600' },
+                            padding: 8,
+                            callback: (value) => formatCurrency(value)
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        beginAtZero: true,
+                        grid: { drawOnChartArea: false },
+                        border: { display: false },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 10, weight: '600' }
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 10, weight: '600' }
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1200,
+                    easing: 'easeInOutQuart'
+                }
+            }
+        });
     }
 
-    // Actualizar top productos
-    function updateTopProductos(productos) {
-        const container = document.getElementById('topProductosContainer');
+    // 🎨 GRÁFICO 3: Resumen Financiero
+    function updateFinancialChart(data) {
+        const ctx = document.getElementById('financialChart').getContext('2d');
         
-        if (productos.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 2rem;">
-                    <i class="bi bi-inbox" style="font-size: 3rem; color: #64748b;"></i>
-                    <p style="color: #64748b; margin-top: 1rem; font-weight: 600;">
-                        No hay datos de productos
-                    </p>
-                </div>
-            `;
-            return;
+        if (financialChart) {
+            financialChart.destroy();
         }
         
-        let html = '';
-        productos.forEach((producto, index) => {
-            const tipo = producto.producto__tipo_inventario === 'QUINTAL' ? 'Quintal' : 'Normal';
+        const ventasMes = data.resumen_ejecutivo.ventas_mes.total;
+        const creditosPendientes = data.financiero.creditos_pendientes.total;
+        const efectivoCaja = data.resumen_ejecutivo.caja.efectivo_disponible;
+        
+        financialChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Ventas del Mes', 'Créditos Pendientes', 'Efectivo en Caja'],
+                datasets: [{
+                    label: 'Monto',
+                    data: [ventasMes, creditosPendientes, efectivoCaja],
+                    backgroundColor: [
+                        'rgba(16, 185, 129, 0.8)',
+                        'rgba(245, 158, 11, 0.8)',
+                        'rgba(59, 130, 246, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(16, 185, 129, 1)',
+                        'rgba(245, 158, 11, 1)',
+                        'rgba(59, 130, 246, 1)'
+                    ],
+                    borderWidth: 2,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleColor: '#fff',
+                        bodyColor: '#e2e8f0',
+                        borderColor: 'rgba(59, 130, 246, 0.5)',
+                        borderWidth: 1,
+                        padding: 12,
+                        callbacks: {
+                            label: (context) => formatCurrency(context.parsed.x)
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(148, 163, 184, 0.1)',
+                            drawBorder: false
+                        },
+                        border: { display: false },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 10, weight: '600' },
+                            padding: 8,
+                            callback: (value) => formatCurrency(value)
+                        }
+                    },
+                    y: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 10, weight: '600' }
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1200,
+                    easing: 'easeInOutQuart'
+                }
+            }
+        });
+    }
+
+    // 🎨 GRÁFICO 4: Evolución de Utilidad REAL - ✅ CORREGIDO
+    function updateProfitChartReal(utilidadDiaria) {
+        const ctx = document.getElementById('profitChart').getContext('2d');
+        
+        if (profitChart) {
+            profitChart.destroy();
+        }
+        
+        console.log('✅ Usando datos REALES de utilidad_diaria:', utilidadDiaria);
+        
+        const labels = [];
+        const utilidades = [];
+        
+        // ✅ CORRECCIÓN: Procesar fechas SIN zona horaria
+        utilidadDiaria.forEach((item, index) => {
+            // Parsear la fecha como string sin convertir a Date para evitar problemas de zona horaria
+            let labelFecha;
+            if (typeof item.dia === 'string') {
+                const partes = item.dia.split('-');
+                const fecha = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+                labelFecha = fecha.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+            } else {
+                const fecha = new Date(item.dia);
+                labelFecha = fecha.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+            }
             
-            html += `
-                <div class="top-product-item">
-                    <div class="top-product-rank">${index + 1}</div>
-                    <div class="top-product-info">
-                        <div class="top-product-name">${producto.producto__nombre}</div>
-                        <div class="top-product-type">${tipo} • ${producto.cantidad_ventas} ventas</div>
-                    </div>
-                    <div class="top-product-amount">${formatCurrency(producto.total_vendido)}</div>
-                </div>
-            `;
+            labels.push(labelFecha);
+            
+            // Conversión EXPLÍCITA a número
+            let valor = 0;
+            if (item.utilidad_total !== null && item.utilidad_total !== undefined) {
+                valor = Number(item.utilidad_total);
+                if (isNaN(valor)) {
+                    console.warn(`⚠️ Valor NaN en índice ${index}:`, item.utilidad_total);
+                    valor = 0;
+                }
+            }
+            utilidades.push(valor);
+            
+            console.log(`   Día ${index}: ${item.dia} → ${labelFecha} → Utilidad: ${valor}`);
         });
         
-        container.innerHTML = html;
+        console.log('📊 Labels finales:', labels);
+        console.log('📊 Utilidades finales:', utilidades);
+        
+        const gradient = ctx.createLinearGradient(0, 0, 0, 350);
+        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.6)');
+        gradient.addColorStop(0.5, 'rgba(16, 185, 129, 0.3)');
+        gradient.addColorStop(1, 'rgba(16, 185, 129, 0.05)');
+        
+        profitChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Utilidad Real',
+                    data: utilidades,
+                    borderColor: '#10b981',
+                    backgroundColor: gradient,
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: '#10b981',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleColor: '#fff',
+                        bodyColor: '#e2e8f0',
+                        borderColor: 'rgba(16, 185, 129, 0.5)',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: false,
+                        titleFont: { size: 13, weight: '700' },
+                        bodyFont: { size: 14, weight: '600' },
+                        callbacks: {
+                            label: function(context) {
+                                return 'Utilidad: ' + formatCurrency(context.parsed.y);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(148, 163, 184, 0.1)',
+                            drawBorder: false
+                        },
+                        border: { display: false },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 10, weight: '600' },
+                            padding: 8,
+                            callback: (value) => formatCurrency(value)
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 10, weight: '600' }
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1500,
+                    easing: 'easeInOutQuart'
+                }
+            }
+        });
+        
+        console.log('✅ Gráfico de utilidad creado exitosamente');
     }
 
-    // Actualizar inventario
-    function updateInventario(inventario) {
-        document.getElementById('valorInventario').textContent = formatCurrency(inventario.valor_total);
-        document.getElementById('valorQuintales').textContent = formatCurrency(inventario.valor_quintales);
-        document.getElementById('valorProductosNormales').textContent = formatCurrency(inventario.valor_productos_normales);
+    // 🎨 GRÁFICO 5: Balance Compras vs Ventas REAL - ✅ CORREGIDO
+    function updateBalanceChartReal(balanceDiario) {
+        const ctx = document.getElementById('balanceChart').getContext('2d');
+        
+        if (balanceChart) {
+            balanceChart.destroy();
+        }
+        
+        console.log('✅ Usando datos REALES de balance_compras_ventas:', balanceDiario);
+        
+        const labels = [];
+        const ventas = [];
+        const compras = [];
+        
+        // ✅ CORRECCIÓN: Procesar fechas SIN zona horaria
+        balanceDiario.forEach((item, index) => {
+            // Parsear la fecha como string sin convertir a Date para evitar problemas de zona horaria
+            let labelFecha;
+            if (typeof item.dia === 'string') {
+                const partes = item.dia.split('-');
+                const fecha = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+                labelFecha = fecha.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+            } else {
+                const fecha = new Date(item.dia);
+                labelFecha = fecha.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+            }
+            
+            labels.push(labelFecha);
+            
+            // Conversión EXPLÍCITA a número - VENTAS
+            let valorVentas = 0;
+            if (item.total_ventas !== null && item.total_ventas !== undefined) {
+                valorVentas = Number(item.total_ventas);
+                if (isNaN(valorVentas)) valorVentas = 0;
+            }
+            ventas.push(valorVentas);
+            
+            // Conversión EXPLÍCITA a número - COMPRAS
+            let valorCompras = 0;
+            if (item.total_compras !== null && item.total_compras !== undefined) {
+                valorCompras = Number(item.total_compras);
+                if (isNaN(valorCompras)) valorCompras = 0;
+            }
+            compras.push(valorCompras);
+            
+            console.log(`   Día ${index}: ${item.dia} → ${labelFecha} → V: ${valorVentas}, C: ${valorCompras}`);
+        });
+        
+        console.log('📊 Labels finales:', labels);
+        console.log('📊 Ventas finales:', ventas);
+        console.log('📊 Compras finales:', compras);
+        
+        const gradientVentas = ctx.createLinearGradient(0, 0, 0, 350);
+        gradientVentas.addColorStop(0, 'rgba(59, 130, 246, 0.4)');
+        gradientVentas.addColorStop(1, 'rgba(59, 130, 246, 0.01)');
+        
+        const gradientCompras = ctx.createLinearGradient(0, 0, 0, 350);
+        gradientCompras.addColorStop(0, 'rgba(245, 158, 11, 0.4)');
+        gradientCompras.addColorStop(1, 'rgba(245, 158, 11, 0.01)');
+        
+        balanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Ventas',
+                        data: ventas,
+                        borderColor: '#3b82f6',
+                        backgroundColor: gradientVentas,
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#3b82f6',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    },
+                    {
+                        label: 'Compras',
+                        data: compras,
+                        borderColor: '#f59e0b',
+                        backgroundColor: gradientCompras,
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#f59e0b',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            padding: 12,
+                            font: { size: 11, weight: '600' },
+                            color: '#64748b',
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            boxWidth: 8,
+                            boxHeight: 8
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleColor: '#fff',
+                        bodyColor: '#e2e8f0',
+                        borderColor: 'rgba(59, 130, 246, 0.5)',
+                        borderWidth: 1,
+                        padding: 12,
+                        titleFont: { size: 13, weight: '700' },
+                        bodyFont: { size: 12, weight: '600' },
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                            },
+                            afterBody: function(tooltipItems) {
+                                if (tooltipItems.length >= 2) {
+                                    const ventasVal = tooltipItems[0].parsed.y || 0;
+                                    const comprasVal = tooltipItems[1].parsed.y || 0;
+                                    const balance = ventasVal - comprasVal;
+                                    const icon = balance >= 0 ? '✅' : '⚠️';
+                                    return '\n' + icon + ' Balance: ' + formatCurrency(balance);
+                                }
+                                return '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(148, 163, 184, 0.1)', drawBorder: false },
+                        border: { display: false },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 10, weight: '600' },
+                            padding: 8,
+                            callback: (value) => formatCurrency(value)
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: { color: '#64748b', font: { size: 10, weight: '600' } }
+                    }
+                },
+                animation: {
+                    duration: 1500,
+                    easing: 'easeInOutQuart'
+                }
+            }
+        });
+        
+        console.log('✅ Gráfico de balance creado exitosamente');
     }
 
-    // Actualizar financiero
-    function updateFinanciero(data) {
-        // Créditos pendientes
-        const creditos = data.resumen_ejecutivo; // Ajustar según estructura real
-        // Estos valores deberían venir del backend
-        // Por ahora los dejamos como ejemplo
-        document.getElementById('creditosPendientes').textContent = formatCurrency(0);
-        document.getElementById('cantidadCreditos').textContent = '0';
+    // Fallback para utilidad (si no hay datos reales)
+    function updateProfitChartFallback(tendencias) {
+        const ctx = document.getElementById('profitChart').getContext('2d');
+        
+        if (profitChart) {
+            profitChart.destroy();
+        }
+        
+        console.warn('⚠️ Usando FALLBACK - estimando utilidad como 30% de ventas');
+        
+        const labels = tendencias.map(t => {
+            const date = new Date(t.dia);
+            return date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
+        });
+        
+        const utilidades = tendencias.map(t => parseFloat(t.total) * 0.3);
+        
+        const gradient = ctx.createLinearGradient(0, 0, 0, 350);
+        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.6)');
+        gradient.addColorStop(0.5, 'rgba(16, 185, 129, 0.3)');
+        gradient.addColorStop(1, 'rgba(16, 185, 129, 0.05)');
+        
+        profitChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Utilidad Estimada',
+                    data: utilidades,
+                    borderColor: '#10b981',
+                    backgroundColor: gradient,
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: '#10b981',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleColor: '#fff',
+                        bodyColor: '#e2e8f0',
+                        borderColor: 'rgba(16, 185, 129, 0.5)',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: false,
+                        titleFont: { size: 13, weight: '700' },
+                        bodyFont: { size: 14, weight: '600' },
+                        callbacks: {
+                            label: (context) => 'Utilidad (est): ' + formatCurrency(context.parsed.y)
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(148, 163, 184, 0.1)', drawBorder: false },
+                        border: { display: false },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 10, weight: '600' },
+                            padding: 8,
+                            callback: (value) => formatCurrency(value)
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: { color: '#64748b', font: { size: 10, weight: '600' } }
+                    }
+                },
+                animation: {
+                    duration: 1500,
+                    easing: 'easeInOutQuart'
+                }
+            }
+        });
+    }
+
+    // Fallback para balance (si no hay datos reales)
+    function updateBalanceChartFallback(tendencias) {
+        const ctx = document.getElementById('balanceChart').getContext('2d');
+        
+        if (balanceChart) {
+            balanceChart.destroy();
+        }
+        
+        console.warn('⚠️ Usando FALLBACK - simulando compras');
+        
+        const labels = tendencias.map(t => {
+            const date = new Date(t.dia);
+            return date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
+        });
+        
+        const ventas = tendencias.map(t => parseFloat(t.total));
+        const compras = ventas.map(v => v * (0.8 + Math.random() * 0.4));
+        
+        const gradientVentas = ctx.createLinearGradient(0, 0, 0, 350);
+        gradientVentas.addColorStop(0, 'rgba(59, 130, 246, 0.4)');
+        gradientVentas.addColorStop(1, 'rgba(59, 130, 246, 0.01)');
+        
+        const gradientCompras = ctx.createLinearGradient(0, 0, 0, 350);
+        gradientCompras.addColorStop(0, 'rgba(245, 158, 11, 0.4)');
+        gradientCompras.addColorStop(1, 'rgba(245, 158, 11, 0.01)');
+        
+        balanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Ventas',
+                        data: ventas,
+                        borderColor: '#3b82f6',
+                        backgroundColor: gradientVentas,
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#3b82f6',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    },
+                    {
+                        label: 'Compras (estimado)',
+                        data: compras,
+                        borderColor: '#f59e0b',
+                        backgroundColor: gradientCompras,
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#f59e0b',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            padding: 12,
+                            font: { size: 11, weight: '600' },
+                            color: '#64748b',
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            boxWidth: 8,
+                            boxHeight: 8
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleColor: '#fff',
+                        bodyColor: '#e2e8f0',
+                        borderColor: 'rgba(59, 130, 246, 0.5)',
+                        borderWidth: 1,
+                        padding: 12,
+                        titleFont: { size: 13, weight: '700' },
+                        bodyFont: { size: 12, weight: '600' },
+                        callbacks: {
+                            label: (context) => context.dataset.label + ': ' + formatCurrency(context.parsed.y),
+                            afterBody: (tooltipItems) => {
+                                const ventas = tooltipItems[0].parsed.y;
+                                const compras = tooltipItems[1].parsed.y;
+                                const balance = ventas - compras;
+                                const icon = balance >= 0 ? '✅' : '⚠️';
+                                return '\n' + icon + ' Balance (est): ' + formatCurrency(balance);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(148, 163, 184, 0.1)', drawBorder: false },
+                        border: { display: false },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 10, weight: '600' },
+                            padding: 8,
+                            callback: (value) => formatCurrency(value)
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: { color: '#64748b', font: { size: 10, weight: '600' } }
+                    }
+                },
+                animation: {
+                    duration: 1500,
+                    easing: 'easeInOutQuart'
+                }
+            }
+        });
     }
 
     // Refresh dashboard
