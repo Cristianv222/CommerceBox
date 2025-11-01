@@ -90,7 +90,7 @@ class ReporteVentasView(ReportesAccessMixin, TemplateView):
     """
     Vista principal de reportes de ventas con navegación
     """
-    template_name = 'reports/ventas/index.html'
+    template_name = 'custom_admin/reportes/ventas_index.html'
 
 
 class VentasPeriodoView(ReportesAccessMixin, TemplateView):
@@ -311,7 +311,7 @@ class ReporteInventarioView(ReportesAccessMixin, TemplateView):
     """
     Vista principal de reportes de inventario
     """
-    template_name = 'reports/inventario/index.html'
+    template_name = 'custom_admin/reportes/inventario_index.html'
 
 
 class InventarioValorizadoView(ReportesAccessMixin, TemplateView):
@@ -471,7 +471,7 @@ class ReporteFinancieroView(ReportesAccessMixin, TemplateView):
     """
     Vista principal de reportes financieros
     """
-    template_name = 'reports/financiero/index.html'
+    template_name = 'custom_admin/reportes/financiero_index.html'
 
 
 class MovimientosCajaView(ReportesAccessMixin, TemplateView):
