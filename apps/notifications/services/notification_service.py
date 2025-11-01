@@ -216,7 +216,7 @@ class NotificationService:
         
         titulo = f"🚨 Quintal Crítico: {quintal.producto.nombre}"
         mensaje = (
-            f"El quintal {quintal.codigo_unico} está en estado CRÍTICO.\n\n"
+            f"El quintal {quintal.codigo_quintal} está en estado CRÍTICO.\n\n"
             f"📦 Producto: {quintal.producto.nombre}\n"
             f"⚖️ Peso restante: {quintal.peso_actual} {quintal.unidad_medida.abreviatura}\n"
             f"📊 Porcentaje: {porcentaje_restante:.1f}%\n"
@@ -235,7 +235,7 @@ class NotificationService:
                 url_accion=f'/inventory/quintal/{quintal.id}/',
                 datos_adicionales={
                     'quintal_id': str(quintal.id),
-                    'quintal_codigo': quintal.codigo_unico,
+                    'quintal_codigo': quintal.codigo_quintal,
                     'producto_id': str(quintal.producto.id),
                     'producto_nombre': quintal.producto.nombre,
                     'peso_actual': float(quintal.peso_actual),
@@ -256,7 +256,7 @@ class NotificationService:
         
         titulo = f"⚫ Quintal Agotado: {quintal.producto.nombre}"
         mensaje = (
-            f"El quintal {quintal.codigo_unico} se ha AGOTADO completamente.\n\n"
+            f"El quintal {quintal.codigo_quintal} se ha AGOTADO completamente.\n\n"
             f"📦 Producto: {quintal.producto.nombre}\n"
             f"🏪 Proveedor: {quintal.proveedor.nombre_comercial}\n"
             f"📅 Fecha recepción: {quintal.fecha_recepcion.strftime('%d/%m/%Y')}\n"
@@ -290,7 +290,7 @@ class NotificationService:
         
         titulo = f"⏰ Vencimiento Próximo: {quintal.producto.nombre}"
         mensaje = (
-            f"El quintal {quintal.codigo_unico} está próximo a vencer.\n\n"
+            f"El quintal {quintal.codigo_quintal} está próximo a vencer.\n\n"
             f"📦 Producto: {quintal.producto.nombre}\n"
             f"📅 Fecha vencimiento: {quintal.fecha_vencimiento.strftime('%d/%m/%Y')}\n"
             f"⏰ Días restantes: {dias_restantes} día(s)\n"

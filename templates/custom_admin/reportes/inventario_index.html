@@ -1,4 +1,1385 @@
 {% extends 'custom_admin/base_admin.html' %}
 {% load static %}
 
-{% block title %}Dashboard de ventas - CommerceBox{% endblock %}
+{% block title %}Dashboard de Inventario - CommerceBox{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ============================================
+       VARIABLES Y BASE
+       ============================================ */
+    :root {
+        --primary-blue: #3b82f6;
+        --primary-blue-light: #60a5fa;
+        --primary-blue-dark: #2563eb;
+        --success-green: #10b981;
+        --warning-orange: #f59e0b;
+        --danger-red: #ef4444;
+        --purple: #8b5cf6;
+        --pink: #ec4899;
+        --dark: #0f172a;
+        --gray: #64748b;
+        --gray-light: #f8fafc;
+    }
+
+    /* ============================================
+       HEADER PRINCIPAL
+       ============================================ */
+    .dashboard-header {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 40px rgba(16, 185, 129, 0.3);
+        color: white;
+    }
+
+    .dashboard-header h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 0 0 0.5rem 0;
+        color: white;
+    }
+
+    .dashboard-header p {
+        margin: 0;
+        opacity: 0.95;
+        font-weight: 500;
+    }
+
+    /* ============================================
+       FILTROS
+       ============================================ */
+    .filter-bar {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .filter-bar .form-label {
+        font-weight: 700;
+        color: var(--dark);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .filter-bar .form-select,
+    .filter-bar .form-control {
+        border-radius: 10px;
+        border: 2px solid #e2e8f0;
+        padding: 0.6rem 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .filter-bar .form-select:focus,
+    .filter-bar .form-control:focus {
+        border-color: var(--success-green);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    /* ============================================
+       KPI CARDS
+       ============================================ */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .kpi-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.75rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--success-green), var(--primary-blue));
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
+    }
+
+    .kpi-card:hover::before {
+        transform: scaleX(1);
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px rgba(16, 185, 129, 0.2);
+    }
+
+    .kpi-label {
+        color: var(--gray);
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.75rem;
+    }
+
+    .kpi-value {
+        color: var(--dark);
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 0.5rem 0;
+        line-height: 1;
+    }
+
+    .kpi-subtitle {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--gray);
+        margin-top: 0.5rem;
+    }
+
+    .kpi-status {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .kpi-status.success {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .kpi-status.warning {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .kpi-status.danger {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    /* ============================================
+       SECTION CARDS
+       ============================================ */
+    .section-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.75rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        height: 100%;
+    }
+
+    .section-title {
+        color: var(--dark);
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0 0 1.25rem 0;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .section-title i {
+        color: var(--success-green);
+    }
+
+    /* ============================================
+       CHARTS
+       ============================================ */
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+
+    .chart-xl {
+        height: 380px;
+    }
+
+    .chart-lg {
+        height: 320px;
+    }
+
+    .chart-md {
+        height: 280px;
+    }
+
+    .chart-sm {
+        height: 240px;
+    }
+
+    /* ============================================
+       GRIDS
+       ============================================ */
+    .grid-full {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .grid-2-1 {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    /* ============================================
+       BOTONES
+       ============================================ */
+    .btn-primary-custom {
+        padding: 0.6rem 1.2rem;
+        background: linear-gradient(135deg, var(--success-green) 0%, #059669 100%);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        font-size: 0.9rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+    }
+
+    .btn-primary-custom:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+        color: white;
+    }
+
+    .btn-secondary-custom {
+        padding: 0.6rem 1.2rem;
+        background: white;
+        border: 2px solid var(--success-green);
+        border-radius: 10px;
+        color: var(--success-green);
+        font-size: 0.9rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-secondary-custom:hover {
+        background: var(--success-green);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+    }
+
+    /* ============================================
+       TABLAS
+       ============================================ */
+    .table-dashboard {
+        width: 100%;
+        margin: 0;
+    }
+
+    .table-dashboard thead {
+        background: #f8fafc;
+    }
+
+    .table-dashboard th {
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        color: var(--gray);
+        padding: 1rem;
+        letter-spacing: 0.5px;
+    }
+
+    .table-dashboard td {
+        padding: 1rem;
+        color: var(--dark);
+        vertical-align: middle;
+    }
+
+    .table-dashboard tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    .table-dashboard tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    /* ============================================
+       BADGES
+       ============================================ */
+    .badge-custom {
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .badge-success {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .badge-warning {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .badge-danger {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .badge-info {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    /* ============================================
+       ALERTAS
+       ============================================ */
+    .alert-custom {
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .alert-info {
+        background: #dbeafe;
+        color: #1e40af;
+        border: 2px solid #93c5fd;
+    }
+
+    .alert-danger {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 2px solid #fca5a5;
+    }
+
+    .alert-success {
+        background: #d1fae5;
+        color: #065f46;
+        border: 2px solid #6ee7b7;
+    }
+
+    .alert-warning {
+        background: #fef3c7;
+        color: #92400e;
+        border: 2px solid #fcd34d;
+    }
+
+    /* ============================================
+       PROGRESS BAR
+       ============================================ */
+    .progress-custom {
+        height: 8px;
+        border-radius: 10px;
+        background: #e5e7eb;
+        overflow: hidden;
+        margin-top: 0.5rem;
+    }
+
+    .progress-bar-custom {
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.6s ease;
+    }
+
+    .progress-bar-success {
+        background: linear-gradient(90deg, #10b981, #059669);
+    }
+
+    .progress-bar-warning {
+        background: linear-gradient(90deg, #f59e0b, #d97706);
+    }
+
+    .progress-bar-danger {
+        background: linear-gradient(90deg, #ef4444, #dc2626);
+    }
+
+    /* ============================================
+       ANIMACIONES
+       ============================================ */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .kpi-card,
+    .section-card {
+        animation: fadeInUp 0.5s ease-out backwards;
+    }
+
+    .kpi-card:nth-child(1) { animation-delay: 0.05s; }
+    .kpi-card:nth-child(2) { animation-delay: 0.1s; }
+    .kpi-card:nth-child(3) { animation-delay: 0.15s; }
+    .kpi-card:nth-child(4) { animation-delay: 0.2s; }
+    .kpi-card:nth-child(5) { animation-delay: 0.25s; }
+    .kpi-card:nth-child(6) { animation-delay: 0.3s; }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 1200px) {
+        .grid-3 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .grid-2-1 {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .kpi-value {
+            font-size: 1.6rem;
+        }
+
+        .grid-2,
+        .grid-3 {
+            grid-template-columns: 1fr;
+        }
+
+        .chart-container,
+        .chart-xl,
+        .chart-lg,
+        .chart-md {
+            height: 280px;
+        }
+
+        .chart-sm {
+            height: 240px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- =====================================================
+         HEADER
+    ===================================================== -->
+    <div class="dashboard-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1>
+                    <i class="bi bi-boxes me-2"></i>
+                    Dashboard de Inventario
+                </h1>
+                <p>Análisis completo de stock, valorización y movimientos</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn-secondary-custom me-2" onclick="location.reload()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    Actualizar
+                </button>
+                <a href="{% url 'reports_analytics:dashboard' %}" class="btn-secondary-custom">
+                    <i class="bi bi-arrow-left"></i>
+                    Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alertas -->
+    <div id="alertaCarga" class="alert-custom alert-info" style="display: none;">
+        <i class="bi bi-arrow-clockwise" style="animation: spin 1s linear infinite;"></i>
+        Cargando datos del inventario...
+    </div>
+
+    <div id="alertaError" class="alert-custom alert-danger" style="display: none;">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span id="mensajeError"></span>
+    </div>
+
+    <!-- =====================================================
+         ALERTAS CRÍTICAS
+    ===================================================== -->
+    <div id="alertasCriticas" style="display: none;">
+        <div class="alert-custom alert-warning">
+            <i class="bi bi-exclamation-circle-fill"></i>
+            <div>
+                <strong>Atención:</strong>
+                <span id="mensajeAlertaCritica"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         KPIs PRINCIPALES
+    ===================================================== -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-label">
+                <i class="bi bi-cash-stack me-1"></i>
+                Valor Total Inventario
+            </div>
+            <div class="kpi-value" id="kpiValorTotal">$0.00</div>
+            <div class="kpi-subtitle">
+                <span id="kpiTotalItems">0 items</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-label">
+                <i class="bi bi-box-seam me-1"></i>
+                Quintales Disponibles
+            </div>
+            <div class="kpi-value" id="kpiQuintales">0</div>
+            <div class="kpi-subtitle">
+                <span id="kpiValorQuintales">Valor: $0.00</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-label">
+                <i class="bi bi-box me-1"></i>
+                Productos Normales
+            </div>
+            <div class="kpi-value" id="kpiProductos">0</div>
+            <div class="kpi-subtitle">
+                <span id="kpiValorProductos">Valor: $0.00</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-label">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                Stock Crítico
+            </div>
+            <div class="kpi-value text-warning" id="kpiCriticos">0</div>
+            <div class="kpi-subtitle">
+                <span class="kpi-status warning" id="statusCriticos">Requieren atención</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-label">
+                <i class="bi bi-x-circle me-1"></i>
+                Productos Agotados
+            </div>
+            <div class="kpi-value text-danger" id="kpiAgotados">0</div>
+            <div class="kpi-subtitle">
+                <span class="kpi-status danger" id="statusAgotados">Sin stock</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-label">
+                <i class="bi bi-clock-history me-1"></i>
+                Próximos a Vencer
+            </div>
+            <div class="kpi-value text-danger" id="kpiVencimiento">0</div>
+            <div class="kpi-subtitle">
+                <span id="diasVencimiento">En 7 días</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         FILA 1: VALORIZACIÓN POR CATEGORÍA + ESTADO
+    ===================================================== -->
+    <div class="grid-2">
+        <div class="section-card">
+            <div class="section-title">
+                <i class="bi bi-pie-chart-fill"></i>
+                Valorización por Categoría
+            </div>
+            <div class="chart-container chart-lg">
+                <canvas id="chartCategorias"></canvas>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-title">
+                <i class="bi bi-speedometer2"></i>
+                Estado del Inventario
+            </div>
+            <div class="chart-container chart-lg">
+                <canvas id="chartEstado"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         FILA 2: TOP PRODUCTOS + QUINTALES POR PROVEEDOR
+    ===================================================== -->
+    <div class="grid-2">
+        <div class="section-card">
+            <div class="section-title">
+                <i class="bi bi-graph-up-arrow"></i>
+                Top 10 Productos por Valor
+            </div>
+            <div class="chart-container chart-lg">
+                <canvas id="chartTopProductos"></canvas>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-title">
+                <i class="bi bi-truck"></i>
+                Inventario por Proveedor
+            </div>
+            <div class="chart-container chart-lg">
+                <canvas id="chartProveedores"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         QUINTALES CRÍTICOS (TABLA)
+    ===================================================== -->
+    <div class="grid-full">
+        <div class="section-card">
+            <div class="section-title">
+                <i class="bi bi-exclamation-diamond-fill"></i>
+                Quintales en Estado Crítico (< 10% restante)
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-dashboard" id="tablaQuintalesCriticos">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Producto</th>
+                            <th>Proveedor</th>
+                            <th class="text-end">Peso Inicial</th>
+                            <th class="text-end">Peso Actual</th>
+                            <th class="text-end">% Restante</th>
+                            <th class="text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <i class="bi bi-hourglass-split me-2"></i>Cargando datos...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         PRODUCTOS CON STOCK BAJO (TABLA)
+    ===================================================== -->
+    <div class="grid-full">
+        <div class="section-card">
+            <div class="section-title">
+                <i class="bi bi-clipboard-x-fill"></i>
+                Productos con Stock Bajo o Agotados
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-dashboard" id="tablaProductosCriticos">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th class="text-end">Stock Actual</th>
+                            <th class="text-end">Stock Mínimo</th>
+                            <th class="text-end">Déficit</th>
+                            <th class="text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <i class="bi bi-hourglass-split me-2"></i>Cargando datos...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         ROTACIÓN DE INVENTARIO
+    ===================================================== -->
+    <div class="grid-full">
+        <div class="section-card">
+            <div class="section-title">
+                <i class="bi bi-arrow-repeat"></i>
+                Análisis de Rotación de Inventario (Últimos 30 días)
+            </div>
+            <div class="chart-container chart-md">
+                <canvas id="chartRotacion"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         PRÓXIMOS A VENCER
+    ===================================================== -->
+    <div class="grid-full">
+        <div class="section-card">
+            <div class="section-title">
+                <i class="bi bi-calendar-x-fill"></i>
+                Quintales Próximos a Vencer (Próximos 7 días)
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-dashboard" id="tablaProximosVencer">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Producto</th>
+                            <th>Fecha Vencimiento</th>
+                            <th class="text-center">Días Restantes</th>
+                            <th class="text-end">Peso Actual</th>
+                            <th class="text-center">Urgencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <i class="bi bi-hourglass-split me-2"></i>Cargando datos...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+console.log('🚀 Iniciando Dashboard de Inventario...');
+
+let chartInstances = {};
+
+// =====================================================
+// INICIALIZACIÓN
+// =====================================================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ DOM cargado');
+    cargarDashboardCompleto();
+});
+
+// =====================================================
+// FUNCIONES DE UTILIDAD
+// =====================================================
+
+function formatearMoneda(valor) {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+    }).format(valor || 0);
+}
+
+function formatearNumero(valor, decimales = 2) {
+    return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: decimales,
+        maximumFractionDigits: decimales
+    }).format(valor || 0);
+}
+
+function mostrarAlerta(mensaje, tipo = 'info') {
+    const alerta = document.getElementById(tipo === 'error' ? 'alertaError' : 'alertaCarga');
+    if (tipo === 'error') {
+        document.getElementById('mensajeError').textContent = mensaje;
+    }
+    alerta.style.display = 'flex';
+}
+
+function ocultarAlertas() {
+    document.getElementById('alertaCarga').style.display = 'none';
+    document.getElementById('alertaError').style.display = 'none';
+}
+
+function destruirGraficos() {
+    Object.values(chartInstances).forEach(chart => {
+        if (chart) chart.destroy();
+    });
+    chartInstances = {};
+}
+
+// =====================================================
+// CARGA DEL DASHBOARD
+// =====================================================
+
+async function cargarDashboardCompleto() {
+    console.log('📥 Cargando dashboard de inventario...');
+    mostrarAlerta('Cargando datos del inventario...', 'info');
+    
+    try {
+        destruirGraficos();
+        
+        const urls = {
+            valorizado: '/panel/reportes-analitica/api/inventario/valorizado/',
+            categorias: '/panel/reportes-analitica/api/inventario/categorias/',
+            criticos: '/panel/reportes-analitica/api/inventario/criticos/',
+            proveedores: '/panel/reportes-analitica/api/inventario/proveedores/',
+            rotacion: '/panel/reportes-analitica/api/inventario/rotacion/'
+        };
+        
+        console.log('📡 URLs a consultar:', urls);
+        
+        const [valorizado, categorias, criticos, proveedores, rotacion] = await Promise.all([
+            fetch(urls.valorizado).then(r => r.json()),
+            fetch(urls.categorias).then(r => r.json()),
+            fetch(urls.criticos).then(r => r.json()),
+            fetch(urls.proveedores).then(r => r.json()),
+            fetch(urls.rotacion).then(r => r.json())
+        ]);
+        
+        console.log('📊 Datos recibidos correctamente');
+        
+        actualizarKPIs(valorizado, criticos);
+        crearGraficoCategorias(categorias.categorias || []);
+        crearGraficoEstado(valorizado);
+        crearGraficoTopProductos(valorizado);
+        crearGraficoProveedores(proveedores.proveedores || []);
+        crearGraficoRotacion(rotacion.productos || []);
+        crearTablaQuintalesCriticos(criticos.quintales_criticos.items || []);
+        crearTablaProductosCriticos(criticos.productos_criticos.items || [], criticos.productos_agotados.items || []);
+        crearTablaProximosVencer(criticos.proximos_vencer.items || []);
+        mostrarAlertasCriticas(criticos);
+        
+        ocultarAlertas();
+        console.log('✅ Dashboard de inventario cargado');
+        
+    } catch (error) {
+        console.error('❌ Error:', error);
+        console.error('❌ Stack:', error.stack);
+        mostrarAlerta('Error al cargar el dashboard: ' + error.message, 'error');
+    }
+}
+
+// =====================================================
+// ACTUALIZAR KPIs
+// =====================================================
+
+function actualizarKPIs(valorizado, criticos) {
+    // Valor total
+    document.getElementById('kpiValorTotal').textContent = formatearMoneda(valorizado.totales.valor_total);
+    document.getElementById('kpiTotalItems').textContent = `${valorizado.totales.cantidad_items} items`;
+    
+    // Quintales
+    document.getElementById('kpiQuintales').textContent = valorizado.quintales.cantidad;
+    document.getElementById('kpiValorQuintales').textContent = `Valor: ${formatearMoneda(valorizado.quintales.valor_total)}`;
+    
+    // Productos
+    document.getElementById('kpiProductos').textContent = valorizado.productos_normales.cantidad;
+    document.getElementById('kpiValorProductos').textContent = `Valor: ${formatearMoneda(valorizado.productos_normales.valor_total)}`;
+    
+    // Críticos
+    const totalCriticos = criticos.quintales_criticos.cantidad + criticos.productos_criticos.cantidad;
+    document.getElementById('kpiCriticos').textContent = totalCriticos;
+    document.getElementById('statusCriticos').textContent = totalCriticos > 0 ? 'Requieren atención' : 'Todo normal';
+    
+    // Agotados
+    document.getElementById('kpiAgotados').textContent = criticos.productos_agotados.cantidad;
+    document.getElementById('statusAgotados').textContent = criticos.productos_agotados.cantidad > 0 ? 'Sin stock' : 'Sin problemas';
+    
+    // Próximos a vencer
+    document.getElementById('kpiVencimiento').textContent = criticos.proximos_vencer.cantidad;
+}
+
+function mostrarAlertasCriticas(criticos) {
+    const totalAlertas = criticos.total_alertas;
+    
+    if (totalAlertas > 0) {
+        const contenedor = document.getElementById('alertasCriticas');
+        const mensaje = document.getElementById('mensajeAlertaCritica');
+        
+        let textoAlerta = `${totalAlertas} alertas críticas detectadas: `;
+        let detalles = [];
+        
+        if (criticos.quintales_criticos.cantidad > 0) {
+            detalles.push(`${criticos.quintales_criticos.cantidad} quintales con stock bajo`);
+        }
+        if (criticos.productos_criticos.cantidad > 0) {
+            detalles.push(`${criticos.productos_criticos.cantidad} productos críticos`);
+        }
+        if (criticos.productos_agotados.cantidad > 0) {
+            detalles.push(`${criticos.productos_agotados.cantidad} productos agotados`);
+        }
+        if (criticos.proximos_vencer.cantidad > 0) {
+            detalles.push(`${criticos.proximos_vencer.cantidad} próximos a vencer`);
+        }
+        
+        mensaje.textContent = textoAlerta + detalles.join(', ');
+        contenedor.style.display = 'block';
+    }
+}
+
+// =====================================================
+// CREAR GRÁFICOS
+// =====================================================
+
+function crearGraficoCategorias(data) {
+    const ctx = document.getElementById('chartCategorias');
+    if (!ctx || !data || data.length === 0) return;
+    
+    // Ordenar por valor total
+    data.sort((a, b) => b.valor_total_categoria - a.valor_total_categoria);
+    
+    chartInstances.categorias = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.map(c => c.categoria),
+            datasets: [{
+                data: data.map(c => c.valor_total_categoria),
+                backgroundColor: [
+                    'rgba(16, 185, 129, 0.8)',
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(245, 158, 11, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(139, 92, 246, 0.8)',
+                    'rgba(236, 72, 153, 0.8)'
+                ],
+                borderColor: '#fff',
+                borderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        padding: 12,
+                        font: { size: 11, weight: '600' },
+                        color: '#64748b'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    callbacks: {
+                        label: ctx => ctx.label + ': ' + formatearMoneda(ctx.parsed)
+                    }
+                }
+            }
+        }
+    });
+}
+
+function crearGraficoEstado(valorizado) {
+    const ctx = document.getElementById('chartEstado');
+    if (!ctx) return;
+    
+    const quintalesValor = valorizado.quintales.valor_total;
+    const productosValor = valorizado.productos_normales.valor_total;
+    
+    chartInstances.estado = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Quintales', 'Productos Normales'],
+            datasets: [{
+                data: [quintalesValor, productosValor],
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(139, 92, 246, 0.8)'
+                ],
+                borderColor: '#fff',
+                borderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 12,
+                        font: { size: 11, weight: '600' },
+                        color: '#64748b'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    callbacks: {
+                        label: ctx => ctx.label + ': ' + formatearMoneda(ctx.parsed)
+                    }
+                }
+            }
+        }
+    });
+}
+
+function crearGraficoTopProductos(valorizado) {
+    const ctx = document.getElementById('chartTopProductos');
+    if (!ctx) return;
+    
+    // Combinar quintales y productos, ordenar por valor
+    let items = [];
+    
+    valorizado.quintales.items.forEach(q => {
+        items.push({
+            nombre: q.producto,
+            valor: q.valor_actual
+        });
+    });
+    
+    valorizado.productos_normales.items.forEach(p => {
+        items.push({
+            nombre: p.nombre,
+            valor: p.valor_stock
+        });
+    });
+    
+    items.sort((a, b) => b.valor - a.valor);
+    items = items.slice(0, 10);
+    
+    chartInstances.topProductos = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: items.map(i => i.nombre.substring(0, 20)),
+            datasets: [{
+                label: 'Valor',
+                data: items.map(i => i.valor),
+                backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                borderColor: '#10b981',
+                borderWidth: 2,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    callbacks: {
+                        label: ctx => formatearMoneda(ctx.parsed.x)
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                    ticks: {
+                        color: '#64748b',
+                        font: { size: 10 },
+                        callback: value => formatearMoneda(value)
+                    }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { 
+                        color: '#64748b',
+                        font: { size: 10 }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function crearGraficoProveedores(data) {
+    const ctx = document.getElementById('chartProveedores');
+    if (!ctx || !data || data.length === 0) return;
+    
+    // Tomar solo los top 8 proveedores
+    data = data.slice(0, 8);
+    
+    chartInstances.proveedores = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(p => p.proveedor.substring(0, 15)),
+            datasets: [{
+                label: 'Valor Inventario',
+                data: data.map(p => p.quintales.valor),
+                backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                borderColor: '#3b82f6',
+                borderWidth: 2,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    callbacks: {
+                        label: ctx => formatearMoneda(ctx.parsed.y)
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                    ticks: {
+                        color: '#64748b',
+                        callback: value => formatearMoneda(value)
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#64748b' }
+                }
+            }
+        }
+    });
+}
+
+function crearGraficoRotacion(data) {
+    const ctx = document.getElementById('chartRotacion');
+    if (!ctx || !data || data.length === 0) return;
+    
+    // Tomar top 15 productos
+    data = data.slice(0, 15);
+    
+    const colores = data.map(p => {
+        if (p.clasificacion === 'Alta rotación') return 'rgba(16, 185, 129, 0.8)';
+        if (p.clasificacion === 'Rotación media') return 'rgba(245, 158, 11, 0.8)';
+        return 'rgba(239, 68, 68, 0.8)';
+    });
+    
+    chartInstances.rotacion = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(p => p.producto.substring(0, 20)),
+            datasets: [{
+                label: 'Rotación Anual',
+                data: data.map(p => p.rotacion_anual),
+                backgroundColor: colores,
+                borderWidth: 2,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    callbacks: {
+                        label: ctx => {
+                            const item = data[ctx.dataIndex];
+                            return [
+                                `Rotación: ${item.rotacion_anual.toFixed(2)} veces/año`,
+                                `Clasificación: ${item.clasificacion}`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                    ticks: { color: '#64748b' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { 
+                        color: '#64748b',
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            }
+        }
+    });
+}
+
+// =====================================================
+// CREAR TABLAS
+// =====================================================
+
+function crearTablaQuintalesCriticos(data) {
+    const tbody = document.querySelector('#tablaQuintalesCriticos tbody');
+    if (!tbody) return;
+    
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><i class="bi bi-check-circle me-2 text-success"></i>No hay quintales en estado crítico</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = data.map(q => `
+        <tr>
+            <td><code>${q.codigo}</code></td>
+            <td><strong>${q.producto}</strong></td>
+            <td>${q.proveedor}</td>
+            <td class="text-end">${formatearNumero(q.peso_inicial, 2)} ${q.unidad}</td>
+            <td class="text-end"><strong>${formatearNumero(q.peso_actual, 2)}</strong> ${q.unidad}</td>
+            <td class="text-end">
+                <div class="d-flex align-items-center justify-content-end">
+                    <span class="me-2"><strong>${formatearNumero(q.porcentaje_restante, 1)}%</strong></span>
+                    <div class="progress-custom" style="width: 60px;">
+                        <div class="progress-bar-custom progress-bar-danger" 
+                             style="width: ${q.porcentaje_restante}%"></div>
+                    </div>
+                </div>
+            </td>
+            <td class="text-center">
+                <span class="badge-custom badge-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                    Crítico
+                </span>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function crearTablaProductosCriticos(criticos, agotados) {
+    const tbody = document.querySelector('#tablaProductosCriticos tbody');
+    if (!tbody) return;
+    
+    // Combinar ambas listas
+    let items = [];
+    
+    criticos.forEach(p => {
+        items.push({
+            codigo: p.codigo,
+            nombre: p.nombre,
+            categoria: p.categoria,
+            stock_actual: p.stock_actual,
+            stock_minimo: p.stock_minimo,
+            deficit: p.deficit,
+            estado: 'critico'
+        });
+    });
+    
+    agotados.forEach(p => {
+        items.push({
+            codigo: p.codigo,
+            nombre: p.nombre,
+            categoria: p.categoria,
+            stock_actual: 0,
+            stock_minimo: p.stock_minimo,
+            deficit: p.stock_minimo,
+            estado: 'agotado'
+        });
+    });
+    
+    if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><i class="bi bi-check-circle me-2 text-success"></i>Todos los productos tienen stock adecuado</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = items.map(p => `
+        <tr>
+            <td><code>${p.codigo}</code></td>
+            <td><strong>${p.nombre}</strong></td>
+            <td>${p.categoria}</td>
+            <td class="text-end"><strong>${p.stock_actual}</strong></td>
+            <td class="text-end">${p.stock_minimo}</td>
+            <td class="text-end text-danger"><strong>${p.deficit}</strong></td>
+            <td class="text-center">
+                ${p.estado === 'agotado' 
+                    ? '<span class="badge-custom badge-danger"><i class="bi bi-x-circle-fill me-1"></i>Agotado</span>'
+                    : '<span class="badge-custom badge-warning"><i class="bi bi-exclamation-circle-fill me-1"></i>Crítico</span>'
+                }
+            </td>
+        </tr>
+    `).join('');
+}
+
+function crearTablaProximosVencer(data) {
+    const tbody = document.querySelector('#tablaProximosVencer tbody');
+    if (!tbody) return;
+    
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><i class="bi bi-check-circle me-2 text-success"></i>No hay quintales próximos a vencer</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = data.map(q => {
+        let urgenciaClass = 'danger';
+        let urgenciaIcon = 'exclamation-triangle-fill';
+        let urgenciaTexto = 'Urgente';
+        
+        if (q.dias_restantes > 3) {
+            urgenciaClass = 'warning';
+            urgenciaIcon = 'exclamation-circle-fill';
+            urgenciaTexto = 'Atención';
+        }
+        
+        return `
+            <tr>
+                <td><code>${q.codigo}</code></td>
+                <td><strong>${q.producto}</strong></td>
+                <td>${new Date(q.fecha_vencimiento).toLocaleDateString('es-BO')}</td>
+                <td class="text-center">
+                    <span class="badge-custom badge-${urgenciaClass}">
+                        <i class="bi bi-clock-fill me-1"></i>
+                        ${q.dias_restantes} ${q.dias_restantes === 1 ? 'día' : 'días'}
+                    </span>
+                </td>
+                <td class="text-end"><strong>${formatearNumero(q.peso_actual, 2)}</strong> ${q.unidad}</td>
+                <td class="text-center">
+                    <span class="badge-custom badge-${urgenciaClass}">
+                        <i class="bi bi-${urgenciaIcon} me-1"></i>
+                        ${urgenciaTexto}
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+</script>
+{% endblock %}

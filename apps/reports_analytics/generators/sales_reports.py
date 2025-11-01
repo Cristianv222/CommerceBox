@@ -368,7 +368,7 @@ class SalesReportGenerator:
     def reporte_ventas_por_vendedor(self):
         """
         Análisis de ventas por vendedor
-        ✅ MEJORADO: Incluye ranking y objetivos
+        ✅ CORREGIDO: Usa 'nombres' y 'apellidos' en lugar de first_name/last_name
         """
         vendedores = Venta.objects.filter(
             fecha_venta__date__gte=self.fecha_desde,
@@ -376,8 +376,8 @@ class SalesReportGenerator:
             estado='COMPLETADA'
         ).values(
             'vendedor__id',
-            'vendedor__first_name',
-            'vendedor__last_name'
+            'vendedor__nombres',      # ✅ CORREGIDO
+            'vendedor__apellidos'      # ✅ CORREGIDO
         ).annotate(
             total_ventas=Sum('total'),
             cantidad_ventas=Count('id'),
@@ -405,7 +405,7 @@ class SalesReportGenerator:
             
             resultado.append({
                 'ranking': idx,
-                'vendedor': f"{vend['vendedor__first_name']} {vend['vendedor__last_name']}",
+                'vendedor': f"{vend['vendedor__nombres']} {vend['vendedor__apellidos']}",  # ✅ CORREGIDO
                 'total_ventas': vend['total_ventas'],
                 'cantidad_ventas': vend['cantidad_ventas'],
                 'ticket_promedio': vend['ticket_promedio'].quantize(Decimal('0.01')),
@@ -422,7 +422,6 @@ class SalesReportGenerator:
             'vendedores': resultado,
             'total_vendedores': len(resultado)
         }
-    
     # ========================================================================
     # TOP CLIENTES
     # ========================================================================
@@ -547,8 +546,10 @@ class SalesReportGenerator:
     def reporte_comparativo_periodos(self, periodo_anterior_dias=None):
         """
         Comparación con período anterior
-        ✅ MEJORADO: Incluye múltiples KPIs y análisis de crecimiento
+        ✅ CORREGIDO: Convierte correctamente a Decimal
         """
+        from decimal import Decimal
+        
         # Período actual
         dias = (self.fecha_hasta - self.fecha_desde).days + 1
         
@@ -567,9 +568,14 @@ class SalesReportGenerator:
         ).aggregate(
             total=Coalesce(Sum('total'), Decimal('0')),
             cantidad=Count('id'),
-            ticket_promedio=Coalesce(Avg('total'), Decimal('0')),
             total_iva=Coalesce(Sum('impuestos'), Decimal('0'))
         )
+        
+        # Calcular ticket promedio manualmente - CONVERTIR A DECIMAL
+        if actual['cantidad'] > 0:
+            actual['ticket_promedio'] = Decimal(str(float(actual['total']) / actual['cantidad']))
+        else:
+            actual['ticket_promedio'] = Decimal('0')
         
         # Ventas período anterior
         anterior = Venta.objects.filter(
@@ -579,9 +585,14 @@ class SalesReportGenerator:
         ).aggregate(
             total=Coalesce(Sum('total'), Decimal('0')),
             cantidad=Count('id'),
-            ticket_promedio=Coalesce(Avg('total'), Decimal('0')),
             total_iva=Coalesce(Sum('impuestos'), Decimal('0'))
         )
+        
+        # Calcular ticket promedio manualmente - CONVERTIR A DECIMAL
+        if anterior['cantidad'] > 0:
+            anterior['ticket_promedio'] = Decimal(str(float(anterior['total']) / anterior['cantidad']))
+        else:
+            anterior['ticket_promedio'] = Decimal('0')
         
         # Calcular variaciones
         variacion_total = (
@@ -590,7 +601,7 @@ class SalesReportGenerator:
         )
         
         variacion_cantidad = (
-            ((actual['cantidad'] - anterior['cantidad']) / anterior['cantidad'] * 100)
+            ((Decimal(str(actual['cantidad'])) - Decimal(str(anterior['cantidad']))) / Decimal(str(anterior['cantidad'])) * 100)
             if anterior['cantidad'] > 0 else Decimal('0')
         )
         
@@ -628,7 +639,7 @@ class SalesReportGenerator:
                 'iva_porcentaje': variacion_iva.quantize(Decimal('0.01'))
             }
         }
-    
+        
     # ========================================================================
     # ANÁLISIS DE HORARIOS
     # ========================================================================
@@ -636,7 +647,7 @@ class SalesReportGenerator:
     def reporte_horarios_ventas(self):
         """
         Análisis de ventas por hora del día y día de la semana
-        ✅ NUEVO: Identifica horarios pico
+        ✅ CORREGIDO: Elimina Avg sobre campo agregado
         """
         # Ventas por hora
         ventas_por_hora = Venta.objects.filter(
@@ -647,9 +658,22 @@ class SalesReportGenerator:
             hora=ExtractHour('fecha_venta')
         ).values('hora').annotate(
             total=Sum('total'),
-            cantidad=Count('id'),
-            ticket_promedio=Avg('total')
+            cantidad=Count('id')
         ).order_by('hora')
+        
+        # Calcular ticket promedio manualmente
+        resultado_horas = []
+        for item in ventas_por_hora:
+            ticket_prom = (
+                item['total'] / item['cantidad']
+                if item['cantidad'] > 0 else Decimal('0')
+            )
+            resultado_horas.append({
+                'hora': item['hora'],
+                'total': item['total'],
+                'cantidad': item['cantidad'],
+                'ticket_promedio': ticket_prom.quantize(Decimal('0.01'))
+            })
         
         # Ventas por día de la semana
         ventas_por_dia_semana = Venta.objects.filter(
@@ -674,16 +698,22 @@ class SalesReportGenerator:
             7: 'Sábado'
         }
         
+        resultado_dias = []
         for dia in ventas_por_dia_semana:
-            dia['dia_nombre'] = dias_nombres.get(dia['dia_semana'], 'Desconocido')
+            resultado_dias.append({
+                'dia_semana': dia['dia_semana'],
+                'dia_nombre': dias_nombres.get(dia['dia_semana'], 'Desconocido'),
+                'total': dia['total'],
+                'cantidad': dia['cantidad']
+            })
         
         return {
             'periodo': {
                 'desde': self.fecha_desde,
                 'hasta': self.fecha_hasta
             },
-            'ventas_por_hora': list(ventas_por_hora),
-            'ventas_por_dia_semana': list(ventas_por_dia_semana)
+            'ventas_por_hora': resultado_horas,
+            'ventas_por_dia_semana': resultado_dias
         }
     
     # ========================================================================

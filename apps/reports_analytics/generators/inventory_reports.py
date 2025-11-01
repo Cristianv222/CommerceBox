@@ -42,7 +42,7 @@ class InventoryReportGenerator:
         quintales = Quintal.objects.filter(
             estado='DISPONIBLE',
             peso_actual__gt=0
-        ).select_related('producto', 'proveedor', 'unidad_medida').annotate(
+        ).select_related('producto', 'producto__categoria', 'proveedor', 'unidad_medida').annotate(
             valor_actual=ExpressionWrapper(
                 F('peso_actual') * F('costo_por_unidad'),
                 output_field=DecimalField(max_digits=10, decimal_places=2)
@@ -52,18 +52,18 @@ class InventoryReportGenerator:
         quintales_data = []
         for quintal in quintales:
             quintales_data.append({
-                'codigo': quintal.codigo_unico,
+                'codigo': quintal.codigo_quintal,  # ✅ CORRECTO
                 'producto': quintal.producto.nombre,
                 'categoria': quintal.producto.categoria.nombre,
-                'proveedor': quintal.proveedor.nombre_comercial,
-                'peso_inicial': quintal.peso_inicial,
-                'peso_actual': quintal.peso_actual,
-                'peso_vendido': quintal.peso_vendido(),
+                'proveedor': quintal.proveedor.nombre_comercial,  # ✅ CORRECTO
+                'peso_inicial': float(quintal.peso_inicial),
+                'peso_actual': float(quintal.peso_actual),
+                'peso_vendido': float(quintal.peso_vendido()),
                 'porcentaje_restante': quintal.porcentaje_restante(),
                 'unidad': quintal.unidad_medida.abreviatura,
-                'costo_por_unidad': quintal.costo_por_unidad,
-                'valor_actual': quintal.valor_actual,
-                'fecha_recepcion': quintal.fecha_recepcion,
+                'costo_por_unidad': float(quintal.costo_por_unidad),
+                'valor_actual': float(quintal.valor_actual),
+                'fecha_recepcion': quintal.fecha_ingreso.date() if hasattr(quintal, 'fecha_ingreso') else None,
                 'fecha_vencimiento': quintal.fecha_vencimiento,
                 'estado': 'Crítico' if quintal.esta_critico() else 'Normal'
             })
@@ -87,8 +87,8 @@ class InventoryReportGenerator:
                 'stock_actual': prod.stock_actual,
                 'stock_minimo': prod.stock_minimo,
                 'stock_maximo': prod.stock_maximo,
-                'costo_unitario': prod.costo_unitario,
-                'valor_stock': prod.valor_stock,
+                'costo_unitario': float(prod.costo_unitario),
+                'valor_stock': float(prod.valor_stock),
                 'estado': prod.estado_stock(),
                 'necesita_reorden': prod.necesita_reorden(),
                 'fecha_vencimiento': prod.fecha_vencimiento
@@ -145,19 +145,21 @@ class InventoryReportGenerator:
                 valor_total=Coalesce(Sum(F('stock_actual') * F('costo_unitario')), Decimal('0'))
             )
             
+            valor_total = float(quintales_cat['valor_total']) + float(productos_cat['valor_total'])
+            
             reporte.append({
                 'categoria': cat.nombre,
                 'quintales': {
                     'cantidad': quintales_cat['cantidad'],
-                    'peso_total': quintales_cat['peso_total'],
-                    'valor': quintales_cat['valor_total']
+                    'peso_total': float(quintales_cat['peso_total']),
+                    'valor': float(quintales_cat['valor_total'])
                 },
                 'productos_normales': {
                     'cantidad': productos_cat['cantidad'],
                     'stock_total': productos_cat['stock_total'],
-                    'valor': productos_cat['valor_total']
+                    'valor': float(productos_cat['valor_total'])
                 },
-                'valor_total_categoria': quintales_cat['valor_total'] + productos_cat['valor_total']
+                'valor_total_categoria': valor_total
             })
         
         # Ordenar por valor total descendente
@@ -178,7 +180,7 @@ class InventoryReportGenerator:
             estado='DISPONIBLE',
             peso_actual__lte=F('peso_inicial') * 0.1,
             peso_actual__gt=0
-        ).select_related('producto', 'proveedor').annotate(
+        ).select_related('producto', 'proveedor', 'unidad_medida').annotate(
             porcentaje=ExpressionWrapper(
                 (F('peso_actual') / F('peso_inicial')) * 100,
                 output_field=DecimalField(max_digits=5, decimal_places=2)
@@ -186,12 +188,12 @@ class InventoryReportGenerator:
         )
         
         quintales_data = [{
-            'codigo': q.codigo_unico,
+            'codigo': q.codigo_quintal,  # ✅ CORRECTO
             'producto': q.producto.nombre,
             'proveedor': q.proveedor.nombre_comercial,
-            'peso_actual': q.peso_actual,
-            'peso_inicial': q.peso_inicial,
-            'porcentaje_restante': q.porcentaje,
+            'peso_actual': float(q.peso_actual),
+            'peso_inicial': float(q.peso_inicial),
+            'porcentaje_restante': float(q.porcentaje),
             'unidad': q.unidad_medida.abreviatura
         } for q in quintales_criticos]
         
@@ -231,14 +233,14 @@ class InventoryReportGenerator:
             fecha_vencimiento__isnull=False,
             fecha_vencimiento__lte=hoy + timedelta(days=7),
             fecha_vencimiento__gte=hoy
-        ).select_related('producto').order_by('fecha_vencimiento')
+        ).select_related('producto', 'unidad_medida').order_by('fecha_vencimiento')
         
         vencer_data = [{
-            'codigo': q.codigo_unico,
+            'codigo': q.codigo_quintal,  # ✅ CORRECTO
             'producto': q.producto.nombre,
             'fecha_vencimiento': q.fecha_vencimiento,
             'dias_restantes': (q.fecha_vencimiento - hoy).days,
-            'peso_actual': q.peso_actual,
+            'peso_actual': float(q.peso_actual),
             'unidad': q.unidad_medida.abreviatura
         } for q in proximos_vencer]
         
@@ -279,18 +281,18 @@ class InventoryReportGenerator:
         movimientos_quintales = MovimientoQuintal.objects.filter(
             fecha_movimiento__date__gte=self.fecha_desde,
             fecha_movimiento__date__lte=self.fecha_hasta
-        ).select_related('quintal', 'quintal__producto', 'usuario')
+        ).select_related('quintal', 'quintal__producto', 'usuario', 'unidad_medida')
         
         quintales_movs = []
         for mov in movimientos_quintales:
             quintales_movs.append({
                 'fecha': mov.fecha_movimiento,
                 'tipo': mov.get_tipo_movimiento_display(),
-                'quintal': mov.quintal.codigo_unico,
+                'quintal': mov.quintal.codigo_quintal,  # ✅ CORRECTO
                 'producto': mov.quintal.producto.nombre,
-                'peso_movimiento': mov.peso_movimiento,
-                'peso_antes': mov.peso_antes,
-                'peso_despues': mov.peso_despues,
+                'peso_movimiento': float(mov.peso_movimiento),
+                'peso_antes': float(mov.peso_antes),
+                'peso_despues': float(mov.peso_despues),
                 'unidad': mov.unidad_medida.abreviatura,
                 'usuario': mov.usuario.get_full_name(),
                 'observaciones': mov.observaciones
@@ -311,8 +313,8 @@ class InventoryReportGenerator:
                 'cantidad': mov.cantidad,
                 'stock_antes': mov.stock_antes,
                 'stock_despues': mov.stock_despues,
-                'costo_unitario': mov.costo_unitario,
-                'costo_total': mov.costo_total,
+                'costo_unitario': float(mov.costo_unitario),
+                'costo_total': float(mov.costo_total),
                 'usuario': mov.usuario.get_full_name(),
                 'observaciones': mov.observaciones
             })
@@ -378,6 +380,9 @@ class InventoryReportGenerator:
                 
                 # Cálculo de rotación
                 dias_periodo = (self.fecha_hasta - self.fecha_desde).days
+                if dias_periodo == 0:
+                    dias_periodo = 1
+                    
                 promedio_inventario = (inventario.stock_actual + inventario.stock_minimo) / 2
                 
                 if promedio_inventario > 0 and dias_periodo > 0:
@@ -390,16 +395,17 @@ class InventoryReportGenerator:
                     'producto': item['producto__nombre'],
                     'categoria': item['producto__categoria__nombre'],
                     'cantidad_vendida': item['cantidad_vendida'],
-                    'ventas_totales': item['ventas_totales'],
+                    'ventas_totales': float(item['ventas_totales']),
                     'stock_actual': inventario.stock_actual,
-                    'rotacion_anual': round(rotacion_anual, 2),
+                    'rotacion_anual': round(float(rotacion_anual), 2),
                     'clasificacion': (
                         'Alta rotación' if rotacion_anual >= 12 else
                         'Rotación media' if rotacion_anual >= 6 else
                         'Baja rotación'
                     )
                 })
-            except:
+            except Exception as e:
+                print(f"Error procesando producto {item['producto__id']}: {e}")
                 continue
         
         # Ordenar por rotación
@@ -417,13 +423,18 @@ class InventoryReportGenerator:
     def reporte_por_proveedor(self):
         """
         Análisis de inventario por proveedor
+        ✅ CORRECCIÓN COMPLETA: Quintales tienen relación directa con Proveedor
         """
-        proveedores = Proveedor.objects.filter(activo=True)
+        # Obtener proveedores que tienen quintales
+        proveedores = Proveedor.objects.filter(
+            activo=True,
+            quintales__estado='DISPONIBLE'
+        ).distinct()
         
         reporte = []
         
         for prov in proveedores:
-            # Quintales del proveedor
+            # Quintales del proveedor (relación directa)
             quintales = Quintal.objects.filter(
                 proveedor=prov,
                 estado='DISPONIBLE'
@@ -433,22 +444,23 @@ class InventoryReportGenerator:
                 valor_total=Coalesce(Sum(F('peso_actual') * F('costo_por_unidad')), Decimal('0'))
             )
             
-            # Productos del proveedor
-            productos = Producto.objects.filter(
-                proveedor=prov,
-                tipo_inventario='NORMAL',
+            # Productos en el catálogo (sin relación directa de proveedor)
+            # Contamos productos únicos que tienen quintales de este proveedor
+            productos_catalogo = Producto.objects.filter(
+                tipo_inventario='QUINTAL',
+                quintales__proveedor=prov,
                 activo=True
-            ).count()
+            ).distinct().count()
             
             reporte.append({
                 'proveedor': prov.nombre_comercial,
                 'ruc': prov.ruc_nit,
                 'quintales': {
                     'cantidad': quintales['cantidad'],
-                    'peso_total': quintales['peso_total'],
-                    'valor': quintales['valor_total']
+                    'peso_total': float(quintales['peso_total']),
+                    'valor': float(quintales['valor_total'])
                 },
-                'productos_catalogo': productos,
+                'productos_catalogo': productos_catalogo,
                 'contacto': {
                     'telefono': prov.telefono,
                     'email': prov.email

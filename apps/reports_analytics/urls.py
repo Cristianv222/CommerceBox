@@ -79,15 +79,37 @@ urlpatterns = [
     path('configuracion/guardar/', views.GuardarConfiguracionView.as_view(), name='guardar_configuracion'),
     
     # ============================================================================
-    # API ENDPOINTS (JSON)
+    # 🔥 API ENDPOINTS - DASHBOARD PRINCIPAL (nombres correctos)
     # ============================================================================
     path('api/dashboard/', views.DashboardAPIView.as_view(), name='dashboard_api'),
     path('api/ventas/grafico/', views.VentasGraficoAPIView.as_view(), name='ventas_grafico_api'),
     path('api/inventario/estado/', views.InventarioEstadoAPIView.as_view(), name='inventario_estado_api'),
+    
+    # ============================================================================
+    # 🆕 API ENDPOINTS - DASHBOARD DE VENTAS COMPLETO
+    # ============================================================================
+    path('api/ventas/periodo/', views.VentasPeriodoAPIView.as_view(), name='api_ventas_periodo'),
+    path('api/ventas/diarias/', views.VentasDiariasAPIView.as_view(), name='api_ventas_diarias'),
+    path('api/ventas/productos-top/', views.ProductosTopAPIView.as_view(), name='api_productos_top'),
+    path('api/ventas/categorias/', views.CategoriasAPIView.as_view(), name='api_categorias'),
+    path('api/ventas/vendedores/', views.VendedoresAPIView.as_view(), name='api_vendedores'),
+    path('api/ventas/clientes-top/', views.ClientesTopAPIView.as_view(), name='api_clientes_top'),
+    path('api/ventas/horarios/', views.HorariosAPIView.as_view(), name='api_horarios'),
+    path('api/ventas/devoluciones/', views.DevolucionesAPIView.as_view(), name='api_devoluciones'),
+    path('api/ventas/comparativo/', views.ComparativoAPIView.as_view(), name='api_comparativo'),
+    path('api/ventas/margenes/', views.MargenesAPIView.as_view(), name='api_margenes'),
+    # ============================================================================
+    # 🆕 API ENDPOINTS - DASHBOARD DE INVENTARIO COMPLETO
+    # ============================================================================
+    path('api/inventario/valorizado/', views.InventarioValorizadoAPIView.as_view(), name='api_inventario_valorizado'),
+    path('api/inventario/categorias/', views.InventarioCategoriasAPIView.as_view(), name='api_inventario_categorias'),
+    path('api/inventario/criticos/', views.ProductosCriticosAPIView.as_view(), name='api_productos_criticos'),
+    path('api/inventario/movimientos/', views.MovimientosInventarioAPIView.as_view(), name='api_movimientos_inventario'),
+    path('api/inventario/rotacion/', views.RotacionInventarioAPIView.as_view(), name='api_rotacion_inventario'),
+    path('api/inventario/proveedores/', views.InventarioProveedoresAPIView.as_view(), name='api_inventario_proveedores'),
 
-    path('api/dashboard/', views.DashboardAPIView.as_view(), name='api_dashboard'),
-    path('dashboard/', views.DashboardSimpleAPIView.as_view(), name='dashboard_simple'),
-    path('dashboard/', views.DashboardAPIView.as_view(), name='dashboard_api_simple'),
-    path('api/ventas/grafico/', views.VentasGraficoAPIView.as_view(), name='api_ventas_grafico'),
-    path('api/inventario/estado/', views.InventarioEstadoAPIView.as_view(), name='api_inventario_estado'),
+    # ============================================================================
+    # 🆕 VISTA DEL DASHBOARD DE VENTAS COMPLETO
+    # ============================================================================
+    path('ventas/dashboard-completo/', views.DashboardVentasCompletView.as_view(), name='dashboard_ventas_completo'),
 ]

@@ -7,7 +7,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.contrib import messages
-from datetime import timedelta
+from datetime import timedelta, datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
@@ -792,8 +792,6 @@ class ReportesGuardadosView(ReportesAccessMixin, ListView):
 # API ENDPOINTS (JSON)
 # ============================================================================
 
-# Reemplaza la clase DashboardAPIView en apps/reports_analytics/views.py con esta:
-
 class DashboardAPIView(ReportesAccessMixin, View):
     """
     API endpoint para datos del dashboard (JSON)
@@ -894,6 +892,8 @@ class InventarioEstadoAPIView(ReportesAccessMixin, View):
             'success': True,
             'data': metricas
         })
+
+
 # ============================================================================
 # DETALLE Y DESCARGA DE REPORTES GUARDADOS
 # ============================================================================
@@ -944,12 +944,10 @@ class ExportarPDFView(ReportesAccessMixin, View):
     Exportar reporte a PDF
     """
     def get(self, request, tipo_reporte):
-        # TODO: Implementar exportación a PDF usando ReportLab o WeasyPrint
         messages.info(request, 'La exportación a PDF estará disponible próximamente')
         return redirect('reports_analytics:dashboard')
     
     def post(self, request, tipo_reporte):
-        # TODO: Implementar lógica de exportación con parámetros del POST
         messages.info(request, 'La exportación a PDF estará disponible próximamente')
         return redirect('reports_analytics:dashboard')
 
@@ -959,12 +957,10 @@ class ExportarExcelView(ReportesAccessMixin, View):
     Exportar reporte a Excel
     """
     def get(self, request, tipo_reporte):
-        # TODO: Implementar exportación a Excel usando openpyxl o xlsxwriter
         messages.info(request, 'La exportación a Excel estará disponible próximamente')
         return redirect('reports_analytics:dashboard')
     
     def post(self, request, tipo_reporte):
-        # TODO: Implementar lógica de exportación con parámetros del POST
         messages.info(request, 'La exportación a Excel estará disponible próximamente')
         return redirect('reports_analytics:dashboard')
 
@@ -977,7 +973,6 @@ class ExportarCSVView(ReportesAccessMixin, View):
         import csv
         from io import StringIO
         
-        # Ejemplo básico - necesitarás adaptarlo según el tipo de reporte
         output = StringIO()
         writer = csv.writer(output)
         writer.writerow(['Columna1', 'Columna2', 'Columna3'])
@@ -1005,7 +1000,6 @@ class ConfiguracionReportesView(ReportesAccessMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Obtener o crear configuración del usuario
         config, created = ConfiguracionReporte.objects.get_or_create(
             usuario=self.request.user
         )
@@ -1020,33 +1014,24 @@ class GuardarConfiguracionView(ReportesAccessMixin, View):
     Guardar configuración de reportes
     """
     def post(self, request):
-        # Obtener o crear configuración
         config, created = ConfiguracionReporte.objects.get_or_create(
             usuario=request.user
         )
         
-        # TODO: Implementar guardado de configuración desde el POST
-        # Ejemplo:
-        # config.formato_fecha = request.POST.get('formato_fecha')
-        # config.moneda = request.POST.get('moneda')
-        # config.save()
-        
         messages.success(request, 'Configuración guardada correctamente')
         return redirect('reports_analytics:configuracion')
+
+
 class DashboardSimpleAPIView(APIView):
     """
     API simplificado para el dashboard principal del panel
-    Endpoint: /api/reportes/dashboard/
-    Retorna datos en formato JSON compatible con el frontend
     """
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
         try:
-            # Generar datos del dashboard
             generator = DashboardDataGenerator()
             
-            # Obtener métricas principales
             resumen = generator.get_resumen_ejecutivo()
             metricas_ventas = generator.get_metricas_ventas()
             metricas_inventario = generator.get_metricas_inventario()
@@ -1054,7 +1039,6 @@ class DashboardSimpleAPIView(APIView):
             top_productos = generator.get_productos_mas_vendidos(limite=5)
             tendencias = generator.get_tendencias_semanales()
             
-            # Función helper para convertir Decimales a float
             def decimal_to_float(obj):
                 if isinstance(obj, Decimal):
                     return float(obj)
@@ -1064,15 +1048,11 @@ class DashboardSimpleAPIView(APIView):
                     return [decimal_to_float(item) for item in obj]
                 return obj
             
-            # Preparar datos para el frontend
             dashboard_data = {
-                # KPIs principales
                 'ventas_hoy': decimal_to_float(resumen['ventas_dia']['total']),
                 'num_ventas': resumen['ventas_dia']['cantidad'],
                 'productos_total': metricas_inventario['productos_normales']['con_stock'] + metricas_inventario['quintales']['total_disponibles'],
                 'alertas_criticas': len(alertas),
-                
-                # Ventas de la semana (para gráfico)
                 'ventas_semana': [
                     {
                         'fecha': item['dia'].strftime('%d/%m') if hasattr(item['dia'], 'strftime') else str(item['dia']),
@@ -1080,27 +1060,21 @@ class DashboardSimpleAPIView(APIView):
                     }
                     for item in tendencias
                 ],
-                
-                # Top productos (para gráfico donut)
                 'top_productos': [
                     {
-                        'nombre': item['producto__nombre'][:20],  # Limitar nombre
+                        'nombre': item['producto__nombre'][:20],
                         'cantidad': decimal_to_float(item['total_vendido'])
                     }
                     for item in top_productos
                 ],
-                
-                # Últimas ventas (para tabla)
                 'ultimas_ventas': self._get_ultimas_ventas(),
-                
-                # Alertas (para widget de alertas)
                 'alertas': [
                     {
                         'prioridad': alert.get('nivel', 'MEDIO'),
                         'titulo': alert.get('tipo', 'Alerta'),
                         'mensaje': alert.get('mensaje', ''),
                     }
-                    for alert in alertas[:5]  # Solo las 5 más importantes
+                    for alert in alertas[:5]
                 ]
             }
             
@@ -1131,7 +1105,6 @@ class DashboardSimpleAPIView(APIView):
             }, status=500)
     
     def _get_ultimas_ventas(self):
-        """Obtiene las últimas 5 ventas para mostrar en tabla"""
         try:
             from apps.sales_management.models import Venta
             
@@ -1151,3 +1124,545 @@ class DashboardSimpleAPIView(APIView):
         except Exception as e:
             print(f"Error obteniendo últimas ventas: {e}")
             return []
+
+
+# ============================================================================
+# 🆕 API ENDPOINTS PARA DASHBOARD DE VENTAS COMPLETO
+# ============================================================================
+
+class VentasPeriodoAPIView(ReportesAccessMixin, View):
+    """API: Ventas por período"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = SalesReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_ventas_periodo()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+
+
+class VentasDiariasAPIView(ReportesAccessMixin, View):
+    """API: Ventas diarias"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = SalesReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_ventas_diarias()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+
+
+class ProductosTopAPIView(ReportesAccessMixin, View):
+    """API: Top productos"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = SalesReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_productos_mas_vendidos(limite=20)
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        return obj
+
+
+class CategoriasAPIView(ReportesAccessMixin, View):
+    """API: Categorías"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = SalesReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_ventas_por_categoria()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        return obj
+
+
+class VendedoresAPIView(ReportesAccessMixin, View):
+    """API: Vendedores"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = SalesReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_ventas_por_vendedor()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        return obj
+
+
+class ClientesTopAPIView(ReportesAccessMixin, View):
+    """API: Top clientes"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = SalesReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_clientes_top(limite=20)
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        return obj
+
+
+class HorariosAPIView(ReportesAccessMixin, View):
+    """API: Horarios"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = SalesReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_horarios_ventas()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        return obj
+
+
+class DevolucionesAPIView(ReportesAccessMixin, View):
+    """API: Devoluciones"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = SalesReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_devoluciones()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        return obj
+
+
+class ComparativoAPIView(ReportesAccessMixin, View):
+    """API: Comparativo"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = SalesReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_comparativo_periodos()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+
+
+class MargenesAPIView(ReportesAccessMixin, View):
+    """API: Márgenes"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = SalesReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_analisis_margenes()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        return obj
+
+
+class DashboardVentasCompletView(ReportesAccessMixin, TemplateView):
+    """Vista del dashboard completo de ventas"""
+    template_name = 'reports/ventas/dashboard_ventas.html'
+# ============================================================================
+# 🆕 API ENDPOINTS - DASHBOARD DE INVENTARIO COMPLETO
+# ============================================================================
+
+class InventarioValorizadoAPIView(ReportesAccessMixin, View):
+    """API: Inventario valorizado"""
+    def get(self, request):
+        try:
+            generator = InventoryReportGenerator()
+            data = generator.reporte_inventario_valorizado()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+
+
+class InventarioCategoriasAPIView(ReportesAccessMixin, View):
+    """API: Inventario por categorías"""
+    def get(self, request):
+        try:
+            generator = InventoryReportGenerator()
+            data = generator.reporte_por_categoria()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+
+
+class ProductosCriticosAPIView(ReportesAccessMixin, View):
+    """API: Productos críticos"""
+    def get(self, request):
+        try:
+            generator = InventoryReportGenerator()
+            data = generator.reporte_productos_criticos()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+
+
+class MovimientosInventarioAPIView(ReportesAccessMixin, View):
+    """API: Movimientos de inventario"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = InventoryReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_movimientos_inventario()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+
+
+class RotacionInventarioAPIView(ReportesAccessMixin, View):
+    """API: Rotación de inventario"""
+    def get(self, request):
+        try:
+            fecha_desde = request.GET.get('fecha_desde')
+            fecha_hasta = request.GET.get('fecha_hasta')
+            
+            if fecha_desde and fecha_hasta:
+                fecha_desde = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_hasta = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            else:
+                fecha_hasta = timezone.now().date()
+                fecha_desde = fecha_hasta - timedelta(days=30)
+            
+            generator = InventoryReportGenerator(fecha_desde, fecha_hasta)
+            data = generator.reporte_rotacion_inventario()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+
+
+class InventarioProveedoresAPIView(ReportesAccessMixin, View):
+    """API: Inventario por proveedores"""
+    def get(self, request):
+        try:
+            generator = InventoryReportGenerator()
+            data = generator.reporte_por_proveedor()
+            data = self._convert_decimals(data)
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def _convert_decimals(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_decimals(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return obj
+
+
+class DashboardInventarioCompletView(ReportesAccessMixin, TemplateView):
+    """Vista del dashboard completo de inventario"""
+    template_name = 'reports/inventario/dashboard_inventario.html'

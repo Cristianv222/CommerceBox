@@ -6051,47 +6051,285 @@ def perfil_cambiar_password_view(request):
 # ========================================
 # APIs MOCK PARA DASHBOARD
 # ========================================
+from django.http import JsonResponse
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.utils import timezone
+from django.db.models import Sum, Count, Q, F, Case, When, DecimalField
+from datetime import timedelta
 
 @ensure_csrf_cookie
 def api_dashboard_stats(request):
-    """Estadísticas del dashboard"""
-    return JsonResponse({
-        'ventas_hoy': 1250.50,
-        'num_ventas': 15,
-        'productos_total': 250,
-        'alertas_criticas': 3,
-        'ventas_semana': [
-            {'fecha': '2025-10-27', 'total': 1500},
-            {'fecha': '2025-10-28', 'total': 1800},
-            {'fecha': '2025-10-29', 'total': 2100},
-            {'fecha': '2025-10-30', 'total': 1900},
-            {'fecha': '2025-10-31', 'total': 2300},
-            {'fecha': '2025-11-01', 'total': 2500},
-            {'fecha': '2025-11-02', 'total': 1250.50},
-        ],
-        'top_productos': [
-            {'nombre': 'Arroz', 'cantidad': 50},
-            {'nombre': 'Frijol', 'cantidad': 30},
-            {'nombre': 'Azúcar', 'cantidad': 25},
-        ],
-        'ultimas_ventas': [
-            {
-                'numero_venta': 'VNT-2025-00001',
-                'cliente': 'Juan Pérez',
-                'total': 50.00,
-                'estado': 'COMPLETADA'
+    """
+    Estadísticas del dashboard - VERSIÓN FINAL OPTIMIZADA
+    """
+    try:
+        from apps.sales_management.models import Venta, DetalleVenta
+        from apps.inventory_management.models import Producto, Quintal
+        
+        try:
+            from apps.inventory_management.models import InventarioNormal
+        except ImportError:
+            InventarioNormal = None
+        
+        from apps.stock_alert_system.models import Alerta
+        
+        hoy = timezone.now().date()
+        hace_7_dias = hoy - timedelta(days=6)
+        
+        print(f"\n{'='*80}")
+        print(f"📊 DASHBOARD API - {timezone.now().strftime('%H:%M:%S')}")
+        print(f"{'='*80}")
+        
+        # ============================================
+        # VENTAS DE HOY
+        # ============================================
+        ventas_hoy_total = 0
+        ventas_hoy_count = 0
+        try:
+            ventas_result = Venta.objects.filter(
+                fecha_venta__date=hoy,
+                estado='COMPLETADA'
+            ).aggregate(
+                total=Sum('total'),
+                cantidad=Count('id')
+            )
+            ventas_hoy_total = float(ventas_result['total'] or 0)
+            ventas_hoy_count = ventas_result['cantidad'] or 0
+        except:
+            pass
+        
+        # ============================================
+        # PRODUCTOS CON STOCK
+        # ============================================
+        productos_total = 0
+        try:
+            productos_total = Producto.objects.filter(activo=True).count()
+            productos_total += Quintal.objects.filter(estado='DISPONIBLE').count()
+        except:
+            pass
+        
+        # ============================================
+        # ALERTAS CRÍTICAS
+        # ============================================
+        alertas_criticas = 0
+        try:
+            alertas_criticas = Alerta.objects.filter(
+                estado='ACTIVA',
+                prioridad__in=['CRITICA', 'ALTA']
+            ).count()
+        except:
+            pass
+        
+        # ============================================
+        # VENTAS DE LA SEMANA
+        # ============================================
+        ventas_semana = []
+        try:
+            for i in range(7):
+                fecha = hace_7_dias + timedelta(days=i)
+                total = Venta.objects.filter(
+                    fecha_venta__date=fecha,
+                    estado='COMPLETADA'
+                ).aggregate(total=Sum('total'))['total'] or 0
+                
+                ventas_semana.append({
+                    'fecha': fecha.strftime('%d/%m'),
+                    'total': float(total)
+                })
+        except:
+            for i in range(7):
+                fecha = hace_7_dias + timedelta(days=i)
+                ventas_semana.append({
+                    'fecha': fecha.strftime('%d/%m'),
+                    'total': 0
+                })
+        
+        # ============================================
+        # TOP 5 PRODUCTOS - MEJORADO
+        # ============================================
+        top_productos_list = []
+        try:
+            print(f"\n🏆 TOP PRODUCTOS:")
+            
+            # Obtener top considerando AMBOS: cantidad_unidades Y peso_vendido
+            top = DetalleVenta.objects.filter(
+                venta__fecha_venta__date__gte=hace_7_dias,
+                venta__estado='COMPLETADA'
+            ).values('producto__nombre').annotate(
+                total_unidades=Sum('cantidad_unidades'),
+                total_peso=Sum('peso_vendido')
+            ).order_by('-total_unidades', '-total_peso')[:10]  # Obtener 10 para filtrar
+            
+            # Filtrar productos con ventas reales y tomar solo 5
+            for item in top:
+                nombre = item['producto__nombre'] or 'Sin nombre'
+                cant_unidades = float(item['total_unidades'] or 0)
+                cant_peso = float(item['total_peso'] or 0)
+                
+                # Determinar qué mostrar
+                if cant_unidades > 0 and cant_peso > 0:
+                    # Tiene ambos, mostrar unidades
+                    display = f"{cant_unidades} unid"
+                    sort_value = cant_unidades
+                elif cant_unidades > 0:
+                    # Solo unidades
+                    display = f"{cant_unidades} unid"
+                    sort_value = cant_unidades
+                elif cant_peso > 0:
+                    # Solo peso
+                    display = f"{cant_peso:.2f} kg"
+                    sort_value = cant_peso
+                else:
+                    # No tiene ventas, saltar
+                    continue
+                
+                print(f"   - {nombre[:30]}: {display}")
+                
+                top_productos_list.append({
+                    'nombre': nombre[:20],
+                    'cantidad': sort_value
+                })
+                
+                # Solo tomar 5
+                if len(top_productos_list) >= 5:
+                    break
+            
+            print(f"   Total en lista: {len(top_productos_list)}")
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+        
+        # ============================================
+        # ÚLTIMAS 5 VENTAS
+        # ============================================
+        ultimas_ventas_list = []
+        try:
+            ultimas = Venta.objects.filter(
+                estado='COMPLETADA'
+            ).select_related('cliente').order_by('-fecha_venta')[:5]
+            
+            ultimas_ventas_list = [
+                {
+                    'numero_venta': v.numero_venta,
+                    'cliente': v.cliente.nombre_completo() if v.cliente else 'Público General',
+                    'total': float(v.total),
+                    'estado': v.estado
+                }
+                for v in ultimas
+            ]
+        except:
+            pass
+        
+        # ============================================
+        # ALERTAS - MEJORADO CON GENERACIÓN AUTOMÁTICA
+        # ============================================
+        alertas_list = []
+        try:
+            print(f"\n🚨 ALERTAS:")
+            
+            # Intentar obtener alertas activas
+            alertas = Alerta.objects.filter(
+                estado='ACTIVA'
+            ).order_by('-prioridad', '-fecha_creacion')[:10]
+            
+            if alertas.count() > 0:
+                for a in alertas:
+                    titulo = a.titulo if hasattr(a, 'titulo') else a.tipo_alerta
+                    alertas_list.append({
+                        'prioridad': a.prioridad,
+                        'titulo': titulo,
+                        'mensaje': str(a.mensaje)[:150]
+                    })
+                print(f"   Alertas activas: {len(alertas_list)}")
+            else:
+                print(f"   No hay alertas activas, generando alertas de stock...")
+                
+                # Generar alertas de productos con stock bajo
+                if InventarioNormal:
+                    try:
+                        productos_bajo = InventarioNormal.objects.filter(
+                            stock_actual__lte=F('stock_minimo'),
+                            stock_actual__gt=0
+                        ).select_related('producto').order_by('stock_actual')[:8]
+                        
+                        if productos_bajo.count() > 0:
+                            for inv in productos_bajo:
+                                alertas_list.append({
+                                    'prioridad': 'ALTA' if inv.stock_actual < inv.stock_minimo * 0.5 else 'MEDIA',
+                                    'titulo': 'Stock Bajo',
+                                    'mensaje': f'{inv.producto.nombre}: {inv.stock_actual} unidades (mínimo: {inv.stock_minimo})'
+                                })
+                            print(f"   Alertas generadas: {len(alertas_list)}")
+                        else:
+                            # Si no hay productos con stock bajo, mostrar productos sin stock
+                            sin_stock = InventarioNormal.objects.filter(
+                                stock_actual=0
+                            ).select_related('producto')[:5]
+                            
+                            for inv in sin_stock:
+                                alertas_list.append({
+                                    'prioridad': 'MEDIA',
+                                    'titulo': 'Sin Stock',
+                                    'mensaje': f'{inv.producto.nombre}: Agotado'
+                                })
+                            
+                            if len(alertas_list) > 0:
+                                print(f"   Productos agotados: {len(alertas_list)}")
+                            else:
+                                # Todo está bien
+                                alertas_list.append({
+                                    'prioridad': 'BAJA',
+                                    'titulo': 'Sistema OK',
+                                    'mensaje': 'No hay alertas críticas en este momento'
+                                })
+                                print(f"   ✅ Sin alertas críticas")
+                    except Exception as e:
+                        print(f"   Error generando alertas: {e}")
+            
+        except Exception as e:
+            print(f"❌ Error en alertas: {e}")
+        
+        # ============================================
+        # RESPUESTA
+        # ============================================
+        response_data = {
+            'success': True,
+            'data': {
+                'ventas_hoy': ventas_hoy_total,
+                'num_ventas': ventas_hoy_count,
+                'productos_total': productos_total,
+                'alertas_criticas': alertas_criticas,
+                'ventas_semana': ventas_semana,
+                'top_productos': top_productos_list,
+                'ultimas_ventas': ultimas_ventas_list,
+                'alertas': alertas_list
             },
-        ],
-        'alertas': [
-            {
-                'titulo': 'Stock bajo en Arroz',
-                'mensaje': 'Solo quedan 5 unidades',
-                'prioridad': 'ALTA'
-            },
-        ]
-    })
-
-
+            'timestamp': timezone.now().isoformat()
+        }
+        
+        print(f"\n📤 Enviando: {len(top_productos_list)} productos, {len(alertas_list)} alertas")
+        print(f"{'='*80}\n")
+        
+        return JsonResponse(response_data)
+        
+    except Exception as e:
+        import traceback
+        print(f"\n💥 ERROR: {e}")
+        traceback.print_exc()
+        
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'ventas_hoy': 0,
+                'num_ventas': 0,
+                'productos_total': 0,
+                'alertas_criticas': 0,
+                'ventas_semana': [],
+                'top_productos': [],
+                'ultimas_ventas': [],
+                'alertas': []
+            }
+        })
 # ========================================
 # UTILIDADES
 # ========================================
