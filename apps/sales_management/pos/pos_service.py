@@ -252,19 +252,15 @@ class POSService:
     def procesar_pago(venta, forma_pago, monto, usuario, referencia='', caja=None):
         """
         Procesa un pago de la venta
-        
-        Args:
-            venta: Venta a la que se registra el pago
-            forma_pago: EFECTIVO, TARJETA, TRANSFERENCIA, etc.
-            monto: Monto del pago
-            usuario: Usuario que registra el pago
-            referencia: Referencia del pago (número de transacción, etc.)
-            caja: Caja donde se registra el pago
-            
-        Returns:
-            Pago: Pago registrado
         """
         from ..models import Pago
+        
+        print("=" * 80)
+        print(f"🔥 PROCESAR_PAGO LLAMADO")
+        print(f"   Venta: {venta.numero_venta}")
+        print(f"   Forma Pago: {forma_pago}")
+        print(f"   Monto: {monto}")
+        print("=" * 80)
         
         # Validaciones
         if venta.estado == 'ANULADA':
@@ -280,6 +276,8 @@ class POSService:
                 f'El monto del pago (${monto}) excede el saldo pendiente (${saldo})'
             )
         
+        print("✅ Validaciones pasadas, creando objeto Pago...")
+        
         # Crear pago
         pago = Pago.objects.create(
             venta=venta,
@@ -291,6 +289,9 @@ class POSService:
             fecha_pago=timezone.now()
         )
         
+        print(f"✅ Pago creado con ID: {pago.id}")
+        print(f"   Ahora debería ejecutarse el signal pago_post_save...")
+        
         # Actualizar monto pagado de la venta
         venta.monto_pagado += monto
         
@@ -298,12 +299,40 @@ class POSService:
         if forma_pago == 'EFECTIVO' and venta.monto_pagado > venta.total:
             venta.cambio = venta.monto_pagado - venta.total
         
+        # ✅ DETERMINAR ESTADO DE PAGO SEGÚN TIPO DE VENTA
+        print(f"🔍 Evaluando estado_pago en pos_service...")
+        print(f"   tipo_venta: {venta.tipo_venta}")
+        print(f"   monto_pagado: {venta.monto_pagado}")
+        print(f"   total: {venta.total}")
+        
+        if venta.tipo_venta == 'CONTADO':
+            # Ventas al contado siempre quedan como PAGADAS
+            if venta.monto_pagado >= venta.total:
+                venta.estado_pago = 'PAGADO'
+                print(f"✅ POS Service: Venta al CONTADO marcada como PAGADA")
+            else:
+                venta.estado_pago = 'PENDIENTE'
+                print(f"⏳ POS Service: Venta al CONTADO - Pago parcial")
+        
+        elif venta.tipo_venta == 'CREDITO':
+            # Ventas a crédito quedan pendientes hasta liquidar la deuda
+            if venta.monto_pagado >= venta.total:
+                venta.estado_pago = 'PAGADO'
+                print(f"✅ POS Service: Venta a CRÉDITO liquidada")
+            else:
+                venta.estado_pago = 'PENDIENTE'
+                print(f"⏳ POS Service: Venta a CRÉDITO pendiente")
+        
+        else:
+            # Por defecto, verificar si está completamente pagado
+            venta.estado_pago = 'PAGADO' if venta.monto_pagado >= venta.total else 'PENDIENTE'
+        
+        print(f"💾 Guardando venta con estado_pago: {venta.estado_pago}")
         venta.save()
         
-        logger.info(
-            f"💰 Pago registrado en {venta.numero_venta}: "
-            f"{forma_pago} - ${monto}"
-        )
+        print(f"✅ PROCESAR_PAGO COMPLETADO")
+        print("=" * 80)
+        print()
         
         return pago
     

@@ -2965,7 +2965,10 @@ def api_obtener_producto(request, producto_id):
 def api_procesar_venta(request):
     """
     API para procesar y guardar la venta con impresión térmica
-    VERSIÓN CON IVA CORREGIDO
+    VERSIÓN COMPLETA CORREGIDA:
+    - IVA selectivo por producto
+    - Estado de pago según tipo de venta
+    - Validación de cliente para crédito
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
@@ -2995,6 +2998,14 @@ def api_procesar_venta(request):
         tipo_venta = data.get('tipo_venta', 'CONTADO')
         metodo_pago = data.get('metodo_pago', 'EFECTIVO')
         
+        # ✅ VALIDAR QUE VENTAS A CRÉDITO TENGAN CLIENTE
+        if tipo_venta == 'CREDITO' and not cliente_id:
+            logger.warning("⚠️ Intento de venta a crédito sin cliente")
+            return JsonResponse({
+                'success': False,
+                'error': 'Las ventas a crédito requieren seleccionar un cliente'
+            }, status=400)
+        
         try:
             monto_recibido = Decimal(str(data.get('monto_recibido', '0')))
         except:
@@ -3015,7 +3026,10 @@ def api_procesar_venta(request):
             try:
                 cliente = Cliente.objects.get(id=cliente_id)
             except Cliente.DoesNotExist:
-                pass
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Cliente no encontrado'
+                }, status=404)
         
         # ============================================================================
         # ✅ OBTENER CONFIGURACIÓN DE IVA
@@ -3120,8 +3134,8 @@ def api_procesar_venta(request):
                         'costo_total': costo_total,
                         'descuento_porcentaje': descuento_porcentaje,
                         'descuento_monto': descuento,
-                        'aplica_iva': producto.aplica_impuestos if iva_activo else False,  # ✅ CORRECTO
-                        'monto_iva': iva_detalle,  # ✅ CORRECTO
+                        'aplica_iva': producto.aplica_impuestos if iva_activo else False,
+                        'monto_iva': iva_detalle,
                         'subtotal': item_subtotal,
                         'total': item_total,
                     }
@@ -3168,6 +3182,48 @@ def api_procesar_venta(request):
                     usuario=usuario
                 )
                 logger.info(f"✅ Pago registrado: {metodo_pago} - ${monto_recibido}")
+            
+            # ============================================================================
+            # ✅ ESTABLECER ESTADO DE PAGO SEGÚN TIPO DE VENTA
+            # ============================================================================
+            print("=" * 80)
+            print(f"🔍 ESTABLECIENDO ESTADO DE PAGO")
+            print(f"   Venta: {venta.numero_venta}")
+            print(f"   Tipo Venta: {tipo_venta}")
+            print(f"   Método Pago: {metodo_pago}")
+            print(f"   Monto Recibido: ${monto_recibido}")
+            print(f"   Total: ${total}")
+            print("=" * 80)
+            
+            if tipo_venta == 'CONTADO':
+                # Ventas al contado siempre quedan como PAGADAS cuando se paga el total
+                if monto_recibido >= total:
+                    venta.estado_pago = 'PAGADO'
+                    print(f"✅✅✅ Venta al CONTADO marcada como PAGADA ✅✅✅")
+                else:
+                    venta.estado_pago = 'PENDIENTE'
+                    print(f"⏳ Venta al CONTADO - Pago parcial, marcada como PENDIENTE")
+            
+            elif tipo_venta == 'CREDITO':
+                # Ventas a crédito quedan pendientes hasta liquidar completamente
+                if monto_recibido >= total:
+                    venta.estado_pago = 'PAGADO'
+                    print(f"✅ Venta a CRÉDITO liquidada completamente")
+                else:
+                    venta.estado_pago = 'PENDIENTE'
+                    saldo = total - monto_recibido
+                    print(f"⏳ Venta a CRÉDITO con saldo pendiente: ${saldo}")
+            
+            else:
+                # Por defecto, verificar si está completamente pagado
+                venta.estado_pago = 'PAGADO' if monto_recibido >= total else 'PENDIENTE'
+                print(f"❓ Tipo de venta: {tipo_venta}, Estado: {venta.estado_pago}")
+            
+            print(f"💾 Guardando venta con estado_pago={venta.estado_pago}")
+            venta.save()
+            print(f"✅ VENTA GUARDADA CON ÉXITO - Estado: {venta.estado_pago}")
+            print("=" * 80)
+            print()
             
             # ============================================================================
             # CREAR TRABAJO DE IMPRESIÓN
@@ -3223,6 +3279,7 @@ def api_procesar_venta(request):
             'total': float(total),
             'cambio': float(cambio),
             'monto_recibido': float(monto_recibido),
+            'estado_pago': venta.estado_pago,
         })
         
     except Exception as e:
