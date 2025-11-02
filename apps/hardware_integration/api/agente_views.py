@@ -15,6 +15,13 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
+# CONSTANTES - 🔥 NUEVO
+# ============================================================================
+
+USUARIO_SISTEMA = 'agente_impresion'  # Usuario especial que ve TODOS los trabajos
+
+
+# ============================================================================
 # THROTTLING PERSONALIZADO - SIN LÍMITE PARA EL AGENTE
 # ============================================================================
 
@@ -34,6 +41,16 @@ class NoThrottle(BaseThrottle):
 # FUNCIONES AUXILIARES
 # ============================================================================
 
+def es_usuario_sistema(user):
+    """
+    🔥 NUEVO: Verifica si el usuario autenticado es el usuario de sistema
+    
+    El usuario de sistema puede ver TODOS los trabajos de impresión,
+    mientras que los usuarios normales solo ven los suyos.
+    """
+    return user.username == USUARIO_SISTEMA
+
+
 def normalizar_nombre_impresora(nombre_solicitado):
     """
     Normaliza el nombre de la impresora para que coincida con el sistema Windows.
@@ -42,7 +59,7 @@ def normalizar_nombre_impresora(nombre_solicitado):
         nombre_solicitado = nombre_solicitado.strip()
         
         # Buscar en BD
-        impresoras_bd = Impresora.objects.filter(activa='ACTIVA').values_list('nombre', 'nombre_driver')
+        impresoras_bd = Impresora.objects.filter(estado='ACTIVA').values_list('nombre', 'nombre_driver')
         
         # Coincidencia exacta
         for nombre_bd, driver_bd in impresoras_bd:
@@ -118,8 +135,12 @@ def registrar_agente(request):
         version_agente = data.get('version_agente', '0.0.0')
         impresoras = data.get('impresoras', [])
         
+        # 🔥 NUEVO: Identificar tipo de usuario
+        es_sistema = es_usuario_sistema(request.user)
+        tipo_usuario = "SISTEMA" if es_sistema else "NORMAL"
+        
         logger.info(f"📝 Agente registrado: {computadora} - {usuario_pc} (v{version_agente})")
-        logger.info(f"   Usuario Django: {request.user.username} (ID: {request.user.id})")
+        logger.info(f"   Usuario Django: {request.user.username} (ID: {request.user.id}) [Tipo: {tipo_usuario}]")
         logger.info(f"   Impresoras detectadas: {len(impresoras)}")
         
         if impresoras:
@@ -133,6 +154,7 @@ def registrar_agente(request):
             'usuario_pc': usuario_pc,
             'usuario_django': request.user.username,
             'usuario_id': request.user.id,
+            'es_sistema': es_sistema,  # 🔥 NUEVO
             'version': version_agente,
             'impresoras': impresoras,
             'ultima_conexion': timezone.now().isoformat(),
@@ -146,6 +168,7 @@ def registrar_agente(request):
             'server_time': timezone.now().isoformat(),
             'usuario': request.user.username,
             'usuario_id': request.user.id,
+            'es_sistema': es_sistema,  # 🔥 NUEVO
             'impresoras_registradas': len(impresoras)
         }, status=status.HTTP_200_OK)
         
@@ -167,17 +190,36 @@ def obtener_trabajos_pendientes(request):
     
     GET /api/hardware/agente/trabajos/
     
-    ⚠️ CRÍTICO: Ahora usa TrabajoImpresion de la BASE DE DATOS
+    🔥 ACTUALIZADO: Ahora detecta si es usuario de sistema
+    - Usuario de sistema (agente_impresion) → Ve TODOS los trabajos
+    - Usuario normal → Solo ve sus propios trabajos
     """
     try:
-        # 🔥 CAMBIO PRINCIPAL: Obtener desde BD en lugar de cache
-        trabajos_query = TrabajoImpresion.objects.filter(
-            estado='PENDIENTE',
-            creado_por=request.user  # Solo trabajos de este usuario
-        ).select_related('impresora', 'venta', 'producto').order_by(
-            'prioridad',
-            'fecha_creacion'
-        )[:10]  # Máximo 10 por petición
+        # 🔥 DETECTAR TIPO DE USUARIO
+        es_sistema = es_usuario_sistema(request.user)
+        
+        if es_sistema:
+            # ✅ Usuario de sistema → Ve TODOS los trabajos pendientes
+            trabajos_query = TrabajoImpresion.objects.filter(
+                estado='PENDIENTE'
+                # ← SIN FILTRO POR USUARIO
+            ).select_related('impresora', 'venta', 'producto', 'creado_por').order_by(
+                'prioridad',
+                'fecha_creacion'
+            )[:10]  # Máximo 10 por petición
+            
+            logger.debug(f"🔓 Usuario SISTEMA '{request.user.username}' consultando TODOS los trabajos")
+        else:
+            # ✅ Usuario normal → Solo sus propios trabajos
+            trabajos_query = TrabajoImpresion.objects.filter(
+                estado='PENDIENTE',
+                creado_por=request.user
+            ).select_related('impresora', 'venta', 'producto').order_by(
+                'prioridad',
+                'fecha_creacion'
+            )[:10]
+            
+            logger.debug(f"🔒 Usuario '{request.user.username}' consultando sus trabajos")
         
         trabajos_list = []
         
@@ -191,11 +233,18 @@ def obtener_trabajos_pendientes(request):
                 # Si no tiene impresora asignada, buscar la predeterminada
                 impresora_default = Impresora.objects.filter(
                     es_principal_tickets=True,
-                    activa='ACTIVA'
+                    estado='ACTIVA'
                 ).first()
                 nombre_impresora = impresora_default.nombre_driver if impresora_default else "PrinterPOS-80"
             
             nombre_normalizado = normalizar_nombre_impresora(nombre_impresora)
+            
+            # 🔥 NUEVO: Obtener información del usuario que creó el trabajo
+            usuario_creador = "Sistema"
+            if trabajo.creado_por:
+                usuario_creador = trabajo.creado_por.get_full_name()
+                if not usuario_creador or usuario_creador.strip() == "":
+                    usuario_creador = trabajo.creado_por.username
             
             trabajos_list.append({
                 'id': str(trabajo.id),
@@ -206,23 +255,27 @@ def obtener_trabajos_pendientes(request):
                 'fecha_creacion': trabajo.fecha_creacion.isoformat(),
                 'copias': trabajo.copias,
                 'abrir_gaveta': trabajo.abrir_gaveta,
+                'usuario': usuario_creador,  # 🔥 NUEVO: Info del usuario creador
             })
             
-            # 🔥 Marcar como EN PROCESO
+            # Marcar como EN PROCESO
             trabajo.marcar_procesando()
             
             logger.info(f"📤 Trabajo {trabajo.id} enviado al agente")
+            logger.info(f"   Creado por: {usuario_creador}")
             logger.info(f"   Impresora: {nombre_normalizado}")
             logger.info(f"   Tipo: {trabajo.tipo}")
         
         if trabajos_list:
-            logger.info(f"📋 Usuario {request.user.username} - Enviados: {len(trabajos_list)} trabajos")
+            tipo_busqueda = "TODOS" if es_sistema else f"usuario {request.user.username}"
+            logger.info(f"📋 Enviados {len(trabajos_list)} trabajo(s) [{tipo_busqueda}]")
         else:
-            logger.debug(f"📋 Usuario {request.user.username} - Sin trabajos pendientes")
+            logger.debug(f"📋 Sin trabajos pendientes para {request.user.username}")
         
         return Response({
             'trabajos': trabajos_list,
             'count': len(trabajos_list),
+            'es_sistema': es_sistema,  # 🔥 NUEVO
             'timestamp': timezone.now().isoformat()
         }, status=status.HTTP_200_OK)
         
@@ -244,8 +297,6 @@ def reportar_resultado(request):
     Endpoint para que el agente reporte el resultado de una impresión
     
     POST /api/hardware/agente/resultado/
-    
-    ⚠️ CRÍTICO: Ahora busca en BD en lugar de cache
     """
     try:
         data = request.data
@@ -264,11 +315,14 @@ def reportar_resultado(request):
         
         logger.info(f"📊 Resultado trabajo {trabajo_id}: {'✅ ÉXITO' if success else '❌ ERROR'}")
         logger.info(f"   Mensaje: {mensaje}")
-        logger.info(f"   Usuario: {request.user.username}")
+        logger.info(f"   Usuario agente: {request.user.username}")
         
-        # 🔥 CAMBIO PRINCIPAL: Buscar en BD
         try:
             trabajo = TrabajoImpresion.objects.get(id=trabajo_id)
+            
+            # 🔥 NUEVO: Loguear usuario creador
+            if trabajo.creado_por:
+                logger.info(f"   Creado por: {trabajo.creado_por.username}")
             
             if success:
                 # Marcar como completado
@@ -281,7 +335,9 @@ def reportar_resultado(request):
             
             return Response({
                 'success': True,
-                'mensaje': 'Resultado registrado correctamente'
+                'mensaje': 'Resultado registrado correctamente',
+                'trabajo_id': str(trabajo.id),
+                'usuario_creador': trabajo.creado_por.username if trabajo.creado_por else None
             }, status=status.HTTP_200_OK)
             
         except TrabajoImpresion.DoesNotExist:
@@ -361,6 +417,8 @@ def obtener_estado_agente(request):
     Endpoint para verificar el estado del agente y sus trabajos
     
     GET /api/hardware/agente/estado/
+    
+    🔥 ACTUALIZADO: Muestra trabajos según tipo de usuario
     """
     try:
         # Buscar info del agente en cache
@@ -371,21 +429,35 @@ def obtener_estado_agente(request):
             if agente_info:
                 break
         
-        # 🔥 Contar trabajos desde BD
-        trabajos_pendientes = TrabajoImpresion.objects.filter(
-            creado_por=request.user,
-            estado='PENDIENTE'
-        ).count()
+        # 🔥 DETECTAR TIPO DE USUARIO
+        es_sistema = es_usuario_sistema(request.user)
         
-        trabajos_en_proceso = TrabajoImpresion.objects.filter(
-            creado_por=request.user,
-            estado='PROCESANDO'
-        ).count()
+        if es_sistema:
+            # Usuario de sistema ve TODOS los trabajos
+            trabajos_pendientes = TrabajoImpresion.objects.filter(
+                estado='PENDIENTE'
+            ).count()
+            
+            trabajos_en_proceso = TrabajoImpresion.objects.filter(
+                estado='PROCESANDO'
+            ).count()
+        else:
+            # Usuario normal solo ve los suyos
+            trabajos_pendientes = TrabajoImpresion.objects.filter(
+                creado_por=request.user,
+                estado='PENDIENTE'
+            ).count()
+            
+            trabajos_en_proceso = TrabajoImpresion.objects.filter(
+                creado_por=request.user,
+                estado='PROCESANDO'
+            ).count()
         
         total_en_cola = trabajos_pendientes + trabajos_en_proceso
         
         return Response({
             'agente_registrado': agente_info is not None,
+            'es_sistema': es_sistema,  # 🔥 NUEVO
             'trabajos_pendientes': trabajos_pendientes,
             'trabajos_en_proceso': trabajos_en_proceso,
             'total_en_cola': total_en_cola,
@@ -409,8 +481,6 @@ def crear_trabajo_impresion(usuario, impresora_nombre, comandos_hex, tipo='ticke
     """
     Crea un trabajo de impresión en la BD para que el agente lo procese
     
-    🔥 ACTUALIZADO: Ahora crea registros en TrabajoImpresion (BD)
-    
     Args:
         usuario: Instancia del modelo de Usuario
         impresora_nombre: Nombre del driver de la impresora
@@ -432,14 +502,14 @@ def crear_trabajo_impresion(usuario, impresora_nombre, comandos_hex, tipo='ticke
         if not impresora:
             impresora = Impresora.objects.filter(
                 nombre__icontains=impresora_nombre[:50],
-                activa='ACTIVA'
+                estado='ACTIVA'
             ).first()
         
         # Si aún no se encuentra, usar la predeterminada
         if not impresora:
             impresora = Impresora.objects.filter(
                 es_principal_tickets=True,
-                activa='ACTIVA'
+                estado='ACTIVA'
             ).first()
         
         if not impresora:
@@ -449,22 +519,19 @@ def crear_trabajo_impresion(usuario, impresora_nombre, comandos_hex, tipo='ticke
         if not comandos_hex or len(comandos_hex) < 10:
             raise ValueError("Los comandos de impresión están vacíos o son demasiado cortos")
         
-        # 🔥 DETECTAR SI DEBE ABRIR GAVETA
-        # Si abrir_gaveta no se especificó, detectar automáticamente
+        # Detectar si debe abrir gaveta
         if abrir_gaveta is None:
-            # Verificar si la impresora tiene gaveta configurada
             abrir_gaveta = impresora.tiene_gaveta
             
-            # O buscar si hay una gaveta asociada a esta impresora
             if not abrir_gaveta:
                 from ..models import GavetaDinero
                 gaveta = GavetaDinero.objects.filter(
                     impresora=impresora,
-                    activa='ACTIVA'
+                    activa=True
                 ).first()
                 abrir_gaveta = gaveta is not None
         
-        # 🔥 CREAR EN BASE DE DATOS
+        # Crear en base de datos
         trabajo = TrabajoImpresion.objects.create(
             tipo=tipo.upper(),
             prioridad=prioridad,
@@ -474,7 +541,7 @@ def crear_trabajo_impresion(usuario, impresora_nombre, comandos_hex, tipo='ticke
             formato='ESC_POS',
             creado_por=usuario,
             copias=1,
-            abrir_gaveta=abrir_gaveta,  # 🔥 Ahora respeta la configuración
+            abrir_gaveta=abrir_gaveta,
             max_intentos=3
         )
         
@@ -496,8 +563,6 @@ def crear_trabajo_impresion(usuario, impresora_nombre, comandos_hex, tipo='ticke
 def cancelar_trabajo_impresion(usuario, trabajo_id):
     """
     Cancela un trabajo de impresión pendiente
-    
-    🔥 ACTUALIZADO: Ahora busca en BD
     """
     try:
         trabajo = TrabajoImpresion.objects.get(
@@ -519,6 +584,12 @@ def cancelar_trabajo_impresion(usuario, trabajo_id):
     except Exception as e:
         logger.error(f"❌ Error cancelando trabajo: {e}", exc_info=True)
         return False
+
+
+# ============================================================================
+# ENDPOINTS PARA CÓDIGOS DE BARRAS Y ETIQUETAS
+# ============================================================================
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def imprimir_codigo_barras(request):
@@ -558,7 +629,7 @@ def imprimir_codigo_barras(request):
         # Obtener impresora
         if impresora_id:
             try:
-                impresora = Impresora.objects.get(id=impresora_id, activa='ACTIVA')
+                impresora = Impresora.objects.get(id=impresora_id, estado='ACTIVA')
             except Impresora.DoesNotExist:
                 return Response({
                     'success': False,
@@ -569,13 +640,13 @@ def imprimir_codigo_barras(request):
             impresora = Impresora.objects.filter(
                 tipo_impresora='ETIQUETAS',
                 es_principal_etiquetas=True,
-                activa='ACTIVA'
+                estado='ACTIVA'
             ).first()
             
             if not impresora:
                 impresora = Impresora.objects.filter(
                     tipo_impresora='ETIQUETAS',
-                    activa='ACTIVA'
+                    estado='ACTIVA'
                 ).first()
         
         if not impresora:
@@ -688,7 +759,7 @@ def imprimir_etiqueta_producto(request):
         # Obtener impresora
         if impresora_id:
             try:
-                impresora = Impresora.objects.get(id=impresora_id, activa='ACTIVA')
+                impresora = Impresora.objects.get(id=impresora_id, estado='ACTIVA')
             except Impresora.DoesNotExist:
                 return Response({
                     'success': False,
@@ -698,13 +769,13 @@ def imprimir_etiqueta_producto(request):
             impresora = Impresora.objects.filter(
                 tipo_impresora='ETIQUETAS',
                 es_principal_etiquetas=True,
-                activa='ACTIVA'
+                estado='ACTIVA'
             ).first()
             
             if not impresora:
                 impresora = Impresora.objects.filter(
                     tipo_impresora='ETIQUETAS',
-                    activa='ACTIVA'
+                    estado='ACTIVA'
                 ).first()
         
         if not impresora:
@@ -786,7 +857,7 @@ def imprimir_prueba_codigos(request):
         # Obtener impresora
         if impresora_id:
             try:
-                impresora = Impresora.objects.get(id=impresora_id, activa='ACTIVA')
+                impresora = Impresora.objects.get(id=impresora_id, estado='ACTIVA')
             except Impresora.DoesNotExist:
                 return Response({
                     'success': False,
@@ -796,13 +867,13 @@ def imprimir_prueba_codigos(request):
             impresora = Impresora.objects.filter(
                 tipo_impresora='ETIQUETAS',
                 es_principal_etiquetas=True,
-                activa='ACTIVA'
+                estado='ACTIVA'
             ).first()
             
             if not impresora:
                 impresora = Impresora.objects.filter(
                     tipo_impresora='ETIQUETAS',
-                    activa='ACTIVA'
+                    estado='ACTIVA'
                 ).first()
         
         if not impresora:
