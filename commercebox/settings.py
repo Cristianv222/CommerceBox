@@ -485,6 +485,10 @@ SESSION_COOKIE_HTTPONLY = not DEBUG  # True en producción, False en desarrollo
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = not DEBUG
 
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+
 # Security settings - Solo en producción
 if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
