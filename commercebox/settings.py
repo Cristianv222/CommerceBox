@@ -29,6 +29,7 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     'agrototal.valktek.com',
     '159.89.224.35',
+    'commercebox_web',
 ]
 
 # Para producción, usar lista específica:
