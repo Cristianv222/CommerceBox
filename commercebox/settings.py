@@ -24,13 +24,7 @@ DEBUG = config('COMMERCEBOX_DEBUG', default=True, cast=bool)
 # ============================================================================
 # 🔧 CORRECCIÓN 1: ALLOWED_HOSTS - Permitir acceso desde cualquier IP
 # ============================================================================
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    'agrototal.valktek.com',
-    '159.89.224.35',
-    'commercebox_web',
-]
+ALLOWED_HOSTS = ['*']
 
 # Para producción, usar lista específica:
 # ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.100', 'tudominio.com']
