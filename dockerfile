@@ -1,5 +1,5 @@
 # CommerceBox - Sistema de Inventario Comercial Dual
-# Dockerfile
+# Dockerfile para Producción
 
 FROM python:3.11-slim
 
@@ -31,13 +31,14 @@ RUN apt-get update \
 
 # Copiar requirements y instalar dependencias Python
 COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
 
 # Copiar código del proyecto
 COPY . /app/
 
 # Crear directorios necesarios
-RUN mkdir -p /app/logs /app/media /app/static /app/backups
+RUN mkdir -p /app/logs /app/media /app/static /app/staticfiles /app/backups
 
 # Permisos para el script de entrada
 COPY entrypoint.sh /app/
@@ -51,6 +52,6 @@ USER appuser
 # Exponer puerto
 EXPOSE 8000
 
-# Comando por defecto
+# Comando por defecto - CORREGIDO PARA PRODUCCIÓN
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["gunicorn", "commercebox.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-"]

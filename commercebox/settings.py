@@ -27,8 +27,8 @@ DEBUG = config('COMMERCEBOX_DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    '0.0.0.0',
-    '*',  # ⚠️ Permite TODAS las IPs - SOLO PARA DESARROLLO
+    'agrototal.valktek.com',
+    '159.89.224.35',
 ]
 
 # Para producción, usar lista específica:
@@ -75,6 +75,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + COMMERCEBOX_APPS
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # ✅ Debe estar primero
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -165,6 +166,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files
 MEDIA_URL = '/media/'
@@ -398,6 +400,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8000",
     "http://localhost:8001",
     "http://127.0.0.1:8001",
+    "https://agrototal.valktek.com",
 ]
 
 # Permitir peticiones desde la red local usando regex
@@ -443,6 +446,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8000',
     'http://localhost:8001',
     'http://127.0.0.1:8001',
+    'https://agrototal.valktek.com',
 ]
 
 # ============================================================================
@@ -465,7 +469,23 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@commercebox.c
 # 🔧 CORRECCIÓN 6: CONFIGURACIÓN DE SESIONES - CRÍTICO PARA AUTENTICACIÓN
 # ============================================================================
 
-# Security settings - Solo aplicar en producción
+# Configuración de sesiones
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_AGE = 86400  # 24 horas
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_NAME = 'sessionid'
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_DOMAIN = None
+SESSION_COOKIE_PATH = '/'
+
+# Configuración dinámica según DEBUG (desarrollo vs producción)
+SESSION_COOKIE_SECURE = not DEBUG  # True en producción, False en desarrollo
+SESSION_COOKIE_HTTPONLY = not DEBUG  # True en producción, False en desarrollo
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_HTTPONLY = not DEBUG
+
+# Security settings - Solo en producción
 if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -473,29 +493,6 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_REDIRECT_EXEMPT = []
     SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    CSRF_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_HTTPONLY = True
-
-# ✅ CONFIGURACIÓN DE SESIONES - CORREGIDA PARA DESARROLLO
-# Estas configuraciones DEBEN estar DESPUÉS del bloque "if not DEBUG"
-# para que no sean sobrescritas
-
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-SESSION_COOKIE_AGE = 86400
-SESSION_EXPIRE_AT_BROWSER_CLOSE = False
-SESSION_SAVE_EVERY_REQUEST = True
-SESSION_COOKIE_NAME = 'sessionid'  # ← Asegúrate que sea 'sessionid', no otro nombre
-SESSION_COOKIE_HTTPONLY = False  # ← Temporalmente en False para debug
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = False
-SESSION_COOKIE_DOMAIN = None  # ← AGREGA ESTA LÍNEA
-SESSION_COOKIE_PATH = '/'  # ← AGREGA ESTA LÍNEA
-
-# ⚠️ IMPORTANTE: En producción, cambiar a:
-# SESSION_COOKIE_HTTPONLY = True
-# SESSION_COOKIE_SECURE = True
 
 # Cache Configuration
 CACHES = {
@@ -536,10 +533,3 @@ THOUSAND_SEPARATOR = ','
 DECIMAL_SEPARATOR = '.'
 NUMBER_GROUPING = 3
 
-# Session Configuration
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-SESSION_COOKIE_NAME = 'sessionid'
-SESSION_COOKIE_AGE = 86400  # 24 hours
-SESSION_SAVE_EVERY_REQUEST = False
-SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'Lax'
