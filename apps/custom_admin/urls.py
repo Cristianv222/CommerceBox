@@ -19,7 +19,7 @@ urlpatterns = [
     # ========================================
     path('usuarios/', views.usuarios_view, name='usuarios'),
     path('roles/', views.roles_view, name='roles'),
-    
+    path('api/perfil/', views.api_perfil_usuario, name='api_perfil_usuario'),
     # ========================================
     # PUNTO DE VENTA (POS)
     # ========================================

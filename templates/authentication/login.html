@@ -1,6 +1,7 @@
 {% extends 'base_login.html' %}
+{% load static %}
 
-{% block title %}Login - CommerceBox Agro{% endblock %}
+{% block title %}Login - AgroTotal{% endblock %}
 
 {% block navbar %}{% endblock %}
 
@@ -15,11 +16,10 @@
     <div class="login-container">
         <!-- Logo y título -->
         <div class="login-brand">
-            <div class="brand-icon">
-                <i class="bi bi-box-seam"></i>
+            <div class="brand-logo">
+                <img src="{% static 'icons/logo_agro.png' %}" alt="AgroTotal Logo">
             </div>
-            <h1 class="brand-title">CommerceBox <span class="badge-agro">AGRO</span></h1>
-            <p class="brand-subtitle">Sistema de Gestión Agropecuaria</p>
+            <p class="brand-subtitle">Sistema de Gestión</p>
         </div>
 
         <!-- Formulario de login -->
@@ -98,28 +98,20 @@
         width: 100%;
         height: 100%;
         background: 
-            /* Manchas sutiles de color */
             radial-gradient(ellipse 800px 600px at 10% 20%, rgba(219, 234, 254, 0.4) 0%, transparent 50%),
             radial-gradient(ellipse 900px 700px at 90% 80%, rgba(191, 219, 254, 0.35) 0%, transparent 50%),
             radial-gradient(ellipse 600px 800px at 50% 50%, rgba(147, 197, 253, 0.15) 0%, transparent 50%),
-            
-            /* Vetas finas diagonales */
             linear-gradient(135deg, transparent 0%, transparent 48%, rgba(96, 165, 250, 0.05) 49%, rgba(96, 165, 250, 0.08) 50%, rgba(96, 165, 250, 0.05) 51%, transparent 52%, transparent 100%),
             linear-gradient(125deg, transparent 0%, transparent 68%, rgba(147, 197, 253, 0.06) 69%, rgba(147, 197, 253, 0.09) 70%, rgba(147, 197, 253, 0.06) 71%, transparent 72%, transparent 100%),
             linear-gradient(115deg, transparent 0%, transparent 78%, rgba(191, 219, 254, 0.07) 79%, rgba(191, 219, 254, 0.1) 80%, rgba(191, 219, 254, 0.07) 81%, transparent 82%, transparent 100%),
             linear-gradient(145deg, transparent 0%, transparent 38%, rgba(59, 130, 246, 0.04) 39%, rgba(59, 130, 246, 0.06) 40%, rgba(59, 130, 246, 0.04) 41%, transparent 42%, transparent 100%),
-            
-            /* Vetas muy finas adicionales */
             linear-gradient(170deg, transparent 0%, transparent 88%, rgba(96, 165, 250, 0.03) 89%, rgba(96, 165, 250, 0.05) 90%, rgba(96, 165, 250, 0.03) 91%, transparent 92%, transparent 100%),
             linear-gradient(105deg, transparent 0%, transparent 58%, rgba(147, 197, 253, 0.04) 59%, rgba(147, 197, 253, 0.06) 60%, rgba(147, 197, 253, 0.04) 61%, transparent 62%, transparent 100%),
-            
-            /* Base blanca pura con toque azul */
             linear-gradient(180deg, #ffffff 0%, #f8fafc 40%, #f0f9ff 70%, #e0f2fe 100%);
         background-size: 100% 100%;
         z-index: 0;
     }
 
-    /* Textura de grano fino */
     body::after {
         content: '';
         position: fixed;
@@ -161,10 +153,10 @@
         }
     }
 
-    /* Brand section */
+    /* Brand section - COMPACTO */
     .login-brand {
         text-align: center;
-        margin-bottom: 30px;
+        margin-bottom: 8px;
         animation: fadeIn 1s ease-out 0.3s both;
     }
 
@@ -173,82 +165,60 @@
         to { opacity: 1; }
     }
 
-    .brand-icon {
+    /* Logo con recorte visual CSS - MÁS GRANDE */
+    .brand-logo {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 80px;
-        height: 80px;
-        background: linear-gradient(135deg, rgba(96, 165, 250, 0.9) 0%, rgba(59, 130, 246, 0.95) 100%);
-        border-radius: 20px;
-        margin-bottom: 15px;
-        box-shadow: 
-            0 8px 24px rgba(96, 165, 250, 0.25),
-            0 2px 8px rgba(59, 130, 246, 0.15),
-            inset 0 1px 0 rgba(255, 255, 255, 0.3);
-        animation: pulse 2s ease-in-out infinite;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        margin-bottom: 0;
+        animation: fadeInScale 0.8s ease-out;
+        filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.08));
+        height: 95px;  /* ✅ AUMENTADO de 80px a 95px */
+        overflow: hidden;
     }
 
-    @keyframes pulse {
-        0%, 100% {
+    @keyframes fadeInScale {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        to {
+            opacity: 1;
             transform: scale(1);
-            box-shadow: 
-                0 8px 24px rgba(96, 165, 250, 0.25),
-                0 2px 8px rgba(59, 130, 246, 0.15),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
-        }
-        50% {
-            transform: scale(1.03);
-            box-shadow: 
-                0 12px 32px rgba(96, 165, 250, 0.35),
-                0 4px 12px rgba(59, 130, 246, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.4);
         }
     }
 
-    .brand-icon i {
-        font-size: 2.5rem;
-        color: white;
+    .brand-logo img {
+        width: 260px;  /* ✅ AUMENTADO de 220px a 260px (+18% más grande) */
+        height: auto;
+        max-height: none;
+        object-fit: contain;
+        object-position: center;
+        display: block;
+        transition: transform 0.3s ease, filter 0.3s ease;
     }
 
-    .brand-title {
-        font-size: 2rem;
-        font-weight: 800;
-        color: #0f172a;
-        margin-bottom: 5px;
-        letter-spacing: -0.5px;
-    }
-
-    .badge-agro {
-        display: inline-block;
-        background: linear-gradient(135deg, rgba(147, 197, 253, 0.9) 0%, rgba(191, 219, 254, 0.9) 100%);
-        color: #1e3a8a;
-        padding: 4px 14px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 800;
-        letter-spacing: 1.5px;
-        margin-left: 8px;
-        box-shadow: 
-            0 4px 12px rgba(147, 197, 253, 0.3),
-            inset 0 1px 0 rgba(255, 255, 255, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.5);
+    .brand-logo img:hover {
+        transform: scale(1.05);
+        filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.12));
     }
 
     .brand-subtitle {
-        font-size: 0.95rem;
+        font-size: 0.95rem;  /* ✅ Ligeramente más grande también */
         color: #64748b;
         font-weight: 500;
+        margin-top: 5px;
+        margin-bottom: 0;
+        line-height: 1.2;
     }
 
-    /* Login card con efecto mármol y vidrio */
+    /* Login card */
     .login-card {
         background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(30px) saturate(180%);
         border: 1px solid rgba(219, 234, 254, 0.5);
         border-radius: 24px;
-        padding: 40px;
+        padding: 35px;
         position: relative;
         overflow: hidden;
         box-shadow: 
@@ -257,7 +227,6 @@
             inset 0 1px 0 rgba(255, 255, 255, 0.9);
     }
 
-    /* Efecto de mármol sutil dentro del card */
     .login-card::before {
         content: '';
         position: absolute;
@@ -273,7 +242,6 @@
         z-index: 0;
     }
 
-    /* Borde superior elegante */
     .login-card::after {
         content: '';
         position: absolute;
@@ -292,31 +260,30 @@
 
     .login-header {
         text-align: center;
-        margin-bottom: 30px;
+        margin-bottom: 25px;
         position: relative;
         z-index: 2;
     }
 
     .login-header h2 {
-        font-size: 1.75rem;
+        font-size: 1.6rem;
         font-weight: 700;
         color: #1e293b;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
 
     .login-header p {
         color: #64748b;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
     }
 
-    /* Form styles */
     form {
         position: relative;
         z-index: 2;
     }
 
     .form-group {
-        margin-bottom: 20px;
+        margin-bottom: 18px;
     }
 
     .form-label {
@@ -324,14 +291,14 @@
         align-items: center;
         gap: 8px;
         color: #1e293b;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         font-weight: 600;
-        margin-bottom: 8px;
+        margin-bottom: 7px;
     }
 
     .form-label i {
         color: rgba(59, 130, 246, 0.8);
-        font-size: 1.1rem;
+        font-size: 1.05rem;
     }
 
     .input-wrapper {
@@ -340,12 +307,12 @@
 
     .form-control {
         width: 100%;
-        padding: 14px 18px;
+        padding: 13px 16px;
         background: rgba(248, 250, 252, 0.6);
         border: 1.5px solid rgba(203, 213, 225, 0.5);
         border-radius: 12px;
         color: #1e293b;
-        font-size: 0.95rem;
+        font-size: 0.93rem;
         transition: all 0.3s ease;
         position: relative;
         z-index: 1;
@@ -366,26 +333,25 @@
 
     .input-wrapper .toggle-password {
         position: absolute;
-        right: 15px;
+        right: 14px;
         top: 50%;
         transform: translateY(-50%);
         color: #94a3b8;
         cursor: pointer;
         transition: color 0.3s ease;
         z-index: 2;
-        font-size: 1.1rem;
+        font-size: 1.05rem;
     }
 
     .toggle-password:hover {
         color: rgba(59, 130, 246, 0.8);
     }
 
-    /* Form footer */
     .form-footer {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 25px;
+        margin-bottom: 22px;
     }
 
     .checkbox-wrapper {
@@ -403,8 +369,8 @@
     }
 
     .checkmark {
-        width: 20px;
-        height: 20px;
+        width: 19px;
+        height: 19px;
         background: rgba(248, 250, 252, 0.8);
         border: 1.5px solid rgba(147, 197, 253, 0.6);
         border-radius: 6px;
@@ -416,10 +382,10 @@
         content: '';
         position: absolute;
         display: none;
-        left: 6px;
+        left: 5.5px;
         top: 2px;
         width: 5px;
-        height: 10px;
+        height: 9px;
         border: solid white;
         border-width: 0 2px 2px 0;
         transform: rotate(45deg);
@@ -437,19 +403,18 @@
 
     .checkbox-label {
         color: #4b5563;
-        font-size: 0.9rem;
+        font-size: 0.88rem;
         font-weight: 500;
     }
 
-    /* Login button */
     .btn-login {
         width: 100%;
-        padding: 16px 24px;
+        padding: 15px 22px;
         background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
         border: none;
         border-radius: 12px;
         color: white;
-        font-size: 1.1rem;
+        font-size: 1.05rem;
         font-weight: 700;
         cursor: pointer;
         transition: all 0.3s ease;
@@ -491,13 +456,12 @@
         transform: translateX(5px);
     }
 
-    /* Footer del login */
     .login-footer {
         text-align: center;
-        margin-top: 25px;
-        padding-top: 20px;
+        margin-top: 20px;
+        padding-top: 18px;
         border-top: 1px solid rgba(219, 234, 254, 0.4);
-        font-size: 0.9rem;
+        font-size: 0.88rem;
         color: #64748b;
     }
 
@@ -512,7 +476,6 @@
         color: rgba(37, 99, 235, 0.9);
     }
 
-    /* Alerts */
     #alertContainer {
         position: fixed;
         top: 20px;
@@ -523,7 +486,7 @@
 
     #alertContainer .alert {
         margin-bottom: 10px;
-        padding: 15px 20px;
+        padding: 14px 18px;
         border-radius: 12px;
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(20px);
@@ -557,23 +520,25 @@
         }
     }
 
-    /* Responsive */
     @media (max-width: 768px) {
         .login-container {
             max-width: 100%;
         }
 
         .login-card {
-            padding: 30px 25px;
-            border-width: 2px;
+            padding: 30px 22px;
         }
 
-        .brand-title {
-            font-size: 1.75rem;
+        .brand-logo {
+            height: 82px;  /* ✅ Ajuste proporcional para tablets */
+        }
+
+        .brand-logo img {
+            width: 220px;  /* ✅ Ajuste proporcional */
         }
 
         .login-header h2 {
-            font-size: 1.5rem;
+            font-size: 1.45rem;
         }
 
         #alertContainer {
@@ -584,31 +549,26 @@
 
         .form-footer {
             flex-direction: column;
-            gap: 15px;
+            gap: 14px;
             align-items: flex-start;
         }
     }
 
     @media (max-width: 480px) {
-        .brand-icon {
-            width: 70px;
-            height: 70px;
+        .brand-logo {
+            height: 75px;  /* ✅ Ajuste proporcional para móviles */
         }
 
-        .brand-icon i {
-            font-size: 2rem;
-        }
-
-        .brand-title {
-            font-size: 1.5rem;
+        .brand-logo img {
+            width: 190px;  /* ✅ Ajuste proporcional */
         }
 
         .login-card {
-            padding: 25px 20px;
+            padding: 25px 18px;
         }
 
         .form-control {
-            padding: 12px 15px;
+            padding: 12px 14px;
         }
 
         .btn-login {
@@ -617,7 +577,6 @@
         }
     }
 
-    /* Loading spinner para el botón */
     .spinner-border {
         display: inline-block;
         width: 1rem;
@@ -632,7 +591,6 @@
         to { transform: rotate(360deg); }
     }
 
-    /* Shake animation para errores */
     @keyframes shake {
         0%, 100% { transform: translateX(0); }
         10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
@@ -647,9 +605,6 @@
 
 {% block extra_js %}
 <script>
-// ========================================
-// TOGGLE CONTRASEÑA
-// ========================================
 const togglePassword = document.getElementById('togglePassword');
 const passwordInput = document.getElementById('password');
 
@@ -662,9 +617,6 @@ if (togglePassword && passwordInput) {
     });
 }
 
-// ========================================
-// MANEJO DEL FORMULARIO - VERSIÓN CORREGIDA
-// ========================================
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -682,24 +634,17 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     submitBtn.innerHTML = '<span class="spinner-border"></span> <span class="btn-text">Iniciando sesión...</span>';
     
     try {
-        // ✅ USAR auth.login() - ESTE MÉTODO YA MANEJA LA REDIRECCIÓN
         const result = await auth.login(username, password);
         
         if (result.success) {
             showAlert('¡Inicio de sesión exitoso!', 'success');
             
-            // Recordar usuario si está marcado
             if (document.getElementById('rememberMe').checked) {
                 localStorage.setItem('rememberUser', username);
             } else {
                 localStorage.removeItem('rememberUser');
             }
-            
-            // ✅ NO REDIRIGIR AQUÍ - auth.login() ya lo hace automáticamente
-            // La redirección se maneja en base_login.html
-            
         } else {
-            // Error en el login
             showAlert(result.error || 'Credenciales inválidas', 'danger');
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalHTML;
@@ -712,9 +657,6 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     }
 });
 
-// ========================================
-// FUNCIÓN PARA MOSTRAR ALERTAS
-// ========================================
 function showAlert(message, type = 'info') {
     const alertContainer = document.getElementById('alertContainer');
     
@@ -733,16 +675,15 @@ function showAlert(message, type = 'info') {
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert ${type}`;
     alertDiv.innerHTML = `
-        <i class="bi bi-${icons[type]}" style="font-size: 1.25rem; color: ${colors[type]}; flex-shrink: 0;"></i>
+        <i class="bi bi-${icons[type]}" style="font-size: 1.2rem; color: ${colors[type]}; flex-shrink: 0;"></i>
         <span style="flex: 1; color: #1f2937; font-weight: 500;">${message}</span>
-        <button onclick="this.parentElement.remove()" style="background: none; border: none; color: #6b7280; cursor: pointer; font-size: 1.25rem; padding: 0;">
+        <button onclick="this.parentElement.remove()" style="background: none; border: none; color: #6b7280; cursor: pointer; font-size: 1.2rem; padding: 0;">
             <i class="bi bi-x"></i>
         </button>
     `;
     
     alertContainer.appendChild(alertDiv);
     
-    // Auto-remove después de 5 segundos
     setTimeout(() => {
         if (alertDiv.parentElement) {
             alertDiv.style.animation = 'slideInRight 0.3s reverse';
@@ -751,9 +692,6 @@ function showAlert(message, type = 'info') {
     }, 5000);
 }
 
-// ========================================
-// CARGAR USUARIO RECORDADO
-// ========================================
 window.addEventListener('DOMContentLoaded', () => {
     const rememberedUser = localStorage.getItem('rememberUser');
     if (rememberedUser) {

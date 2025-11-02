@@ -9,6 +9,11 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.contrib import messages
 from functools import wraps
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from apps.authentication.decorators import jwt_required
+
 from apps.authentication.models import Usuario
 from apps.inventory_management.models import Marca,Proveedor
 from functools import wraps
@@ -84,6 +89,95 @@ def login_page_view(request):
     
     return response
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def api_perfil_usuario(request):
+    """
+    API para obtener datos del usuario autenticado.
+    Retorna información completa del usuario en formato JSON.
+    """
+    try:
+        user = request.user
+        
+        # Validar que el usuario esté autenticado
+        if not user or not user.is_authenticated:
+            return Response({
+                'error': 'Usuario no autenticado'
+            }, status=401)
+        
+        # Construir respuesta con todos los datos del usuario
+        data = {
+            'id': str(user.id),
+            'username': user.username,
+            'email': user.email,
+            'nombres': getattr(user, 'nombres', ''),
+            'apellidos': getattr(user, 'apellidos', ''),
+            'full_name': user.get_full_name() if hasattr(user, 'get_full_name') else f"{getattr(user, 'nombres', '')} {getattr(user, 'apellidos', '')}".strip(),
+            'codigo_empleado': getattr(user, 'codigo_empleado', ''),
+            'documento_identidad': getattr(user, 'documento_identidad', ''),
+            'telefono': getattr(user, 'telefono', ''),
+            'estado': getattr(user, 'estado', 'ACTIVO'),
+            'fecha_ultimo_acceso': str(user.last_login) if user.last_login else None,
+        }
+        
+        # Agregar información del rol si existe
+        if hasattr(user, 'rol') and user.rol:
+            data['rol'] = {
+                'id': str(user.rol.id),
+                'codigo': user.rol.codigo,
+                'nombre': user.rol.nombre,
+            }
+            data['rol_detalle'] = {
+                'id': str(user.rol.id),
+                'codigo': user.rol.codigo,
+                'nombre': user.rol.nombre,
+                'descripcion': getattr(user.rol, 'descripcion', ''),
+            }
+            data['rol_nombre'] = user.rol.nombre
+        else:
+            data['rol'] = None
+            data['rol_detalle'] = None
+            data['rol_nombre'] = 'Usuario'
+        
+        # Agregar permisos si existen los métodos
+        if hasattr(user, 'puede_acceder_modulo'):
+            data['permisos'] = {
+                'inventory': user.puede_acceder_modulo('inventory'),
+                'sales': user.puede_acceder_modulo('sales'),
+                'financial': user.puede_acceder_modulo('financial'),
+                'reports': user.puede_acceder_modulo('reports'),
+                'notifications': user.puede_acceder_modulo('notifications'),
+                'system_config': user.puede_acceder_modulo('system_config'),
+            }
+            
+            # Agregar roles específicos si existen los métodos
+            if hasattr(user, 'is_admin'):
+                data['permisos']['is_admin'] = user.is_admin()
+            if hasattr(user, 'is_supervisor'):
+                data['permisos']['is_supervisor'] = user.is_supervisor()
+        else:
+            data['permisos'] = {
+                'inventory': True,
+                'sales': True,
+                'financial': True,
+                'reports': True,
+                'notifications': True,
+                'system_config': user.is_staff,
+                'is_admin': user.is_staff or user.is_superuser,
+                'is_supervisor': user.is_staff,
+            }
+        
+        return Response(data)
+        
+    except Exception as e:
+        print(f"❌ Error en api_perfil_usuario: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        return Response({
+            'error': 'Error al obtener datos del usuario',
+            'details': str(e)
+        }, status=500)
 
 @ensure_csrf_cookie
 @auth_required

@@ -3,9 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Panel Administrativo{% endblock %} - CommerceBox</title>
+    <title>{% block title %}Panel Administrativo{% endblock %} - AgroTotal</title>
     
-    <!-- ✅ URLs originales -->
+    <!-- ✅ FAVICON -->
+    {% load static %}
+    <link rel="icon" type="image/png" href="{% static 'icons/logo_fav.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/logo_fav.png' %}">
+    <link rel="shortcut icon" href="{% static 'icons/logo_fav.png' %}">
+    
+    <!-- URLs originales -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -36,7 +42,7 @@
         position: relative;
     }
 
-    /* Fondo con efecto mármol (div fijo detrás) */
+    /* Fondo con efecto mármol */
     #marble-background {
         position: fixed; top: 0; left: 0;
         width: 100%; height: 100%;
@@ -95,9 +101,7 @@
         border-radius: 10px; font-weight: 600;
     }
 
-    /* ========================================
-       🆕 DROPDOWN DE USUARIO
-       ======================================== */
+    /* DROPDOWN DE USUARIO */
     .user-dropdown {
         display: flex; align-items: center; gap: 0.8rem;
         padding: 0.6rem 1.2rem; background: rgba(248, 250, 252, 0.8);
@@ -118,7 +122,7 @@
         position: absolute;
         top: calc(100% + 10px);
         right: 0;
-        min-width: 260px;
+        min-width: 280px;
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(20px);
         border: 1.5px solid var(--border-color);
@@ -139,21 +143,32 @@
     }
 
     .dropdown-menu-header {
-        padding: 1rem 1.2rem;
+        padding: 1.2rem;
         border-bottom: 1px solid var(--border-color);
         background: rgba(219, 234, 254, 0.3);
     }
 
     .dropdown-menu-header .user-name {
         font-weight: 600;
-        font-size: 0.95rem;
+        font-size: 0.98rem;
         color: var(--text-dark);
-        margin-bottom: 0.2rem;
+        margin-bottom: 0.3rem;
     }
 
     .dropdown-menu-header .user-email {
-        font-size: 0.8rem;
+        font-size: 0.82rem;
         color: var(--text-muted);
+        margin-bottom: 0.3rem;
+    }
+
+    .dropdown-menu-header .user-role {
+        font-size: 0.78rem;
+        color: var(--primary-color);
+        font-weight: 600;
+        background: rgba(96, 165, 250, 0.15);
+        padding: 0.3rem 0.6rem;
+        border-radius: 6px;
+        display: inline-block;
     }
 
     .dropdown-menu-body {
@@ -203,6 +218,117 @@
         font-weight: 500;
     }
 
+    /* NOTIFICACIÓN DE LOGOUT */
+    .logout-notification {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(20px);
+        border: 1.5px solid var(--border-color);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        z-index: 99999;
+        text-align: center;
+        min-width: 320px;
+        animation: fadeInScale 0.3s ease-out;
+    }
+
+    @keyframes fadeInScale {
+        from {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+    }
+
+    .logout-notification-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.15));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        color: #ef4444;
+        font-size: 1.8rem;
+    }
+
+    .logout-notification-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 0.5rem;
+    }
+
+    .logout-notification-text {
+        font-size: 0.95rem;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+    }
+
+    .logout-notification-actions {
+        display: flex;
+        gap: 0.8rem;
+        justify-content: center;
+    }
+
+    .logout-btn-cancel {
+        padding: 0.7rem 1.5rem;
+        background: rgba(248, 250, 252, 0.8);
+        border: 1.5px solid var(--border-color);
+        border-radius: 10px;
+        color: var(--text-dark);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .logout-btn-cancel:hover {
+        background: rgba(219, 234, 254, 0.5);
+        transform: translateY(-2px);
+    }
+
+    .logout-btn-confirm {
+        padding: 0.7rem 1.5rem;
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    .logout-btn-confirm:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+    }
+
+    .logout-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        z-index: 99998;
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
     /* SIDEBAR */
     .sidebar {
         position: fixed; left: 0; top: 0; width: var(--sidebar-width); height: 100vh;
@@ -212,13 +338,52 @@
     }
     .sidebar.collapsed { width: 70px; }
 
+    /* ✅ SIDEBAR BRAND CON DOBLE LOGO */
     .sidebar-brand {
-        height: var(--topbar-height); display: flex; align-items: center; padding: 0 1.5rem;
-        border-bottom: 1px solid var(--border-color); gap: 0.8rem;
+        height: var(--topbar-height); 
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+        padding: 0.7rem;
+        border-bottom: 1px solid var(--border-color);
+        position: relative;
     }
-    .sidebar-brand-icon { font-size: 1.9rem; color: var(--primary-color); min-width: 35px; }
-    .sidebar-brand-text { font-size: 1.4rem; font-weight: 700; color: var(--text-dark); white-space: nowrap; transition: opacity 0.3s ease; }
-    .sidebar.collapsed .sidebar-brand-text { opacity: 0; display: none; }
+    
+    .sidebar-brand-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        position: relative;
+    }
+    
+    /* ✅ LOGO COMPLETO (cuando está abierto) */
+    .sidebar-brand-logo-full {
+        width: 180px;  /* ✅ MÁS GRANDE */
+        height: auto;
+        max-width: 100%;
+        object-fit: contain;
+        transition: all 0.3s ease;
+        display: block;
+    }
+    
+    /* ✅ LOGO FAVICON (cuando está colapsado) */
+    .sidebar-brand-logo-icon {
+        width: 42px;  /* ✅ TAMAÑO DEL FAVICON */
+        height: 42px;
+        object-fit: contain;
+        transition: all 0.3s ease;
+        display: none;
+    }
+    
+    /* ✅ Cuando el sidebar está colapsado */
+    .sidebar.collapsed .sidebar-brand-logo-full {
+        display: none;
+    }
+    
+    .sidebar.collapsed .sidebar-brand-logo-icon {
+        display: block;
+    }
 
     .sidebar-toggle {
         position: absolute; right: -15px; top: calc(var(--topbar-height) / 2);
@@ -358,9 +523,12 @@
 
     <!-- SIDEBAR -->
     <div class="sidebar" id="sidebar">
+        <!-- ✅ LOGO CON DOBLE IMAGEN -->
         <div class="sidebar-brand">
-            <i class="bi bi-box-seam sidebar-brand-icon"></i>
-            <span class="sidebar-brand-text">CommerceBox</span>
+            <div class="sidebar-brand-logo">
+                <img src="{% static 'icons/logo_agro.png' %}" alt="AgroTotal" class="sidebar-brand-logo-full">
+                <img src="{% static 'icons/logo_fav.png' %}" alt="AgroTotal" class="sidebar-brand-logo-icon">
+            </div>
         </div>
 
         <div class="sidebar-toggle" onclick="toggleSidebar()">
@@ -375,9 +543,7 @@
 
             <div class="menu-divider"></div>
 
-            <!-- ============================================================================
-                 SECCIÓN USUARIOS
-                 ============================================================================ -->
+            <!-- SECCIÓN USUARIOS -->
             <div class="menu-group" id="group-usuarios">
                 <div class="menu-group-header" onclick="toggleMenuGroup('group-usuarios')">
                     <i class="bi bi-people-fill menu-group-icon"></i>
@@ -404,9 +570,7 @@
                 </div>
             </div>
 
-            <!-- ============================================================================
-                 SECCIÓN VENTAS
-                 ============================================================================ -->
+            <!-- SECCIÓN VENTAS -->
             <div class="menu-group" id="group-ventas">
                 <div class="menu-group-header" onclick="toggleMenuGroup('group-ventas')">
                     <i class="bi bi-cart-check-fill menu-group-icon"></i>
@@ -433,9 +597,7 @@
                 </div>
             </div>
 
-            <!-- ============================================================================
-                 SECCIÓN INVENTARIO
-                 ============================================================================ -->
+            <!-- SECCIÓN INVENTARIO -->
             <div class="menu-group" id="group-inventario">
                 <div class="menu-group-header" onclick="toggleMenuGroup('group-inventario')">
                     <i class="bi bi-box-seam menu-group-icon"></i>
@@ -471,9 +633,7 @@
                 </div>
             </div>
 
-            <!-- ============================================================================
-                 SECCIÓN FINANZAS
-                 ============================================================================ -->
+            <!-- SECCIÓN FINANZAS -->
             <div class="menu-group" id="group-finanzas">
                 <div class="menu-group-header" onclick="toggleMenuGroup('group-finanzas')">
                     <i class="bi bi-cash-coin menu-group-icon"></i>
@@ -504,9 +664,7 @@
                 </div>
             </div>
 
-            <!-- ============================================================================
-                 ✅ SECCIÓN REPORTES Y ANÁLISIS - CORREGIDA
-                 ============================================================================ -->
+            <!-- SECCIÓN REPORTES Y ANÁLISIS -->
             <div class="menu-group" id="group-reportes">
                 <div class="menu-group-header" onclick="toggleMenuGroup('group-reportes')">
                     <i class="bi bi-graph-up-arrow menu-group-icon"></i>
@@ -514,25 +672,18 @@
                     <i class="bi bi-chevron-right menu-group-arrow"></i>
                 </div>
                 <div class="menu-group-items">
-                    <!-- Dashboard Analítico Principal -->
                     <a href="/panel/reportes-analitica/" class="menu-item {% if request.path == '/panel/reportes-analitica/' %}active{% endif %}">
                         <i class="bi bi-speedometer2 menu-item-icon"></i>
                         <span class="menu-item-text">Dashboard Analítico</span>
                     </a>
-                    
-                    <!-- Reportes de Ventas -->
                     <a href="/panel/reportes-analitica/ventas/" class="menu-item {% if '/reportes-analitica/ventas/' in request.path %}active{% endif %}">
                         <i class="bi bi-cart-check menu-item-icon"></i>
                         <span class="menu-item-text">Reportes de Ventas</span>
                     </a>
-                    
-                    <!-- Reportes de Inventario -->
                     <a href="/panel/reportes-analitica/inventario/" class="menu-item {% if '/reportes-analitica/inventario/' in request.path %}active{% endif %}">
                         <i class="bi bi-box-seam menu-item-icon"></i>
                         <span class="menu-item-text">Reportes de Inventario</span>
                     </a>
-                    
-                    <!-- Reportes Financieros -->
                     <a href="/panel/reportes-analitica/financiero/" class="menu-item {% if '/reportes-analitica/financiero/' in request.path %}active{% endif %}">
                         <i class="bi bi-cash-coin menu-item-icon"></i>
                         <span class="menu-item-text">Reportes Financieros</span>
@@ -542,9 +693,7 @@
 
             <div class="menu-divider"></div>
 
-            <!-- ============================================================================
-                 OPCIONES INDIVIDUALES
-                 ============================================================================ -->
+            <!-- OPCIONES INDIVIDUALES -->
             <a href="/panel/alertas/" class="menu-item-single {% if '/alertas/' in request.path %}active{% endif %}">
                 <i class="bi bi-bell-fill menu-item-icon"></i>
                 <span class="menu-item-text">Alertas de Stock</span>
@@ -578,18 +727,19 @@
 
             <!-- DROPDOWN DE USUARIO -->
             <div class="user-dropdown" onclick="toggleUserMenu(event)">
-                <div class="user-avatar" id="userAvatar">A</div>
+                <div class="user-avatar" id="userAvatar">U</div>
                 <div class="d-none d-md-block">
-                    <div style="font-weight: 600; font-size: 0.95rem;" id="userName">Admin</div>
-                    <div style="font-size: 0.75rem; color: #64748b;" id="userRole">Administrador</div>
+                    <div style="font-weight: 600; font-size: 0.95rem;" id="userName">Cargando...</div>
+                    <div style="font-size: 0.75rem; color: #64748b;" id="userRole">...</div>
                 </div>
                 <i class="bi bi-chevron-down" style="color: #64748b;"></i>
                 
                 <!-- Menú desplegable -->
                 <div class="user-dropdown-menu" id="userDropdownMenu">
                     <div class="dropdown-menu-header">
-                        <div class="user-name" id="dropdownUserName">Admin</div>
-                        <div class="user-email" id="dropdownUserEmail">admin@commercebox.com</div>
+                        <div class="user-name" id="dropdownUserName">Cargando...</div>
+                        <div class="user-email" id="dropdownUserEmail">...</div>
+                        <div class="user-role" id="dropdownUserRole">...</div>
                     </div>
                     <div class="dropdown-menu-body">
                         <a href="/panel/configuracion/" class="dropdown-menu-item">
@@ -615,13 +765,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        // ========================================
-        // ✅ INICIALIZACIÓN AL CARGAR
-        // ========================================
         document.addEventListener('DOMContentLoaded', function() {
             const token = localStorage.getItem('access_token');
             
-            // Verificar autenticación
             if (!window.location.pathname.includes('/login')) {
                 if (!token) {
                     console.log('⚠️ No hay token, redirigiendo al login...');
@@ -630,12 +776,10 @@
                 }
             }
             
-            // Cargar datos del usuario y alertas
             loadUserData();
             loadAlertCounts();
             initExpandedGroups();
 
-            // Cerrar dropdown al hacer clic fuera
             document.addEventListener('click', function(e) {
                 const userDropdown = document.querySelector('.user-dropdown');
                 const dropdownMenu = document.getElementById('userDropdownMenu');
@@ -646,9 +790,6 @@
             });
         });
 
-        // ========================================
-        // FUNCIONES DE SIDEBAR
-        // ========================================
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const topbar = document.getElementById('topbar');
@@ -672,13 +813,11 @@
             const group = document.getElementById(groupId);
             const wasExpanded = group.classList.contains('expanded');
             
-            // Cerrar todos los grupos
             document.querySelectorAll('.menu-group').forEach(g => {
                 g.classList.remove('expanded');
                 localStorage.removeItem('menu_' + g.id);
             });
             
-            // Abrir el grupo clickeado si estaba cerrado
             if (!wasExpanded) {
                 group.classList.add('expanded');
                 localStorage.setItem('menu_' + groupId, 'expanded');
@@ -686,52 +825,125 @@
         }
 
         function initExpandedGroups() {
-            // Restaurar grupos expandidos
             document.querySelectorAll('.menu-group').forEach(group => {
                 if (localStorage.getItem('menu_' + group.id) === 'expanded') {
                     group.classList.add('expanded');
                 }
             });
             
-            // Restaurar estado del sidebar
             const sidebarState = localStorage.getItem('sidebarState');
             if (sidebarState === 'collapsed') {
                 toggleSidebar();
             }
         }
 
-        // ========================================
-        // FUNCIONES DEL DROPDOWN DE USUARIO
-        // ========================================
         function toggleUserMenu(event) {
             event.stopPropagation();
             const dropdownMenu = document.getElementById('userDropdownMenu');
             dropdownMenu.classList.toggle('show');
         }
 
-        // ========================================
-        // CARGA DE DATOS DE USUARIO
-        // ========================================
-        function loadUserData() {
+        // ✅ FUNCIÓN CORREGIDA PARA LEER DATOS DEL USUARIO
+        async function loadUserData() {
+    try {
+        const token = localStorage.getItem('access_token');
+        
+        if (!token) {
+            useDefaultUser();
+            return;
+        }
+        
+        const response = await fetch('/panel/api/perfil/', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const user = await response.json();
+            localStorage.setItem('user_data', JSON.stringify(user));
+            updateUserUI(user);
+        } else {
             const userDataStr = localStorage.getItem('user_data');
             if (userDataStr) {
                 try {
                     const user = JSON.parse(userDataStr);
-                    const userName = user.nombres || user.username || 'Admin';
-                    const userEmail = user.email || user.username + '@commercebox.com';
-                    
-                    // Actualizar elementos del topbar
-                    document.getElementById('userName').textContent = userName;
-                    document.getElementById('userRole').textContent = user.rol || 'Administrador';
-                    document.getElementById('userAvatar').textContent = userName.charAt(0).toUpperCase();
-                    
-                    // Actualizar dropdown
-                    document.getElementById('dropdownUserName').textContent = userName;
-                    document.getElementById('dropdownUserEmail').textContent = userEmail;
+                    updateUserUI(user);
                 } catch (e) {
-                    console.error('Error parsing user data:', e);
+                    useDefaultUser();
                 }
+            } else {
+                useDefaultUser();
             }
+        }
+        
+    } catch (error) {
+        console.error('Error cargando datos de usuario:', error);
+        useDefaultUser();
+    }
+} 
+
+        // ✅ FUNCIÓN MEJORADA PARA ACTUALIZAR UI
+        function updateUserUI(user) {
+            console.log('🎨 Actualizando UI con datos:', user);
+            
+            // ✅ Obtener nombre completo
+            let userName = 'Usuario';
+            if (user.full_name && user.full_name.trim()) {
+                userName = user.full_name.trim();
+            } else if (user.nombres || user.apellidos) {
+                userName = `${user.nombres || ''} ${user.apellidos || ''}`.trim();
+            } else if (user.username) {
+                userName = user.username;
+            }
+            
+            // ✅ Obtener email
+            const userEmail = user.email || 'sin-email@agrototal.com';
+            
+            // ✅ Obtener rol - MÚLTIPLES INTENTOS
+            let userRole = 'Usuario';
+            if (user.rol_detalle && user.rol_detalle.nombre) {
+                userRole = user.rol_detalle.nombre;
+            } else if (user.rol && typeof user.rol === 'object' && user.rol.nombre) {
+                userRole = user.rol.nombre;
+            } else if (user.rol_nombre) {
+                userRole = user.rol_nombre;
+            }
+            
+            console.log('📊 Datos procesados:', { userName, userEmail, userRole });
+            
+            // Actualizar topbar
+            const userNameEl = document.getElementById('userName');
+            const userRoleEl = document.getElementById('userRole');
+            const userAvatarEl = document.getElementById('userAvatar');
+            
+            if (userNameEl) userNameEl.textContent = userName;
+            if (userRoleEl) userRoleEl.textContent = userRole;
+            if (userAvatarEl) userAvatarEl.textContent = userName.charAt(0).toUpperCase();
+            
+            // Actualizar dropdown
+            const dropdownUserNameEl = document.getElementById('dropdownUserName');
+            const dropdownUserEmailEl = document.getElementById('dropdownUserEmail');
+            const dropdownUserRoleEl = document.getElementById('dropdownUserRole');
+            
+            if (dropdownUserNameEl) dropdownUserNameEl.textContent = userName;
+            if (dropdownUserEmailEl) dropdownUserEmailEl.textContent = userEmail;
+            if (dropdownUserRoleEl) dropdownUserRoleEl.textContent = userRole;
+            
+            console.log('✅ UI actualizada correctamente');
+        }
+
+        function useDefaultUser() {
+            console.log('⚠️ Usando valores por defecto');
+            const defaultUser = {
+                full_name: 'Usuario',
+                email: 'usuario@agrototal.com',
+                rol_detalle: { nombre: 'Usuario' }
+            };
+            updateUserUI(defaultUser);
         }
 
         async function loadAlertCounts() {
@@ -767,25 +979,59 @@
             }
         }
 
-        // ========================================
-        // FUNCIÓN DE LOGOUT
-        // ========================================
         async function handleLogout(event) {
             if (event) {
                 event.preventDefault();
                 event.stopPropagation();
             }
             
-            if (!confirm('¿Está seguro que desea cerrar sesión?')) {
-                return false;
-            }
+            showLogoutNotification();
+        }
+
+        function showLogoutNotification() {
+            const overlay = document.createElement('div');
+            overlay.className = 'logout-overlay';
+            overlay.id = 'logoutOverlay';
             
+            const notification = document.createElement('div');
+            notification.className = 'logout-notification';
+            notification.innerHTML = `
+                <div class="logout-notification-icon">
+                    <i class="bi bi-box-arrow-right"></i>
+                </div>
+                <div class="logout-notification-title">¿Cerrar Sesión?</div>
+                <div class="logout-notification-text">
+                    ¿Está seguro que desea salir del sistema?
+                </div>
+                <div class="logout-notification-actions">
+                    <button class="logout-btn-cancel" onclick="closeLogoutNotification()">
+                        Cancelar
+                    </button>
+                    <button class="logout-btn-confirm" onclick="confirmLogout()">
+                        Cerrar Sesión
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(overlay);
+            document.body.appendChild(notification);
+        }
+
+        function closeLogoutNotification() {
+            const overlay = document.getElementById('logoutOverlay');
+            const notifications = document.querySelectorAll('.logout-notification');
+            
+            if (overlay) overlay.remove();
+            notifications.forEach(n => n.remove());
+        }
+
+        async function confirmLogout() {
             console.log('🚪 Iniciando cierre de sesión...');
+            closeLogoutNotification();
             
             try {
                 const token = localStorage.getItem('access_token');
                 
-                // Intentar llamar al endpoint de logout
                 if (token) {
                     try {
                         await fetch('/api/auth/logout/', {
@@ -802,12 +1048,10 @@
                     }
                 }
                 
-                // Limpiar datos locales
                 console.log('🧹 Limpiando datos locales...');
                 localStorage.clear();
                 sessionStorage.clear();
                 
-                // Limpiar cookies de autenticación
                 document.cookie.split(";").forEach(function(c) {
                     if (c.includes('access_token') || c.includes('refresh_token') || c.includes('sessionid')) {
                         document.cookie = c.replace(/^ +/, "")
@@ -815,29 +1059,20 @@
                     }
                 });
                 
-                // Marcar logout exitoso
                 sessionStorage.setItem('logout_success', 'true');
                 
-                // Redirigir
                 console.log('✅ Logout exitoso, redirigiendo...');
                 window.location.replace('/login/');
                 
             } catch (error) {
                 console.error('Error en logout:', error);
-                
-                // Limpiar y redirigir de todos modos
                 localStorage.clear();
                 sessionStorage.clear();
                 sessionStorage.setItem('logout_success', 'true');
                 window.location.replace('/login/');
             }
-            
-            return false;
         }
 
-        // ========================================
-        // FUNCIÓN AUXILIAR PARA COOKIES
-        // ========================================
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -853,18 +1088,11 @@
             return cookieValue;
         }
 
-        // ========================================
-        // ACTUALIZACIÓN PERIÓDICA DE ALERTAS
-        // ========================================
-        setInterval(loadAlertCounts, 30000); // Cada 30 segundos
+        setInterval(loadAlertCounts, 30000);
     </script>
 
-    <!-- ========================================
-         LIMPIEZA DE MODALES Y BACKDROPS
-         ======================================== -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Elimina cualquier backdrop residual de modales
             const backdrops = document.querySelectorAll('.modal-backdrop');
             backdrops.forEach(b => b.remove());
             document.body.classList.remove('modal-open');

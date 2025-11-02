@@ -1,24 +1,27 @@
 {
-  "name": "CommerceBox - Sistema ERP/POS",
-  "short_name": "CommerceBox",
-  "description": "Sistema integral de gestión empresarial",
-  "start_url": "/admin/dashboard/",
+  "name": "AgroTotal - Sistema de Gestión Comercial",
+  "short_name": "AgroTotal",
+  "description": "Sistema integral ERP/POS para gestión de inventario, ventas y finanzas",
+  "start_url": "/panel/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#4f46e5",
+  "background_color": "#f0f9ff",
+  "theme_color": "#3b82f6",
   "orientation": "portrait-primary",
+  "categories": ["business", "productivity"],
+  "lang": "es-ES",
   "icons": [
     {
-      "src": "/static/pwa/icons/icon-192x192.png",
-      "sizes": "192x192",
+      "src": "/static/icons/logo_fav.png",
+      "sizes": "72x72 96x96 128x128 144x144 152x152 192x192 256x256 384x384 512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/static/pwa/icons/icon-512x512.png",
-      "sizes": "512x512",
+      "src": "/static/icons/logo_fav.png",
+      "sizes": "192x192 512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ]
 }
