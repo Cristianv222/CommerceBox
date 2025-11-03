@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from .models import (
     Impresora, PlantillaImpresion, ConfiguracionCodigoBarras,
-    GavetaDinero, RegistroImpresion, EscanerCodigoBarras
+    GavetaDinero, RegistroImpresion, EscanerCodigoBarras, TrabajoImpresion
 )
 from .printers.printer_service import PrinterService
 from .printers.cash_drawer_service import CashDrawerService
@@ -249,7 +249,7 @@ class ImpresoraAdmin(admin.ModelAdmin):
                 'background-color: #28a745; color: white; text-decoration: none; '
                 'border-radius: 4px; display: inline-block; white-space: nowrap;">'
                 '⚡ Imprimir Ticket Prueba</a>'
-                '<span style="font-size: 11px; color: #666;">Imprime ticket y abre gaveta</span>'
+                '<span style="font-size: 11px; color: #666;">Envía trabajo al agente (3-5 segundos)</span>'
                 '</div>',
                 url_print_direct
             ))
@@ -262,7 +262,7 @@ class ImpresoraAdmin(admin.ModelAdmin):
                 'background-color: #ff9800; color: white; text-decoration: none; '
                 'border-radius: 4px; display: inline-block; white-space: nowrap;">'
                 '🏷️ Imprimir Códigos Barras</a>'
-                '<span style="font-size: 11px; color: #666;">Imprime etiqueta con varios códigos</span>'
+                '<span style="font-size: 11px; color: #666;">Envía etiqueta al agente</span>'
                 '</div>',
                 url_codigos_barras
             ))
@@ -341,28 +341,63 @@ class ImpresoraAdmin(admin.ModelAdmin):
         return redirect('admin:hardware_integration_impresora_change', impresora_id)
     
     def imprimir_prueba_directa_view(self, request, impresora_id):
-        """Vista para imprimir directamente y abrir gaveta"""
+        """
+        🔧 CORREGIDO: Vista para imprimir página de prueba usando el AGENTE (cola de trabajos)
+        Ya NO intenta imprimir directamente, sino que crea un trabajo para el agente
+        """
         try:
             impresora = Impresora.objects.get(pk=impresora_id)
             
-            # Intentar imprimir directamente
-            if PrinterService.print_test_page(impresora):
+            # Generar comandos de página de prueba
+            comandos = PrinterService.generar_comando_raw_test(impresora)
+            
+            if not comandos:
                 self.message_user(
                     request,
-                    "✅ ¡Página de prueba enviada y gaveta abierta!",
-                    messages.SUCCESS
+                    "❌ No se pudieron generar los comandos de impresión.",
+                    messages.ERROR
                 )
-            else:
-                self.message_user(
-                    request,
-                    "⚠️ No se pudo imprimir directamente. "
-                    "Configure el agente local o use impresora de red.",
-                    messages.WARNING
-                )
+                return redirect('admin:hardware_integration_impresora_change', impresora_id)
+            
+            # Convertir a hexadecimal
+            comandos_hex = comandos.hex()
+            
+            # Crear trabajo en la cola para el agente
+            trabajo = TrabajoImpresion.objects.create(
+                tipo='PRUEBA',
+                estado='PENDIENTE',
+                impresora=impresora,
+                datos_impresion=comandos_hex,
+                formato='ESC_POS',
+                creado_por=request.user,
+                prioridad=1,
+                abrir_gaveta=impresora.tiene_gaveta,  # Abrir gaveta si tiene
+                copias=1,
+                metadata={
+                    'origen': 'admin',
+                    'accion': 'prueba_impresora_directa'
+                }
+            )
+            
+            # Actualizar fecha de última prueba
+            impresora.fecha_ultima_prueba = timezone.now()
+            impresora.save(update_fields=['fecha_ultima_prueba'])
+            
+            mensaje = (
+                f"✅ Trabajo de prueba creado (ID: {trabajo.id}). "
+                f"El agente lo imprimirá en 3-5 segundos. "
+            )
+            
+            if impresora.tiene_gaveta:
+                mensaje += "🔓 Se abrirá la gaveta."
+            
+            self.message_user(request, mensaje, messages.SUCCESS)
                 
         except Impresora.DoesNotExist:
             self.message_user(request, "❌ Impresora no encontrada.", messages.ERROR)
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             self.message_user(request, f"❌ Error: {str(e)}", messages.ERROR)
         
         return redirect('admin:hardware_integration_impresora_change', impresora_id)
@@ -454,7 +489,10 @@ class ImpresoraAdmin(admin.ModelAdmin):
             return HttpResponse(f"❌ Error: {str(e)}", status=500)
     
     def imprimir_prueba_codigos_barras_view(self, request, impresora_id):
-        """Vista para imprimir prueba de códigos de barras con impresión directa"""
+        """
+        🔧 CORREGIDO: Vista para imprimir prueba de códigos de barras usando el AGENTE
+        Ya NO intenta imprimir directamente, sino que crea un trabajo para el agente
+        """
         try:
             impresora = Impresora.objects.get(pk=impresora_id)
             
@@ -478,121 +516,42 @@ class ImpresoraAdmin(admin.ModelAdmin):
                 )
                 return redirect('admin:hardware_integration_impresora_change', impresora_id)
             
-            # 🔥 PRIMERO: INTENTAR IMPRESIÓN DIRECTA
-            impreso_directo = False
-            metodo_usado = ""
+            # Convertir a hexadecimal
+            comandos_hex = comandos.hex()
             
-            # Intentar con Windows (si está disponible)
-            import platform
-            if platform.system() == 'Windows' and impresora.nombre_driver:
-                try:
-                    import win32print
-                    
-                    # Abrir impresora
-                    handle = win32print.OpenPrinter(impresora.nombre_driver)
-                    
-                    # Iniciar trabajo
-                    job_info = ("Prueba Codigos Barras", None, "RAW")
-                    job_id = win32print.StartDocPrinter(handle, 1, job_info)
-                    
-                    # Enviar comandos
-                    win32print.StartPagePrinter(handle)
-                    win32print.WritePrinter(handle, comandos)
-                    win32print.EndPagePrinter(handle)
-                    
-                    # Finalizar
-                    win32print.EndDocPrinter(handle)
-                    win32print.ClosePrinter(handle)
-                    
-                    impreso_directo = True
-                    metodo_usado = "Windows directo"
-                    
-                except Exception as e:
-                    import logging
-                    logging.warning(f"No se pudo imprimir por Windows: {e}")
+            # Crear trabajo en la cola para el agente
+            trabajo = TrabajoImpresion.objects.create(
+                tipo='PRUEBA',
+                estado='PENDIENTE',
+                impresora=impresora,
+                datos_impresion=comandos_hex,
+                formato='ESC_POS',
+                creado_por=request.user,
+                prioridad=1,
+                abrir_gaveta=False,
+                copias=1,
+                metadata={
+                    'origen': 'admin',
+                    'accion': 'prueba_codigos_barras'
+                }
+            )
             
-            # Intentar con Puerto Serial (COM)
-            if not impreso_directo and impresora.puerto_serial:
-                try:
-                    import serial
-                    
-                    # Abrir puerto serial
-                    baudrate = impresora.baudrate or 9600
-                    with serial.Serial(impresora.puerto_serial, baudrate, timeout=5) as ser:
-                        ser.write(comandos)
-                        ser.flush()
-                    
-                    impreso_directo = True
-                    metodo_usado = f"Puerto serial {impresora.puerto_serial}"
-                    
-                except Exception as e:
-                    import logging
-                    logging.warning(f"No se pudo imprimir por serial: {e}")
+            # Actualizar fecha de última prueba
+            impresora.fecha_ultima_prueba = timezone.now()
+            impresora.save(update_fields=['fecha_ultima_prueba'])
             
-            # Intentar con Red
-            if not impreso_directo and impresora.tipo_conexion in ['LAN', 'WIFI', 'RAW'] and impresora.direccion_ip:
-                try:
-                    import socket
-                    
-                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                        s.settimeout(5)
-                        s.connect((impresora.direccion_ip, impresora.puerto_red or 9100))
-                        s.sendall(comandos)
-                    
-                    impreso_directo = True
-                    metodo_usado = f"Red {impresora.direccion_ip}"
-                    
-                except Exception as e:
-                    import logging
-                    logging.warning(f"No se pudo imprimir por red: {e}")
-            
-            # Si se imprimió directo, actualizar y mostrar mensaje
-            if impreso_directo:
-                impresora.fecha_ultima_prueba = timezone.now()
-                impresora.save(update_fields=['fecha_ultima_prueba'])
+            self.message_user(
+                request,
+                f"✅ Trabajo de prueba creado (ID: {trabajo.id}). "
+                f"El agente imprimirá la página de códigos de barras en 3-5 segundos.",
+                messages.SUCCESS
+            )
                 
-                self.message_user(
-                    request,
-                    f"✅ ¡Página de prueba enviada directamente! Método: {metodo_usado}",
-                    messages.SUCCESS
-                )
-            else:
-                # 🔥 SI NO SE PUDO IMPRIMIR DIRECTO, USAR AGENTE
-                try:
-                    from .api.agente_views import crear_trabajo_impresion, obtener_usuario_para_impresion
-                    
-                    # Convertir a hexadecimal
-                    comandos_hex = comandos.hex()
-                    
-                    usuario = obtener_usuario_para_impresion()
-                    
-                    trabajo_id = crear_trabajo_impresion(
-                        usuario=usuario,
-                        impresora_nombre=impresora.nombre_driver or impresora.nombre,
-                        comandos_hex=comandos_hex,
-                        tipo='PRUEBA',
-                        prioridad=1,
-                        abrir_gaveta=False
-                    )
-                    
-                    self.message_user(
-                        request,
-                        f"⚠️ No se pudo imprimir directamente. "
-                        f"Trabajo enviado al agente (ID: {trabajo_id}). "
-                        f"Verifica que el agente esté ejecutándose.",
-                        messages.WARNING
-                    )
-                    
-                except Exception as e:
-                    self.message_user(
-                        request,
-                        f"❌ No se pudo imprimir ni directamente ni con el agente: {str(e)}",
-                        messages.ERROR
-                    )
-            
         except Impresora.DoesNotExist:
             self.message_user(request, "❌ Impresora no encontrada.", messages.ERROR)
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             self.message_user(request, f"❌ Error: {str(e)}", messages.ERROR)
         
         return redirect('admin:hardware_integration_impresora_change', impresora_id)
@@ -821,3 +780,71 @@ class EscanerCodigoBarrasAdmin(admin.ModelAdmin):
             )
         
         super().save_model(request, obj, form, change)
+
+
+@admin.register(TrabajoImpresion)
+class TrabajoImpresionAdmin(admin.ModelAdmin):
+    """Admin para ver y gestionar la cola de trabajos de impresión"""
+    list_display = ['id_corto', 'tipo', 'estado_badge', 'impresora', 'prioridad_badge', 'creado_por', 'fecha_creacion_corta', 'intentos']
+    list_filter = ['estado', 'tipo', 'prioridad', 'impresora', 'fecha_creacion']
+    search_fields = ['id', 'mensaje_error']
+    readonly_fields = [
+        'id', 'fecha_creacion', 'fecha_asignacion', 'fecha_completado',
+        'tiempo_procesamiento', 'intentos', 'historial_errores'
+    ]
+    ordering = ['-fecha_creacion']
+    
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('id', 'tipo', 'estado', 'prioridad')
+        }),
+        ('Impresora y Referencias', {
+            'fields': ('impresora', 'venta', 'producto')
+        }),
+        ('Datos de Impresión', {
+            'fields': ('datos_impresion', 'formato', 'copias', 'abrir_gaveta'),
+            'classes': ('collapse',)
+        }),
+        ('Control y Reintentos', {
+            'fields': ('intentos', 'max_intentos', 'mensaje_error', 'historial_errores')
+        }),
+        ('Auditoría', {
+            'fields': ('creado_por', 'fecha_creacion', 'fecha_asignacion', 'fecha_completado', 'tiempo_procesamiento')
+        }),
+        ('Metadatos', {
+            'fields': ('metadata',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def has_add_permission(self, request):
+        """No permitir crear trabajos desde el admin"""
+        return False
+    
+    def id_corto(self, obj):
+        return str(obj.id)[:8]
+    id_corto.short_description = 'ID'
+    
+    def estado_badge(self, obj):
+        badges = {
+            'PENDIENTE': '<span style="color: orange;">⏳ Pendiente</span>',
+            'PROCESANDO': '<span style="color: blue;">⚙️ Procesando</span>',
+            'COMPLETADO': '<span style="color: green;">✅ Completado</span>',
+            'ERROR': '<span style="color: red;">❌ Error</span>',
+            'CANCELADO': '<span style="color: gray;">🚫 Cancelado</span>',
+        }
+        return format_html(badges.get(obj.estado, obj.estado))
+    estado_badge.short_description = 'Estado'
+    
+    def prioridad_badge(self, obj):
+        badges = {
+            1: '<span style="color: red;">🔴 Alta</span>',
+            2: '<span style="color: orange;">🟡 Media</span>',
+            3: '<span style="color: green;">🟢 Baja</span>',
+        }
+        return format_html(badges.get(obj.prioridad, str(obj.prioridad)))
+    prioridad_badge.short_description = 'Prioridad'
+    
+    def fecha_creacion_corta(self, obj):
+        return obj.fecha_creacion.strftime('%d/%m/%Y %H:%M:%S')
+    fecha_creacion_corta.short_description = 'Creado'
