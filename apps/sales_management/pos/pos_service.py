@@ -461,7 +461,14 @@ class POSService:
                 logger.info(f"🖨️ Imprimiendo ticket para venta {venta.numero_venta}")
                 
                 # Generar comandos ESC/POS del ticket
-                comandos_hex = TicketPrinter.generar_comandos_ticket(venta, impresora)
+                
+                # Determinar si abrir gaveta (solo si pagó con efectivo)
+                pagos_efectivo = venta.pagos.filter(forma_pago='EFECTIVO').exists()
+                abrir_gaveta = pagos_efectivo
+                logger.info(f"🔍 DEBUG POS: Pagos efectivo={pagos_efectivo}, abrir_gaveta={abrir_gaveta}")
+
+                comandos_hex = TicketPrinter.generar_comandos_ticket(venta, impresora, abrir_gaveta)
+
                 
                 # Encolar trabajo de impresión
                 trabajo_id = crear_trabajo_impresion(

@@ -60,7 +60,7 @@ class BarcodeGenerator:
             codigo = f"Q{letras}{numeros}"
             
             # Verificar que no exista
-            if not Quintal.objects.filter(codigo_unico=codigo).exists():
+            if not Quintal.objects.filter(codigo_quintal=codigo).exists():
                 return codigo
         
         raise Exception("No se pudo generar código de quintal único")

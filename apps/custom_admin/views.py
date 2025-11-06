@@ -4,7 +4,7 @@ Solo sirven HTML, la lógica está en JavaScript con JWT
 """
 
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.http import JsonResponse
 from django.utils import timezone
 from django.contrib import messages
@@ -18,7 +18,7 @@ from apps.authentication.models import Usuario
 from apps.inventory_management.models import Marca,Proveedor
 from functools import wraps
 from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 import logging 
 import json
 from django.http import JsonResponse
@@ -458,14 +458,14 @@ def producto_editar(request, producto_id):
             if tipo_inventario == 'QUINTAL':
                 precio_peso = request.POST.get('precio_por_unidad_peso', '0').strip()
                 producto.precio_por_unidad_peso = Decimal(precio_peso) if precio_peso else Decimal('0.00')
-                producto.precio_unitario = None
+                producto.precio_venta = None
                 
                 unidad_medida_id = request.POST.get('unidad_medida_base', '').strip()
                 if unidad_medida_id:
                     producto.unidad_medida_base_id = unidad_medida_id
             else:
                 precio_unit = request.POST.get('precio_unitario', '0').strip()
-                producto.precio_unitario = Decimal(precio_unit) if precio_unit else Decimal('0.00')
+                producto.precio_venta = Decimal(precio_unit) if precio_unit else Decimal('0.00')
                 producto.precio_por_unidad_peso = None
             
             producto.activo = request.POST.get('activo') == 'on'
@@ -3044,7 +3044,7 @@ def api_obtener_producto(request, producto_id):
         'codigo_barras': producto.codigo_barras or '',
         'categoria': producto.categoria.nombre if producto.categoria else '',
         'tipo_inventario': producto.tipo_inventario,
-        'precio_unitario': float(producto.precio_unitario) if producto.precio_unitario else 0,
+        'precio_unitario': float(producto.precio_venta) if producto.precio_venta else 0,
         'precio_por_unidad_peso': float(producto.precio_por_unidad_peso) if producto.precio_por_unidad_peso else 0,
         'stock_actual': float(producto.stock_actual) if hasattr(producto, 'stock_actual') else 0,
         'unidad_medida': producto.unidad_medida_base.abreviatura if producto.unidad_medida_base else 'und',
@@ -3336,10 +3336,16 @@ def api_procesar_venta(request):
                 
                 if impresora:
                     # Generar comandos ESC/POS
-                    comandos_bytes = generar_comandos_ticket_bytes(venta)
+                    # Determinar si abrir gaveta
+                    logger.info(f"🔍 DEBUG: metodo_pago={metodo_pago}")
+                    logger.info(f"🔍 DEBUG: Comparacion = {metodo_pago == 'EFECTIVO'}")
+                    abrir_gaveta = True if metodo_pago == 'EFECTIVO' else False
+                    
+                    comandos_bytes = generar_comandos_ticket_bytes(venta, abrir_gaveta)
                     comandos_hex = comandos_bytes.hex()
                     
                     logger.info(f"📄 Comandos generados: {len(comandos_bytes)} bytes → {len(comandos_hex)} chars hex")
+                    logger.info(f"🎯 A punto de crear trabajo de impresión con abrir_gaveta={abrir_gaveta}")
                     
                     # Crear trabajo de impresión
                     trabajo = TrabajoImpresion.objects.create(
@@ -3350,7 +3356,7 @@ def api_procesar_venta(request):
                         venta=venta,
                         datos_impresion=comandos_hex,
                         formato='ESC_POS',
-                        abrir_gaveta=True if metodo_pago == 'EFECTIVO' else False,
+                        abrir_gaveta=abrir_gaveta,
                         copias=1,
                         creado_por=usuario,
                         max_intentos=3
@@ -3485,15 +3491,10 @@ def api_reimprimir_ticket(request, venta_id):
                 'success': False,
                 'error': 'No hay impresora configurada. Configure una impresora en Hardware Integration.'
             })
-        
-        # ✅ GENERAR COMANDOS ESC/POS
-        comandos_bytes = generar_comandos_ticket_bytes(venta)
-        comandos_hex = comandos_bytes.hex()
-        
-        logger.info(f"📄 Reimpresión - Comandos: {len(comandos_bytes)} bytes")
-        
         # Verificar si quiere abrir gaveta (opcional en reimpresión)
         abrir_gaveta = request.POST.get('abrir_gaveta', 'false') == 'true'
+        comandos_bytes = generar_comandos_ticket_bytes(venta, abrir_gaveta)
+        comandos_hex = comandos_bytes.hex()
         
         # Crear trabajo de impresión
         trabajo = TrabajoImpresion.objects.create(
@@ -3531,7 +3532,7 @@ def api_reimprimir_ticket(request, venta_id):
 # ✅ FUNCIÓN NUEVA: GENERAR COMANDOS TICKET EN BYTES
 # ============================================================================
 
-def generar_comandos_ticket_bytes(venta):
+def generar_comandos_ticket_bytes(venta, abrir_gaveta=False):
     """
     Genera comandos ESC/POS en formato BYTES para impresora térmica
     VERSIÓN CORREGIDA - Error de get_metodo_pago_display solucionado
@@ -3678,6 +3679,10 @@ def generar_comandos_ticket_bytes(venta):
     ticket += b"\n"
     
     # Cortar papel
+    # Abrir gaveta si corresponde
+    if abrir_gaveta:
+        ticket += b"\x1b\x70\x00\x19\xfa"  # ESC p 0 25 250
+    
     ticket += CUT
     
     return ticket
@@ -4073,7 +4078,7 @@ def api_generar_pdf_codigos(request):
             producto = Producto.objects.get(id=producto_id)
             codigo = producto.codigo_barras
             nombre_producto = producto.nombre
-            precio = float(producto.precio_unitario or 0)
+            precio = float(producto.precio_venta or 0)
             fecha = datetime.now().strftime('%d/%m/%Y')
             filename = f'etiquetas_{producto.codigo_barras}.pdf'
             
@@ -4217,7 +4222,7 @@ def api_quintales_disponibles(request):
             'error': str(e)
         }, status=500)
     
-@ensure_csrf_cookie
+@csrf_exempt
 def api_procesar_entrada_unificada(request):
     """API para procesar entrada unificada de inventario - VERSIÓN CORREGIDA PARA QUINTALES"""
     if request.method != 'POST':
@@ -6146,7 +6151,7 @@ def perfil_cambiar_password_view(request):
 # APIs MOCK PARA DASHBOARD
 # ========================================
 from django.http import JsonResponse
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.utils import timezone
 from django.db.models import Sum, Count, Q, F, Case, When, DecimalField
 from datetime import timedelta
@@ -7227,6 +7232,7 @@ logger = logging.getLogger(__name__)
 @ensure_csrf_cookie
 @auth_required
 @require_http_methods(["POST"])
+@csrf_exempt
 def producto_imprimir_codigo(request, producto_id):
     """
     Imprime el código de barras de un producto
@@ -7310,7 +7316,7 @@ def producto_imprimir_codigo(request, producto_id):
             comandos = PrinterService.generar_etiqueta_producto(
             nombre=producto.nombre,
             codigo=producto.codigo_barras,
-            precio=float(producto.precio_unitario or 0),
+            precio=float(producto.precio_venta or 0),
             codigo_barras=producto.codigo_barras
         )
 
@@ -7770,7 +7776,7 @@ def aprobar_devolucion_api(request, id):
                             defaults={
                                 'stock_actual': 0,
                                 'stock_minimo': 10,
-                                'costo_unitario': producto.precio_unitario or Decimal('0')
+                                'costo_unitario': producto.precio_venta or Decimal('0')
                             }
                         )
                         
@@ -7861,7 +7867,7 @@ def aprobar_devolucion_api(request, id):
 import json
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.contrib.auth.decorators import login_required
 from apps.inventory_management.models import (
     UnidadMedida, Categoria, Marca, Proveedor, Producto
