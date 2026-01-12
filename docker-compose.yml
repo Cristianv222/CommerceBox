@@ -39,8 +39,8 @@ services:
       - ./media:/app/media
       - ./staticfiles:/app/staticfiles
       - ./logs:/app/logs
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     depends_on:
       - commercebox-db
       - commercebox-redis

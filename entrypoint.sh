@@ -18,9 +18,9 @@ python manage.py migrate --noinput
 echo "✓ Migraciones aplicadas"
 
 # Collectstatic
-echo "Recopilando archivos estáticos..."
-python manage.py collectstatic --noinput --clear
-echo "✓ Archivos estáticos recopilados"
+# echo "Recopilando archivos estáticos..."
+# python manage.py collectstatic --noinput --clear
+# echo "✓ Archivos estáticos recopilados"
 
 # Crear superusuario (sin first_name/last_name)
 echo "Verificando superusuario..."
