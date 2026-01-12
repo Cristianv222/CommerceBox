@@ -3257,11 +3257,11 @@ def api_procesar_venta(request):
                     orden += 1
                     
                 except Producto.DoesNotExist:
-                    logger.error(f"Producto no encontrado: {item.get('producto_id')}")
-                    continue
+                    # ❌ SI FALLA UN PRODUCTO, FALLA TODA LA VENTA
+                    raise Exception(f"Producto no encontrado: {item.get('producto_id')}")
                 except Exception as e:
-                    logger.error(f"Error en detalle: {e}", exc_info=True)
-                    continue
+                    # ❌ CUALQUIER ERROR DETIENE LA VENTA
+                    raise Exception(f"Error procesando {producto.nombre}: {str(e)}")
             
             # ============================================================================
             # REGISTRAR PAGO
@@ -3348,6 +3348,9 @@ def api_procesar_venta(request):
                     logger.info(f"🎯 A punto de crear trabajo de impresión con abrir_gaveta={abrir_gaveta}")
                     
                     # Crear trabajo de impresión
+                    # 🔄 AUTO-IMPRESIÓN DESACTIVADA A PEDIDO DEL CLIENTE
+                    # El ticket solo se imprimirá si el usuario hace clic en "Imprimir Ticket"
+                    """
                     trabajo = TrabajoImpresion.objects.create(
                         tipo='TICKET',
                         prioridad=1,
@@ -3363,6 +3366,8 @@ def api_procesar_venta(request):
                     )
                     
                     logger.info(f"✅ Trabajo de impresión creado: {trabajo.id}")
+                    """
+                    logger.info(f"ℹ️ Auto-impresión desactivada para venta {venta.numero_venta}")
                 else:
                     logger.warning("⚠️ No hay impresora configurada para tickets")
                     
@@ -6484,12 +6489,16 @@ def api_quintales_por_producto(request, producto_id):
         
         data = []
         for q in quintales:
+            # ✅ USAR PRECIO DE VENTA DEL PRODUCTO (NO EL COSTO DEL QUINTAL)
+            precio_venta = float(q.producto.precio_por_unidad_peso) if q.producto.precio_por_unidad_peso else 0
+            
             data.append({
                 'id': str(q.id),
-                'codigo_unico': q.codigo_quintal,  # ✅ CORRECTO: es codigo_quintal, NO codigo_unico
+                'codigo_unico': q.codigo_quintal,
                 'peso_actual': float(q.peso_actual),
                 'unidad_medida': q.unidad_medida.abreviatura if q.unidad_medida else 'lb',
-                'costo_por_unidad': float(q.costo_por_unidad),
+                'costo_por_unidad': float(q.costo_por_unidad), # Mantener por referencia
+                'precio_venta': precio_venta, # ✅ NUEVO CAMPO PARA EL FRONTEND
             })
         
         return JsonResponse({
