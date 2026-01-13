@@ -15,7 +15,7 @@
     .form-card {
         background: white;
         border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         padding: 2rem;
         margin-bottom: 2rem;
         border: 2px solid rgba(59, 130, 246, 0.2);
@@ -148,7 +148,7 @@
         max-height: 200px;
         border-radius: 12px;
         border: 3px solid #e2e8f0;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         display: block;
         margin: 0 auto;
     }
@@ -248,7 +248,7 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0,0,0,0.5);
+        background: rgba(0, 0, 0, 0.5);
         display: none;
         justify-content: center;
         align-items: center;
@@ -268,7 +268,7 @@
         width: 1400px;
         max-height: 90vh;
         overflow: hidden;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         animation: scaleIn 0.3s ease;
         display: flex;
         flex-direction: column;
@@ -279,6 +279,7 @@
             transform: scale(0.9);
             opacity: 0;
         }
+
         to {
             transform: scale(1);
             opacity: 1;
@@ -303,7 +304,7 @@
     }
 
     .btn-close-modal {
-        background: rgba(255,255,255,0.2);
+        background: rgba(255, 255, 255, 0.2);
         border: none;
         color: white;
         width: 40px;
@@ -318,7 +319,7 @@
     }
 
     .btn-close-modal:hover {
-        background: rgba(255,255,255,0.3);
+        background: rgba(255, 255, 255, 0.3);
     }
 
     .modal-body-custom {
@@ -496,7 +497,7 @@
         padding: 1rem 1.5rem;
         border-radius: 12px;
         background: white;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
         z-index: 99999;
         animation: slideInRight 0.3s ease;
         max-width: 400px;
@@ -510,6 +511,7 @@
             opacity: 0;
             transform: translateX(100px);
         }
+
         to {
             opacity: 1;
             transform: translateX(0);
@@ -520,6 +522,7 @@
         from {
             opacity: 0;
         }
+
         to {
             opacity: 1;
         }
@@ -826,9 +829,12 @@
 
     /* Animación de pulso para los botones + */
     @keyframes pulse-green {
-        0%, 100% {
+
+        0%,
+        100% {
             box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
         }
+
         50% {
             box-shadow: 0 2px 16px rgba(16, 185, 129, 0.5);
         }
@@ -843,7 +849,6 @@
     .form-group:has(.select-with-button) {
         position: relative;
     }
-
 </style>
 {% endblock %}
 
@@ -882,13 +887,8 @@
                     <label class="form-label-custom">
                         <span>📷 Imagen del Producto</span>
                     </label>
-                    <input 
-                        type="file" 
-                        id="input_imagen" 
-                        class="form-input" 
-                        accept="image/*"
-                        onchange="previsualizarImagen(this)"
-                    >
+                    <input type="file" id="input_imagen" class="form-input" accept="image/*"
+                        onchange="previsualizarImagen(this)">
                     <div id="preview-imagen-container" class="image-preview-container">
                         <img id="preview-imagen" class="image-preview" alt="Preview">
                         <span class="image-preview-badge">✓ Imagen Cargada</span>
@@ -901,13 +901,7 @@
                         <span>Nombre del Producto</span>
                         <span class="required">*</span>
                     </label>
-                    <input 
-                        type="text" 
-                        id="input_nombre" 
-                        class="form-input" 
-                        placeholder="Ej: Arroz Premium"
-                        required
-                    >
+                    <input type="text" id="input_nombre" class="form-input" placeholder="Ej: Arroz Premium" required>
                 </div>
 
                 <!-- MARCA -->
@@ -918,12 +912,13 @@
                     </label>
                     <div class="select-with-button">
                         <select id="input_marca" class="form-input" required style="flex: 1;">
-                        <option value="">Seleccione una marca</option>
-                        {% for marca in marcas %}
-                        <option value="{{ marca.id }}">{{ marca.nombre }}</option>
-                        {% endfor %}
-                    </select>
-                        <button type="button" onclick="openModal('marca')" class="btn-add-quick" title="➕ Agregar Marca Nueva">
+                            <option value="">Seleccione una marca</option>
+                            {% for marca in marcas %}
+                            <option value="{{ marca.id }}">{{ marca.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" onclick="openModal('marca')" class="btn-add-quick"
+                            title="➕ Agregar Marca Nueva">
                             <i class="bi bi-plus-lg"></i>
                         </button>
                     </div>
@@ -936,13 +931,16 @@
                         <span class="required">*</span>
                     </label>
                     <div class="select-with-button">
-                        <select id="input_categoria" class="form-input" required onchange="calcularPrecioVenta()" style="flex: 1;">
-                        <option value="">Seleccione una categoría</option>
-                        {% for categoria in categorias %}
-                        <option value="{{ categoria.id }}">{{ categoria.nombre }} ({{ categoria.margen_ganancia_sugerido }}% ganancia)</option>
-                        {% endfor %}
-                    </select>
-                        <button type="button" onclick="openModal('categoria')" class="btn-add-quick" title="➕ Agregar Categoría Nueva">
+                        <select id="input_categoria" class="form-input" required onchange="calcularPrecioVenta()"
+                            style="flex: 1;">
+                            <option value="">Seleccione una categoría</option>
+                            {% for categoria in categorias %}
+                            <option value="{{ categoria.id }}">{{ categoria.nombre }} ({{
+                                categoria.margen_ganancia_sugerido }}% ganancia)</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" onclick="openModal('categoria')" class="btn-add-quick"
+                            title="➕ Agregar Categoría Nueva">
                             <i class="bi bi-plus-lg"></i>
                         </button>
                     </div>
@@ -956,12 +954,13 @@
                     </label>
                     <div class="select-with-button">
                         <select id="input_proveedor" class="form-input" required style="flex: 1;">
-                        <option value="">Seleccione un proveedor</option>
-                        {% for proveedor in proveedores %}
-                        <option value="{{ proveedor.id }}">{{ proveedor.nombre_comercial }}</option>
-                        {% endfor %}
-                    </select>
-                        <button type="button" onclick="openModal('proveedor')" class="btn-add-quick" title="➕ Agregar Proveedor Nuevo">
+                            <option value="">Seleccione un proveedor</option>
+                            {% for proveedor in proveedores %}
+                            <option value="{{ proveedor.id }}">{{ proveedor.nombre_comercial }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" onclick="openModal('proveedor')" class="btn-add-quick"
+                            title="➕ Agregar Proveedor Nuevo">
                             <i class="bi bi-plus-lg"></i>
                         </button>
                     </div>
@@ -986,12 +985,18 @@
                         <span>Unidad de Medida</span>
                         <span class="required">*</span>
                     </label>
-                    <select id="input_unidad" class="form-input" required>
-                        <option value="">Seleccione unidad</option>
-                        {% for unidad in unidades_medida %}
-                        <option value="{{ unidad.nombre }}">{{ unidad.nombre }} ({{ unidad.abreviatura }})</option>
-                        {% endfor %}
-                    </select>
+                    <div class="select-with-button">
+                        <select id="input_unidad" class="form-input" required style="flex: 1;">
+                            <option value="">Seleccione unidad</option>
+                            {% for unidad in unidades_medida %}
+                            <option value="{{ unidad.nombre }}">{{ unidad.nombre }} ({{ unidad.abreviatura }})</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" onclick="openModal('unidadMedida')" class="btn-add-quick"
+                            title="➕ Agregar Unidad">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- ✅ PESO INICIAL QUINTAL -->
@@ -1000,14 +1005,8 @@
                         <span>⚖️ Peso Inicial del Quintal</span>
                         <span class="required">*</span>
                     </label>
-                    <input 
-                        type="number" 
-                        id="input_peso_inicial" 
-                        class="form-input" 
-                        step="0.01" 
-                        min="0.01"
-                        placeholder="Ej: 100.00"
-                    >
+                    <input type="number" id="input_peso_inicial" class="form-input" step="0.01" min="0.01"
+                        placeholder="Ej: 100.00">
                     <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
                         <i class="bi bi-info-circle"></i>
                         Peso inicial total del quintal en la unidad seleccionada
@@ -1023,10 +1022,13 @@
                         <option value="0">No aplica IVA (0%)</option>
                         <option value="{{ iva_default }}" selected>Sí, aplica IVA ({{ iva_default }}%)</option>
                     </select>
-                    <div id="info-iva" style="margin-top: 0.5rem; background: #dbeafe; border: 2px solid #3b82f6; border-radius: 8px; padding: 0.75rem; display: none;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem; color: #1e40af; font-weight: 600; font-size: 0.85rem;">
+                    <div id="info-iva"
+                        style="margin-top: 0.5rem; background: #dbeafe; border: 2px solid #3b82f6; border-radius: 8px; padding: 0.75rem; display: none;">
+                        <div
+                            style="display: flex; align-items: center; gap: 0.5rem; color: #1e40af; font-weight: 600; font-size: 0.85rem;">
                             <span>ℹ️</span>
-                            <span>IVA configurado: <strong>{{ iva_default }}%</strong> (puede cambiarse en Configuración del Sistema)</span>
+                            <span>IVA configurado: <strong>{{ iva_default }}%</strong> (puede cambiarse en Configuración
+                                del Sistema)</span>
                         </div>
                     </div>
                 </div>
@@ -1037,14 +1039,7 @@
                         <span>📦 Cantidad de Stock</span>
                         <span class="required">*</span>
                     </label>
-                    <input 
-                        type="number" 
-                        id="input_cantidad" 
-                        class="form-input" 
-                        min="1" 
-                        placeholder="Ej: 50"
-                        required
-                    >
+                    <input type="number" id="input_cantidad" class="form-input" min="1" placeholder="Ej: 50" required>
                 </div>
 
                 <!-- COSTO UNITARIO -->
@@ -1053,17 +1048,8 @@
                         <span>Costo Unitario</span>
                         <span class="required">*</span>
                     </label>
-                    <input 
-                        type="number" 
-                        id="input_costo" 
-                        class="form-input" 
-                        step="0.01" 
-                        min="0"
-                        placeholder="Ej: 5.50"
-                        required
-                        oninput="calcularPrecioVenta()"
-                        onchange="calcularPrecioVenta()"
-                    >
+                    <input type="number" id="input_costo" class="form-input" step="0.01" min="0" placeholder="Ej: 5.50"
+                        required oninput="calcularPrecioVenta()" onchange="calcularPrecioVenta()">
                 </div>
 
                 <!-- PRECIO DE VENTA -->
@@ -1072,16 +1058,9 @@
                         <span>💰 Precio de Venta (Calculado)</span>
                         <span class="required">*</span>
                     </label>
-                    <input 
-                        type="number" 
-                        id="input_precio" 
-                        class="form-input" 
-                        step="0.01" 
-                        min="0"
-                        placeholder="Se calcula automáticamente"
-                        required
-                        style="background: linear-gradient(135deg, #f1f5f9, #e2e8f0); border: 2px solid #cbd5e1;"
-                    >
+                    <input type="number" id="input_precio" class="form-input" step="0.01" min="0"
+                        placeholder="Se calcula automáticamente" required
+                        style="background: linear-gradient(135deg, #f1f5f9, #e2e8f0); border: 2px solid #cbd5e1;">
                 </div>
 
                 <!-- LOTE -->
@@ -1089,12 +1068,7 @@
                     <label class="form-label-custom">
                         <span>Lote del Proveedor</span>
                     </label>
-                    <input 
-                        type="text" 
-                        id="input_lote" 
-                        class="form-input" 
-                        placeholder="Ej: L-2025-001"
-                    >
+                    <input type="text" id="input_lote" class="form-input" placeholder="Ej: L-2025-001">
                 </div>
 
                 <!-- FECHA DE VENCIMIENTO -->
@@ -1102,11 +1076,7 @@
                     <label class="form-label-custom">
                         <span>Fecha de Vencimiento</span>
                     </label>
-                    <input 
-                        type="date" 
-                        id="input_fecha_vencimiento" 
-                        class="form-input"
-                    >
+                    <input type="date" id="input_fecha_vencimiento" class="form-input">
                 </div>
 
                 <!-- DESCRIPCIÓN -->
@@ -1114,12 +1084,8 @@
                     <label class="form-label-custom">
                         <span>Descripción</span>
                     </label>
-                    <textarea 
-                        id="input_descripcion" 
-                        class="form-input" 
-                        rows="3"
-                        placeholder="Descripción adicional del producto..."
-                    ></textarea>
+                    <textarea id="input_descripcion" class="form-input" rows="3"
+                        placeholder="Descripción adicional del producto..."></textarea>
                 </div>
             </div>
 
@@ -1133,7 +1099,8 @@
                     <i class="bi bi-plus-circle"></i>
                     Agregar Producto
                 </button>
-                <button type="button" class="btn-custom btn-success-custom" onclick="abrirModalProductos()" id="btn-ver-lista" style="display: none;">
+                <button type="button" class="btn-custom btn-success-custom" onclick="abrirModalProductos()"
+                    id="btn-ver-lista" style="display: none;">
                     <i class="bi bi-eye"></i>
                     Ver Lista de Productos
                 </button>
@@ -1214,7 +1181,7 @@
                     <span class="total-value highlight" id="total-codigos">0</span>
                 </div>
             </div>
-            
+
             <div style="display: flex; gap: 1rem;">
                 <button class="btn-custom btn-danger-custom" onclick="limpiarLista()">
                     <i class="bi bi-trash"></i>
@@ -1249,20 +1216,15 @@
         <div class="modal-body-custom">
             <form id="form-editar" onsubmit="event.preventDefault(); guardarEdicion();">
                 <input type="hidden" id="edit_producto_id">
-                
+
                 <div class="form-grid">
                     <!-- IMAGEN -->
                     <div class="form-group" style="grid-column: 1 / -1;">
                         <label class="form-label-custom">
                             <span>📷 Imagen del Producto</span>
                         </label>
-                        <input 
-                            type="file" 
-                            id="edit_imagen" 
-                            class="form-input" 
-                            accept="image/*"
-                            onchange="previsualizarImagenEditar(this)"
-                        >
+                        <input type="file" id="edit_imagen" class="form-input" accept="image/*"
+                            onchange="previsualizarImagenEditar(this)">
                         <div id="edit-preview-container" class="image-preview-container">
                             <img id="edit-preview" class="image-preview" alt="Preview">
                             <span class="image-preview-badge">✓ Imagen Cargada</span>
@@ -1298,7 +1260,8 @@
                         <select id="edit_categoria" class="form-input" required onchange="calcularPrecioVentaEditar()">
                             <option value="">Seleccione una categoría</option>
                             {% for categoria in categorias %}
-                            <option value="{{ categoria.id }}">{{ categoria.nombre }} ({{ categoria.margen_ganancia_sugerido }}% ganancia)</option>
+                            <option value="{{ categoria.id }}">{{ categoria.nombre }} ({{
+                                categoria.margen_ganancia_sugerido }}% ganancia)</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -1367,16 +1330,8 @@
                             <span>Costo Unitario</span>
                             <span class="required">*</span>
                         </label>
-                        <input 
-                            type="number" 
-                            id="edit_costo" 
-                            class="form-input" 
-                            step="0.01" 
-                            min="0" 
-                            required
-                            oninput="calcularPrecioVentaEditar()"
-                            onchange="calcularPrecioVentaEditar()"
-                        >
+                        <input type="number" id="edit_costo" class="form-input" step="0.01" min="0" required
+                            oninput="calcularPrecioVentaEditar()" onchange="calcularPrecioVentaEditar()">
                     </div>
 
                     <div class="form-group">
@@ -1384,16 +1339,9 @@
                             <span>💰 Precio de Venta (Calculado)</span>
                             <span class="required">*</span>
                         </label>
-                        <input 
-                            type="number" 
-                            id="edit_precio" 
-                            class="form-input" 
-                            step="0.01" 
-                            min="0" 
-                            required
+                        <input type="number" id="edit_precio" class="form-input" step="0.01" min="0" required
                             placeholder="Se calcula automáticamente"
-                            style="background: linear-gradient(135deg, #f1f5f9, #e2e8f0); border: 2px solid #cbd5e1;"
-                        >
+                            style="background: linear-gradient(135deg, #f1f5f9, #e2e8f0); border: 2px solid #cbd5e1;">
                     </div>
 
                     <div class="form-group">
@@ -1447,12 +1395,14 @@
         </div>
 
         <div class="modal-body-custom">
-            <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #f59e0b; border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem;">
+            <div
+                style="background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #f59e0b; border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem;">
                 <div style="text-align: center;">
                     <div style="font-size: 4rem; margin-bottom: 1rem;">⚠️</div>
                     <h3 style="color: #92400e; margin-bottom: 1rem;">¿Está seguro de procesar esta entrada?</h3>
                     <p style="color: #92400e; line-height: 1.6; margin-bottom: 1.5rem;">
-                        Esta acción guardará todos los productos en la base de datos y generará los códigos de barras.<br>
+                        Esta acción guardará todos los productos en la base de datos y generará los códigos de
+                        barras.<br>
                         <strong>Esta operación no se puede deshacer.</strong>
                     </p>
                 </div>
@@ -1475,7 +1425,8 @@
                     </div>
                     <div style="background: #f8fafc; padding: 1rem; border-radius: 8px;">
                         <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.5rem;">Inversión Total</div>
-                        <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="confirm-inversion">$0.00</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="confirm-inversion">$0.00
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1508,10 +1459,12 @@
         </div>
 
         <div class="modal-body-custom">
-            <div style="background: #dcfce7; border: 2px solid #22c55e; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <div
+                style="background: #dcfce7; border: 2px solid #22c55e; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
                 <strong style="color: #166534; font-size: 1.1rem;">✅ Entrada Procesada Exitosamente</strong>
                 <p style="color: #166534; margin: 0.5rem 0 0 0; line-height: 1.6;">
-                    Los productos han sido guardados en el inventario y los códigos de barras están listos para descargar.
+                    Los productos han sido guardados en el inventario y los códigos de barras están listos para
+                    descargar.
                 </p>
             </div>
 
@@ -1549,14 +1502,9 @@
         <div class="modal-body-custom">
             <!-- BÚSQUEDA -->
             <div style="margin-bottom: 1.5rem;">
-                <input 
-                    type="text" 
-                    id="buscar-quintal" 
-                    class="form-input" 
-                    placeholder="🔍 Buscar por código o producto..."
-                    style="width: 100%;"
-                    oninput="filtrarQuintales(this.value)"
-                >
+                <input type="text" id="buscar-quintal" class="form-input"
+                    placeholder="🔍 Buscar por código o producto..." style="width: 100%;"
+                    oninput="filtrarQuintales(this.value)">
             </div>
 
             <!-- TABLA DE QUINTALES -->
@@ -1576,7 +1524,7 @@
                         <!-- Se llena dinámicamente -->
                     </tbody>
                 </table>
-                
+
                 <!-- ESTADO VACÍO -->
                 <div id="quintales-vacio" style="display: none; text-align: center; padding: 3rem;">
                     <div style="font-size: 4rem; opacity: 0.3; margin-bottom: 1rem;">📦</div>
@@ -1592,11 +1540,12 @@
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <i class="bi bi-info-circle" style="color: #92400e; font-size: 1.2rem;"></i>
                     <span style="color: #92400e; font-weight: 600; font-size: 0.9rem;">
-                        💡 <strong>¿Producto nuevo?</strong> Haz clic en "Crear Nuevo Quintal" | <strong>¿Reabastecer?</strong> Selecciona un quintal de la lista
+                        💡 <strong>¿Producto nuevo?</strong> Haz clic en "Crear Nuevo Quintal" |
+                        <strong>¿Reabastecer?</strong> Selecciona un quintal de la lista
                     </span>
                 </div>
             </div>
-            
+
             <div style="display: flex; gap: 1rem; justify-content: space-between;">
                 <button class="btn-custom btn-secondary-custom" onclick="cerrarModalQuintales()">
                     <i class="bi bi-x-circle"></i>
@@ -1626,33 +1575,37 @@
                         <i class="bi bi-tag"></i>
                         Nombre <span class="required">*</span>
                     </label>
-                    <input type="text" id="nombreCategoria" class="form-input" placeholder="Ej: Lácteos, Cereales..." required>
+                    <input type="text" id="nombreCategoria" class="form-input" placeholder="Ej: Lácteos, Cereales..."
+                        required>
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">
                         <i class="bi bi-text-paragraph"></i>
                         Descripción
                     </label>
-                    <textarea id="descripcionCategoria" class="form-input" rows="3" placeholder="Descripción opcional..."></textarea>
+                    <textarea id="descripcionCategoria" class="form-input" rows="3"
+                        placeholder="Descripción opcional..."></textarea>
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">
                         <i class="bi bi-percent"></i>
                         Margen Ganancia (%) <span class="required">*</span>
                     </label>
-                    <input type="number" id="margenGananciaCategoria" class="form-input" step="0.01" min="0" value="30.00" required>
+                    <input type="number" id="margenGananciaCategoria" class="form-input" step="0.01" min="0"
+                        value="30.00" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">
                         <i class="bi bi-percent"></i>
                         Descuento Máximo (%) <span class="required">*</span>
                     </label>
-                    <input type="number" id="descuentoMaximoCategoria" class="form-input" step="0.01" min="0" value="10.00" required>
+                    <input type="number" id="descuentoMaximoCategoria" class="form-input" step="0.01" min="0"
+                        value="10.00" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">
                         <i class="bi bi-sort-numeric-down"></i>
@@ -1660,7 +1613,7 @@
                     </label>
                     <input type="number" id="ordenCategoria" class="form-input" min="0" value="0" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label" style="cursor: pointer;">
                         <input type="checkbox" id="activaCategoria" checked style="width: 20px; height: 20px;">
@@ -1702,7 +1655,7 @@
                     </label>
                     <input type="text" id="nombreMarca" class="form-input" placeholder="Ej: Nestlé, Bimbo..." required>
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">
                         <i class="bi bi-sort-numeric-down"></i>
@@ -1710,26 +1663,30 @@
                     </label>
                     <input type="number" id="ordenMarca" class="form-input" min="0" value="0">
                 </div>
-                
+
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label class="form-label">
                         <i class="bi bi-image"></i>
                         Logo de la Marca
                     </label>
-                    <input type="file" id="logoMarca" class="form-input" accept="image/*" onchange="previewLogoMarca(this)">
-                    <div id="logoPreviewContainer" class="image-preview-container" style="margin-top: 1rem; display: none;">
-                        <img id="logoPreview" class="image-preview" alt="Logo preview" style="max-height: 150px; max-width: 100%; border-radius: 8px;">
+                    <input type="file" id="logoMarca" class="form-input" accept="image/*"
+                        onchange="previewLogoMarca(this)">
+                    <div id="logoPreviewContainer" class="image-preview-container"
+                        style="margin-top: 1rem; display: none;">
+                        <img id="logoPreview" class="image-preview" alt="Logo preview"
+                            style="max-height: 150px; max-width: 100%; border-radius: 8px;">
                     </div>
                 </div>
-                
+
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label class="form-label">
                         <i class="bi bi-text-paragraph"></i>
                         Descripción
                     </label>
-                    <textarea id="descripcionMarca" class="form-input" rows="3" placeholder="Descripción opcional..."></textarea>
+                    <textarea id="descripcionMarca" class="form-input" rows="3"
+                        placeholder="Descripción opcional..."></textarea>
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">
                         <i class="bi bi-globe"></i>
@@ -1737,7 +1694,7 @@
                     </label>
                     <input type="text" id="paisOrigenMarca" class="form-input" placeholder="Ej: México">
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">
                         <i class="bi bi-building"></i>
@@ -1745,7 +1702,7 @@
                     </label>
                     <input type="text" id="fabricanteMarca" class="form-input" placeholder="Nombre del fabricante">
                 </div>
-                
+
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label class="form-label">
                         <i class="bi bi-link-45deg"></i>
@@ -1753,14 +1710,14 @@
                     </label>
                     <input type="url" id="sitioWebMarca" class="form-input" placeholder="https://www.ejemplo.com">
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label" style="cursor: pointer;">
                         <input type="checkbox" id="activaMarca" checked style="width: 20px; height: 20px;">
                         <span><i class="bi bi-check-circle"></i> Marca Activa</span>
                     </label>
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label" style="cursor: pointer;">
                         <input type="checkbox" id="destacadaMarca" style="width: 20px; height: 20px;">
@@ -1800,9 +1757,10 @@
                         <i class="bi bi-building"></i>
                         Nombre Comercial <span class="required">*</span>
                     </label>
-                    <input type="text" id="nombreComercialProveedor" class="form-input" placeholder="Ej: Distribuidora XYZ" required>
+                    <input type="text" id="nombreComercialProveedor" class="form-input"
+                        placeholder="Ej: Distribuidora XYZ" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">
                         <i class="bi bi-file-text"></i>
@@ -1810,15 +1768,16 @@
                     </label>
                     <input type="text" id="razonSocialProveedor" class="form-input" placeholder="Razón social">
                 </div>
-                
+
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label class="form-label">
                         <i class="bi bi-card-text"></i>
                         RUC/NIT <span class="required">*</span>
                     </label>
-                    <input type="text" id="rucNitProveedor" class="form-input" placeholder="10-20 dígitos" maxlength="20" required>
+                    <input type="text" id="rucNitProveedor" class="form-input" placeholder="10-20 dígitos"
+                        maxlength="20" required>
                 </div>
-                
+
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label class="form-label">
                         <i class="bi bi-geo-alt"></i>
@@ -1826,7 +1785,7 @@
                     </label>
                     <input type="text" id="direccionProveedor" class="form-input" placeholder="Dirección completa">
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">
                         <i class="bi bi-telephone"></i>
@@ -1834,7 +1793,7 @@
                     </label>
                     <input type="tel" id="telefonoProveedor" class="form-input" placeholder="555-1234">
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">
                         <i class="bi bi-envelope"></i>
@@ -1842,7 +1801,7 @@
                     </label>
                     <input type="email" id="emailProveedor" class="form-input" placeholder="email@ejemplo.com">
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">
                         <i class="bi bi-calendar-check"></i>
@@ -1850,15 +1809,16 @@
                     </label>
                     <input type="number" id="diasCreditoProveedor" class="form-input" min="0" value="0">
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">
                         <i class="bi bi-currency-dollar"></i>
                         Límite de Crédito
                     </label>
-                    <input type="number" id="limiteCreditoProveedor" class="form-input" step="0.01" min="0" value="0.00">
+                    <input type="number" id="limiteCreditoProveedor" class="form-input" step="0.01" min="0"
+                        value="0.00">
                 </div>
-                
+
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label class="form-label" style="cursor: pointer;">
                         <input type="checkbox" id="activoProveedor" checked style="width: 20px; height: 20px;">
@@ -1881,187 +1841,237 @@
         </div>
     </div>
 </div>
+<!-- Modal: Nueva Unidad de Medida -->
+<div class="modal-overlay" id="modalUnidadMedida">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3><i class="bi bi-speedometer2"></i> Nueva Unidad de Medida</h3>
+            <button class="modal-close" onclick="closeModal('unidadMedida')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-grid" style="grid-template-columns: 1fr;">
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-tag"></i>
+                        Nombre <span class="required">*</span>
+                    </label>
+                    <input type="text" id="nombreUnidad" class="form-input" placeholder="Ej: Kilogramo" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-fonts"></i>
+                        Abreviatura <span class="required">*</span>
+                    </label>
+                    <input type="text" id="abreviaturaUnidad" class="form-input" placeholder="Ej: kg" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-arrow-left-right"></i>
+                        Factor Conversión (a Kg) <span class="required">*</span>
+                    </label>
+                    <input type="number" id="factorUnidad" class="form-input" step="0.0001" min="0" value="1.0000"
+                        required>
+                    <small style="color: #64748b; display: block; margin-top: 0.25rem;">
+                        Cuántos kg equivalen a 1 unidad. Ej: Libra = 0.4536
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('unidadMedida')">
+                <i class="bi bi-x-circle"></i> Cancelar
+            </button>
+            <button class="btn btn-success" onclick="guardarUnidadMedidaCompleta()">
+                <i class="bi bi-check-circle"></i> Guardar
+            </button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// ========================================
-// ESTADO GLOBAL
-// ========================================
-let productos = [];
-let contadorProductos = 0;
-let quintalSeleccionado = null;
-let quintalesTodosData = [];
+    // ========================================
+    // ESTADO GLOBAL
+    // ========================================
+    let productos = [];
+    let contadorProductos = 0;
+    let quintalSeleccionado = null;
+    let quintalesTodosData = [];
 
-// ========================================
-// DATOS DE CATEGORÍAS CON MÁRGENES
-// ========================================
-const categoriasData = {
+    // ========================================
+    // DATOS DE CATEGORÍAS CON MÁRGENES
+    // ========================================
+    const categoriasData = {
     {% for categoria in categorias %}
     "{{ categoria.id }}": {
         nombre: "{{ categoria.nombre|escapejs }}",
-        margen_ganancia: parseFloat("{{ categoria.margen_ganancia_sugerido }}"),
-        descuento_maximo: parseFloat("{{ categoria.descuento_maximo_permitido }}")
-    }{% if not forloop.last %},{% endif %}
+            margen_ganancia: parseFloat("{{ categoria.margen_ganancia_sugerido }}"),
+                descuento_maximo: parseFloat("{{ categoria.descuento_maximo_permitido }}")
+    } {% if not forloop.last %}, {% endif %}
     {% endfor %}
 };
 
-// IVA DESDE CONFIGURACIÓN DEL SISTEMA
-const IVA_DEFAULT = parseFloat("{{ porcentaje_iva }}");
+    // IVA DESDE CONFIGURACIÓN DEL SISTEMA
+    const IVA_DEFAULT = parseFloat("{{ porcentaje_iva }}");
 
-console.log('✅ Categorías cargadas:', categoriasData);
-console.log('✅ IVA configurado:', IVA_DEFAULT + '%');
+    console.log('✅ Categorías cargadas:', categoriasData);
+    console.log('✅ IVA configurado:', IVA_DEFAULT + '%');
 
-// ========================================
-// GESTIÓN DE QUINTALES
-// ========================================
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Sistema de entrada de inventario iniciado');
-    
-    // Listener para tipo de inventario
-    document.getElementById('input_tipo_inventario').addEventListener('change', function() {
-        const valor = this.value;
-        const campoPesoInicial = document.getElementById('campo-peso-inicial');
-        const inputPesoInicial = document.getElementById('input_peso_inicial');
-        
-        console.log('📦 Tipo de inventario seleccionado:', valor);
-        
-        if (valor === 'QUINTAL') {
-            // Mostrar campo de peso inicial
-            campoPesoInicial.style.display = 'block';
-            inputPesoInicial.setAttribute('required', 'required');
-            
-            // Abrir modal de selección de quintales
-            abrirModalSeleccionarQuintal();
-        } else {
-            // Ocultar campo de peso inicial
-            campoPesoInicial.style.display = 'none';
-            inputPesoInicial.removeAttribute('required');
-            inputPesoInicial.value = '';
-            
-            // Limpiar selección
-            document.getElementById('input_nombre').disabled = false;
-            quintalSeleccionado = null;
-        }
+    // ========================================
+    // GESTIÓN DE QUINTALES
+    // ========================================
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log('🚀 Sistema de entrada de inventario iniciado');
+
+        // Listener para tipo de inventario
+        document.getElementById('input_tipo_inventario').addEventListener('change', function () {
+            const valor = this.value;
+            const campoPesoInicial = document.getElementById('campo-peso-inicial');
+            const inputPesoInicial = document.getElementById('input_peso_inicial');
+
+            console.log('📦 Tipo de inventario seleccionado:', valor);
+
+            if (valor === 'QUINTAL') {
+                // Mostrar campo de peso inicial
+                campoPesoInicial.style.display = 'block';
+                inputPesoInicial.setAttribute('required', 'required');
+
+                // Abrir modal de selección de quintales
+                abrirModalSeleccionarQuintal();
+            } else {
+                // Ocultar campo de peso inicial
+                campoPesoInicial.style.display = 'none';
+                inputPesoInicial.removeAttribute('required');
+                inputPesoInicial.value = '';
+
+                // Limpiar selección
+                document.getElementById('input_nombre').disabled = false;
+                quintalSeleccionado = null;
+            }
+        });
+
+        document.getElementById('input_nombre').focus();
+        mostrarInfoIVA(); // ✅ Mostrar info inicial
     });
-    
-    document.getElementById('input_nombre').focus();
-    mostrarInfoIVA(); // ✅ Mostrar info inicial
-});
 
-async function abrirModalSeleccionarQuintal() {
-    console.log('🔍 Cargando quintales disponibles...');
-    
-    try {
-        const response = await fetch('/api/inventario/quintales-disponibles/');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+    async function abrirModalSeleccionarQuintal() {
+        console.log('🔍 Cargando quintales disponibles...');
+
+        try {
+            const response = await fetch('/api/inventario/quintales-disponibles/');
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('✅ Quintales recibidos:', data);
+
+            quintalesTodosData = data.quintales || [];
+
+            if (quintalesTodosData.length === 0) {
+                console.log('⚠️ No hay quintales disponibles');
+                document.getElementById('quintales-vacio').style.display = 'block';
+                document.getElementById('quintales-lista').innerHTML = '';
+            } else {
+                console.log(`✅ Se encontraron ${quintalesTodosData.length} quintales`);
+                document.getElementById('quintales-vacio').style.display = 'none';
+                renderizarQuintales(quintalesTodosData);
+            }
+
+            document.getElementById('modal-seleccionar-quintal').classList.add('show');
+
+        } catch (error) {
+            console.error('❌ Error cargando quintales:', error);
+            mostrarNotificacion('Error al cargar quintales: ' + error.message, 'error');
         }
-        
-        const data = await response.json();
-        console.log('✅ Quintales recibidos:', data);
-        
-        quintalesTodosData = data.quintales || [];
-        
-        if (quintalesTodosData.length === 0) {
-            console.log('⚠️ No hay quintales disponibles');
+    }
+
+    function cerrarModalQuintales() {
+        document.getElementById('modal-seleccionar-quintal').classList.remove('show');
+        if (!quintalSeleccionado) {
+            // Si no se seleccionó ningún quintal, volver a NORMAL
+            document.getElementById('input_tipo_inventario').value = 'NORMAL';
+            document.getElementById('campo-peso-inicial').style.display = 'none';
+            document.getElementById('input_peso_inicial').removeAttribute('required');
+        }
+    }
+
+    function crearNuevoQuintal() {
+        console.log('🆕 Modo: Crear Nuevo Quintal');
+
+        // Limpiar selección de quintal
+        quintalSeleccionado = null;
+
+        // Habilitar el campo de nombre
+        document.getElementById('input_nombre').disabled = false;
+
+        // CERRAR EL MODAL CORRECTAMENTE
+        const modal = document.getElementById('modal-seleccionar-quintal');
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+
+        // Remover el backdrop
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) {
+            backdrop.remove();
+        }
+
+        // Restaurar scroll del body
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+
+        // MOSTRAR EL CAMPO DE PESO INICIAL
+        const campoPesoInicial = document.getElementById('campo-peso-inicial');
+        if (campoPesoInicial) {
+            campoPesoInicial.style.display = 'block';
+            document.getElementById('input_peso_inicial').setAttribute('required', 'required');
+        }
+
+        console.log('✅ Modo crear nuevo quintal activado');
+        console.log('✅ Campo peso inicial mostrado');
+
+        mostrarNotificacion('✅ Modo: Crear Nuevo Quintal. Completa todos los datos incluyendo el peso inicial.', 'success');
+    }
+
+    function renderizarQuintales(quintales) {
+        const lista = document.getElementById('quintales-lista');
+        lista.innerHTML = '';
+
+        console.log('📋 Renderizando', quintales.length, 'quintales');
+
+        if (quintales.length === 0) {
             document.getElementById('quintales-vacio').style.display = 'block';
-            document.getElementById('quintales-lista').innerHTML = '';
-        } else {
-            console.log(`✅ Se encontraron ${quintalesTodosData.length} quintales`);
-            document.getElementById('quintales-vacio').style.display = 'none';
-            renderizarQuintales(quintalesTodosData);
+            return;
         }
-        
-        document.getElementById('modal-seleccionar-quintal').classList.add('show');
-        
-    } catch (error) {
-        console.error('❌ Error cargando quintales:', error);
-        mostrarNotificacion('Error al cargar quintales: ' + error.message, 'error');
-    }
-}
 
-function cerrarModalQuintales() {
-    document.getElementById('modal-seleccionar-quintal').classList.remove('show');
-    if (!quintalSeleccionado) {
-        // Si no se seleccionó ningún quintal, volver a NORMAL
-        document.getElementById('input_tipo_inventario').value = 'NORMAL';
-        document.getElementById('campo-peso-inicial').style.display = 'none';
-        document.getElementById('input_peso_inicial').removeAttribute('required');
-    }
-}
+        document.getElementById('quintales-vacio').style.display = 'none';
 
-function crearNuevoQuintal() {
-    console.log('🆕 Modo: Crear Nuevo Quintal');
-    
-    // Limpiar selección de quintal
-    quintalSeleccionado = null;
-    
-    // Habilitar el campo de nombre
-    document.getElementById('input_nombre').disabled = false;
-    
-    // CERRAR EL MODAL CORRECTAMENTE
-    const modal = document.getElementById('modal-seleccionar-quintal');
-    modal.classList.remove('show');
-    modal.style.display = 'none';
-    
-    // Remover el backdrop
-    const backdrop = document.querySelector('.modal-backdrop');
-    if (backdrop) {
-        backdrop.remove();
-    }
-    
-    // Restaurar scroll del body
-    document.body.classList.remove('modal-open');
-    document.body.style.removeProperty('overflow');
-    document.body.style.removeProperty('padding-right');
-    
-    // MOSTRAR EL CAMPO DE PESO INICIAL
-    const campoPesoInicial = document.getElementById('campo-peso-inicial');
-    if (campoPesoInicial) {
-        campoPesoInicial.style.display = 'block';
-        document.getElementById('input_peso_inicial').setAttribute('required', 'required');
-    }
-    
-    console.log('✅ Modo crear nuevo quintal activado');
-    console.log('✅ Campo peso inicial mostrado');
-    
-    mostrarNotificacion('✅ Modo: Crear Nuevo Quintal. Completa todos los datos incluyendo el peso inicial.', 'success');
-}
+        quintales.forEach(quintal => {
+            const porcentaje = parseFloat(quintal.porcentaje_restante);
+            const pesoActual = parseFloat(quintal.peso_actual);
+            const pesoInicial = parseFloat(quintal.peso_inicial);
 
-function renderizarQuintales(quintales) {
-    const lista = document.getElementById('quintales-lista');
-    lista.innerHTML = '';
-    
-    console.log('📋 Renderizando', quintales.length, 'quintales');
-    
-    if (quintales.length === 0) {
-        document.getElementById('quintales-vacio').style.display = 'block';
-        return;
-    }
-    
-    document.getElementById('quintales-vacio').style.display = 'none';
-    
-    quintales.forEach(quintal => {
-        const porcentaje = parseFloat(quintal.porcentaje_restante);
-        const pesoActual = parseFloat(quintal.peso_actual);
-        const pesoInicial = parseFloat(quintal.peso_inicial);
-        
-        let colorBarra;
-        if (porcentaje >= 70) {
-            colorBarra = 'linear-gradient(90deg, #10b981, #059669)';
-        } else if (porcentaje >= 30) {
-            colorBarra = 'linear-gradient(90deg, #f59e0b, #d97706)';
-        } else {
-            colorBarra = 'linear-gradient(90deg, #ef4444, #dc2626)';
-        }
-        
-        const tr = document.createElement('tr');
-        tr.style.cursor = 'pointer';
-        tr.style.transition = 'all 0.2s ease';
-        
-        tr.innerHTML = `
+            let colorBarra;
+            if (porcentaje >= 70) {
+                colorBarra = 'linear-gradient(90deg, #10b981, #059669)';
+            } else if (porcentaje >= 30) {
+                colorBarra = 'linear-gradient(90deg, #f59e0b, #d97706)';
+            } else {
+                colorBarra = 'linear-gradient(90deg, #ef4444, #dc2626)';
+            }
+
+            const tr = document.createElement('tr');
+            tr.style.cursor = 'pointer';
+            tr.style.transition = 'all 0.2s ease';
+
+            tr.innerHTML = `
             <td>
                 <strong style="font-family: 'Courier New', monospace; font-size: 1.1rem; color: #1e293b;">
                     ${quintal.codigo_unico}
@@ -2141,460 +2151,460 @@ function renderizarQuintales(quintales) {
                 </div>
             </td>
         `;
-        
-        tr.addEventListener('mouseenter', function() {
-            this.style.background = '#f8fafc';
-            this.style.transform = 'scale(1.01)';
-        });
-        
-        tr.addEventListener('mouseleave', function() {
-            this.style.background = 'white';
-            this.style.transform = 'scale(1)';
-        });
-        
-        tr.addEventListener('click', function() {
-            seleccionarQuintal(quintal);
-        });
-        
-        lista.appendChild(tr);
-    });
-}
 
-function seleccionarQuintal(quintal) {
-    console.log('✅ Quintal seleccionado:', quintal);
-    quintalSeleccionado = quintal;
-    
-    // Llenar el nombre del producto
-    document.getElementById('input_nombre').value = quintal.producto_nombre;
-    document.getElementById('input_nombre').disabled = true;
-    
-    // Ocultar el campo de peso inicial (ya que es un quintal existente)
-    document.getElementById('campo-peso-inicial').style.display = 'none';
-    document.getElementById('input_peso_inicial').removeAttribute('required');
-    
-    cerrarModalQuintales();
-    mostrarNotificacion(`✅ Quintal ${quintal.codigo_unico} seleccionado para reabastecer`, 'success');
-}
+            tr.addEventListener('mouseenter', function () {
+                this.style.background = '#f8fafc';
+                this.style.transform = 'scale(1.01)';
+            });
 
-function filtrarQuintales(busqueda) {
-    const busquedaLower = busqueda.toLowerCase();
-    
-    if (!busqueda.trim()) {
-        renderizarQuintales(quintalesTodosData);
-        return;
+            tr.addEventListener('mouseleave', function () {
+                this.style.background = 'white';
+                this.style.transform = 'scale(1)';
+            });
+
+            tr.addEventListener('click', function () {
+                seleccionarQuintal(quintal);
+            });
+
+            lista.appendChild(tr);
+        });
     }
-    
-    const filtrados = quintalesTodosData.filter(q => 
-        q.codigo_unico.toLowerCase().includes(busquedaLower) ||
-        q.producto_nombre.toLowerCase().includes(busquedaLower) ||
-        q.proveedor_nombre.toLowerCase().includes(busquedaLower)
-    );
-    
-    renderizarQuintales(filtrados);
-}
 
-// ========================================
-// FUNCIÓN PARA MOSTRAR INFO DE IVA - ✅ ACTUALIZADA PARA CHECKBOX
-// ========================================
-function mostrarInfoIVA() {
-    const ivaSelect = document.getElementById('input_iva');  // ✅ Cambié nombre
-    const infoDiv = document.getElementById('info-iva');
-    
-    if (!ivaSelect || !infoDiv) return;
-    
-    // ✅ Verificar el VALUE del SELECT (no .checked)
-    const valorIva = parseFloat(ivaSelect.value);
-    const aplicaIva = valorIva > 0;
-    
-    if (aplicaIva) {
-        infoDiv.style.display = 'flex';
-        infoDiv.style.background = 'rgba(34, 197, 94, 0.1)';
-        infoDiv.style.border = '2px solid rgba(34, 197, 94, 0.3)';
-        infoDiv.style.borderRadius = '10px';
-        infoDiv.style.padding = '0.75rem';
-        infoDiv.style.alignItems = 'center';
-        infoDiv.style.gap = '0.5rem';
-        infoDiv.innerHTML = `
+    function seleccionarQuintal(quintal) {
+        console.log('✅ Quintal seleccionado:', quintal);
+        quintalSeleccionado = quintal;
+
+        // Llenar el nombre del producto
+        document.getElementById('input_nombre').value = quintal.producto_nombre;
+        document.getElementById('input_nombre').disabled = true;
+
+        // Ocultar el campo de peso inicial (ya que es un quintal existente)
+        document.getElementById('campo-peso-inicial').style.display = 'none';
+        document.getElementById('input_peso_inicial').removeAttribute('required');
+
+        cerrarModalQuintales();
+        mostrarNotificacion(`✅ Quintal ${quintal.codigo_unico} seleccionado para reabastecer`, 'success');
+    }
+
+    function filtrarQuintales(busqueda) {
+        const busquedaLower = busqueda.toLowerCase();
+
+        if (!busqueda.trim()) {
+            renderizarQuintales(quintalesTodosData);
+            return;
+        }
+
+        const filtrados = quintalesTodosData.filter(q =>
+            q.codigo_unico.toLowerCase().includes(busquedaLower) ||
+            q.producto_nombre.toLowerCase().includes(busquedaLower) ||
+            q.proveedor_nombre.toLowerCase().includes(busquedaLower)
+        );
+
+        renderizarQuintales(filtrados);
+    }
+
+    // ========================================
+    // FUNCIÓN PARA MOSTRAR INFO DE IVA - ✅ ACTUALIZADA PARA CHECKBOX
+    // ========================================
+    function mostrarInfoIVA() {
+        const ivaSelect = document.getElementById('input_iva');  // ✅ Cambié nombre
+        const infoDiv = document.getElementById('info-iva');
+
+        if (!ivaSelect || !infoDiv) return;
+
+        // ✅ Verificar el VALUE del SELECT (no .checked)
+        const valorIva = parseFloat(ivaSelect.value);
+        const aplicaIva = valorIva > 0;
+
+        if (aplicaIva) {
+            infoDiv.style.display = 'flex';
+            infoDiv.style.background = 'rgba(34, 197, 94, 0.1)';
+            infoDiv.style.border = '2px solid rgba(34, 197, 94, 0.3)';
+            infoDiv.style.borderRadius = '10px';
+            infoDiv.style.padding = '0.75rem';
+            infoDiv.style.alignItems = 'center';
+            infoDiv.style.gap = '0.5rem';
+            infoDiv.innerHTML = `
             <i class="bi bi-info-circle-fill" style="color: #16a34a; font-size: 1.2rem;"></i>
             <span style="color: #16a34a; font-weight: 600; font-size: 0.9rem;">
                 Se aplicará <strong>${valorIva}%</strong> de IVA al precio del producto
             </span>
         `;
-    } else {
-        infoDiv.style.display = 'flex';
-        infoDiv.style.background = 'rgba(239, 68, 68, 0.1)';
-        infoDiv.style.border = '2px solid rgba(239, 68, 68, 0.3)';
-        infoDiv.style.borderRadius = '10px';
-        infoDiv.style.padding = '0.75rem';
-        infoDiv.style.alignItems = 'center';
-        infoDiv.style.gap = '0.5rem';
-        infoDiv.innerHTML = `
+        } else {
+            infoDiv.style.display = 'flex';
+            infoDiv.style.background = 'rgba(239, 68, 68, 0.1)';
+            infoDiv.style.border = '2px solid rgba(239, 68, 68, 0.3)';
+            infoDiv.style.borderRadius = '10px';
+            infoDiv.style.padding = '0.75rem';
+            infoDiv.style.alignItems = 'center';
+            infoDiv.style.gap = '0.5rem';
+            infoDiv.innerHTML = `
             <i class="bi bi-x-circle-fill" style="color: #dc2626; font-size: 1.2rem;"></i>
             <span style="color: #dc2626; font-weight: 600; font-size: 0.9rem;">
                 Este producto <strong>NO</strong> aplicará IVA
             </span>
         `;
-    }
-}
-
-// ========================================
-// CALCULAR PRECIO DE VENTA AUTOMÁTICO
-// ========================================
-function calcularPrecioVenta() {
-    try {
-        const categoriaId = document.getElementById('input_categoria').value;
-        const costoInput = document.getElementById('input_costo');
-        const precioInput = document.getElementById('input_precio');
-        const costoUnitario = parseFloat(costoInput.value) || 0;
-        
-        if (costoUnitario <= 0) {
-            precioInput.value = '';
-            return;
         }
-        
-        if (!categoriaId) {
-            precioInput.value = '';
-            precioInput.placeholder = '⚠️ Primero selecciona una categoría';
-            precioInput.style.background = 'linear-gradient(135deg, #fee2e2, #fecaca)';
-            precioInput.style.borderColor = '#ef4444';
-            return;
-        }
-        
-        const categoria = categoriasData[categoriaId] || categoriasData[String(categoriaId)];
-        
-        if (!categoria) {
-            console.error('❌ Categoría no encontrada:', categoriaId);
-            return;
-        }
-        
-        const margenGanancia = parseFloat(categoria.margen_ganancia) || 0;
-        const ganancia = costoUnitario * (margenGanancia / 100);
-        const precioVenta = costoUnitario + ganancia;
-        
-        precioInput.style.background = 'linear-gradient(135deg, #d1fae5, #a7f3d0)';
-        precioInput.style.borderColor = '#10b981';
-        precioInput.value = precioVenta.toFixed(2);
-        
-        actualizarInfoCalculo(costoUnitario, margenGanancia, ganancia, precioVenta);
-    } catch (error) {
-        console.error('❌ Error en calcularPrecioVenta:', error);
-    }
-}
-
-function calcularPrecioVentaEditar() {
-    try {
-        const categoriaId = document.getElementById('edit_categoria').value;
-        const costoInput = document.getElementById('edit_costo');
-        const precioInput = document.getElementById('edit_precio');
-        const costoUnitario = parseFloat(costoInput.value) || 0;
-        
-        if (costoUnitario <= 0) {
-            precioInput.value = '';
-            return;
-        }
-        
-        if (!categoriaId) {
-            precioInput.value = '';
-            precioInput.placeholder = '⚠️ Primero selecciona una categoría';
-            precioInput.style.background = 'linear-gradient(135deg, #fee2e2, #fecaca)';
-            precioInput.style.borderColor = '#ef4444';
-            return;
-        }
-        
-        const categoria = categoriasData[categoriaId] || categoriasData[String(categoriaId)];
-        
-        if (!categoria) {
-            console.error('Categoría no encontrada:', categoriaId);
-            return;
-        }
-        
-        const margenGanancia = parseFloat(categoria.margen_ganancia) || 0;
-        const ganancia = costoUnitario * (margenGanancia / 100);
-        const precioVenta = costoUnitario + ganancia;
-        
-        precioInput.style.background = 'linear-gradient(135deg, #d1fae5, #a7f3d0)';
-        precioInput.style.borderColor = '#10b981';
-        precioInput.value = precioVenta.toFixed(2);
-        
-        actualizarInfoCalculoEditar(costoUnitario, margenGanancia, ganancia, precioVenta);
-    } catch (error) {
-        console.error('Error en calcularPrecioVentaEditar:', error);
-    }
-}
-
-function actualizarInfoCalculo(costo, margen, ganancia, precioFinal) {
-    try {
-        let infoDiv = document.getElementById('info-calculo-precio');
-        if (!infoDiv) {
-            infoDiv = document.createElement('div');
-            infoDiv.id = 'info-calculo-precio';
-            infoDiv.style.cssText = 'margin-top: 0.5rem; background: #dcfce7; border: 2px solid #10b981; border-radius: 8px; padding: 0.75rem; animation: fadeIn 0.3s ease;';
-            document.getElementById('input_precio').parentElement.appendChild(infoDiv);
-        }
-        
-        infoDiv.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 0.5rem; color: #065f46; font-weight: 700; font-size: 0.9rem;">
-                <span>✅</span>
-                <span>$${costo.toFixed(2)} + ${margen}% ($${ganancia.toFixed(2)}) = <strong style="color: #059669; font-size: 1.1rem;">$${precioFinal.toFixed(2)}</strong></span>
-            </div>
-        `;
-    } catch (error) {
-        console.error('Error en actualizarInfoCalculo:', error);
-    }
-}
-
-function actualizarInfoCalculoEditar(costo, margen, ganancia, precioFinal) {
-    try {
-        let infoDiv = document.getElementById('info-calculo-precio-editar');
-        if (!infoDiv) {
-            infoDiv = document.createElement('div');
-            infoDiv.id = 'info-calculo-precio-editar';
-            infoDiv.style.cssText = 'margin-top: 0.5rem; background: #dcfce7; border: 2px solid #10b981; border-radius: 8px; padding: 0.75rem; animation: fadeIn 0.3s ease;';
-            document.getElementById('edit_precio').parentElement.appendChild(infoDiv);
-        }
-        
-        infoDiv.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 0.5rem; color: #065f46; font-weight: 700; font-size: 0.9rem;">
-                <span>✅</span>
-                <span>$${costo.toFixed(2)} + ${margen}% ($${ganancia.toFixed(2)}) = <strong style="color: #059669; font-size: 1.1rem;">$${precioFinal.toFixed(2)}</strong></span>
-            </div>
-        `;
-    } catch (error) {
-        console.error('Error en actualizarInfoCalculoEditar:', error);
-    }
-}
-
-// ========================================
-// PREVISUALIZAR IMAGEN
-// ========================================
-function previsualizarImagen(input) {
-    const preview = document.getElementById('preview-imagen');
-    const container = document.getElementById('preview-imagen-container');
-    
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            container.classList.add('show');
-        }
-        reader.readAsDataURL(input.files[0]);
-    } else {
-        container.classList.remove('show');
-    }
-}
-
-function previsualizarImagenEditar(input) {
-    const preview = document.getElementById('edit-preview');
-    const container = document.getElementById('edit-preview-container');
-    
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            container.classList.add('show');
-        }
-        reader.readAsDataURL(input.files[0]);
-    }
-}
-
-// ========================================
-// AGREGAR PRODUCTO - ✅ IVA CON CHECKBOX
-// ========================================
-function agregarProducto() {
-    console.log('📝 Iniciando agregar producto...');
-    
-    const form = document.getElementById('form-producto');
-    if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
     }
 
-    const nombre = document.getElementById('input_nombre').value.trim();
-    const marca_id = document.getElementById('input_marca').value;
-    const marca_nombre = document.getElementById('input_marca').selectedOptions[0].text;
-    const categoria_id = document.getElementById('input_categoria').value;
-    const categoria_nombre = document.getElementById('input_categoria').selectedOptions[0].text;
-    const proveedor_id = document.getElementById('input_proveedor').value;
-    const proveedor_nombre = document.getElementById('input_proveedor').selectedOptions[0].text;
-    const tipo_inventario = document.getElementById('input_tipo_inventario').value;
-    
-    // Obtener unidad de medida según el tipo
-    let unidad_medida = '';
-    let unidad_medida_texto = '';
-    
-    if (tipo_inventario === 'QUINTAL') {
-        const selectUnidad = document.getElementById('input_unidad');
-        console.log('🔍 Tipo inventario:', tipo_inventario);
-        console.log('🔍 Select unidad:', document.getElementById('input_unidad'));
-        console.log('🔍 Valor selectUnidad.value:', selectUnidad ? selectUnidad.value : 'null');
-        if (selectUnidad && selectUnidad.value) {
-            unidad_medida = selectUnidad.value;
-            unidad_medida_texto = selectUnidad.selectedOptions[0].text;
-        } else {
-            mostrarNotificacion('⚠️ Error: Debes seleccionar la unidad de medida', 'error');
-            return;
-        }
-    } else {
-        unidad_medida = document.getElementById('input_unidad').value;
-        unidad_medida_texto = document.getElementById('input_unidad').selectedOptions[0].text;
-    }
-    
-    console.log('📏 Unidad de medida:', unidad_medida, unidad_medida_texto);
-    const cantidad = parseInt(document.getElementById('input_cantidad').value);
-    const costo = parseFloat(document.getElementById('input_costo').value);
-    const precio = parseFloat(document.getElementById('input_precio').value);
-    const lote = document.getElementById('input_lote').value.trim();
-    const fecha_vencimiento = document.getElementById('input_fecha_vencimiento').value;
-    const descripcion = document.getElementById('input_descripcion').value.trim();
-    
-    // ✅ IVA ahora es checkbox
-    const valorIva = parseFloat(document.getElementById('input_iva').value);
-    const aplica_iva = valorIva > 0;
-    
-    const inputImagen = document.getElementById('input_imagen');
-    const imagenFile = inputImagen.files[0];
-    const imagenPreview = document.getElementById('preview-imagen').src;
+    // ========================================
+    // CALCULAR PRECIO DE VENTA AUTOMÁTICO
+    // ========================================
+    function calcularPrecioVenta() {
+        try {
+            const categoriaId = document.getElementById('input_categoria').value;
+            const costoInput = document.getElementById('input_costo');
+            const precioInput = document.getElementById('input_precio');
+            const costoUnitario = parseFloat(costoInput.value) || 0;
 
-    // ✅ DATOS DE QUINTAL
-    let quintal_codigo_unico = null;
-    let es_nuevo_quintal = false;
-    let peso_inicial_quintal = null;
-    
-    if (tipo_inventario === 'QUINTAL') {
-        if (quintalSeleccionado) {
-            // Reabastecer quintal existente
-            quintal_codigo_unico = quintalSeleccionado.codigo_unico;
-            console.log('🔄 Reabastecer quintal:', quintal_codigo_unico);
-        } else {
-            // Crear nuevo quintal
-            es_nuevo_quintal = true;
-            peso_inicial_quintal = parseFloat(document.getElementById('input_peso_inicial').value);
-            
-            if (!peso_inicial_quintal || peso_inicial_quintal <= 0) {
-                mostrarNotificacion('⚠️ Error: Debes ingresar el peso inicial del quintal', 'error');
+            if (costoUnitario <= 0) {
+                precioInput.value = '';
                 return;
             }
-            console.log('🆕 Crear nuevo quintal con peso inicial:', peso_inicial_quintal);
+
+            if (!categoriaId) {
+                precioInput.value = '';
+                precioInput.placeholder = '⚠️ Primero selecciona una categoría';
+                precioInput.style.background = 'linear-gradient(135deg, #fee2e2, #fecaca)';
+                precioInput.style.borderColor = '#ef4444';
+                return;
+            }
+
+            const categoria = categoriasData[categoriaId] || categoriasData[String(categoriaId)];
+
+            if (!categoria) {
+                console.error('❌ Categoría no encontrada:', categoriaId);
+                return;
+            }
+
+            const margenGanancia = parseFloat(categoria.margen_ganancia) || 0;
+            const ganancia = costoUnitario * (margenGanancia / 100);
+            const precioVenta = costoUnitario + ganancia;
+
+            precioInput.style.background = 'linear-gradient(135deg, #d1fae5, #a7f3d0)';
+            precioInput.style.borderColor = '#10b981';
+            precioInput.value = precioVenta.toFixed(2);
+
+            actualizarInfoCalculo(costoUnitario, margenGanancia, ganancia, precioVenta);
+        } catch (error) {
+            console.error('❌ Error en calcularPrecioVenta:', error);
         }
     }
 
-    if (precio <= costo) {
-        mostrarNotificacion('⚠️ Error: El precio de venta debe ser mayor al costo.', 'error');
-        calcularPrecioVenta();
-        return;
+    function calcularPrecioVentaEditar() {
+        try {
+            const categoriaId = document.getElementById('edit_categoria').value;
+            const costoInput = document.getElementById('edit_costo');
+            const precioInput = document.getElementById('edit_precio');
+            const costoUnitario = parseFloat(costoInput.value) || 0;
+
+            if (costoUnitario <= 0) {
+                precioInput.value = '';
+                return;
+            }
+
+            if (!categoriaId) {
+                precioInput.value = '';
+                precioInput.placeholder = '⚠️ Primero selecciona una categoría';
+                precioInput.style.background = 'linear-gradient(135deg, #fee2e2, #fecaca)';
+                precioInput.style.borderColor = '#ef4444';
+                return;
+            }
+
+            const categoria = categoriasData[categoriaId] || categoriasData[String(categoriaId)];
+
+            if (!categoria) {
+                console.error('Categoría no encontrada:', categoriaId);
+                return;
+            }
+
+            const margenGanancia = parseFloat(categoria.margen_ganancia) || 0;
+            const ganancia = costoUnitario * (margenGanancia / 100);
+            const precioVenta = costoUnitario + ganancia;
+
+            precioInput.style.background = 'linear-gradient(135deg, #d1fae5, #a7f3d0)';
+            precioInput.style.borderColor = '#10b981';
+            precioInput.value = precioVenta.toFixed(2);
+
+            actualizarInfoCalculoEditar(costoUnitario, margenGanancia, ganancia, precioVenta);
+        } catch (error) {
+            console.error('Error en calcularPrecioVentaEditar:', error);
+        }
     }
 
-    if (cantidad < 1) {
-        mostrarNotificacion('La cantidad debe ser mayor a 0', 'error');
-        return;
+    function actualizarInfoCalculo(costo, margen, ganancia, precioFinal) {
+        try {
+            let infoDiv = document.getElementById('info-calculo-precio');
+            if (!infoDiv) {
+                infoDiv = document.createElement('div');
+                infoDiv.id = 'info-calculo-precio';
+                infoDiv.style.cssText = 'margin-top: 0.5rem; background: #dcfce7; border: 2px solid #10b981; border-radius: 8px; padding: 0.75rem; animation: fadeIn 0.3s ease;';
+                document.getElementById('input_precio').parentElement.appendChild(infoDiv);
+            }
+
+            infoDiv.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.5rem; color: #065f46; font-weight: 700; font-size: 0.9rem;">
+                <span>✅</span>
+                <span>$${costo.toFixed(2)} + ${margen}% ($${ganancia.toFixed(2)}) = <strong style="color: #059669; font-size: 1.1rem;">$${precioFinal.toFixed(2)}</strong></span>
+            </div>
+        `;
+        } catch (error) {
+            console.error('Error en actualizarInfoCalculo:', error);
+        }
     }
 
-    const producto = {
-        id: ++contadorProductos,
-        nombre, marca_id, marca_nombre, categoria_id, categoria_nombre,
-        proveedor_id, proveedor_nombre, tipo_inventario, unidad_medida, unidad_medida_texto,
-        cantidad, cantidad_codigos: cantidad,
-        costo_unitario: costo, precio_venta: precio,
-        lote, fecha_vencimiento, descripcion,
-        aplica_impuestos: aplica_iva, // ✅ Guardar checkbox
-        quintal_codigo_unico: quintal_codigo_unico,
-        es_nuevo_quintal: es_nuevo_quintal,
-        peso_inicial_quintal: peso_inicial_quintal,
-        imagen_file: imagenFile,
-        imagen_preview: imagenPreview,
-        subtotal: cantidad * costo
-    };
+    function actualizarInfoCalculoEditar(costo, margen, ganancia, precioFinal) {
+        try {
+            let infoDiv = document.getElementById('info-calculo-precio-editar');
+            if (!infoDiv) {
+                infoDiv = document.createElement('div');
+                infoDiv.id = 'info-calculo-precio-editar';
+                infoDiv.style.cssText = 'margin-top: 0.5rem; background: #dcfce7; border: 2px solid #10b981; border-radius: 8px; padding: 0.75rem; animation: fadeIn 0.3s ease;';
+                document.getElementById('edit_precio').parentElement.appendChild(infoDiv);
+            }
 
-    console.log('✅ Producto agregado:', producto);
-    productos.push(producto);
-    actualizarContador();
-    limpiarFormulario();
-    mostrarNotificacion(`✅ "${nombre}" agregado correctamente`, 'success');
-    
-    document.getElementById('btn-ver-lista').style.display = 'flex';
-    setTimeout(() => abrirModalProductos(), 500);
-}
-
-// ========================================
-// ACTUALIZAR CONTADOR
-// ========================================
-function actualizarContador() {
-    document.getElementById('contador-productos').textContent = productos.length;
-}
-
-// ========================================
-// LIMPIAR FORMULARIO
-// ========================================
-function limpiarFormulario() {
-    document.getElementById('form-producto').reset();
-    document.getElementById('preview-imagen-container').classList.remove('show');
-    document.getElementById('campo-peso-inicial').style.display = 'none';
-    document.getElementById('input_peso_inicial').removeAttribute('required');
-    document.getElementById('input_nombre').focus();
-    document.getElementById('input_nombre').disabled = false;
-    quintalSeleccionado = null;
-    mostrarInfoIVA(); // ✅ Actualizar info de IVA
-}
-
-// ========================================
-// MODAL DE PRODUCTOS
-// ========================================
-function abrirModalProductos() {
-    if (productos.length === 0) {
-        mostrarNotificacion('No hay productos agregados', 'error');
-        return;
-    }
-    
-    renderizarProductos();
-    document.getElementById('modal-productos').classList.add('show');
-}
-
-function cerrarModalProductos() {
-    document.getElementById('modal-productos').classList.remove('show');
-}
-
-// ========================================
-// RENDERIZAR PRODUCTOS - ✅ BADGE IVA ACTUALIZADO
-// ========================================
-function renderizarProductos() {
-    const lista = document.getElementById('productos-lista');
-    lista.innerHTML = '';
-
-    if (productos.length === 0) {
-        document.getElementById('productos-vacio').style.display = 'block';
-        document.getElementById('productos-tabla-container').style.display = 'none';
-        return;
+            infoDiv.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.5rem; color: #065f46; font-weight: 700; font-size: 0.9rem;">
+                <span>✅</span>
+                <span>$${costo.toFixed(2)} + ${margen}% ($${ganancia.toFixed(2)}) = <strong style="color: #059669; font-size: 1.1rem;">$${precioFinal.toFixed(2)}</strong></span>
+            </div>
+        `;
+        } catch (error) {
+            console.error('Error en actualizarInfoCalculoEditar:', error);
+        }
     }
 
-    document.getElementById('productos-vacio').style.display = 'none';
-    document.getElementById('productos-tabla-container').style.display = 'block';
+    // ========================================
+    // PREVISUALIZAR IMAGEN
+    // ========================================
+    function previsualizarImagen(input) {
+        const preview = document.getElementById('preview-imagen');
+        const container = document.getElementById('preview-imagen-container');
 
-    let totalInversion = 0;
-    let totalCodigos = 0;
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                preview.src = e.target.result;
+                container.classList.add('show');
+            }
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            container.classList.remove('show');
+        }
+    }
 
-    productos.forEach((producto, index) => {
-        const tr = document.createElement('tr');
-        
-        const imagenHTML = producto.imagen_preview 
-            ? `<img src="${producto.imagen_preview}" class="product-image-small" alt="${producto.nombre}">`
-            : `<div style="width: 60px; height: 60px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 1.5rem;">📦</div>`;
-        
-        // ✅ Badge de IVA actualizado para checkbox
-        const ivaBadge = producto.aplica_iva 
-            ? `<span class="badge-custom" style="background: #dbeafe; color: #1e40af; margin-left: 0.5rem;">✓ Con IVA</span>`
-            : `<span class="badge-custom" style="background: #fee2e2; color: #dc2626; margin-left: 0.5rem;">✗ Sin IVA</span>`;
-        
-        // Badge para tipo de quintal
-        let quintalBadge = '';
-        if (producto.tipo_inventario === 'QUINTAL') {
-            if (producto.es_nuevo_quintal) {
-                quintalBadge = `<span class="badge-custom" style="background: #d1fae5; color: #065f46; margin-left: 0.5rem;">🆕 Nuevo (${producto.peso_inicial_quintal} ${producto.unidad_medida_texto})</span>`;
-            } else if (producto.quintal_codigo_unico) {
-                quintalBadge = `<span class="badge-custom" style="background: #fef3c7; color: #92400e; margin-left: 0.5rem;">🔄 ${producto.quintal_codigo_unico}</span>`;
+    function previsualizarImagenEditar(input) {
+        const preview = document.getElementById('edit-preview');
+        const container = document.getElementById('edit-preview-container');
+
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                preview.src = e.target.result;
+                container.classList.add('show');
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // ========================================
+    // AGREGAR PRODUCTO - ✅ IVA CON CHECKBOX
+    // ========================================
+    function agregarProducto() {
+        console.log('📝 Iniciando agregar producto...');
+
+        const form = document.getElementById('form-producto');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const nombre = document.getElementById('input_nombre').value.trim();
+        const marca_id = document.getElementById('input_marca').value;
+        const marca_nombre = document.getElementById('input_marca').selectedOptions[0].text;
+        const categoria_id = document.getElementById('input_categoria').value;
+        const categoria_nombre = document.getElementById('input_categoria').selectedOptions[0].text;
+        const proveedor_id = document.getElementById('input_proveedor').value;
+        const proveedor_nombre = document.getElementById('input_proveedor').selectedOptions[0].text;
+        const tipo_inventario = document.getElementById('input_tipo_inventario').value;
+
+        // Obtener unidad de medida según el tipo
+        let unidad_medida = '';
+        let unidad_medida_texto = '';
+
+        if (tipo_inventario === 'QUINTAL') {
+            const selectUnidad = document.getElementById('input_unidad');
+            console.log('🔍 Tipo inventario:', tipo_inventario);
+            console.log('🔍 Select unidad:', document.getElementById('input_unidad'));
+            console.log('🔍 Valor selectUnidad.value:', selectUnidad ? selectUnidad.value : 'null');
+            if (selectUnidad && selectUnidad.value) {
+                unidad_medida = selectUnidad.value;
+                unidad_medida_texto = selectUnidad.selectedOptions[0].text;
+            } else {
+                mostrarNotificacion('⚠️ Error: Debes seleccionar la unidad de medida', 'error');
+                return;
+            }
+        } else {
+            unidad_medida = document.getElementById('input_unidad').value;
+            unidad_medida_texto = document.getElementById('input_unidad').selectedOptions[0].text;
+        }
+
+        console.log('📏 Unidad de medida:', unidad_medida, unidad_medida_texto);
+        const cantidad = parseInt(document.getElementById('input_cantidad').value);
+        const costo = parseFloat(document.getElementById('input_costo').value);
+        const precio = parseFloat(document.getElementById('input_precio').value);
+        const lote = document.getElementById('input_lote').value.trim();
+        const fecha_vencimiento = document.getElementById('input_fecha_vencimiento').value;
+        const descripcion = document.getElementById('input_descripcion').value.trim();
+
+        // ✅ IVA ahora es checkbox
+        const valorIva = parseFloat(document.getElementById('input_iva').value);
+        const aplica_iva = valorIva > 0;
+
+        const inputImagen = document.getElementById('input_imagen');
+        const imagenFile = inputImagen.files[0];
+        const imagenPreview = document.getElementById('preview-imagen').src;
+
+        // ✅ DATOS DE QUINTAL
+        let quintal_codigo_unico = null;
+        let es_nuevo_quintal = false;
+        let peso_inicial_quintal = null;
+
+        if (tipo_inventario === 'QUINTAL') {
+            if (quintalSeleccionado) {
+                // Reabastecer quintal existente
+                quintal_codigo_unico = quintalSeleccionado.codigo_unico;
+                console.log('🔄 Reabastecer quintal:', quintal_codigo_unico);
+            } else {
+                // Crear nuevo quintal
+                es_nuevo_quintal = true;
+                peso_inicial_quintal = parseFloat(document.getElementById('input_peso_inicial').value);
+
+                if (!peso_inicial_quintal || peso_inicial_quintal <= 0) {
+                    mostrarNotificacion('⚠️ Error: Debes ingresar el peso inicial del quintal', 'error');
+                    return;
+                }
+                console.log('🆕 Crear nuevo quintal con peso inicial:', peso_inicial_quintal);
             }
         }
-        
-        tr.innerHTML = `
+
+        if (precio <= costo) {
+            mostrarNotificacion('⚠️ Error: El precio de venta debe ser mayor al costo.', 'error');
+            calcularPrecioVenta();
+            return;
+        }
+
+        if (cantidad < 1) {
+            mostrarNotificacion('La cantidad debe ser mayor a 0', 'error');
+            return;
+        }
+
+        const producto = {
+            id: ++contadorProductos,
+            nombre, marca_id, marca_nombre, categoria_id, categoria_nombre,
+            proveedor_id, proveedor_nombre, tipo_inventario, unidad_medida, unidad_medida_texto,
+            cantidad, cantidad_codigos: cantidad,
+            costo_unitario: costo, precio_venta: precio,
+            lote, fecha_vencimiento, descripcion,
+            aplica_impuestos: aplica_iva, // ✅ Guardar checkbox
+            quintal_codigo_unico: quintal_codigo_unico,
+            es_nuevo_quintal: es_nuevo_quintal,
+            peso_inicial_quintal: peso_inicial_quintal,
+            imagen_file: imagenFile,
+            imagen_preview: imagenPreview,
+            subtotal: cantidad * costo
+        };
+
+        console.log('✅ Producto agregado:', producto);
+        productos.push(producto);
+        actualizarContador();
+        limpiarFormulario();
+        mostrarNotificacion(`✅ "${nombre}" agregado correctamente`, 'success');
+
+        document.getElementById('btn-ver-lista').style.display = 'flex';
+        setTimeout(() => abrirModalProductos(), 500);
+    }
+
+    // ========================================
+    // ACTUALIZAR CONTADOR
+    // ========================================
+    function actualizarContador() {
+        document.getElementById('contador-productos').textContent = productos.length;
+    }
+
+    // ========================================
+    // LIMPIAR FORMULARIO
+    // ========================================
+    function limpiarFormulario() {
+        document.getElementById('form-producto').reset();
+        document.getElementById('preview-imagen-container').classList.remove('show');
+        document.getElementById('campo-peso-inicial').style.display = 'none';
+        document.getElementById('input_peso_inicial').removeAttribute('required');
+        document.getElementById('input_nombre').focus();
+        document.getElementById('input_nombre').disabled = false;
+        quintalSeleccionado = null;
+        mostrarInfoIVA(); // ✅ Actualizar info de IVA
+    }
+
+    // ========================================
+    // MODAL DE PRODUCTOS
+    // ========================================
+    function abrirModalProductos() {
+        if (productos.length === 0) {
+            mostrarNotificacion('No hay productos agregados', 'error');
+            return;
+        }
+
+        renderizarProductos();
+        document.getElementById('modal-productos').classList.add('show');
+    }
+
+    function cerrarModalProductos() {
+        document.getElementById('modal-productos').classList.remove('show');
+    }
+
+    // ========================================
+    // RENDERIZAR PRODUCTOS - ✅ BADGE IVA ACTUALIZADO
+    // ========================================
+    function renderizarProductos() {
+        const lista = document.getElementById('productos-lista');
+        lista.innerHTML = '';
+
+        if (productos.length === 0) {
+            document.getElementById('productos-vacio').style.display = 'block';
+            document.getElementById('productos-tabla-container').style.display = 'none';
+            return;
+        }
+
+        document.getElementById('productos-vacio').style.display = 'none';
+        document.getElementById('productos-tabla-container').style.display = 'block';
+
+        let totalInversion = 0;
+        let totalCodigos = 0;
+
+        productos.forEach((producto, index) => {
+            const tr = document.createElement('tr');
+
+            const imagenHTML = producto.imagen_preview
+                ? `<img src="${producto.imagen_preview}" class="product-image-small" alt="${producto.nombre}">`
+                : `<div style="width: 60px; height: 60px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 1.5rem;">📦</div>`;
+
+            // ✅ Badge de IVA actualizado para checkbox
+            const ivaBadge = producto.aplica_iva
+                ? `<span class="badge-custom" style="background: #dbeafe; color: #1e40af; margin-left: 0.5rem;">✓ Con IVA</span>`
+                : `<span class="badge-custom" style="background: #fee2e2; color: #dc2626; margin-left: 0.5rem;">✗ Sin IVA</span>`;
+
+            // Badge para tipo de quintal
+            let quintalBadge = '';
+            if (producto.tipo_inventario === 'QUINTAL') {
+                if (producto.es_nuevo_quintal) {
+                    quintalBadge = `<span class="badge-custom" style="background: #d1fae5; color: #065f46; margin-left: 0.5rem;">🆕 Nuevo (${producto.peso_inicial_quintal} ${producto.unidad_medida_texto})</span>`;
+                } else if (producto.quintal_codigo_unico) {
+                    quintalBadge = `<span class="badge-custom" style="background: #fef3c7; color: #92400e; margin-left: 0.5rem;">🔄 ${producto.quintal_codigo_unico}</span>`;
+                }
+            }
+
+            tr.innerHTML = `
             <td><strong>${index + 1}</strong></td>
             <td>${imagenHTML}</td>
             <td>
@@ -2630,278 +2640,278 @@ function renderizarProductos() {
                 </button>
             </td>
         `;
-        lista.appendChild(tr);
-        
-        totalInversion += producto.subtotal;
-        totalCodigos += producto.cantidad_codigos;
-    });
+            lista.appendChild(tr);
 
-    document.getElementById('total-inversion').textContent = `$${totalInversion.toFixed(2)}`;
-    document.getElementById('total-codigos').textContent = totalCodigos;
-}
-
-// ========================================
-// ACTUALIZAR CÓDIGOS
-// ========================================
-function actualizarCodigos(id, cantidad) {
-    const producto = productos.find(p => p.id === id);
-    if (producto) {
-        const nuevaCantidad = parseInt(cantidad) || 1;
-        if (nuevaCantidad < 1) {
-            mostrarNotificacion('La cantidad de códigos debe ser al menos 1', 'error');
-            renderizarProductos();
-            return;
-        }
-        producto.cantidad_codigos = nuevaCantidad;
-        renderizarProductos();
-    }
-}
-
-// ========================================
-// EDITAR PRODUCTO - ✅ CARGAR CHECKBOX
-// ========================================
-function editarProducto(id) {
-    const producto = productos.find(p => p.id === id);
-    if (!producto) return;
-
-    document.getElementById('edit_producto_id').value = producto.id;
-    document.getElementById('edit_nombre').value = producto.nombre;
-    document.getElementById('edit_marca').value = producto.marca_id;
-    document.getElementById('edit_categoria').value = producto.categoria_id;
-    document.getElementById('edit_proveedor').value = producto.proveedor_id;
-    document.getElementById('edit_tipo_inventario').value = producto.tipo_inventario || 'NORMAL';
-    document.getElementById('edit_unidad').value = producto.unidad_medida;
-    document.getElementById('edit_cantidad').value = producto.cantidad;
-    document.getElementById('edit_costo').value = producto.costo_unitario;
-    document.getElementById('edit_precio').value = producto.precio_venta;
-    document.getElementById('edit_lote').value = producto.lote;
-    document.getElementById('edit_fecha_vencimiento').value = producto.fecha_vencimiento;
-    document.getElementById('edit_descripcion').value = producto.descripcion;
-    
-    // ✅ Cargar checkbox en lugar de value
-    const selectIvaEdit = document.getElementById('edit_iva');
-    if (producto.aplica_impuestos) {
-        selectIvaEdit.value = "{{ iva_default }}";
-    } else {
-        selectIvaEdit.value = "0";
-    }
-    
-    if (producto.imagen_preview) {
-        document.getElementById('edit-preview').src = producto.imagen_preview;
-        document.getElementById('edit-preview-container').classList.add('show');
-    }
-
-    document.getElementById('modal-editar').classList.add('show');
-    setTimeout(() => calcularPrecioVentaEditar(), 100);
-}
-
-function cerrarModalEditar() {
-    document.getElementById('modal-editar').classList.remove('show');
-    document.getElementById('form-editar').reset();
-    document.getElementById('edit-preview-container').classList.remove('show');
-}
-
-// ========================================
-// GUARDAR EDICIÓN - ✅ GUARDAR CHECKBOX
-// ========================================
-function guardarEdicion() {
-    const id = parseInt(document.getElementById('edit_producto_id').value);
-    const producto = productos.find(p => p.id === id);
-    if (!producto) return;
-
-    const precio = parseFloat(document.getElementById('edit_precio').value);
-    const costo = parseFloat(document.getElementById('edit_costo').value);
-    
-    if (precio <= costo) {
-        mostrarNotificacion('⚠️ Error: El precio de venta debe ser mayor al costo.', 'error');
-        calcularPrecioVentaEditar();
-        return;
-    }
-
-    producto.nombre = document.getElementById('edit_nombre').value.trim();
-    producto.marca_id = document.getElementById('edit_marca').value;
-    producto.marca_nombre = document.getElementById('edit_marca').selectedOptions[0].text;
-    producto.categoria_id = document.getElementById('edit_categoria').value;
-    producto.categoria_nombre = document.getElementById('edit_categoria').selectedOptions[0].text;
-    producto.proveedor_id = document.getElementById('edit_proveedor').value;
-    producto.proveedor_nombre = document.getElementById('edit_proveedor').selectedOptions[0].text;
-    producto.tipo_inventario = document.getElementById('edit_tipo_inventario').value;
-    producto.unidad_medida = document.getElementById('edit_unidad').value;
-    producto.unidad_medida_texto = document.getElementById('edit_unidad').selectedOptions[0].text;
-    producto.cantidad = parseInt(document.getElementById('edit_cantidad').value);
-    producto.costo_unitario = costo;
-    producto.precio_venta = precio;
-    producto.lote = document.getElementById('edit_lote').value.trim();
-    producto.fecha_vencimiento = document.getElementById('edit_fecha_vencimiento').value;
-    producto.descripcion = document.getElementById('edit_descripcion').value.trim();
-    
-    // ✅ Guardar checkbox
-    const valorIvaEdit = parseFloat(document.getElementById('edit_iva').value);
-    producto.aplica_impuestos = valorIvaEdit > 0;
-    
-    producto.subtotal = producto.cantidad * costo;
-
-    const inputImagen = document.getElementById('edit_imagen');
-    if (inputImagen.files[0]) {
-        producto.imagen_file = inputImagen.files[0];
-        producto.imagen_preview = document.getElementById('edit-preview').src;
-    }
-
-    renderizarProductos();
-    cerrarModalEditar();
-    mostrarNotificacion('✅ Producto actualizado correctamente', 'success');
-}
-
-// ========================================
-// ELIMINAR PRODUCTO
-// ========================================
-function eliminarProducto(id) {
-    const producto = productos.find(p => p.id === id);
-    if (confirm(`¿Eliminar "${producto.nombre}"?`)) {
-        productos = productos.filter(p => p.id !== id);
-        actualizarContador();
-        renderizarProductos();
-        mostrarNotificacion('Producto eliminado', 'success');
-        
-        if (productos.length === 0) {
-            cerrarModalProductos();
-            document.getElementById('btn-ver-lista').style.display = 'none';
-        }
-    }
-}
-
-// ========================================
-// LIMPIAR LISTA
-// ========================================
-function limpiarLista() {
-    if (productos.length === 0) return;
-    
-    if (confirm(`¿Limpiar toda la lista?\nSe eliminarán ${productos.length} productos.`)) {
-        productos = [];
-        contadorProductos = 0;
-        actualizarContador();
-        renderizarProductos();
-        cerrarModalProductos();
-        document.getElementById('btn-ver-lista').style.display = 'none';
-        mostrarNotificacion('Lista limpiada', 'success');
-    }
-}
-
-// ========================================
-// PROCESAR INVENTARIO - ✅ ENVIAR CHECKBOX
-// ========================================
-function procesarInventario() {
-    if (productos.length === 0) {
-        mostrarNotificacion('No hay productos para procesar', 'error');
-        return;
-    }
-
-    const totalProductos = productos.length;
-    const totalUnidades = productos.reduce((sum, p) => sum + p.cantidad, 0);
-    const totalCodigos = productos.reduce((sum, p) => sum + p.cantidad_codigos, 0);
-    const totalInversion = productos.reduce((sum, p) => sum + p.subtotal, 0);
-
-    document.getElementById('confirm-productos').textContent = totalProductos;
-    document.getElementById('confirm-unidades').textContent = totalUnidades;
-    document.getElementById('confirm-codigos').textContent = totalCodigos;
-    document.getElementById('confirm-inversion').textContent = `$${totalInversion.toFixed(2)}`;
-
-    document.getElementById('modal-confirmacion').classList.add('show');
-}
-
-function cerrarModalConfirmacion() {
-    document.getElementById('modal-confirmacion').classList.remove('show');
-}
-
-async function confirmarProcesamiento() {
-    console.log('🚀 Iniciando procesamiento de inventario...');
-    cerrarModalConfirmacion();
-    cerrarModalProductos();
-
-    const formData = new FormData();
-    
-    const productosData = productos.map(p => ({
-        nombre: p.nombre, 
-        marca_id: p.marca_id, 
-        categoria_id: p.categoria_id,
-        proveedor_id: p.proveedor_id, 
-        tipo_inventario: p.tipo_inventario,
-        unidad_medida: p.unidad_medida,
-        cantidad: p.cantidad, 
-        cantidad_codigos: p.cantidad_codigos,
-        costo_unitario: p.costo_unitario, 
-        precio_venta: p.precio_venta,
-        lote: p.lote, 
-        fecha_vencimiento: p.fecha_vencimiento,
-        descripcion: p.descripcion, 
-        tiene_imagen: p.imagen_file ? true : false,
-        aplica_impuestos: p.aplica_impuestos, // ✅ Enviar checkbox
-        quintal_codigo_unico: p.quintal_codigo_unico,
-        es_nuevo_quintal: p.es_nuevo_quintal,
-        peso_inicial_quintal: p.peso_inicial_quintal
-    }));
-    
-    console.log('📦 Datos a enviar:', productosData);
-    
-    formData.append('productos', JSON.stringify(productosData));
-    productos.forEach((producto, index) => {
-        if (producto.imagen_file) {
-            formData.append(`imagen_${index}`, producto.imagen_file);
-        }
-    });
-
-    try {
-        mostrarNotificacion('⏳ Procesando inventario...', 'success');
-
-        const response = await fetch('/panel/api/inventario/procesar-entrada-unificada/', {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCookie('csrftoken') },
-            body: formData
+            totalInversion += producto.subtotal;
+            totalCodigos += producto.cantidad_codigos;
         });
 
-        const result = await response.json();
-        console.log('📩 Respuesta del servidor:', result);
+        document.getElementById('total-inversion').textContent = `$${totalInversion.toFixed(2)}`;
+        document.getElementById('total-codigos').textContent = totalCodigos;
+    }
 
-        if (result.success) {
-            mostrarModalCodigosGenerados(result.codigos_generados);
-            
+    // ========================================
+    // ACTUALIZAR CÓDIGOS
+    // ========================================
+    function actualizarCodigos(id, cantidad) {
+        const producto = productos.find(p => p.id === id);
+        if (producto) {
+            const nuevaCantidad = parseInt(cantidad) || 1;
+            if (nuevaCantidad < 1) {
+                mostrarNotificacion('La cantidad de códigos debe ser al menos 1', 'error');
+                renderizarProductos();
+                return;
+            }
+            producto.cantidad_codigos = nuevaCantidad;
+            renderizarProductos();
+        }
+    }
+
+    // ========================================
+    // EDITAR PRODUCTO - ✅ CARGAR CHECKBOX
+    // ========================================
+    function editarProducto(id) {
+        const producto = productos.find(p => p.id === id);
+        if (!producto) return;
+
+        document.getElementById('edit_producto_id').value = producto.id;
+        document.getElementById('edit_nombre').value = producto.nombre;
+        document.getElementById('edit_marca').value = producto.marca_id;
+        document.getElementById('edit_categoria').value = producto.categoria_id;
+        document.getElementById('edit_proveedor').value = producto.proveedor_id;
+        document.getElementById('edit_tipo_inventario').value = producto.tipo_inventario || 'NORMAL';
+        document.getElementById('edit_unidad').value = producto.unidad_medida;
+        document.getElementById('edit_cantidad').value = producto.cantidad;
+        document.getElementById('edit_costo').value = producto.costo_unitario;
+        document.getElementById('edit_precio').value = producto.precio_venta;
+        document.getElementById('edit_lote').value = producto.lote;
+        document.getElementById('edit_fecha_vencimiento').value = producto.fecha_vencimiento;
+        document.getElementById('edit_descripcion').value = producto.descripcion;
+
+        // ✅ Cargar checkbox en lugar de value
+        const selectIvaEdit = document.getElementById('edit_iva');
+        if (producto.aplica_impuestos) {
+            selectIvaEdit.value = "{{ iva_default }}";
+        } else {
+            selectIvaEdit.value = "0";
+        }
+
+        if (producto.imagen_preview) {
+            document.getElementById('edit-preview').src = producto.imagen_preview;
+            document.getElementById('edit-preview-container').classList.add('show');
+        }
+
+        document.getElementById('modal-editar').classList.add('show');
+        setTimeout(() => calcularPrecioVentaEditar(), 100);
+    }
+
+    function cerrarModalEditar() {
+        document.getElementById('modal-editar').classList.remove('show');
+        document.getElementById('form-editar').reset();
+        document.getElementById('edit-preview-container').classList.remove('show');
+    }
+
+    // ========================================
+    // GUARDAR EDICIÓN - ✅ GUARDAR CHECKBOX
+    // ========================================
+    function guardarEdicion() {
+        const id = parseInt(document.getElementById('edit_producto_id').value);
+        const producto = productos.find(p => p.id === id);
+        if (!producto) return;
+
+        const precio = parseFloat(document.getElementById('edit_precio').value);
+        const costo = parseFloat(document.getElementById('edit_costo').value);
+
+        if (precio <= costo) {
+            mostrarNotificacion('⚠️ Error: El precio de venta debe ser mayor al costo.', 'error');
+            calcularPrecioVentaEditar();
+            return;
+        }
+
+        producto.nombre = document.getElementById('edit_nombre').value.trim();
+        producto.marca_id = document.getElementById('edit_marca').value;
+        producto.marca_nombre = document.getElementById('edit_marca').selectedOptions[0].text;
+        producto.categoria_id = document.getElementById('edit_categoria').value;
+        producto.categoria_nombre = document.getElementById('edit_categoria').selectedOptions[0].text;
+        producto.proveedor_id = document.getElementById('edit_proveedor').value;
+        producto.proveedor_nombre = document.getElementById('edit_proveedor').selectedOptions[0].text;
+        producto.tipo_inventario = document.getElementById('edit_tipo_inventario').value;
+        producto.unidad_medida = document.getElementById('edit_unidad').value;
+        producto.unidad_medida_texto = document.getElementById('edit_unidad').selectedOptions[0].text;
+        producto.cantidad = parseInt(document.getElementById('edit_cantidad').value);
+        producto.costo_unitario = costo;
+        producto.precio_venta = precio;
+        producto.lote = document.getElementById('edit_lote').value.trim();
+        producto.fecha_vencimiento = document.getElementById('edit_fecha_vencimiento').value;
+        producto.descripcion = document.getElementById('edit_descripcion').value.trim();
+
+        // ✅ Guardar checkbox
+        const valorIvaEdit = parseFloat(document.getElementById('edit_iva').value);
+        producto.aplica_impuestos = valorIvaEdit > 0;
+
+        producto.subtotal = producto.cantidad * costo;
+
+        const inputImagen = document.getElementById('edit_imagen');
+        if (inputImagen.files[0]) {
+            producto.imagen_file = inputImagen.files[0];
+            producto.imagen_preview = document.getElementById('edit-preview').src;
+        }
+
+        renderizarProductos();
+        cerrarModalEditar();
+        mostrarNotificacion('✅ Producto actualizado correctamente', 'success');
+    }
+
+    // ========================================
+    // ELIMINAR PRODUCTO
+    // ========================================
+    function eliminarProducto(id) {
+        const producto = productos.find(p => p.id === id);
+        if (confirm(`¿Eliminar "${producto.nombre}"?`)) {
+            productos = productos.filter(p => p.id !== id);
+            actualizarContador();
+            renderizarProductos();
+            mostrarNotificacion('Producto eliminado', 'success');
+
+            if (productos.length === 0) {
+                cerrarModalProductos();
+                document.getElementById('btn-ver-lista').style.display = 'none';
+            }
+        }
+    }
+
+    // ========================================
+    // LIMPIAR LISTA
+    // ========================================
+    function limpiarLista() {
+        if (productos.length === 0) return;
+
+        if (confirm(`¿Limpiar toda la lista?\nSe eliminarán ${productos.length} productos.`)) {
             productos = [];
             contadorProductos = 0;
             actualizarContador();
+            renderizarProductos();
+            cerrarModalProductos();
             document.getElementById('btn-ver-lista').style.display = 'none';
-            
-            mostrarNotificacion(`✅ ${result.productos_creados} productos procesados exitosamente`, 'success');
-        } else {
-            console.error('❌ Error del servidor:', result.error);
-            mostrarNotificacion(result.error || 'Error al procesar', 'error');
+            mostrarNotificacion('Lista limpiada', 'success');
         }
-    } catch (error) {
-        console.error('❌ Error de conexión:', error);
-        mostrarNotificacion('Error de conexión: ' + error.message, 'error');
     }
-}
 
-// ========================================
-// MODAL DE CÓDIGOS GENERADOS
-// ========================================
-function mostrarModalCodigosGenerados(codigos) {
-    const lista = document.getElementById('lista-codigos-generados');
-    lista.innerHTML = '';
-
-    console.log('📦 Códigos recibidos:', codigos);
-    
-    codigos.forEach((codigo, index) => {
-        console.log(`Código ${index}:`, codigo);
-        
-        const productoId = codigo.producto_id || codigo.id || codigo.producto || null;
-        
-        if (!productoId) {
-            console.error('⚠️ No se pudo obtener el ID del producto:', codigo);
+    // ========================================
+    // PROCESAR INVENTARIO - ✅ ENVIAR CHECKBOX
+    // ========================================
+    function procesarInventario() {
+        if (productos.length === 0) {
+            mostrarNotificacion('No hay productos para procesar', 'error');
+            return;
         }
-        
-        const item = document.createElement('div');
-        item.style.cssText = 'background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem;';
-        item.innerHTML = `
+
+        const totalProductos = productos.length;
+        const totalUnidades = productos.reduce((sum, p) => sum + p.cantidad, 0);
+        const totalCodigos = productos.reduce((sum, p) => sum + p.cantidad_codigos, 0);
+        const totalInversion = productos.reduce((sum, p) => sum + p.subtotal, 0);
+
+        document.getElementById('confirm-productos').textContent = totalProductos;
+        document.getElementById('confirm-unidades').textContent = totalUnidades;
+        document.getElementById('confirm-codigos').textContent = totalCodigos;
+        document.getElementById('confirm-inversion').textContent = `$${totalInversion.toFixed(2)}`;
+
+        document.getElementById('modal-confirmacion').classList.add('show');
+    }
+
+    function cerrarModalConfirmacion() {
+        document.getElementById('modal-confirmacion').classList.remove('show');
+    }
+
+    async function confirmarProcesamiento() {
+        console.log('🚀 Iniciando procesamiento de inventario...');
+        cerrarModalConfirmacion();
+        cerrarModalProductos();
+
+        const formData = new FormData();
+
+        const productosData = productos.map(p => ({
+            nombre: p.nombre,
+            marca_id: p.marca_id,
+            categoria_id: p.categoria_id,
+            proveedor_id: p.proveedor_id,
+            tipo_inventario: p.tipo_inventario,
+            unidad_medida: p.unidad_medida,
+            cantidad: p.cantidad,
+            cantidad_codigos: p.cantidad_codigos,
+            costo_unitario: p.costo_unitario,
+            precio_venta: p.precio_venta,
+            lote: p.lote,
+            fecha_vencimiento: p.fecha_vencimiento,
+            descripcion: p.descripcion,
+            tiene_imagen: p.imagen_file ? true : false,
+            aplica_impuestos: p.aplica_impuestos, // ✅ Enviar checkbox
+            quintal_codigo_unico: p.quintal_codigo_unico,
+            es_nuevo_quintal: p.es_nuevo_quintal,
+            peso_inicial_quintal: p.peso_inicial_quintal
+        }));
+
+        console.log('📦 Datos a enviar:', productosData);
+
+        formData.append('productos', JSON.stringify(productosData));
+        productos.forEach((producto, index) => {
+            if (producto.imagen_file) {
+                formData.append(`imagen_${index}`, producto.imagen_file);
+            }
+        });
+
+        try {
+            mostrarNotificacion('⏳ Procesando inventario...', 'success');
+
+            const response = await fetch('/panel/api/inventario/procesar-entrada-unificada/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                body: formData
+            });
+
+            const result = await response.json();
+            console.log('📩 Respuesta del servidor:', result);
+
+            if (result.success) {
+                mostrarModalCodigosGenerados(result.codigos_generados);
+
+                productos = [];
+                contadorProductos = 0;
+                actualizarContador();
+                document.getElementById('btn-ver-lista').style.display = 'none';
+
+                mostrarNotificacion(`✅ ${result.productos_creados} productos procesados exitosamente`, 'success');
+            } else {
+                console.error('❌ Error del servidor:', result.error);
+                mostrarNotificacion(result.error || 'Error al procesar', 'error');
+            }
+        } catch (error) {
+            console.error('❌ Error de conexión:', error);
+            mostrarNotificacion('Error de conexión: ' + error.message, 'error');
+        }
+    }
+
+    // ========================================
+    // MODAL DE CÓDIGOS GENERADOS
+    // ========================================
+    function mostrarModalCodigosGenerados(codigos) {
+        const lista = document.getElementById('lista-codigos-generados');
+        lista.innerHTML = '';
+
+        console.log('📦 Códigos recibidos:', codigos);
+
+        codigos.forEach((codigo, index) => {
+            console.log(`Código ${index}:`, codigo);
+
+            const productoId = codigo.producto_id || codigo.id || codigo.producto || null;
+
+            if (!productoId) {
+                console.error('⚠️ No se pudo obtener el ID del producto:', codigo);
+            }
+
+            const item = document.createElement('div');
+            item.style.cssText = 'background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem;';
+            item.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: start;">
                 <div>
                     <h4 style="margin: 0 0 0.5rem 0; color: #1e293b;">${index + 1}. ${codigo.producto_nombre}</h4>
@@ -2942,407 +2952,457 @@ function mostrarModalCodigosGenerados(codigos) {
                 </div>
             </div>
         `;
-        lista.appendChild(item);
-    });
-
-    document.getElementById('modal-codigos').classList.add('show');
-}
-
-async function imprimirCodigoBarras(productoId, cantidadCopias = 1) {
-    console.log('🖨️ Imprimiendo código de barras:', {
-        productoId,
-        cantidadCopias
-    });
-    
-    try {
-        mostrarNotificacion(`⏳ Enviando ${cantidadCopias} etiqueta(s) a la impresora...`, 'success');
-        
-        const csrfToken = getCookie('csrftoken');
-        
-        if (!csrfToken) {
-            throw new Error('Token CSRF no encontrado');
-        }
-        
-        const response = await fetch(`/panel/inventario/productos/${productoId}/imprimir-codigo/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify({
-                copias: cantidadCopias
-            }),
-            credentials: 'same-origin'
+            lista.appendChild(item);
         });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(data.error || 'Error en la solicitud');
-        }
-        
-        if (data.success) {
-            console.log('✅ Impresión enviada correctamente:', data);
-            
+
+        document.getElementById('modal-codigos').classList.add('show');
+    }
+
+    async function imprimirCodigoBarras(productoId, cantidadCopias = 1) {
+        console.log('🖨️ Imprimiendo código de barras:', {
+            productoId,
+            cantidadCopias
+        });
+
+        try {
+            mostrarNotificacion(`⏳ Enviando ${cantidadCopias} etiqueta(s) a la impresora...`, 'success');
+
+            const csrfToken = getCookie('csrftoken');
+
+            if (!csrfToken) {
+                throw new Error('Token CSRF no encontrado');
+            }
+
+            const response = await fetch(`/panel/inventario/productos/${productoId}/imprimir-codigo/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    copias: cantidadCopias
+                }),
+                credentials: 'same-origin'
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Error en la solicitud');
+            }
+
+            if (data.success) {
+                console.log('✅ Impresión enviada correctamente:', data);
+
+                mostrarNotificacion(
+                    `✅ ${cantidadCopias} etiqueta(s) enviada(s) a imprimir en ${data.impresora}`,
+                    'success'
+                );
+
+            } else {
+                throw new Error(data.error || 'Error desconocido');
+            }
+
+        } catch (error) {
+            console.error('❌ Error imprimiendo código de barras:', error);
+
             mostrarNotificacion(
-                `✅ ${cantidadCopias} etiqueta(s) enviada(s) a imprimir en ${data.impresora}`,
-                'success'
+                `❌ Error al imprimir: ${error.message}. Verifica que la impresora esté configurada y el agente esté activo.`,
+                'error'
             );
-            
-        } else {
-            throw new Error(data.error || 'Error desconocido');
         }
-        
-    } catch (error) {
-        console.error('❌ Error imprimiendo código de barras:', error);
-        
-        mostrarNotificacion(
-            `❌ Error al imprimir: ${error.message}. Verifica que la impresora esté configurada y el agente esté activo.`,
-            'error'
-        );
-    }
-}
-
-function cerrarModalCodigos() {
-    document.getElementById('modal-codigos').classList.remove('show');
-}
-
-function descargarTodosPDFs() {
-    imprimirTodosLosCodigos();
-}
-
-async function imprimirTodosLosCodigos() {
-    const items = document.querySelectorAll('#lista-codigos-generados > div');
-    
-    if (items.length === 0) {
-        mostrarNotificacion('No hay códigos para imprimir', 'error');
-        return;
     }
 
-    mostrarNotificacion(`🖨️ Enviando ${items.length} productos a imprimir...`, 'success');
-    
-    let exitosos = 0;
-    let errores = 0;
-    
-    for (let i = 0; i < items.length; i++) {
-        const buttons = items[i].querySelectorAll('button[onclick*="imprimirCodigoBarras"]');
-        if (buttons.length > 0) {
-            try {
-                const onclickAttr = buttons[0].getAttribute('onclick');
-                const match = onclickAttr.match(/imprimirCodigoBarras\('([^']+)',\s*(\d+)\)/);
-                
-                if (match) {
-                    const productoId = match[1];
-                    const cantidad = parseInt(match[2]);
-                    
-                    await imprimirCodigoBarras(productoId, cantidad);
-                    exitosos++;
-                    
-                    await new Promise(resolve => setTimeout(resolve, 500));
+    function cerrarModalCodigos() {
+        document.getElementById('modal-codigos').classList.remove('show');
+    }
+
+    function descargarTodosPDFs() {
+        imprimirTodosLosCodigos();
+    }
+
+    async function imprimirTodosLosCodigos() {
+        const items = document.querySelectorAll('#lista-codigos-generados > div');
+
+        if (items.length === 0) {
+            mostrarNotificacion('No hay códigos para imprimir', 'error');
+            return;
+        }
+
+        mostrarNotificacion(`🖨️ Enviando ${items.length} productos a imprimir...`, 'success');
+
+        let exitosos = 0;
+        let errores = 0;
+
+        for (let i = 0; i < items.length; i++) {
+            const buttons = items[i].querySelectorAll('button[onclick*="imprimirCodigoBarras"]');
+            if (buttons.length > 0) {
+                try {
+                    const onclickAttr = buttons[0].getAttribute('onclick');
+                    const match = onclickAttr.match(/imprimirCodigoBarras\('([^']+)',\s*(\d+)\)/);
+
+                    if (match) {
+                        const productoId = match[1];
+                        const cantidad = parseInt(match[2]);
+
+                        await imprimirCodigoBarras(productoId, cantidad);
+                        exitosos++;
+
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                } catch (error) {
+                    console.error(`Error imprimiendo producto ${i + 1}:`, error);
+                    errores++;
                 }
-            } catch (error) {
-                console.error(`Error imprimiendo producto ${i + 1}:`, error);
-                errores++;
             }
         }
-    }
-    
-    if (errores === 0) {
-        mostrarNotificacion(`✅ ${exitosos} productos enviados a imprimir correctamente`, 'success');
-    } else {
-        mostrarNotificacion(`⚠️ ${exitosos} éxito, ${errores} errores`, 'error');
-    }
-}
 
-// ========================================
-// NOTIFICACIONES
-// ========================================
-function mostrarNotificacion(mensaje, tipo = 'success') {
-    const notification = document.createElement('div');
-    notification.className = `notification ${tipo}`;
-    notification.innerHTML = `
+        if (errores === 0) {
+            mostrarNotificacion(`✅ ${exitosos} productos enviados a imprimir correctamente`, 'success');
+        } else {
+            mostrarNotificacion(`⚠️ ${exitosos} éxito, ${errores} errores`, 'error');
+        }
+    }
+
+    // ========================================
+    // NOTIFICACIONES
+    // ========================================
+    function mostrarNotificacion(mensaje, tipo = 'success') {
+        const notification = document.createElement('div');
+        notification.className = `notification ${tipo}`;
+        notification.innerHTML = `
         <div class="notification-icon">${tipo === 'success' ? '✅' : '⚠️'}</div>
         <div class="notification-content">
             <strong>${tipo === 'success' ? 'Éxito' : 'Error'}</strong>
             <p style="margin: 0; color: #64748b;">${mensaje}</p>
         </div>
     `;
-    
-    document.body.appendChild(notification);
-    setTimeout(() => {
-        notification.style.animation = 'fadeOut 0.3s ease';
-        setTimeout(() => notification.remove(), 300);
-    }, 4000);
-}
 
-// ========================================
-// UTILIDADES
-// ========================================
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
+        document.body.appendChild(notification);
+        setTimeout(() => {
+            notification.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+        }, 4000);
+    }
+
+    // ========================================
+    // UTILIDADES
+    // ========================================
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
             }
         }
+        return cookieValue;
     }
-    return cookieValue;
-}
 
-// ============= FUNCIONES PARA MODALES =============
-function openModal(tipo) {
-    const modalId = 'modal' + tipo.charAt(0).toUpperCase() + tipo.slice(1);
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.add('show');
+    // ============= FUNCIONES PARA MODALES =============
+    function openModal(tipo) {
+        const modalId = 'modal' + tipo.charAt(0).toUpperCase() + tipo.slice(1);
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('show');
+        }
     }
-}
 
-function closeModal(tipo) {
-    const modalId = 'modal' + tipo.charAt(0).toUpperCase() + tipo.slice(1);
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.remove('show');
+    function closeModal(tipo) {
+        const modalId = 'modal' + tipo.charAt(0).toUpperCase() + tipo.slice(1);
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('show');
+        }
     }
-}
 
-// Cerrar modal al hacer clic fuera
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.modal-overlay').forEach(modal => {
-        modal.addEventListener('click', function(e) {
-            if (e.target === this) {
-                this.classList.remove('show');
-            }
+    // Cerrar modal al hacer clic fuera
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', function (e) {
+                if (e.target === this) {
+                    this.classList.remove('show');
+                }
+            });
         });
     });
-});
 
-// ============= GUARDAR CATEGORÍA COMPLETA =============
-async function guardarCategoriaCompleta() {
-    const nombre = document.getElementById('nombreCategoria').value.trim();
-    const descripcion = document.getElementById('descripcionCategoria').value.trim();
-    const margenGanancia = document.getElementById('margenGananciaCategoria').value;
-    const descuentoMaximo = document.getElementById('descuentoMaximoCategoria').value;
-    const orden = document.getElementById('ordenCategoria').value;
-    const activa = document.getElementById('activaCategoria').checked;
-    
-    if (!nombre) {
-        alert('❌ Por favor ingrese el nombre de la categoría');
-        return;
-    }
-    
-    try {
-        const response = await fetch('{% url "custom_admin:categoria_crear" %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({
-                nombre: nombre,
-                descripcion: descripcion,
-                margen_ganancia_sugerido: parseFloat(margenGanancia),
-                descuento_maximo_permitido: parseFloat(descuentoMaximo),
-                orden: parseInt(orden),
-                activa: activa
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            const select = document.getElementById('input_categoria');
-            const option = document.createElement('option');
-            option.value = data.id;
-            option.textContent = `${data.nombre} (${margenGanancia}% ganancia)`;
-            option.selected = true;
-            select.appendChild(option);
-            
-            document.getElementById('nombreCategoria').value = '';
-            document.getElementById('descripcionCategoria').value = '';
-            document.getElementById('margenGananciaCategoria').value = '30.00';
-            document.getElementById('descuentoMaximoCategoria').value = '10.00';
-            document.getElementById('ordenCategoria').value = '0';
-            document.getElementById('activaCategoria').checked = true;
-            
-            closeModal('categoria');
-            alert('✅ Categoría creada exitosamente');
-        } else {
-            alert('❌ Error: ' + (data.error || 'No se pudo crear la categoría'));
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('❌ Error al crear la categoría');
-    }
-}
+    // ============= GUARDAR CATEGORÍA COMPLETA =============
+    async function guardarCategoriaCompleta() {
+        const nombre = document.getElementById('nombreCategoria').value.trim();
+        const descripcion = document.getElementById('descripcionCategoria').value.trim();
+        const margenGanancia = document.getElementById('margenGananciaCategoria').value;
+        const descuentoMaximo = document.getElementById('descuentoMaximoCategoria').value;
+        const orden = document.getElementById('ordenCategoria').value;
+        const activa = document.getElementById('activaCategoria').checked;
 
-// ============= PREVIEW LOGO MARCA =============
-function previewLogoMarca(input) {
-    const container = document.getElementById('logoPreviewContainer');
-    const preview = document.getElementById('logoPreview');
-    
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            container.style.display = 'block';
-        };
-        reader.readAsDataURL(input.files[0]);
-    }
-}
+        if (!nombre) {
+            alert('❌ Por favor ingrese el nombre de la categoría');
+            return;
+        }
 
-// ============= GUARDAR MARCA COMPLETA =============
-async function guardarMarcaCompleta() {
-    const nombre = document.getElementById('nombreMarca').value.trim();
-    const descripcion = document.getElementById('descripcionMarca').value.trim();
-    const paisOrigen = document.getElementById('paisOrigenMarca').value.trim();
-    const fabricante = document.getElementById('fabricanteMarca').value.trim();
-    const sitioWeb = document.getElementById('sitioWebMarca').value.trim();
-    const orden = document.getElementById('ordenMarca').value;
-    const activa = document.getElementById('activaMarca').checked;
-    const destacada = document.getElementById('destacadaMarca').checked;
-    const logoFile = document.getElementById('logoMarca').files[0];
-    
-    if (!nombre) {
-        alert('❌ Por favor ingrese el nombre de la marca');
-        return;
-    }
-    
-    try {
-        const formData = new FormData();
-        formData.append('nombre', nombre);
-        formData.append('descripcion', descripcion);
-        formData.append('pais_origen', paisOrigen);
-        formData.append('fabricante', fabricante);
-        formData.append('sitio_web', sitioWeb);
-        formData.append('orden', orden);
-        formData.append('activa', activa ? '1' : '0');
-        formData.append('destacada', destacada ? '1' : '0');
-        
-        if (logoFile) {
-            formData.append('logo', logoFile);
-        }
-        
-        const response = await fetch('{% url "custom_admin:marca_crear_formdata" %}', {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            const select = document.getElementById('input_marca');
-            const option = document.createElement('option');
-            option.value = data.id;
-            option.textContent = data.nombre;
-            option.selected = true;
-            select.appendChild(option);
-            
-            document.getElementById('nombreMarca').value = '';
-            document.getElementById('descripcionMarca').value = '';
-            document.getElementById('paisOrigenMarca').value = '';
-            document.getElementById('fabricanteMarca').value = '';
-            document.getElementById('sitioWebMarca').value = '';
-            document.getElementById('ordenMarca').value = '0';
-            document.getElementById('activaMarca').checked = true;
-            document.getElementById('destacadaMarca').checked = false;
-            document.getElementById('logoMarca').value = '';
-            document.getElementById('logoPreviewContainer').style.display = 'none';
-            
-            closeModal('marca');
-            alert('✅ Marca creada exitosamente');
-        } else {
-            alert('❌ Error: ' + (data.error || 'No se pudo crear la marca'));
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('❌ Error al crear la marca');
-    }
-}
+        try {
+            const response = await fetch('{% url "custom_admin:categoria_crear" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    nombre: nombre,
+                    descripcion: descripcion,
+                    margen_ganancia_sugerido: parseFloat(margenGanancia),
+                    descuento_maximo_permitido: parseFloat(descuentoMaximo),
+                    orden: parseInt(orden),
+                    activa: activa
+                })
+            });
 
-// ============= GUARDAR PROVEEDOR COMPLETO =============
-async function guardarProveedorCompleto() {
-    const nombreComercial = document.getElementById('nombreComercialProveedor').value.trim();
-    const razonSocial = document.getElementById('razonSocialProveedor').value.trim();
-    const rucNit = document.getElementById('rucNitProveedor').value.trim();
-    const direccion = document.getElementById('direccionProveedor').value.trim();
-    const telefono = document.getElementById('telefonoProveedor').value.trim();
-    const email = document.getElementById('emailProveedor').value.trim();
-    const diasCredito = document.getElementById('diasCreditoProveedor').value;
-    const limiteCredito = document.getElementById('limiteCreditoProveedor').value;
-    const activo = document.getElementById('activoProveedor').checked;
-    
-    if (!nombreComercial) {
-        alert('❌ Por favor ingrese el nombre comercial');
-        return;
-    }
-    
-    if (!rucNit) {
-        alert('❌ Por favor ingrese el RUC/NIT');
-        return;
-    }
-    
-    if (rucNit.length < 10 || rucNit.length > 20) {
-        alert('❌ El RUC/NIT debe tener entre 10 y 20 dígitos');
-        return;
-    }
-    
-    try {
-        const response = await fetch('{% url "custom_admin:proveedor_crear_api" %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({
-                nombre_comercial: nombreComercial,
-                razon_social: razonSocial,
-                ruc_nit: rucNit,
-                direccion: direccion,
-                telefono: telefono,
-                email: email,
-                dias_credito: parseInt(diasCredito) || 0,
-                limite_credito: parseFloat(limiteCredito) || 0.00,
-                activo: activo
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            const select = document.getElementById('input_proveedor');
-            const option = document.createElement('option');
-            option.value = data.id;
-            option.textContent = data.nombre_comercial;
-            option.selected = true;
-            select.appendChild(option);
-            
-            document.getElementById('nombreComercialProveedor').value = '';
-            document.getElementById('razonSocialProveedor').value = '';
-            document.getElementById('rucNitProveedor').value = '';
-            document.getElementById('direccionProveedor').value = '';
-            document.getElementById('telefonoProveedor').value = '';
-            document.getElementById('emailProveedor').value = '';
-            document.getElementById('diasCreditoProveedor').value = '0';
-            document.getElementById('limiteCreditoProveedor').value = '0.00';
-            document.getElementById('activoProveedor').checked = true;
-            
-            closeModal('proveedor');
-            alert('✅ Proveedor creado exitosamente');
-        } else {
-            alert('❌ Error: ' + (data.error || 'No se pudo crear el proveedor'));
+            const data = await response.json();
+
+            if (data.success) {
+                const select = document.getElementById('input_categoria');
+                const option = document.createElement('option');
+                option.value = data.id;
+                option.textContent = `${data.nombre} (${margenGanancia}% ganancia)`;
+                option.selected = true;
+                select.appendChild(option);
+
+                document.getElementById('nombreCategoria').value = '';
+                document.getElementById('descripcionCategoria').value = '';
+                document.getElementById('margenGananciaCategoria').value = '30.00';
+                document.getElementById('descuentoMaximoCategoria').value = '10.00';
+                document.getElementById('ordenCategoria').value = '0';
+                document.getElementById('activaCategoria').checked = true;
+
+                closeModal('categoria');
+                alert('✅ Categoría creada exitosamente');
+            } else {
+                alert('❌ Error: ' + (data.error || 'No se pudo crear la categoría'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error al crear la categoría');
         }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('❌ Error al crear el proveedor');
     }
-}
+
+    // ============= PREVIEW LOGO MARCA =============
+    function previewLogoMarca(input) {
+        const container = document.getElementById('logoPreviewContainer');
+        const preview = document.getElementById('logoPreview');
+
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                preview.src = e.target.result;
+                container.style.display = 'block';
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // ============= GUARDAR MARCA COMPLETA =============
+    async function guardarMarcaCompleta() {
+        const nombre = document.getElementById('nombreMarca').value.trim();
+        const descripcion = document.getElementById('descripcionMarca').value.trim();
+        const paisOrigen = document.getElementById('paisOrigenMarca').value.trim();
+        const fabricante = document.getElementById('fabricanteMarca').value.trim();
+        const sitioWeb = document.getElementById('sitioWebMarca').value.trim();
+        const orden = document.getElementById('ordenMarca').value;
+        const activa = document.getElementById('activaMarca').checked;
+        const destacada = document.getElementById('destacadaMarca').checked;
+        const logoFile = document.getElementById('logoMarca').files[0];
+
+        if (!nombre) {
+            alert('❌ Por favor ingrese el nombre de la marca');
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('nombre', nombre);
+            formData.append('descripcion', descripcion);
+            formData.append('pais_origen', paisOrigen);
+            formData.append('fabricante', fabricante);
+            formData.append('sitio_web', sitioWeb);
+            formData.append('orden', orden);
+            formData.append('activa', activa ? '1' : '0');
+            formData.append('destacada', destacada ? '1' : '0');
+
+            if (logoFile) {
+                formData.append('logo', logoFile);
+            }
+
+            const response = await fetch('{% url "custom_admin:marca_crear_formdata" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const select = document.getElementById('input_marca');
+                const option = document.createElement('option');
+                option.value = data.id;
+                option.textContent = data.nombre;
+                option.selected = true;
+                select.appendChild(option);
+
+                document.getElementById('nombreMarca').value = '';
+                document.getElementById('descripcionMarca').value = '';
+                document.getElementById('paisOrigenMarca').value = '';
+                document.getElementById('fabricanteMarca').value = '';
+                document.getElementById('sitioWebMarca').value = '';
+                document.getElementById('ordenMarca').value = '0';
+                document.getElementById('activaMarca').checked = true;
+                document.getElementById('destacadaMarca').checked = false;
+                document.getElementById('logoMarca').value = '';
+                document.getElementById('logoPreviewContainer').style.display = 'none';
+
+                closeModal('marca');
+                alert('✅ Marca creada exitosamente');
+            } else {
+                alert('❌ Error: ' + (data.error || 'No se pudo crear la marca'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error al crear la marca');
+        }
+    }
+
+    // ============= GUARDAR PROVEEDOR COMPLETO =============
+    async function guardarProveedorCompleto() {
+        const nombreComercial = document.getElementById('nombreComercialProveedor').value.trim();
+        const razonSocial = document.getElementById('razonSocialProveedor').value.trim();
+        const rucNit = document.getElementById('rucNitProveedor').value.trim();
+        const direccion = document.getElementById('direccionProveedor').value.trim();
+        const telefono = document.getElementById('telefonoProveedor').value.trim();
+        const email = document.getElementById('emailProveedor').value.trim();
+        const diasCredito = document.getElementById('diasCreditoProveedor').value;
+        const limiteCredito = document.getElementById('limiteCreditoProveedor').value;
+        const activo = document.getElementById('activoProveedor').checked;
+
+        if (!nombreComercial) {
+            alert('❌ Por favor ingrese el nombre comercial');
+            return;
+        }
+
+        if (!rucNit) {
+            alert('❌ Por favor ingrese el RUC/NIT');
+            return;
+        }
+
+        if (rucNit.length < 10 || rucNit.length > 20) {
+            alert('❌ El RUC/NIT debe tener entre 10 y 20 dígitos');
+            return;
+        }
+
+        try {
+            const response = await fetch('{% url "custom_admin:proveedor_crear_api" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    nombre_comercial: nombreComercial,
+                    razon_social: razonSocial,
+                    ruc_nit: rucNit,
+                    direccion: direccion,
+                    telefono: telefono,
+                    email: email,
+                    dias_credito: parseInt(diasCredito) || 0,
+                    limite_credito: parseFloat(limiteCredito) || 0.00,
+                    activo: activo
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const select = document.getElementById('input_proveedor');
+                const option = document.createElement('option');
+                option.value = data.id;
+                option.textContent = data.nombre_comercial;
+                option.selected = true;
+                select.appendChild(option);
+
+                document.getElementById('nombreComercialProveedor').value = '';
+                document.getElementById('razonSocialProveedor').value = '';
+                document.getElementById('rucNitProveedor').value = '';
+                document.getElementById('direccionProveedor').value = '';
+                document.getElementById('telefonoProveedor').value = '';
+                document.getElementById('emailProveedor').value = '';
+                document.getElementById('diasCreditoProveedor').value = '0';
+                document.getElementById('limiteCreditoProveedor').value = '0.00';
+                document.getElementById('activoProveedor').checked = true;
+
+                closeModal('proveedor');
+                alert('✅ Proveedor creado exitosamente');
+            } else {
+                alert('❌ Error: ' + (data.error || 'No se pudo crear el proveedor'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error al crear el proveedor');
+        }
+    }
+    // ============= GUARDAR UNIDAD DE MEDIDA COMPLETA =============
+    async function guardarUnidadMedidaCompleta() {
+        const nombre = document.getElementById('nombreUnidad').value.trim();
+        const abreviatura = document.getElementById('abreviaturaUnidad').value.trim();
+        const factor = document.getElementById('factorUnidad').value;
+
+        if (!nombre || !abreviatura) {
+            alert('❌ Nombre y abreviatura son requeridos');
+            return;
+        }
+
+        try {
+            const response = await fetch('{% url "custom_admin:api_crear_unidad_medida" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    nombre: nombre,
+                    abreviatura: abreviatura,
+                    factor_conversion_kg: parseFloat(factor) || 1.0
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const select = document.getElementById('input_unidad');
+                const option = document.createElement('option');
+                option.value = data.nombre; // El value es el nombre en el backend
+                option.textContent = `${data.nombre} (${data.abreviatura})`;
+                option.selected = true;
+                select.appendChild(option);
+
+                // Limpiar
+                document.getElementById('nombreUnidad').value = '';
+                document.getElementById('abreviaturaUnidad').value = '';
+                document.getElementById('factorUnidad').value = '1.0000';
+
+                closeModal('unidadMedida');
+                alert('✅ Unidad creada exitosamente');
+            } else {
+                alert('❌ Error: ' + (data.error || 'No se pudo crear la unidad'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error al crear la unidad');
+        }
+    }
 </script>
 {% endblock %}

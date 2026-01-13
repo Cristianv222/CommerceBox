@@ -9175,3 +9175,46 @@ def system_dashboard_view(request):
     }
     
     return render(request, 'custom_admin/system/dashboard.html', context)
+
+
+# ============================================
+# API: CREAR UNIDAD DE MEDIDA (MODAL) - QUICK ADD
+# ============================================
+@ensure_csrf_cookie
+@login_required
+@require_http_methods(["POST"])
+def api_crear_unidad_medida(request):
+    """API para crear una unidad de medida desde el modal - Retorna JSON"""
+    try:
+        data = json.loads(request.body)
+        nombre = data.get('nombre', '').strip()
+        abreviatura = data.get('abreviatura', '').strip()
+        factor = data.get('factor_conversion_kg', '1.0')
+
+        if not nombre:
+            return JsonResponse({'success': False, 'error': 'El nombre es requerido'}, status=400)
+        if not abreviatura:
+            return JsonResponse({'success': False, 'error': 'La abreviatura es requerida'}, status=400)
+
+        # Verificar duplicados
+        if UnidadMedida.objects.filter(nombre__iexact=nombre).exists():
+            return JsonResponse({'success': False, 'error': f'Ya existe una unidad "{nombre}"'}, status=400)
+
+        unidad = UnidadMedida.objects.create(
+            nombre=nombre,
+            abreviatura=abreviatura,
+            factor_conversion_kg=Decimal(str(factor)),
+            activa=True
+        )
+
+        return JsonResponse({
+            'success': True,
+            'id': str(unidad.id),
+            'nombre': unidad.nombre,
+            'abreviatura': unidad.abreviatura,
+            'message': 'Unidad de medida creada exitosamente'
+        })
+    except Exception as e:
+        import traceback
+        print(f"❌ Error en api_crear_unidad_medida: {traceback.format_exc()}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

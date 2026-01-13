@@ -36,6 +36,7 @@ services:
     # ✅ Comando cambiado a Gunicorn
     command: gunicorn commercebox.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120
     volumes:
+      - .:/app
       - ./media:/app/media
       - ./staticfiles:/app/staticfiles
       - ./logs:/app/logs
@@ -62,6 +63,7 @@ services:
     container_name: commercebox_celery
     command: celery -A commercebox worker -l info
     volumes:
+      - .:/app
       - ./logs:/app/logs
     depends_on:
       - commercebox-db
@@ -82,6 +84,7 @@ services:
     container_name: commercebox_celery_beat
     command: celery -A commercebox beat -l info
     volumes:
+      - .:/app
       - ./logs:/app/logs
     depends_on:
       - commercebox-db
