@@ -4235,7 +4235,7 @@ def api_procesar_entrada_unificada(request):
     
     import json
     from django.db import transaction
-    from django.db.models import Q
+    from django.db.models import Q, F
     from apps.inventory_management.models import (
         Producto, Categoria, Marca, Proveedor, ProductoNormal, MovimientoInventario,
         Quintal, UnidadMedida
@@ -4445,7 +4445,10 @@ def api_procesar_entrada_unificada(request):
                                 'precio_por_unidad_peso': precio_por_unidad_peso,
                                 'aplica_impuestos': aplica_impuestos,  # ✅ Solo booleano
                                 'activo': True,
-                                'usuario_registro': usuario
+                                'usuario_registro': usuario,
+                                # Inicializar contadores
+                                'cantidad_quintales': 1,
+                                'stock_total_calculado': peso_inicial
                             }
                             
                             if imagen_file:
@@ -4472,6 +4475,12 @@ def api_procesar_entrada_unificada(request):
                             
                             if actualizado:
                                 producto.save()
+                            
+                            # ✅ Incrementar contadores para producto existente
+                            producto.cantidad_quintales = F('cantidad_quintales') + 1
+                            producto.stock_total_calculado = F('stock_total_calculado') + peso_inicial
+                            producto.save(update_fields=['cantidad_quintales', 'stock_total_calculado'])
+                            producto.refresh_from_db()
                             
                             productos_reabastecidos += 1
                         

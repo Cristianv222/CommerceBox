@@ -1907,14 +1907,14 @@
     // DATOS DE CATEGORÍAS CON MÁRGENES
     // ========================================
     const categoriasData = {
-    {% for categoria in categorias %}
+        {% for categoria in categorias %}
     "{{ categoria.id }}": {
         nombre: "{{ categoria.nombre|escapejs }}",
-            margen_ganancia: parseFloat("{{ categoria.margen_ganancia_sugerido }}"),
-                descuento_maximo: parseFloat("{{ categoria.descuento_maximo_permitido }}")
+            margen_ganancia: parseFloat("{{ categoria.margen_ganancia_sugerido|default:0 }}"),
+                descuento_maximo: parseFloat("{{ categoria.descuento_maximo_permitido|default:0 }}")
     } {% if not forloop.last %}, {% endif %}
     {% endfor %}
-};
+    };
 
     // IVA DESDE CONFIGURACIÓN DEL SISTEMA
     const IVA_DEFAULT = parseFloat("{{ porcentaje_iva }}");
@@ -2034,10 +2034,15 @@
             document.getElementById('input_peso_inicial').setAttribute('required', 'required');
         }
 
+        // 🆕 ABRIR CONFIGURADOR DE QUINTAL INMEDIATAMENTE
+        setTimeout(() => {
+            abrirModalConfigurarQuintal();
+        }, 300);
+
         console.log('✅ Modo crear nuevo quintal activado');
         console.log('✅ Campo peso inicial mostrado');
 
-        mostrarNotificacion('✅ Modo: Crear Nuevo Quintal. Completa todos los datos incluyendo el peso inicial.', 'success');
+        mostrarNotificacion('✅ Modo: Crear Nuevo Quintal. Configure los detalles del quintal.', 'success');
     }
 
     function renderizarQuintales(quintales) {
@@ -2408,10 +2413,12 @@
     }
 
     // ========================================
-    // AGREGAR PRODUCTO - ✅ IVA CON CHECKBOX
+    // AGREGAR PRODUCTO - ✅ IVA CON CHECKBOX y ⚖️ QUINTAL AUTOMÁTICO
     // ========================================
-    function agregarProducto() {
+    function agregarProducto(confirmado = false) {
         console.log('📝 Iniciando agregar producto...');
+
+        // 🛑 INTERCEPTAR ELIMINADO - FLUJO DIRECTO
 
         const form = document.getElementById('form-producto');
         if (!form.checkValidity()) {
@@ -2880,7 +2887,7 @@
                 actualizarContador();
                 document.getElementById('btn-ver-lista').style.display = 'none';
 
-                mostrarNotificacion(`✅ ${result.productos_creados} productos procesados exitosamente`, 'success');
+                mostrarNotificacion(`✅ ${result.mensaje || (result.productos_creados + ' productos procesados')}`, 'success');
             } else {
                 console.error('❌ Error del servidor:', result.error);
                 mostrarNotificacion(result.error || 'Error al procesar', 'error');
@@ -3020,6 +3027,8 @@
     function descargarTodosPDFs() {
         imprimirTodosLosCodigos();
     }
+
+
 
     async function imprimirTodosLosCodigos() {
         const items = document.querySelectorAll('#lista-codigos-generados > div');
@@ -3382,12 +3391,20 @@
             const data = await response.json();
 
             if (data.success) {
-                const select = document.getElementById('input_unidad');
-                const option = document.createElement('option');
-                option.value = data.nombre; // El value es el nombre en el backend
-                option.textContent = `${data.nombre} (${data.abreviatura})`;
-                option.selected = true;
-                select.appendChild(option);
+                // Actualizar todos los selectores de unidades
+                const selectores = ['input_unidad', 'quintal_unidad', 'edit_unidad'];
+                selectores.forEach(id => {
+                    const select = document.getElementById(id);
+                    if (select) {
+                        const option = document.createElement('option');
+                        option.value = data.nombre;
+                        option.textContent = `${data.nombre} (${data.abreviatura})`;
+                        select.appendChild(option);
+                        if (id === 'input_unidad') {
+                            select.value = data.nombre;
+                        }
+                    }
+                });
 
                 // Limpiar
                 document.getElementById('nombreUnidad').value = '';
@@ -3395,7 +3412,7 @@
                 document.getElementById('factorUnidad').value = '1.0000';
 
                 closeModal('unidadMedida');
-                alert('✅ Unidad creada exitosamente');
+                mostrarNotificacion('✅ Unidad creada exitosamente', 'success');
             } else {
                 alert('❌ Error: ' + (data.error || 'No se pudo crear la unidad'));
             }
@@ -3404,5 +3421,134 @@
             alert('❌ Error al crear la unidad');
         }
     }
+    // ========================================
+    // ⚖️ LOGICA DE CÁLCULO DE QUINTALES
+    // ========================================
+    function abrirModalConfigurarQuintal() {
+        const modal = document.getElementById('modal-configurar-quintal');
+        if (!modal) return;
+
+        const mainSelect = document.getElementById('input_unidad');
+        const quintalSelect = document.getElementById('quintal_unidad');
+
+        console.log('🔍 Abriendo modal quintal. Opciones en quintalSelet:', quintalSelect.options.length);
+
+        if (mainSelect && quintalSelect) {
+            // Sincronizar selección si hay algo seleccionado en el principal
+            if (mainSelect.value) {
+                quintalSelect.value = mainSelect.value;
+            } else {
+                quintalSelect.value = "";
+            }
+        }
+
+        document.getElementById('quintal_cantidad_sacos').value = '1';
+        document.getElementById('quintal_peso_saco').value = '100';
+
+        calcularTotalQuintal();
+        modal.classList.add('show');
+        setTimeout(() => document.getElementById('quintal_cantidad_sacos').focus(), 100);
+    }
+
+    function cerrarModalConfigurarQuintal() {
+        document.getElementById('modal-configurar-quintal').classList.remove('show');
+    }
+
+    function calcularTotalQuintal() {
+        const sacos = parseFloat(document.getElementById('quintal_cantidad_sacos').value) || 0;
+        const peso = parseFloat(document.getElementById('quintal_peso_saco').value) || 0;
+        const total = sacos * peso;
+
+        document.getElementById('quintal_total_display').textContent = total.toFixed(2);
+    }
+
+
+
+    function confirmarAgregarQuintal() {
+        const sacos = parseFloat(document.getElementById('quintal_cantidad_sacos').value);
+        const peso = parseFloat(document.getElementById('quintal_peso_saco').value);
+        const unidad = document.getElementById('quintal_unidad').value;
+
+        if (!sacos || sacos <= 0) {
+            mostrarNotificacion('La cantidad de sacos debe ser mayor a 0', 'error');
+            return;
+        }
+        if (!peso || peso <= 0) {
+            mostrarNotificacion('El peso por saco debe ser mayor a 0', 'error');
+            return;
+        }
+        if (!unidad) {
+            mostrarNotificacion('Seleccione una unidad de medida. Si no hay unidades, cree una primero.', 'error');
+            return;
+        }
+
+        const totalStock = sacos * peso;
+
+        // ✅ ACTUALIZAR FORMULARIO PRINCIPAL
+        document.getElementById('input_cantidad').value = totalStock;
+        document.getElementById('input_peso_inicial').value = peso;
+        document.getElementById('input_unidad').value = unidad;
+
+        // Simular eventos para validaciones/UI
+        document.getElementById('input_cantidad').dispatchEvent(new Event('input'));
+        document.getElementById('input_unidad').dispatchEvent(new Event('change'));
+
+        // Cerrar modal
+        cerrarModalConfigurarQuintal();
+
+        mostrarNotificacion('✅ Quintal configurado. Verifique los datos y agregue el producto.', 'success');
+    }
 </script>
+
+<!-- MODAL CONFIGURAR QUINTAL (CÁLCULO AUTOMÁTICO) -->
+<div id="modal-configurar-quintal" class="modal-custom">
+    <div class="modal-content-custom" style="max-width: 500px; width: 90%;">
+        <div class="modal-header-custom">
+            <h3>⚖️ Configurar Quintal</h3>
+            <button class="btn-close-modal" onclick="cerrarModalConfigurarQuintal()">×</button>
+        </div>
+        <div class="modal-body-custom">
+            <div class="form-grid" style="grid-template-columns: 1fr;">
+
+                <!-- UNIDAD DE MEDIDA -->
+                <div class="form-group">
+                    <label class="form-label-custom"><span class="required">*</span> Unidad de Medida</label>
+                    <select id="quintal_unidad" class="form-input" onchange="calcularTotalQuintal()">
+                        <option value="">Seleccione unidad</option>
+                        {% for unidad in unidades_medida %}
+                        <option value="{{ unidad.nombre }}">{{ unidad.nombre }} ({{ unidad.abreviatura }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- CANTIDAD DE SACOS -->
+                <div class="form-group">
+                    <label class="form-label-custom"><span class="required">*</span> Cantidad de Quintales/Sacos</label>
+                    <input type="number" id="quintal_cantidad_sacos" class="form-input" min="1" step="1" value="1"
+                        oninput="calcularTotalQuintal()">
+                </div>
+
+                <!-- PESO POR SACO -->
+                <div class="form-group">
+                    <label class="form-label-custom"><span class="required">*</span> Peso por Quintal/Saco</label>
+                    <input type="number" id="quintal_peso_saco" class="form-input" min="0.01" step="0.01" value=""
+                        placeholder="Ej: 100" oninput="calcularTotalQuintal()">
+                </div>
+
+                <div class="info-alert" style="padding: 1rem; margin: 1rem 0;">
+                    <p><strong>Total Stock Calculado:</strong> <span id="quintal_total_display"
+                            style="font-size: 1.2rem; font-weight: bold;">0.00</span></p>
+                </div>
+
+            </div>
+        </div>
+        <div class="modal-footer-custom">
+            <button class="btn-custom btn-secondary-custom" onclick="cerrarModalConfigurarQuintal()">Cancelar</button>
+            <button class="btn-custom btn-primary-custom" onclick="confirmarAgregarQuintal()">
+                Confirmar Configuración
+            </button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

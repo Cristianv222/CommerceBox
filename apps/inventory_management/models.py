@@ -338,6 +338,18 @@ class Producto(models.Model):
         help_text="Peso estándar de un quintal (ej: 100 lb)"
     )
     
+    # ✅ CAMPOS DE RESUMEN (Cacheados para rendimiento)
+    cantidad_quintales = models.IntegerField(
+        default=0,
+        help_text="Cantidad total de quintales disponibles"
+    )
+    stock_total_calculado = models.DecimalField(
+        max_digits=12,
+        decimal_places=3,
+        default=Decimal('0.000'),
+        help_text="Suma total de peso de todos los quintales disponibles"
+    )
+    
     # ============================================================================
     # CAMPOS PARA PRODUCTOS NORMALES (UNIDADES)
     # ============================================================================
