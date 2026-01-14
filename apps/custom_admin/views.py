@@ -502,6 +502,105 @@ def producto_editar(request, producto_id):
                     print(f"❌ Error al convertir stock: {e}")
                     messages.warning(request, 'El stock debe ser un número entero')
             
+            # ✅ Actualizar stock de QUINTALES - VERSIÓN CON QUINTALES INDIVIDUALES
+            elif tipo_inventario == 'QUINTAL':
+                quintales_str = request.POST.get('quintales', '0').strip()
+                libras_str = request.POST.get('libras', '0').strip()
+                
+                print(f"🔍 DEBUG: Actualizando stock QUINTAL")
+                print(f"🔍 quintales_str recibido: '{quintales_str}'")
+                print(f"🔍 libras_str recibido: '{libras_str}'")
+                
+                try:
+                    from apps.inventory_management.models import Quintal
+                    from datetime import datetime
+                    
+                    cantidad_quintales_nueva = int(quintales_str) if quintales_str else 0
+                    stock_total_nuevo = Decimal(libras_str) if libras_str else Decimal('0.00')
+                    
+                    print(f"🔍 Valores solicitados: {cantidad_quintales_nueva} quintales, {stock_total_nuevo} lb")
+                    
+                    # Obtener quintales existentes DISPONIBLES
+                    quintales_existentes = list(Quintal.objects.filter(
+                        producto=producto,
+                        estado='DISPONIBLE'
+                    ).order_by('-fecha_ingreso'))
+                    
+                    cantidad_existente = len(quintales_existentes)
+                    print(f"🔍 Quintales existentes: {cantidad_existente}")
+                    
+                    # Calcular peso por quintal
+                    if cantidad_quintales_nueva > 0:
+                        peso_por_quintal = stock_total_nuevo / cantidad_quintales_nueva
+                    else:
+                        peso_por_quintal = Decimal('0.00')
+                    
+                    print(f"🔍 Peso por quintal calculado: {peso_por_quintal} lb")
+                    
+                    # CASO 1: Necesitamos MÁS quintales
+                    if cantidad_quintales_nueva > cantidad_existente:
+                        print(f"📦 Creando {cantidad_quintales_nueva - cantidad_existente} quintales nuevos")
+                        
+                        # Actualizar quintales existentes
+                        for quintal in quintales_existentes:
+                            quintal.peso_inicial = peso_por_quintal
+                            quintal.peso_actual = peso_por_quintal
+                            quintal.save()
+                        
+                        # Crear quintales faltantes
+                        for i in range(cantidad_quintales_nueva - cantidad_existente):
+                            Quintal.objects.create(
+                                producto=producto,
+                                peso_inicial=peso_por_quintal,
+                                peso_actual=peso_por_quintal,
+                                unidad_medida=producto.unidad_medida_base,
+                                estado='DISPONIBLE',
+                                fecha_ingreso=datetime.now()
+                            )
+                    
+                    # CASO 2: Necesitamos MENOS quintales
+                    elif cantidad_quintales_nueva < cantidad_existente:
+                        print(f"🗑️ Eliminando {cantidad_existente - cantidad_quintales_nueva} quintales sobrantes")
+                        
+                        # Mantener solo los primeros N quintales
+                        quintales_a_mantener = quintales_existentes[:cantidad_quintales_nueva]
+                        quintales_a_eliminar = quintales_existentes[cantidad_quintales_nueva:]
+                        
+                        # Actualizar quintales que se mantienen
+                        for quintal in quintales_a_mantener:
+                            quintal.peso_inicial = peso_por_quintal
+                            quintal.peso_actual = peso_por_quintal
+                            quintal.save()
+                        
+                        # Eliminar quintales sobrantes
+                        for quintal in quintales_a_eliminar:
+                            quintal.delete()
+                    
+                    # CASO 3: Misma cantidad, solo actualizar pesos
+                    else:
+                        print(f"🔄 Actualizando {cantidad_quintales_nueva} quintales existentes")
+                        
+                        for quintal in quintales_existentes:
+                            quintal.peso_inicial = peso_por_quintal
+                            quintal.peso_actual = peso_por_quintal
+                            quintal.save()
+                    
+                    # Actualizar campos de resumen del producto
+                    producto.cantidad_quintales = cantidad_quintales_nueva
+                    producto.stock_total_calculado = stock_total_nuevo
+                    producto.save()
+                    
+                    print(f"✅ Stock quintal actualizado: {cantidad_quintales_nueva} quintales, {stock_total_nuevo} lb")
+                    
+                except (ValueError, TypeError) as e:
+                    print(f"❌ Error al convertir stock quintal: {e}")
+                    messages.warning(request, 'Los valores de stock deben ser numéricos')
+                except Exception as e:
+                    print(f"❌ Error al actualizar quintales: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    messages.error(request, f'Error al actualizar stock: {str(e)}')
+            
             messages.success(request, f'✅ Producto "{producto.nombre}" actualizado exitosamente')
             return redirect('custom_admin:productos')
             
