@@ -21,6 +21,7 @@
         margin-bottom: 0.5rem;
         letter-spacing: -0.5px;
     }
+
     /* ============================================
        STAT CARDS CON GLASSMORPHISM
        ============================================ */
@@ -33,11 +34,12 @@
         position: relative;
         overflow: hidden;
         transition: all 0.3s ease;
-        box-shadow: 
+        box-shadow:
             0 8px 32px rgba(59, 130, 246, 0.08),
             0 2px 8px rgba(147, 197, 253, 0.1),
             inset 0 1px 0 rgba(255, 255, 255, 0.9);
     }
+
     .stat-card::before {
         content: '';
         position: absolute;
@@ -45,19 +47,21 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: 
+        background:
             radial-gradient(ellipse 300px 200px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
         pointer-events: none;
         z-index: 0;
     }
+
     .stat-card:hover {
         transform: translateY(-4px);
-        box-shadow: 
+        box-shadow:
             0 12px 40px rgba(59, 130, 246, 0.15),
             0 4px 12px rgba(96, 165, 250, 0.2),
             inset 0 1px 0 rgba(255, 255, 255, 0.95);
         border-color: rgba(96, 165, 250, 0.6);
     }
+
     .stat-icon {
         width: 50px;
         height: 50px;
@@ -71,6 +75,7 @@
         z-index: 2;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
+
     .stat-value {
         font-size: 2rem;
         font-weight: 800;
@@ -79,6 +84,7 @@
         position: relative;
         z-index: 2;
     }
+
     .stat-label {
         color: #64748b;
         font-size: 0.9rem;
@@ -86,6 +92,7 @@
         position: relative;
         z-index: 2;
     }
+
     /* ============================================
        ADMIN CARD (Filtros y Tabla)
        ============================================ */
@@ -97,11 +104,12 @@
         padding: 1.5rem;
         position: relative;
         overflow: hidden;
-        box-shadow: 
+        box-shadow:
             0 8px 32px rgba(59, 130, 246, 0.08),
             0 2px 8px rgba(147, 197, 253, 0.1),
             inset 0 1px 0 rgba(255, 255, 255, 0.9);
     }
+
     .admin-card::before {
         content: '';
         position: absolute;
@@ -109,11 +117,12 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: 
+        background:
             radial-gradient(ellipse 400px 300px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
         pointer-events: none;
         z-index: 0;
     }
+
     .admin-card::after {
         content: '';
         position: absolute;
@@ -121,14 +130,15 @@
         left: 0;
         width: 100%;
         height: 3px;
-        background: linear-gradient(90deg, 
-            rgba(59, 130, 246, 0.3) 0%, 
-            rgba(96, 165, 250, 0.5) 25%,
-            rgba(147, 197, 253, 0.4) 50%,
-            rgba(96, 165, 250, 0.5) 75%,
-            rgba(59, 130, 246, 0.3) 100%);
+        background: linear-gradient(90deg,
+                rgba(59, 130, 246, 0.3) 0%,
+                rgba(96, 165, 250, 0.5) 25%,
+                rgba(147, 197, 253, 0.4) 50%,
+                rgba(96, 165, 250, 0.5) 75%,
+                rgba(59, 130, 246, 0.3) 100%);
         border-radius: 16px 16px 0 0;
     }
+
     /* ============================================
        FORM CONTROLS
        ============================================ */
@@ -144,18 +154,20 @@
         position: relative;
         z-index: 1;
     }
+
     .form-control-admin:focus {
         outline: none;
         background: rgba(255, 255, 255, 0.9);
         border-color: rgba(96, 165, 250, 0.6);
-        box-shadow: 
+        box-shadow:
             0 0 0 4px rgba(96, 165, 250, 0.08),
             0 2px 8px rgba(147, 197, 253, 0.15);
     }
+
     .form-control-admin::placeholder {
         color: #9ca3af;
     }
-    
+
     /* ============================================
        ✅ IMAGEN UPLOAD Y PREVIEW
        ============================================ */
@@ -169,10 +181,12 @@
         border-radius: 12px;
         transition: all 0.3s ease;
     }
+
     .image-upload-container:hover {
         border-color: rgba(96, 165, 250, 0.6);
         background: rgba(255, 255, 255, 0.9);
     }
+
     .image-preview-box {
         width: 120px;
         height: 120px;
@@ -186,18 +200,22 @@
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
         position: relative;
     }
+
     .image-preview-box img {
         width: 100%;
         height: 100%;
         object-fit: cover;
     }
+
     .image-preview-placeholder {
         font-size: 3rem;
         color: #3b82f6;
     }
+
     .image-upload-input {
         display: none;
     }
+
     .btn-upload-image {
         padding: 0.7rem 1.5rem;
         background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
@@ -213,10 +231,12 @@
         gap: 0.5rem;
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
     }
+
     .btn-upload-image:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
     }
+
     .btn-remove-image {
         padding: 0.5rem 1rem;
         background: rgba(239, 68, 68, 0.15);
@@ -228,11 +248,12 @@
         cursor: pointer;
         transition: all 0.2s ease;
     }
+
     .btn-remove-image:hover {
         background: rgba(239, 68, 68, 0.25);
         transform: scale(1.05);
     }
-    
+
     /* ============================================
        TABLA
        ============================================ */
@@ -240,15 +261,18 @@
         position: relative;
         z-index: 2;
     }
+
     .table-admin {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
     }
+
     .table-admin thead {
         background: rgba(59, 130, 246, 0.08);
         border-radius: 12px 12px 0 0;
     }
+
     .table-admin thead th {
         padding: 1rem 1rem;
         color: #1e293b;
@@ -259,25 +283,31 @@
         border-bottom: 2px solid rgba(59, 130, 246, 0.15);
         white-space: nowrap;
     }
+
     .table-admin thead th:first-child {
         border-radius: 12px 0 0 0;
     }
+
     .table-admin thead th:last-child {
         border-radius: 0 12px 0 0;
     }
+
     .table-admin tbody tr {
         transition: all 0.2s ease;
         border-bottom: 1px solid rgba(59, 130, 246, 0.08);
     }
+
     .table-admin tbody tr:hover {
         background: rgba(59, 130, 246, 0.05);
     }
+
     .table-admin tbody td {
         padding: 1rem 1rem;
         color: #1e293b;
         font-size: 0.9rem;
         vertical-align: middle;
     }
+
     /* ============================================
        PRODUCT IMAGE
        ============================================ */
@@ -288,6 +318,7 @@
         object-fit: cover;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
+
     .product-placeholder {
         width: 50px;
         height: 50px;
@@ -301,6 +332,7 @@
         font-weight: 700;
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
     }
+
     /* ============================================
        BADGES
        ============================================ */
@@ -313,31 +345,37 @@
         display: inline-block;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     }
+
     .badge-success {
         background: rgba(16, 185, 129, 0.15);
         color: #059669;
         border: 1px solid rgba(16, 185, 129, 0.3);
     }
+
     .badge-danger {
         background: rgba(239, 68, 68, 0.15);
         color: #dc2626;
         border: 1px solid rgba(239, 68, 68, 0.3);
     }
+
     .badge-warning {
         background: rgba(245, 158, 11, 0.15);
         color: #d97706;
         border: 1px solid rgba(245, 158, 11, 0.3);
     }
+
     .badge-info {
         background: rgba(59, 130, 246, 0.15);
         color: #2563eb;
         border: 1px solid rgba(59, 130, 246, 0.3);
     }
+
     .badge-purple {
         background: rgba(139, 92, 246, 0.15);
         color: #7c3aed;
         border: 1px solid rgba(139, 92, 246, 0.3);
     }
+
     .badge-brand {
         background: rgba(236, 72, 153, 0.15);
         color: #db2777;
@@ -345,17 +383,19 @@
         font-size: 0.75rem;
         padding: 0.3rem 0.7rem;
     }
+
     .badge-iva {
         background: rgba(34, 197, 94, 0.15);
         color: #16a34a;
         border: 1px solid rgba(34, 197, 94, 0.3);
     }
+
     .badge-no-iva {
         background: rgba(100, 116, 139, 0.15);
         color: #64748b;
         border: 1px solid rgba(100, 116, 139, 0.3);
     }
-    
+
     /* ============================================
        ✅ ESTILOS PARA MODAL DE DETALLE
        ============================================ */
@@ -369,6 +409,7 @@
         margin: 0 auto;
         display: block;
     }
+
     .detail-placeholder-large {
         width: 100%;
         max-width: 250px;
@@ -384,6 +425,7 @@
         box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
         margin: 0 auto;
     }
+
     .detail-section {
         background: rgba(248, 250, 252, 0.6);
         border: 1px solid rgba(203, 213, 225, 0.5);
@@ -391,6 +433,7 @@
         padding: 1.25rem;
         margin-bottom: 1rem;
     }
+
     .detail-section-title {
         font-size: 1rem;
         font-weight: 700;
@@ -400,30 +443,36 @@
         align-items: center;
         gap: 0.5rem;
     }
+
     .detail-section-title i {
         color: #3b82f6;
         font-size: 1.2rem;
     }
+
     .detail-row {
         display: flex;
         justify-content: space-between;
         padding: 0.75rem 0;
         border-bottom: 1px solid rgba(203, 213, 225, 0.3);
     }
+
     .detail-row:last-child {
         border-bottom: none;
     }
+
     .detail-label {
         font-weight: 600;
         color: #64748b;
         font-size: 0.9rem;
     }
+
     .detail-value {
         font-weight: 700;
         color: #1e293b;
         font-size: 0.95rem;
         text-align: right;
     }
+
     /* ============================================
        BOTONES
        ============================================ */
@@ -441,20 +490,22 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 
+        box-shadow:
             0 8px 20px rgba(59, 130, 246, 0.25),
             0 2px 8px rgba(96, 165, 250, 0.2),
             inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
+
     .btn-primary-admin:hover,
     .btn-success-admin:hover {
         transform: translateY(-2px);
-        box-shadow: 
+        box-shadow:
             0 12px 28px rgba(59, 130, 246, 0.3),
             0 4px 12px rgba(96, 165, 250, 0.25),
             inset 0 1px 0 rgba(255, 255, 255, 0.25);
         background: linear-gradient(135deg, rgba(96, 165, 250, 0.95) 0%, rgba(59, 130, 246, 0.95) 100%);
     }
+
     .btn-danger-admin {
         background: linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(220, 38, 38, 0.95) 100%);
         border: none;
@@ -467,17 +518,19 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 
+        box-shadow:
             0 8px 20px rgba(239, 68, 68, 0.25),
             0 2px 8px rgba(239, 68, 68, 0.2),
             inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
+
     .btn-danger-admin:hover {
         transform: translateY(-2px);
-        box-shadow: 
+        box-shadow:
             0 12px 28px rgba(239, 68, 68, 0.3),
             0 4px 12px rgba(239, 68, 68, 0.25);
     }
+
     .btn-primary-admin:disabled,
     .btn-success-admin:disabled,
     .btn-danger-admin:disabled {
@@ -485,13 +538,16 @@
         cursor: not-allowed;
         transform: none;
     }
+
     .btn-group .btn {
         transition: all 0.2s ease;
     }
+
     .btn-group .btn:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
+
     /* ============================================
        PAGINACIÓN
        ============================================ */
@@ -500,6 +556,7 @@
         gap: 0.5rem;
         flex-wrap: wrap;
     }
+
     .page-item .page-link {
         padding: 0.5rem 1rem;
         border-radius: 10px;
@@ -507,32 +564,36 @@
         font-weight: 600;
         border: 1px solid rgba(219, 234, 254, 0.5);
     }
+
     .page-item.active .page-link {
         background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
     }
+
     .page-item:not(.active):not(.disabled) .page-link:hover {
         background: rgba(59, 130, 246, 0.15);
         transform: translateY(-1px);
     }
+
     /* ============================================
        MODALES
        ============================================ */
     .modal-dialog {
         margin-top: 3rem !important;
     }
-    
+
     .modal-content {
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(30px) saturate(180%);
         border: 1px solid rgba(219, 234, 254, 0.5);
         border-radius: 20px;
-        box-shadow: 
+        box-shadow:
             0 20px 60px rgba(0, 0, 0, 0.3),
             inset 0 1px 0 rgba(255, 255, 255, 0.9);
         position: relative;
         overflow: hidden;
     }
+
     .modal-content::before {
         content: '';
         position: absolute;
@@ -540,22 +601,25 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: 
+        background:
             radial-gradient(ellipse 600px 400px at 50% 50%, rgba(219, 234, 254, 0.15) 0%, transparent 70%);
         pointer-events: none;
         z-index: 0;
     }
+
     .modal-header {
         border-bottom: 1px solid rgba(59, 130, 246, 0.15);
         position: relative;
         z-index: 2;
         padding: 1rem 1.5rem;
     }
+
     .modal-title {
         color: #0f172a;
         font-weight: 700;
         font-size: 1.25rem;
     }
+
     .modal-body {
         color: #1e293b;
         position: relative;
@@ -564,18 +628,21 @@
         max-height: calc(100vh - 250px);
         overflow-y: auto;
     }
+
     .modal-footer {
         border-top: 1px solid rgba(59, 130, 246, 0.15);
         position: relative;
         z-index: 2;
         padding: 1rem 1.5rem;
     }
+
     /* ============================================
        FORM GROUPS EN MODAL
        ============================================ */
     .form-group-admin {
         margin-bottom: 0.85rem;
     }
+
     .form-label-admin {
         display: flex;
         align-items: center;
@@ -584,14 +651,17 @@
         font-weight: 700;
         margin-bottom: 0.35rem;
     }
+
     .form-label-admin i {
         font-size: 0.9rem;
         margin-right: 0.5rem;
     }
+
     textarea.form-control-admin {
         min-height: 80px;
         resize: vertical;
     }
+
     /* ============================================
        ALERTS
        ============================================ */
@@ -608,16 +678,19 @@
         z-index: 2;
         font-size: 0.85rem;
     }
+
     .alert-info-admin {
         background: rgba(59, 130, 246, 0.15);
         color: #2563eb;
         border: 1px solid rgba(59, 130, 246, 0.3);
     }
+
     .alert-danger-admin {
         background: rgba(239, 68, 68, 0.15);
         color: #dc2626;
         border: 1px solid rgba(239, 68, 68, 0.3);
     }
+
     /* ============================================
        TOAST NOTIFICATIONS
        ============================================ */
@@ -631,13 +704,14 @@
         gap: 10px;
         max-width: 400px;
     }
+
     .toast-notification {
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(30px) saturate(180%);
         border: 1px solid rgba(219, 234, 254, 0.5);
         border-radius: 12px;
         padding: 1rem 1.5rem;
-        box-shadow: 
+        box-shadow:
             0 8px 32px rgba(59, 130, 246, 0.15),
             inset 0 1px 0 rgba(255, 255, 255, 0.9);
         display: flex;
@@ -645,29 +719,35 @@
         gap: 1rem;
         animation: slideIn 0.3s ease-out;
     }
+
     .toast-notification.removing {
         animation: slideOut 0.3s ease-out forwards;
     }
+
     @keyframes slideIn {
         from {
             transform: translateX(400px);
             opacity: 0;
         }
+
         to {
             transform: translateX(0);
             opacity: 1;
         }
     }
+
     @keyframes slideOut {
         from {
             transform: translateX(0);
             opacity: 1;
         }
+
         to {
             transform: translateX(400px);
             opacity: 0;
         }
     }
+
     .toast-icon {
         width: 40px;
         height: 40px;
@@ -679,36 +759,44 @@
         flex-shrink: 0;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
+
     .toast-success .toast-icon {
         background: rgba(16, 185, 129, 0.2);
         color: #10b981;
     }
+
     .toast-error .toast-icon {
         background: rgba(239, 68, 68, 0.2);
         color: #ef4444;
     }
+
     .toast-warning .toast-icon {
         background: rgba(245, 158, 11, 0.2);
         color: #f59e0b;
     }
+
     .toast-info .toast-icon {
         background: rgba(59, 130, 246, 0.2);
         color: #3b82f6;
     }
+
     .toast-content {
         flex: 1;
         color: #1e293b;
     }
+
     .toast-title {
         font-weight: 700;
         margin-bottom: 0.2rem;
         font-size: 0.95rem;
     }
+
     .toast-message {
         font-size: 0.85rem;
         color: #64748b;
         font-weight: 500;
     }
+
     .toast-close {
         background: rgba(59, 130, 246, 0.1);
         border: none;
@@ -724,10 +812,12 @@
         flex-shrink: 0;
         font-weight: 700;
     }
+
     .toast-close:hover {
         background: rgba(59, 130, 246, 0.2);
         transform: scale(1.1);
     }
+
     .toast-progress {
         position: absolute;
         bottom: 0;
@@ -737,10 +827,17 @@
         border-radius: 0 0 12px 12px;
         animation: progress 3s linear forwards;
     }
+
     @keyframes progress {
-        from { width: 100%; }
-        to { width: 0%; }
+        from {
+            width: 100%;
+        }
+
+        to {
+            width: 0%;
+        }
     }
+
     /* ============================================
        LOADING SPINNER
        ============================================ */
@@ -748,6 +845,7 @@
         border-color: rgba(59, 130, 246, 0.3);
         border-top-color: #3b82f6;
     }
+
     /* ============================================
        RESPONSIVE
        ============================================ */
@@ -755,29 +853,36 @@
         .card-title {
             font-size: 1.5rem;
         }
+
         .stat-card {
             margin-bottom: 1rem;
         }
+
         .table-admin {
             font-size: 0.85rem;
         }
+
         .btn-group {
             flex-wrap: wrap;
             gap: 0.3rem;
         }
+
         .modal-dialog {
             margin: 1rem !important;
             margin-top: 2rem !important;
         }
+
         #toastContainer {
             left: 10px;
             right: 10px;
             max-width: none;
         }
+
         .image-upload-container {
             flex-direction: column;
         }
     }
+
     /* ============================================
        ANIMACIONES DE ENTRADA
        ============================================ */
@@ -786,20 +891,37 @@
             opacity: 0;
             transform: translateY(20px);
         }
+
         to {
             opacity: 1;
             transform: translateY(0);
         }
     }
+
     .stat-card,
     .admin-card {
         animation: fadeInUp 0.5s ease-out backwards;
     }
-    .stat-card:nth-child(1) { animation-delay: 0.05s; }
-    .stat-card:nth-child(2) { animation-delay: 0.1s; }
-    .stat-card:nth-child(3) { animation-delay: 0.15s; }
-    .stat-card:nth-child(4) { animation-delay: 0.2s; }
-    .stat-card:nth-child(5) { animation-delay: 0.25s; }
+
+    .stat-card:nth-child(1) {
+        animation-delay: 0.05s;
+    }
+
+    .stat-card:nth-child(2) {
+        animation-delay: 0.1s;
+    }
+
+    .stat-card:nth-child(3) {
+        animation-delay: 0.15s;
+    }
+
+    .stat-card:nth-child(4) {
+        animation-delay: 0.2s;
+    }
+
+    .stat-card:nth-child(5) {
+        animation-delay: 0.25s;
+    }
 
     /* Barra de progreso para quintales */
     .progress-bar-quintal {
@@ -811,7 +933,7 @@
         margin: 5px 0;
         position: relative;
     }
-    
+
     .progress-bar-fill {
         height: 100%;
         background: linear-gradient(90deg, #4CAF50, #8BC34A);
@@ -823,22 +945,21 @@
         font-size: 11px;
         font-weight: bold;
     }
-    
+
     .progress-bar-quintal.low .progress-bar-fill {
         background: linear-gradient(90deg, #ff5252, #ff9800);
     }
-    
+
     .progress-bar-quintal.critical .progress-bar-fill {
         background: linear-gradient(90deg, #d32f2f, #ff5252);
     }
-    
+
     .quintal-info {
         text-align: center;
         font-size: 12px;
         color: #666;
         margin-top: 3px;
     }
-
 </style>
 {% endblock %}
 
@@ -866,7 +987,8 @@
             <h1 class="card-title">
                 <i class="bi bi-box-seam me-2" style="color: #3b82f6;"></i>Gestión de Productos
             </h1>
-            <p style="color: #64748b; margin: 0; font-weight: 500;">Administra el catálogo de productos del inventario</p>
+            <p style="color: #64748b; margin: 0; font-weight: 500;">Administra el catálogo de productos del inventario
+            </p>
         </div>
         <div>
             <button class="btn-primary-admin" onclick="openCreateModal()">
@@ -928,13 +1050,17 @@
     <div class="admin-card mb-4" style="animation-delay: 0.3s;">
         <div class="row g-3">
             <div class="col-md-4">
-                <input type="text" class="form-control-admin" id="searchInput" placeholder="Buscar por nombre, código..." value="{{ search }}" onkeyup="handleSearch()">
+                <input type="text" class="form-control-admin" id="searchInput"
+                    placeholder="Buscar por nombre, código..." value="{{ search }}" onkeyup="handleSearch()">
             </div>
             <div class="col-md-2">
                 <select class="form-control-admin" id="filterCategoria" onchange="applyFilters()">
                     <option value="">Todas las categorías</option>
                     {% for cat in categorias %}
-                    <option value="{{ cat.id }}" {% if categoria_selected == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.nombre }}</option>
+                    <option value="{{ cat.id }}" 
+                        {% if categoria_selected and categoria_selected|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>
+                        {{ cat.nombre }}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
@@ -979,187 +1105,192 @@
                 </thead>
                 <tbody id="productosTableBody">
                     {% if productos %}
-                        {% for producto in productos %}
-                        <tr 
-                            data-id="{{ producto.id }}"
-                            data-nombre="{{ producto.nombre }}"
-                            data-codigo="{{ producto.codigo_barras|default:'' }}"
-                            data-descripcion="{{ producto.descripcion|default:'' }}"
-                            data-categoria-id="{{ producto.categoria.id|default:'' }}"
-                            data-categoria-nombre="{{ producto.categoria.nombre|default:'Sin categoría' }}"
-                            data-marca-id="{{ producto.marca.id|default:'' }}"
-                            data-marca-nombre="{{ producto.marca.nombre|default:'Sin marca' }}"
-                            data-tipo="{{ producto.tipo_inventario }}"
-                            data-iva="{{ producto.aplica_impuestos|yesno:'true,false' }}"
-                            data-precio-unitario="{{ producto.precio_venta|default:'0.00' }}"
-                            data-precio-peso="{{ producto.precio_por_unidad_peso|default:'0.00' }}"
-                            data-activo="{{ producto.activo|yesno:'true,false' }}"
-                            data-imagen-url="{% if producto.imagen %}{{ producto.imagen.url }}{% endif %}"
-                            data-unidad-medida-id="{% if producto.unidad_medida_base %}{{ producto.unidad_medida_base.id }}{% endif %}"
-                            data-stock-actual="{% if producto.inventario_normal %}{{ producto.inventario_normal.stock_actual|default:'0' }}{% else %}0{% endif %}"
-                            data-quintales="0"
-                            data-libras="0"
-                        >
-                            <td>
-                                {% if producto.imagen %}
-                                    <img src="{{ producto.imagen.url }}" class="product-image" alt="{{ producto.nombre }}">
+                    {% for producto in productos %}
+                    <tr data-id="{{ producto.id }}" data-nombre="{{ producto.nombre }}"
+                        data-codigo="{{ producto.codigo_barras|default:'' }}"
+                        data-descripcion="{{ producto.descripcion|default:'' }}"
+                        data-categoria-id="{{ producto.categoria.id|default:'' }}"
+                        data-categoria-nombre="{{ producto.categoria.nombre|default:'Sin categoría' }}"
+                        data-marca-id="{{ producto.marca.id|default:'' }}"
+                        data-marca-nombre="{{ producto.marca.nombre|default:'Sin marca' }}"
+                        data-tipo="{{ producto.tipo_inventario }}"
+                        data-iva="{{ producto.aplica_impuestos|yesno:'true,false' }}"
+                        data-precio-unitario="{{ producto.precio_venta|default:'0.00' }}"
+                        data-precio-peso="{{ producto.precio_por_unidad_peso|default:'0.00' }}"
+                        data-activo="{{ producto.activo|yesno:'true,false' }}"
+                        data-imagen-url="{% if producto.imagen %}{{ producto.imagen.url }}{% endif %}"
+                        data-unidad-medida-id="{% if producto.unidad_medida_base %}{{ producto.unidad_medida_base.id }}{% endif %}"
+                        data-stock-actual="{% if producto.inventario_normal %}{{ producto.inventario_normal.stock_actual|default:'0' }}{% else %}0{% endif %}"
+                        data-quintales="{{ producto.cantidad_quintales|default:'0' }}"
+                        data-libras="{{ producto.stock_total_calculado|default:'0' }}"
+                        data-peso-base-quintal="{{ producto.peso_base_quintal|default:'0' }}">
+                        <td>
+                            {% if producto.imagen %}
+                            <img src="{{ producto.imagen.url }}" class="product-image" alt="{{ producto.nombre }}">
+                            {% else %}
+                            <div class="product-placeholder">
+                                {% if producto.tipo_inventario == 'QUINTAL' %}
+                                <i class="bi bi-box-seam"></i>
                                 {% else %}
-                                    <div class="product-placeholder">
-                                        {% if producto.tipo_inventario == 'QUINTAL' %}
-                                            <i class="bi bi-box-seam"></i>
-                                        {% else %}
-                                            <i class="bi bi-box"></i>
-                                        {% endif %}
-                                    </div>
+                                <i class="bi bi-box"></i>
                                 {% endif %}
-                            </td>
-                            <td>
-                                <div>
-                                    <div style="font-weight: 700; color: #1e293b; font-size: 0.95rem;">
-                                        {% if producto.tipo_inventario == 'QUINTAL' %}
-                                            <i class="bi bi-box-seam me-2" style="color: #3b82f6;"></i>
-                                        {% else %}
-                                            <i class="bi bi-box me-2" style="color: #8b5cf6;"></i>
-                                        {% endif %}
-                                        {{ producto.nombre }}
-                                    </div>
-                                    {% if producto.descripcion %}
-                                    <div style="font-size: 0.85rem; color: #64748b; font-weight: 500; margin-top: 0.2rem;">
-                                        {{ producto.descripcion|truncatewords:8 }}
-                                    </div>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div>
+                                <div style="font-weight: 700; color: #1e293b; font-size: 0.95rem;">
+                                    {% if producto.tipo_inventario == 'QUINTAL' %}
+                                    <i class="bi bi-box-seam me-2" style="color: #3b82f6;"></i>
+                                    {% else %}
+                                    <i class="bi bi-box me-2" style="color: #8b5cf6;"></i>
                                     {% endif %}
+                                    {{ producto.nombre }}
                                 </div>
-                            </td>
-                            <td><span class="badge-admin badge-info">{{ producto.codigo_barras|default:"Sin código" }}</span></td>
-                            <td>{{ producto.categoria.nombre|default:"Sin categoría" }}</td>
-                            <td>
-                                {% if producto.marca %}
-                                    <span class="badge-admin badge-brand">
-                                        <i class="bi bi-tag-fill me-1"></i>{{ producto.marca.nombre }}
-                                    </span>
-                                {% else %}
-                                    <span style="color: #9ca3af; font-size: 0.85rem;">Sin marca</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if producto.tipo_inventario == 'QUINTAL' %}
-                                    <span class="badge-admin badge-info">
-                                        <i class="bi bi-box-seam me-1"></i>Quintal
-                                    </span>
-                                {% else %}
-                                    <span class="badge-admin badge-purple">
-                                        <i class="bi bi-box me-1"></i>Normal
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if producto.aplica_impuestos %}
-                                    <span class="badge-admin badge-iva">
-                                        <i class="bi bi-check-circle-fill me-1"></i>{{ porcentaje_iva }}%
-                                    </span>
-                                {% else %}
-                                    <span class="badge-admin badge-no-iva">
-                                        <i class="bi bi-x-circle me-1"></i>0%
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if producto.tipo_inventario == 'QUINTAL' %}
-                                    {% with producto.quintales.all as quintales %}
-                                        {% if quintales %}
-                                            {% for quintal in quintales %}
-                                                {% if quintal.estado == 'DISPONIBLE' %}
-                                                    <div style="min-width: 120px;">
-                                                        {% with porcentaje=quintal.porcentaje_restante %}
-                                                            <div class="progress-bar-quintal {% if porcentaje <= 10 %}critical{% elif porcentaje <= 30 %}low{% endif %}">
-                                                                <div class="progress-bar-fill" style="width: {{ porcentaje|floatformat:0 }}%;">
-                                                                    {{ porcentaje|floatformat:0 }}%
-                                                                </div>
-                                                            </div>
-                                                            <div class="quintal-info">
-                                                                {{ quintal.peso_actual|floatformat:1 }}/{{ quintal.peso_inicial|floatformat:0 }} {{ quintal.unidad_medida.abreviatura }}
-                                                            </div>
-                                                        {% endwith %}
-                                                    </div>
-                                                {% endif %}
-                                            {% empty %}
-                                                <span class="badge badge-secondary">Sin quintales</span>
-                                            {% endfor %}
-                                        {% else %}
-                                            <span class="badge badge-secondary">Sin quintales</span>
-                                        {% endif %}
-                                    {% endwith %}
-                                {% else %}
-                                    {% if producto.inventario_normal %}
-                                        {% with stock=producto.inventario_normal.stock_actual %}
-                                            {% if stock > 0 %}
-                                                <div style="font-weight: 700; color: #10b981; font-size: 1.1rem;">
-                                                    <i class="bi bi-box-fill me-1"></i>
-                                                    {{ stock }} und
-                                                </div>
-                                                {% if stock <= producto.inventario_normal.stock_minimo %}
-                                                    <div style="font-size: 0.75rem; color: #f59e0b;">
-                                                        <i class="bi bi-exclamation-circle me-1"></i>Stock bajo
-                                                    </div>
-                                                {% endif %}
-                                            {% else %}
-                                                <span class="badge-admin badge-danger">
-                                                    <i class="bi bi-x-circle me-1"></i>Agotado
-                                                </span>
-                                            {% endif %}
-                                        {% endwith %}
-                                    {% else %}
-                                        <span class="badge-admin badge-warning">
-                                            <i class="bi bi-exclamation-triangle me-1"></i>Sin inventario
-                                        </span>
-                                    {% endif %}
-                                {% endif %}
-                            </td>
-                            <td style="font-weight: 700; font-size: 1.1rem; color: #059669;">
-                                {% if producto.tipo_inventario == 'QUINTAL' %}
-                                    {% if producto.precio_por_unidad_peso %}
-                                        ${{ producto.precio_por_unidad_peso|floatformat:2 }}/{{ producto.unidad_medida_base.abreviatura|default:"kg" }}
-                                    {% else %}
-                                        <span style="color: #ef4444; font-weight: 600; font-size: 0.85rem;">
-                                            <i class="bi bi-exclamation-triangle-fill me-1"></i>Sin precio
-                                        </span>
-                                    {% endif %}
-                                {% else %}
-                                    {% if producto.precio_venta %}
-                                        ${{ producto.precio_venta|floatformat:2 }}
-                                    {% else %}
-                                        <span style="color: #ef4444; font-weight: 600; font-size: 0.85rem;">
-                                            <i class="bi bi-exclamation-triangle-fill me-1"></i>Sin precio
-                                        </span>
-                                    {% endif %}
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if producto.activo %}
-                                <span class="badge-admin badge-success">
-                                    <i class="bi bi-check-circle-fill me-1"></i>Activo
-                                </span>
-                                {% else %}
-                                <span class="badge-admin badge-danger">
-                                    <i class="bi bi-x-circle-fill me-1"></i>Inactivo
-                                </span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div class="btn-group">
-                                    <button class="btn btn-sm" style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; margin-right: 0.3rem; font-weight: 600;" onclick="viewProducto('{{ producto.id }}')" title="Ver detalles">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-                                    <button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; margin-right: 0.3rem; font-weight: 600;" onclick="editProducto('{{ producto.id }}')" title="Editar">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button class="btn btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600;" onclick="deleteProducto('{{ producto.id }}', '{{ producto.nombre }}')" title="Eliminar">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                                {% if producto.descripcion %}
+                                <div style="font-size: 0.85rem; color: #64748b; font-weight: 500; margin-top: 0.2rem;">
+                                    {{ producto.descripcion|truncatewords:8 }}
                                 </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td><span class="badge-admin badge-info">{{ producto.codigo_barras|default:"Sin código" }}</span></td>
+                        <td>{{ producto.categoria.nombre|default:"Sin categoría" }}</td>
+                        <td>
+                            {% if producto.marca %}
+                            <span class="badge-admin badge-brand">
+                                <i class="bi bi-tag-fill me-1"></i>{{ producto.marca.nombre }}
+                            </span>
+                            {% else %}
+                            <span style="color: #9ca3af; font-size: 0.85rem;">Sin marca</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if producto.tipo_inventario == 'QUINTAL' %}
+                            <span class="badge-admin badge-info">
+                                <i class="bi bi-box-seam me-1"></i>Quintal
+                            </span>
+                            {% else %}
+                            <span class="badge-admin badge-purple">
+                                <i class="bi bi-box me-1"></i>Normal
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if producto.aplica_impuestos %}
+                            <span class="badge-admin badge-iva">
+                                <i class="bi bi-check-circle-fill me-1"></i>{{ porcentaje_iva }}%
+                            </span>
+                            {% else %}
+                            <span class="badge-admin badge-no-iva">
+                                <i class="bi bi-x-circle me-1"></i>0%
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if producto.tipo_inventario == 'QUINTAL' %}
+                            {% with producto.quintales.all as quintales %}
+                            {% if quintales %}
+                            {% for quintal in quintales %}
+                            {% if quintal.estado == 'DISPONIBLE' %}
+                            <div style="min-width: 120px;">
+                                {% with porcentaje=quintal.porcentaje_restante %}
+                                <div
+                                    class="progress-bar-quintal {% if porcentaje <= 10 %}critical{% elif porcentaje <= 30 %}low{% endif %}">
+                                    <div class="progress-bar-fill" style="width: {{ porcentaje|floatformat:0 }}%;">
+                                        {{ porcentaje|floatformat:0 }}%
+                                    </div>
+                                </div>
+                                <div class="quintal-info">
+                                    {{ quintal.peso_actual|floatformat:1 }}/{{ quintal.peso_inicial|floatformat:0 }} {{ quintal.unidad_medida.abreviatura }}
+                                </div>
+                                {% endwith %}
+                            </div>
+                            {% endif %}
+                            {% empty %}
+                            <span class="badge badge-secondary">Sin quintales</span>
+                            {% endfor %}
+                            {% else %}
+                            <span class="badge badge-secondary">Sin quintales</span>
+                            {% endif %}
+                            {% endwith %}
+                            {% else %}
+                            {% if producto.inventario_normal %}
+                            {% with stock=producto.inventario_normal.stock_actual %}
+                            {% if stock > 0 %}
+                            <div style="font-weight: 700; color: #10b981; font-size: 1.1rem;">
+                                <i class="bi bi-box-fill me-1"></i>
+                                {{ stock }} und
+                            </div>
+                            {% if stock <= producto.inventario_normal.stock_minimo %}
+                            <div style="font-size: 0.75rem; color: #f59e0b;">
+                                <i class="bi bi-exclamation-circle me-1"></i>Stock bajo
+                            </div>
+                            {% endif %}
+                            {% else %}
+                            <span class="badge-admin badge-danger">
+                                <i class="bi bi-x-circle me-1"></i>Agotado
+                            </span>
+                            {% endif %}
+                            {% endwith %}
+                            {% else %}
+                            <span class="badge-admin badge-warning">
+                                <i class="bi bi-exclamation-triangle me-1"></i>Sin inventario
+                            </span>
+                            {% endif %}
+                            {% endif %}
+                        </td>
+                        <td style="font-weight: 700; font-size: 1.1rem; color: #059669;">
+                            {% if producto.tipo_inventario == 'QUINTAL' %}
+                            {% if producto.precio_por_unidad_peso %}
+                            ${{ producto.precio_por_unidad_peso|floatformat:2 }}/{{ producto.unidad_medida_base.abreviatura|default:"kg" }}
+                            {% else %}
+                            <span style="color: #ef4444; font-weight: 600; font-size: 0.85rem;">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>Sin precio
+                            </span>
+                            {% endif %}
+                            {% else %}
+                            {% if producto.precio_venta %}
+                            ${{ producto.precio_venta|floatformat:2 }}
+                            {% else %}
+                            <span style="color: #ef4444; font-weight: 600; font-size: 0.85rem;">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>Sin precio
+                            </span>
+                            {% endif %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if producto.activo %}
+                            <span class="badge-admin badge-success">
+                                <i class="bi bi-check-circle-fill me-1"></i>Activo
+                            </span>
+                            {% else %}
+                            <span class="badge-admin badge-danger">
+                                <i class="bi bi-x-circle-fill me-1"></i>Inactivo
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <button class="btn btn-sm"
+                                    style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; margin-right: 0.3rem; font-weight: 600;"
+                                    onclick="viewProducto('{{ producto.id }}')" title="Ver detalles">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-sm"
+                                    style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; margin-right: 0.3rem; font-weight: 600;"
+                                    onclick="editProducto('{{ producto.id }}')" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm"
+                                    style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600;"
+                                    onclick="deleteProducto('{{ producto.id }}', '{{ producto.nombre }}')" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
                     {% else %}
                     <tr>
                         <td colspan="11" class="text-center" style="padding: 3rem;">
@@ -1186,7 +1317,8 @@
                     <ul class="pagination" style="margin: 0;">
                         {% if page_obj.has_previous %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if categoria_selected %}&categoria={{ categoria_selected }}{% endif %}{% if tipo_selected %}&tipo={{ tipo_selected }}{% endif %}">
+                            <a class="page-link"
+                                href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if categoria_selected %}&categoria={{ categoria_selected }}{% endif %}{% if tipo_selected %}&tipo={{ tipo_selected }}{% endif %}">
                                 <i class="bi bi-chevron-left"></i>
                             </a>
                         </li>
@@ -1197,20 +1329,24 @@
                         {% endif %}
 
                         {% for num in page_obj.paginator.page_range %}
-                            {% if page_obj.number == num %}
-                            <li class="page-item active">
-                                <span class="page-link">{{ num }}</span>
-                            </li>
-                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if categoria_selected %}&categoria={{ categoria_selected }}{% endif %}{% if tipo_selected %}&tipo={{ tipo_selected }}{% endif %}">{{ num }}</a>
-                            </li>
-                            {% endif %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link"
+                                href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if categoria_selected %}&categoria={{ categoria_selected }}{% endif %}{% if tipo_selected %}&tipo={{ tipo_selected }}{% endif %}">
+                                {{ num }}
+                            </a>
+                        </li>
+                        {% endif %}
                         {% endfor %}
 
                         {% if page_obj.has_next %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if categoria_selected %}&categoria={{ categoria_selected }}{% endif %}{% if tipo_selected %}&tipo={{ tipo_selected }}{% endif %}">
+                            <a class="page-link"
+                                href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if categoria_selected %}&categoria={{ categoria_selected }}{% endif %}{% if tipo_selected %}&tipo={{ tipo_selected }}{% endif %}">
                                 <i class="bi bi-chevron-right"></i>
                             </a>
                         </li>
@@ -1241,7 +1377,7 @@
                 <div class="modal-body">
                     {% csrf_token %}
                     <input type="hidden" id="productoId" name="producto_id">
-                    
+
                     <div class="form-group-admin">
                         <label class="form-label-admin">
                             <i class="bi bi-image-fill"></i>Imagen del Producto
@@ -1252,12 +1388,15 @@
                                 <img id="imagePreview" style="display: none;">
                             </div>
                             <div style="flex: 1;">
-                                <input type="file" id="imagenInput" name="imagen" class="image-upload-input" accept="image/*" onchange="previewImage(this)">
-                                <button type="button" class="btn-upload-image" onclick="document.getElementById('imagenInput').click()">
+                                <input type="file" id="imagenInput" name="imagen" class="image-upload-input"
+                                    accept="image/*" onchange="previewImage(this)">
+                                <button type="button" class="btn-upload-image"
+                                    onclick="document.getElementById('imagenInput').click()">
                                     <i class="bi bi-cloud-upload-fill"></i>
                                     Subir Imagen
                                 </button>
-                                <button type="button" class="btn-remove-image" id="btnRemoveImage" style="display: none; margin-left: 0.5rem;" onclick="removeImage()">
+                                <button type="button" class="btn-remove-image" id="btnRemoveImage"
+                                    style="display: none; margin-left: 0.5rem;" onclick="removeImage()">
                                     <i class="bi bi-trash"></i> Quitar
                                 </button>
                                 <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
@@ -1274,7 +1413,8 @@
                                 <label class="form-label-admin">
                                     <i class="bi bi-tag-fill"></i>Nombre *
                                 </label>
-                                <input type="text" class="form-control-admin" id="nombre" name="nombre" required placeholder="Nombre del producto">
+                                <input type="text" class="form-control-admin" id="nombre" name="nombre" required
+                                    placeholder="Nombre del producto">
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -1282,7 +1422,8 @@
                                 <label class="form-label-admin">
                                     <i class="bi bi-upc"></i>Código de Barras
                                 </label>
-                                <input type="text" class="form-control-admin" id="codigo_barras" name="codigo_barras" placeholder="Opcional">
+                                <input type="text" class="form-control-admin" id="codigo_barras" name="codigo_barras"
+                                    placeholder="Opcional">
                             </div>
                         </div>
                     </div>
@@ -1291,7 +1432,8 @@
                         <label class="form-label-admin">
                             <i class="bi bi-text-paragraph"></i>Descripción
                         </label>
-                        <textarea class="form-control-admin" id="descripcion" name="descripcion" rows="2" placeholder="Descripción opcional"></textarea>
+                        <textarea class="form-control-admin" id="descripcion" name="descripcion" rows="2"
+                            placeholder="Descripción opcional"></textarea>
                     </div>
 
                     <div class="row">
@@ -1325,27 +1467,28 @@
 
                     <!-- ✅ CAMPO IVA - CHECKBOX -->
                     <div class="form-group-admin">
-                        <label class="form-label-admin" style="font-weight: 600; color: #334155; margin-bottom: 0.75rem;">
+                        <label class="form-label-admin"
+                            style="font-weight: 600; color: #334155; margin-bottom: 0.75rem;">
                             <i class="bi bi-percent me-2"></i>Impuesto (IVA)
                         </label>
-                        
-                        <div class="form-check" style="padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
-                            <input 
-                                class="form-check-input" 
-                                type="checkbox" 
-                                id="aplica_iva" 
-                                name="aplica_iva"
+
+                        <div class="form-check"
+                            style="padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <input class="form-check-input" type="checkbox" id="aplica_iva" name="aplica_iva"
                                 onchange="updateIVAInfo()"
                                 style="width: 20px; height: 20px; margin-top: 0.25rem; cursor: pointer;">
-                            <label class="form-check-label" for="aplica_iva" style="margin-left: 0.5rem; font-weight: 600; cursor: pointer;">
+                            <label class="form-check-label" for="aplica_iva"
+                                style="margin-left: 0.5rem; font-weight: 600; cursor: pointer;">
                                 <i class="bi bi-check-circle me-2"></i>Este producto aplica IVA
                             </label>
                             <div style="font-size: 0.85rem; color: #64748b; margin-left: 2rem; margin-top: 0.25rem;">
                                 Se aplicará el <strong>{{ porcentaje_iva }}%</strong> de IVA configurado en el sistema
                             </div>
                         </div>
-                        
-                        <div id="ivaInfo" style="margin-top: 0.75rem; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid; display: none; align-items: center; gap: 0.75rem;"></div>
+
+                        <div id="ivaInfo"
+                            style="margin-top: 0.75rem; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid; display: none; align-items: center; gap: 0.75rem;">
+                        </div>
                     </div>
 
                     <div class="row">
@@ -1354,7 +1497,8 @@
                                 <label class="form-label-admin">
                                     <i class="bi bi-box"></i>Tipo de Inventario *
                                 </label>
-                                <select class="form-control-admin" id="tipo_inventario" name="tipo_inventario" required onchange="toggleTipoInventario()">
+                                <select class="form-control-admin" id="tipo_inventario" name="tipo_inventario" required
+                                    onchange="toggleTipoInventario()">
                                     <option value="NORMAL">Normal (unitario)</option>
                                     <option value="QUINTAL">Quintal (por peso)</option>
                                 </select>
@@ -1368,7 +1512,8 @@
                             <label class="form-label-admin">
                                 <i class="bi bi-cash"></i>Precio de Venta *
                             </label>
-                            <input type="number" class="form-control-admin" id="precio_unitario" name="precio_unitario" step="0.01" min="0" placeholder="0.00">
+                            <input type="number" class="form-control-admin" id="precio_unitario" name="precio_unitario"
+                                step="0.01" min="0" placeholder="0.00">
                             <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
                                 <i class="bi bi-info-circle me-1"></i>
                                 Precio de venta por unidad (sin IVA)
@@ -1384,7 +1529,8 @@
                                     <label class="form-label-admin">
                                         <i class="bi bi-rulers"></i>Unidad de Medida *
                                     </label>
-                                    <select class="form-control-admin" id="unidad_medida_base" name="unidad_medida_base">
+                                    <select class="form-control-admin" id="unidad_medida_base"
+                                        name="unidad_medida_base">
                                         <option value="">Seleccionar...</option>
                                         {% for unidad in unidades_medida %}
                                         <option value="{{ unidad.id }}">{{ unidad.nombre }} ({{ unidad.abreviatura }})</option>
@@ -1397,20 +1543,27 @@
                                     <label class="form-label-admin">
                                         <i class="bi bi-cash"></i>Precio por Peso *
                                     </label>
-                                    <input type="number" class="form-control-admin" id="precio_por_unidad_peso" name="precio_por_unidad_peso" step="0.01" min="0" placeholder="0.00">
+                                    <input type="number" class="form-control-admin" id="precio_por_unidad_peso"
+                                        name="precio_por_unidad_peso" step="0.01" min="0" placeholder="0.00">
+                                    <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Precio de venta por unidad de peso (sin IVA)
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Sección de Stock -->
-                    <div style="margin-top: 1.5rem; padding: 1.5rem; background: rgba(251, 191, 36, 0.08); border: 2px solid rgba(251, 191, 36, 0.3); border-radius: 12px;">
+                    <div
+                        style="margin-top: 1.5rem; padding: 1.5rem; background: rgba(251, 191, 36, 0.08); border: 2px solid rgba(251, 191, 36, 0.3); border-radius: 12px;">
                         <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
                             <i class="bi bi-box-seam-fill" style="color: #f59e0b; font-size: 1.3rem;"></i>
                             <h6 style="margin: 0; font-weight: 700; color: #92400e;">Inventario de Stock</h6>
                         </div>
-                        
-                        <div style="background: rgba(254, 249, 195, 0.4); border-left: 4px solid #f59e0b; padding: 0.85rem; border-radius: 8px; margin-bottom: 1rem;">
+
+                        <div
+                            style="background: rgba(254, 249, 195, 0.4); border-left: 4px solid #f59e0b; padding: 0.85rem; border-radius: 8px; margin-bottom: 1rem;">
                             <p style="margin: 0; color: #78350f; font-size: 0.875rem; font-weight: 500;">
                                 <i class="bi bi-info-circle-fill me-2"></i>
                                 <strong>Importante:</strong> Define el stock inicial del producto.
@@ -1423,7 +1576,8 @@
                                 <label class="form-label-admin">
                                     <i class="bi bi-box"></i>Stock Actual (Unidades)
                                 </label>
-                                <input type="number" class="form-control-admin" id="stock_actual" name="stock_actual" min="0" step="1" placeholder="Ej: 100" value="0">
+                                <input type="number" class="form-control-admin" id="stock_actual" name="stock_actual"
+                                    min="0" step="1" placeholder="Ej: 100" value="0">
                             </div>
                         </div>
 
@@ -1435,7 +1589,8 @@
                                         <label class="form-label-admin">
                                             <i class="bi bi-box-seam"></i>Quintales
                                         </label>
-                                        <input type="number" class="form-control-admin" id="quintales" name="quintales" min="0" step="1" placeholder="0" value="0">
+                                        <input type="number" class="form-control-admin" id="quintales" name="quintales"
+                                            min="0" step="1" placeholder="0" value="0">
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -1443,7 +1598,8 @@
                                         <label class="form-label-admin">
                                             <i class="bi bi-box"></i>Libras
                                         </label>
-                                        <input type="number" class="form-control-admin" id="libras" name="libras" min="0" max="99" step="0.01" placeholder="0" value="0">
+                                        <input type="number" class="form-control-admin" id="libras" name="libras"
+                                            min="0" step="0.01" placeholder="0" value="0">
                                     </div>
                                 </div>
                             </div>
@@ -1452,7 +1608,8 @@
 
                     <div class="form-group-admin">
                         <label class="form-label-admin d-flex align-items-center" style="cursor: pointer;">
-                            <input type="checkbox" id="activo" name="activo" checked style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer; accent-color: #3b82f6;">
+                            <input type="checkbox" id="activo" name="activo" checked
+                                style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer; accent-color: #3b82f6;">
                             <span>Producto Activo</span>
                         </label>
                     </div>
@@ -1534,18 +1691,17 @@
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
     let searchTimeout = null;
-    const IVA_DEFAULT = parseFloat('{{ porcentaje_iva }}');  // ✅ CORREGIDO: Usar porcentaje_iva
+    const IVA_DEFAULT = parseFloat('{{ porcentaje_iva|default:"0" }}');  // ✅ CORREGIDO: Usar porcentaje_iva con valor por defecto
 
     // Sistema de Notificaciones Toast
     function showNotification(type, message, title = null) {
         const container = document.getElementById('toastContainer');
-        
+
         const icons = {
             success: 'bi-check-circle-fill',
             error: 'bi-x-circle-fill',
@@ -1588,17 +1744,17 @@
         const preview = document.getElementById('imagePreview');
         const placeholder = document.getElementById('imagePlaceholder');
         const btnRemove = document.getElementById('btnRemoveImage');
-        
+
         if (input.files && input.files[0]) {
             const reader = new FileReader();
-            
-            reader.onload = function(e) {
+
+            reader.onload = function (e) {
                 preview.src = e.target.result;
                 preview.style.display = 'block';
                 placeholder.style.display = 'none';
                 btnRemove.style.display = 'inline-block';
             };
-            
+
             reader.readAsDataURL(input.files[0]);
         }
     }
@@ -1608,7 +1764,7 @@
         const preview = document.getElementById('imagePreview');
         const placeholder = document.getElementById('imagePlaceholder');
         const btnRemove = document.getElementById('btnRemoveImage');
-        
+
         input.value = '';
         preview.src = '';
         preview.style.display = 'none';
@@ -1620,13 +1776,13 @@
     function updateIVAInfo() {
         const ivaCheckbox = document.getElementById('aplica_iva');
         const ivaInfo = document.getElementById('ivaInfo');
-        
+
         // Si no existe el checkbox, intentar buscar el select (backward compatibility)
         if (!ivaCheckbox) {
             const ivaSelect = document.getElementById('iva');
             if (ivaSelect) {
                 const ivaValue = parseFloat(ivaSelect.value);
-                
+
                 if (ivaValue > 0) {
                     ivaInfo.style.display = 'flex';
                     ivaInfo.style.background = 'rgba(34, 197, 94, 0.1)';
@@ -1651,10 +1807,10 @@
             }
             return;
         }
-        
+
         // Nuevo sistema con checkbox
         const aplicaIva = ivaCheckbox.checked;
-        
+
         if (aplicaIva) {
             ivaInfo.style.display = 'flex';
             ivaInfo.style.background = 'rgba(34, 197, 94, 0.1)';
@@ -1678,56 +1834,56 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         loadStats();
         updateIVAInfo();
-        
+
         // ✅ NUEVO: Agregar listener al checkbox de IVA
         const ivaCheckbox = document.getElementById('aplica_iva');
         if (ivaCheckbox) {
             ivaCheckbox.addEventListener('change', updateIVAInfo);
         }
-        
+
         // ✅ Agregar listener al formulario para debug
         const form = document.getElementById('productoForm');
         if (form) {
-            form.addEventListener('submit', function(e) {
+            form.addEventListener('submit', function (e) {
                 console.log('📤 Enviando formulario...');
                 console.log('📝 Datos del formulario:');
-                
+
                 const formData = new FormData(form);
                 for (let pair of formData.entries()) {
                     console.log(`  ${pair[0]}: ${pair[1]}`);
                 }
-                
+
                 // Verificar campos específicos
                 console.log('🔍 Verificación de campos críticos:');
-                
+
                 const ivaCheckboxDebug = document.getElementById('aplica_iva');
                 if (ivaCheckboxDebug) {
                     console.log('  Aplica IVA (checkbox):', ivaCheckboxDebug.checked);
                 }
-                
+
                 const ivaSelectDebug = document.getElementById('iva');
                 if (ivaSelectDebug) {
                     console.log('  IVA (select):', ivaSelectDebug.value);
                 }
-                
+
                 const stockActualDebug = document.getElementById('stock_actual');
                 if (stockActualDebug) {
                     console.log('  Stock Actual:', stockActualDebug.value);
                 }
-                
+
                 const quintalesDebug = document.getElementById('quintales');
                 if (quintalesDebug) {
                     console.log('  Quintales:', quintalesDebug.value);
                 }
-                
+
                 const librasDebug = document.getElementById('libras');
                 if (librasDebug) {
                     console.log('  Libras:', librasDebug.value);
                 }
-                
+
                 const tipoInventarioDebug = document.getElementById('tipo_inventario');
                 if (tipoInventarioDebug) {
                     console.log('  Tipo Inventario:', tipoInventarioDebug.value);
@@ -1750,10 +1906,10 @@
 
             const tipoQuintal = row.querySelector('.badge-info i.bi-box-seam');
             const tipoNormal = row.querySelector('.badge-purple i.bi-box');
-            
+
             if (tipoQuintal) quintales++;
             if (tipoNormal) normales++;
-            
+
             const ivaBadge = row.querySelector('.badge-iva');
             if (ivaBadge) conIVA++;
         });
@@ -1782,12 +1938,12 @@
         const search = document.getElementById('searchInput').value;
         const categoria = document.getElementById('filterCategoria').value;
         const tipo = document.getElementById('filterTipo').value;
-        
+
         let url = window.location.pathname + '?';
         if (search) url += `search=${encodeURIComponent(search)}&`;
         if (categoria) url += `categoria=${categoria}&`;
         if (tipo) url += `tipo=${tipo}&`;
-        
+
         window.location.href = url;
     }
 
@@ -1797,18 +1953,18 @@
         const camposQuintal = document.getElementById('camposQuintal');
         const stockNormalGroup = document.getElementById('stock_normal_group');
         const stockQuintalGroup = document.getElementById('stock_quintal_group');
-    
+
         if (tipo === 'QUINTAL') {
             // Mostrar campos de quintal
             if (camposNormal) camposNormal.style.display = 'none';
             if (camposQuintal) camposQuintal.style.display = 'block';
-            
+
             const precioUnitario = document.getElementById('precio_unitario');
             const precioPorUnidadPeso = document.getElementById('precio_por_unidad_peso');
-            
+
             if (precioUnitario) precioUnitario.removeAttribute('required');
             if (precioPorUnidadPeso) precioPorUnidadPeso.setAttribute('required', 'required');
-            
+
             // Mostrar campos de stock quintal
             if (stockNormalGroup) stockNormalGroup.style.display = 'none';
             if (stockQuintalGroup) stockQuintalGroup.style.display = 'block';
@@ -1816,13 +1972,13 @@
             // Mostrar campos normales
             if (camposNormal) camposNormal.style.display = 'block';
             if (camposQuintal) camposQuintal.style.display = 'none';
-            
+
             const precioUnitario = document.getElementById('precio_unitario');
             const precioPorUnidadPeso = document.getElementById('precio_por_unidad_peso');
-            
+
             if (precioUnitario) precioUnitario.setAttribute('required', 'required');
             if (precioPorUnidadPeso) precioPorUnidadPeso.removeAttribute('required');
-            
+
             // Mostrar campos de stock normal
             if (stockNormalGroup) stockNormalGroup.style.display = 'block';
             if (stockQuintalGroup) stockQuintalGroup.style.display = 'none';
@@ -1832,14 +1988,14 @@
     // ✅ CORREGIDO: openCreateModal con nuevo sistema de IVA
     function openCreateModal() {
         const form = document.getElementById('productoForm');
-    
+
         document.getElementById('productoModalTitle').innerHTML = '<i class="bi bi-box-seam-fill me-2"></i>Nuevo Producto';
         form.reset();
         document.getElementById('productoId').value = '';
         document.getElementById('activo').checked = true;
-    
+
         removeImage();
-        
+
         // ✅ NUEVO: Configurar checkbox de IVA
         const ivaCheckbox = document.getElementById('aplica_iva');
         if (ivaCheckbox) {
@@ -1851,30 +2007,30 @@
                 ivaSelect.value = '0';
             }
         }
-        
+
         updateIVAInfo();
-    
+
         // Resetear unidad de medida
         const unidadMedidaBase = document.getElementById('unidad_medida_base');
         if (unidadMedidaBase) unidadMedidaBase.value = '';
-        
+
         // Resetear campos de stock
         const stockActual = document.getElementById('stock_actual');
         const quintales = document.getElementById('quintales');
         const libras = document.getElementById('libras');
-        
+
         if (stockActual) stockActual.value = '0';
         if (quintales) quintales.value = '0';
         if (libras) libras.value = '0';
-    
+
         toggleTipoInventario();
-    
+
         form.action = "{% url 'custom_admin:producto_crear' %}";
-    
+
         const saveBtn = document.getElementById('saveBtn');
         saveBtn.disabled = false;
         saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Guardar';
-    
+
         const modal = new bootstrap.Modal(document.getElementById('productoModal'));
         modal.show();
     }
@@ -1882,19 +2038,19 @@
     // ✅ CORREGIDO: editProducto con nuevo sistema de IVA
     function editProducto(productoId) {
         console.log('🔧 Editando producto:', productoId);
-        
+
         const row = document.querySelector(`tr[data-id="${productoId}"]`);
-        
+
         if (!row) {
             showNotification('error', 'No se pudo encontrar el producto');
             return;
         }
-        
+
         const modalElement = document.getElementById('productoModal');
         const form = document.getElementById('productoForm');
-        
+
         document.getElementById('productoModalTitle').innerHTML = '<i class="bi bi-pencil-square me-2"></i>Editar Producto';
-        
+
         // ✅ FUNCIÓN HELPER PARA LIMPIAR PRECIOS
         const limpiarPrecio = (valor) => {
             if (!valor || valor === 'None' || valor === 'null' || valor === '') return '0.00';
@@ -1903,7 +2059,7 @@
             const numero = parseFloat(limpio) || 0;
             return numero.toFixed(2);
         };
-        
+
         // Obtener datos del row
         const datos = {
             id: productoId,
@@ -1923,14 +2079,14 @@
             imagenUrl: row.getAttribute('data-imagen-url'),
             unidadMedidaId: row.getAttribute('data-unidad-medida-id')
         };
-        
+
         console.log('📊 Datos cargados:', datos);
         console.log('💰 Precio Unitario:', datos.precioUnitario);
         console.log('💰 Precio Peso:', datos.precioPeso);
-        
+
         // ✅ CRITICAL: Resetear el formulario primero
         form.reset();
-        
+
         // Poblar campos básicos
         document.getElementById('productoId').value = datos.id;
         document.getElementById('nombre').value = datos.nombre;
@@ -1938,7 +2094,7 @@
         document.getElementById('descripcion').value = datos.descripcion || '';
         document.getElementById('categoria').value = datos.categoriaId || '';
         document.getElementById('marca').value = datos.marcaId || '';
-        
+
         // ✅ CORREGIDO: IVA con checkbox
         const ivaCheckbox = document.getElementById('aplica_iva');
         if (ivaCheckbox) {
@@ -1957,7 +2113,7 @@
                             break;
                         }
                     }
-                    
+
                     if (!optionFound && datos.iva > 0) {
                         ivaSelect.value = IVA_DEFAULT.toString();
                     }
@@ -1967,17 +2123,17 @@
                 console.log('✅ IVA select configurado:', ivaSelect.value);
             }
         }
-        
+
         updateIVAInfo();
-        
+
         document.getElementById('activo').checked = datos.activo;
-        
+
         // Configurar imagen
         if (datos.imagenUrl) {
             const preview = document.getElementById('imagePreview');
             const placeholder = document.getElementById('imagePlaceholder');
             const btnRemove = document.getElementById('btnRemoveImage');
-            
+
             preview.src = datos.imagenUrl;
             preview.style.display = 'block';
             placeholder.style.display = 'none';
@@ -1985,25 +2141,25 @@
         } else {
             removeImage();
         }
-        
+
         // ✅ Configurar tipo de inventario
         document.getElementById('tipo_inventario').value = datos.tipo;
         toggleTipoInventario();
-        
+
         // Configurar formulario
         form.action = `/panel/inventario/productos/${datos.id}/editar/`;
-        
+
         const saveBtn = document.getElementById('saveBtn');
         saveBtn.disabled = false;
         saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Actualizar';
-        
+
         // 🎯 SOLUCIÓN: Usar el evento 'shown.bs.modal' para cargar precios y stock
         modalElement.addEventListener('shown.bs.modal', function cargarPreciosHandler() {
             console.log('🎬 Modal visible, cargando precios y stock...');
-            
+
             // Remover el listener para que solo se ejecute una vez
             modalElement.removeEventListener('shown.bs.modal', cargarPreciosHandler);
-            
+
             // ✅ CARGAR PRECIOS Y STOCK
             if (datos.tipo === 'QUINTAL') {
                 const inputPrecioPeso = document.getElementById('precio_por_unidad_peso');
@@ -2011,21 +2167,27 @@
                     inputPrecioPeso.value = datos.precioPeso;
                     console.log('✅ Precio por peso cargado:', inputPrecioPeso.value);
                 }
-                
+
                 if (datos.unidadMedidaId) {
                     const unidadMedidaBase = document.getElementById('unidad_medida_base');
                     if (unidadMedidaBase) {
                         unidadMedidaBase.value = datos.unidadMedidaId;
                     }
                 }
-                
-                // ✅ FIX CRÍTICO 2: CARGAR STOCK QUINTAL
+
+                // ✅ FIX CRÍTICO 2: CARGAR STOCK QUINTAL (campos visibles en la sección de stock)
                 const quintalesInput = document.getElementById('quintales');
                 const librasInput = document.getElementById('libras');
-                
-                if (quintalesInput) quintalesInput.value = datos.quintales;
-                if (librasInput) librasInput.value = datos.libras;
-                
+
+                if (quintalesInput) {
+                    quintalesInput.value = datos.quintales;
+                    console.log('📦 Quintales cargado:', datos.quintales);
+                }
+                if (librasInput) {
+                    librasInput.value = datos.libras;
+                    console.log('📦 Libras cargado:', datos.libras);
+                }
+
                 console.log('📦 Stock Quintal cargado');
             } else {
                 const inputPrecioUnitario = document.getElementById('precio_unitario');
@@ -2033,7 +2195,7 @@
                     inputPrecioUnitario.value = datos.precioUnitario;
                     console.log('✅ Precio unitario cargado:', inputPrecioUnitario.value);
                 }
-                
+
                 // ✅ FIX CRÍTICO 3: CARGAR STOCK NORMAL
                 const stockActualInput = document.getElementById('stock_actual');
                 if (stockActualInput) {
@@ -2041,10 +2203,10 @@
                     console.log('📦 Stock Normal cargado:', datos.stockActual);
                 }
             }
-            
+
             console.log('🎉 Todos los datos cargados correctamente');
         }, { once: true });
-        
+
         // Mostrar modal
         const modal = new bootstrap.Modal(modalElement);
         modal.show();
@@ -2053,18 +2215,18 @@
     // ✅ FUNCIÓN VER DETALLES
     function viewProducto(productoId) {
         const row = document.querySelector(`tr[data-id="${productoId}"]`);
-        
+
         if (!row) {
             showNotification('error', 'No se pudo encontrar el producto');
             return;
         }
-        
+
         const modal = new bootstrap.Modal(document.getElementById('viewProductoModal'));
         modal.show();
-        
+
         const content = document.getElementById('viewProductoContent');
         content.innerHTML = '<div class="text-center" style="padding: 2rem;"><div class="spinner-border" role="status"></div></div>';
-        
+
         setTimeout(() => {
             const nombre = row.getAttribute('data-nombre');
             const codigo = row.getAttribute('data-codigo');
@@ -2077,21 +2239,21 @@
             const precioPeso = row.getAttribute('data-precio-peso');
             const activo = row.getAttribute('data-activo') === 'true';
             const imagenUrl = row.getAttribute('data-imagen-url');
-            
+
             const tipoNombre = tipo === 'QUINTAL' ? 'Quintal (Por peso)' : 'Normal (Unitario)';
             const tipoIcon = tipo === 'QUINTAL' ? 'bi-box-seam' : 'bi-box';
             const tipoColor = tipo === 'QUINTAL' ? '#3b82f6' : '#8b5cf6';
-            
+
             const precioMostrar = tipo === 'QUINTAL' ? `$${precioPeso}/kg` : `$${precioUnitario}`;
-            
-            const estadoBadge = activo ? 
+
+            const estadoBadge = activo ?
                 '<span class="badge-admin badge-success"><i class="bi bi-check-circle-fill me-1"></i>Activo</span>' :
                 '<span class="badge-admin badge-danger"><i class="bi bi-x-circle-fill me-1"></i>Inactivo</span>';
-            
+
             const ivaBadge = iva > 0 ?
                 `<span class="badge-admin badge-iva"><i class="bi bi-check-circle-fill me-1"></i>${iva}%</span>` :
                 '<span class="badge-admin badge-no-iva"><i class="bi bi-x-circle me-1"></i>0%</span>';
-            
+
             let imagenHTML = '';
             if (imagenUrl) {
                 imagenHTML = `<img src="${imagenUrl}" class="detail-image-large" alt="${nombre}">`;
@@ -2102,7 +2264,7 @@
                     </div>
                 `;
             }
-            
+
             content.innerHTML = `
                 <div class="row">
                     <div class="col-md-4 text-center mb-4">
@@ -2174,9 +2336,9 @@
     function deleteProducto(productoId, nombre) {
         document.getElementById('deleteProductoId').value = productoId;
         document.getElementById('deleteProductoInfo').textContent = `Producto: ${nombre}`;
-        
+
         document.getElementById('deleteForm').action = `/panel/inventario/productos/${productoId}/eliminar/`;
-        
+
         const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
         modal.show();
     }
