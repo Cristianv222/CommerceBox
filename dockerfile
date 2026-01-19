@@ -1,10 +1,7 @@
-
 FROM python:3.11-slim-bullseye AS builder
 
-# Metadatos
 LABEL stage=builder
 
-# Variables de entorno para optimización
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -31,25 +28,22 @@ RUN pip install --user --no-warn-script-location \
     -r requirements.txt
 
 # ==============================================
-# STAGE 2: Runtime - Imagen final ultra-ligera
+# STAGE 2: Runtime - Imagen final
 # ==============================================
 FROM python:3.11-slim-bullseye AS runtime
 
 # Metadatos
-LABEL maintainer="CommerceBox Team <dev@commercebox.ec>" \
-      description="Sistema de Inventario Comercial Dual - Producción" \
+LABEL maintainer="CommerceBox Team <operaciones@agrofacil.fronteratech.ec>" \
+      description="Sistema de Inventario Comercial AgroFacil - Producción" \
       version="1.0.0" \
-      org.opencontainers.image.source="https://github.com/tu-repo/commercebox" \
       org.opencontainers.image.vendor="FronteraTech"
 
 # Variables de entorno optimizadas
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONHASHSEED=random \
-    PYTHONOPTIMIZE=1 \
     PIP_NO_CACHE_DIR=1 \
     PATH=/home/appuser/.local/bin:$PATH \
-    DJANGO_SETTINGS_MODULE=commercebox.settings.production \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
 
@@ -60,12 +54,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # PostgreSQL cliente
     postgresql-client=13+* \
     libpq5 \
-    # Utilidades básicas
+    # Utilidades esenciales
     curl \
     ca-certificates \
     # Locale para español Ecuador
     locales \
-    # Limpieza
     && echo "es_EC.UTF-8 UTF-8" > /etc/locale.gen \
     && locale-gen \
     && rm -rf /var/lib/apt/lists/* \
@@ -88,17 +81,16 @@ RUN mkdir -p \
     /app/tmp \
     && chown -R appuser:appuser /app
 
-# Copiar código del proyecto (DESPUÉS de crear directorios)
+# Copiar código del proyecto
 COPY --chown=appuser:appuser . /app/
 
 # Copiar y dar permisos al entrypoint
 COPY --chown=appuser:appuser entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Compilar archivos Python (optimización)
-RUN python -m compileall -b /app && \
-    find /app -name "*.py" -delete && \
-    find /app -type d -name "__pycache__" -exec rm -rf {} + || true
+# ✅ NO eliminar archivos .py - Django los necesita
+# Solo limpiar cache de Python si existe
+RUN find /app -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 
 # Cambiar a usuario no-root
 USER appuser
@@ -106,14 +98,14 @@ USER appuser
 # Exponer puerto
 EXPOSE 8000
 
-# Health check inteligente
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health/ || exit 1
 
 # Punto de entrada
 ENTRYPOINT ["/app/entrypoint.sh"]
 
-# Comando por defecto optimizado para producción
+# Comando por defecto para producción
 CMD ["gunicorn", \
      "commercebox.wsgi:application", \
      "--bind", "0.0.0.0:8000", \
