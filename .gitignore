@@ -166,6 +166,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Docker
+dockerfile.dev
 docker-compose.override.yml
 .dockerignore
 

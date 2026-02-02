@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import JsonResponse
@@ -7,6 +7,7 @@ from django.views.decorators.cache import cache_page
 from django.shortcuts import redirect
 from apps.custom_admin.views import login_page_view
 from apps.authentication.views import logout_view
+from apps.hardware_integration.api import agente_views  # 🔧 NUEVO: Import para captura de URLs
 
 admin.site.site_header = 'CommerceBox - Django Admin'
 admin.site.site_title = 'CommerceBox Admin'
@@ -109,6 +110,25 @@ urlpatterns = [
     path('panel/finanzas/', include('apps.financial_management.urls', namespace='financial_management')),
     
     path('panel/reportes-analitica/', include('apps.reports_analytics.urls', namespace='reports_analytics')),
+    
+    # ========================================
+    # 🔧 CAPTURA DE URLs MALFORMADAS - AGENTE .EXE
+    # ========================================
+    # Estas rutas capturan las URLs incorrectas que genera el agente de impresión
+    # y las redirigen a los endpoints correctos
+    
+    # Captura: //api/hardware/agente/trabajos/ (doble slash al inicio)
+    re_path(r'^/+api/hardware/agente/trabajos/?$', agente_views.obtener_trabajos_pendientes, name='captura_trabajos_1'),
+    
+    # Captura: //api/hardware/agente/registrar/
+    re_path(r'^/+api/hardware/agente/registrar/?$', agente_views.registrar_agente, name='captura_registrar'),
+    
+    # Captura: /api/hardware/agente/trabajos//api/hardware/agente/trabajos/ (duplicación)
+    re_path(r'^api/hardware/agente/trabajos/.+agente/trabajos/?$', agente_views.obtener_trabajos_pendientes, name='captura_trabajos_2'),
+    
+    # Captura cualquier variación con múltiples slashes
+    re_path(r'^/+api/hardware/agente/estado/?$', agente_views.obtener_estado_agente, name='captura_estado'),
+    re_path(r'^/+api/hardware/agente/resultado/?$', agente_views.reportar_resultado, name='captura_resultado'),
 ]
 
 
