@@ -8,6 +8,7 @@ from django.shortcuts import redirect
 from apps.custom_admin.views import login_page_view
 from apps.authentication.views import logout_view
 from apps.hardware_integration.api import agente_views  # 🔧 NUEVO: Import para captura de URLs
+from .health import health_check
 
 admin.site.site_header = 'CommerceBox - Django Admin'
 admin.site.site_title = 'CommerceBox Admin'
@@ -61,6 +62,8 @@ urlpatterns = [
     
     # Redirect raíz al login
     path('', redirect_to_login, name='home'),
+    # Health Check
+    path('health/', health_check, name='health_check'),
     
     # ✅ Login (página HTML)
     path('login/', login_page_view, name='login'),
@@ -138,3 +141,4 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
