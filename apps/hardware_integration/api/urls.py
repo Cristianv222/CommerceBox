@@ -13,4 +13,6 @@ urlpatterns = [
     path('agente/imprimir/', agente_views.imprimir_codigo_barras, name='imprimir_codigo_barras'),
     path('codigos-barras/etiqueta/', agente_views.imprimir_etiqueta_producto, name='imprimir_etiqueta_producto'),
     path('codigos-barras/prueba/', agente_views.imprimir_prueba_codigos, name='imprimir_prueba_codigos'),
+     # 🔧 TEMPORAL - Endpoint sin autenticación para debugging
+    path('agente/trabajos-debug/', agente_views.obtener_trabajos_sin_auth, name='trabajos_sin_auth'),
 ]

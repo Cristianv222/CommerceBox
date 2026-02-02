@@ -916,3 +916,38 @@ def imprimir_prueba_codigos(request):
             'success': False,
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# ============================================================================
+# 🔧 ENDPOINT TEMPORAL SIN AUTENTICACIÓN - SOLO PARA DEBUGGING
+# ============================================================================
+
+@api_view(['GET'])
+@permission_classes([])  # Sin autenticación
+@throttle_classes([NoThrottle])
+def obtener_trabajos_sin_auth(request):
+    """
+    TEMPORAL: Endpoint sin autenticación para debugging del agente .exe
+    ⚠️ ELIMINAR EN PRODUCCIÓN
+    """
+    try:
+        # Buscar el usuario agente_impresion
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        try:
+            user = User.objects.get(username='agente_impresion')
+        except User.DoesNotExist:
+            return Response({
+                'error': 'Usuario agente_impresion no existe'
+            }, status=400)
+        
+        # Simular request.user
+        request.user = user
+        
+        # Llamar a la función original
+        return obtener_trabajos_pendientes(request)
+        
+    except Exception as e:
+        logger.error(f"❌ Error en endpoint sin auth: {e}", exc_info=True)
+        return Response({
+            'error': str(e)
+        }, status=500)
