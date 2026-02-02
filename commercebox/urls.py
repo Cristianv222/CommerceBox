@@ -117,17 +117,23 @@ urlpatterns = [
     # ========================================
     # 🔧 CAPTURA DE URLs MALFORMADAS - AGENTE .EXE
     # ========================================
-    # Estas rutas capturan las URLs incorrectas que genera el agente de impresión
-    # y las redirigen a los endpoints correctos
+    # El agente .exe siempre agrega /api/hardware/agente/trabajos/ al final de la URL configurada
+    # Por eso necesitamos capturar todas las combinaciones posibles
     
     # Captura: //api/hardware/agente/trabajos/ (doble slash al inicio)
-    re_path(r'^/+api/hardware/agente/trabajos/?$', agente_views.obtener_trabajos_pendientes, name='captura_trabajos_1'),
+    re_path(r'^/+api/hardware/agente/trabajos/?$', agente_views.obtener_trabajos_sin_auth, name='captura_trabajos_doble_slash'),
     
     # Captura: //api/hardware/agente/registrar/
-    re_path(r'^/+api/hardware/agente/registrar/?$', agente_views.registrar_agente, name='captura_registrar'),
+    re_path(r'^/+api/hardware/agente/registrar/?$', agente_views.obtener_trabajos_sin_auth, name='captura_registrar'),
+    
+    # Captura: /api/hardware/agente/trabajos-debug//api/hardware/agente/trabajos/
+    re_path(r'^api/hardware/agente/trabajos-debug/.+$', agente_views.obtener_trabajos_sin_auth, name='captura_trabajos_debug'),
     
     # Captura: /api/hardware/agente/trabajos//api/hardware/agente/trabajos/ (duplicación)
-    re_path(r'^api/hardware/agente/trabajos/.+agente/trabajos/?$', agente_views.obtener_trabajos_pendientes, name='captura_trabajos_2'),
+    re_path(r'^api/hardware/agente/trabajos/.+agente/trabajos/?$', agente_views.obtener_trabajos_sin_auth, name='captura_trabajos_duplicado'),
+    
+    # Captura: cualquier cosa que termine en /api/hardware/agente/trabajos/
+    re_path(r'^.+/api/hardware/agente/trabajos/?$', agente_views.obtener_trabajos_sin_auth, name='captura_trabajos_general'),
     
     # Captura cualquier variación con múltiples slashes
     re_path(r'^/+api/hardware/agente/estado/?$', agente_views.obtener_estado_agente, name='captura_estado'),
