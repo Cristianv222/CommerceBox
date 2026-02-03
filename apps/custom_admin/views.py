@@ -3639,15 +3639,18 @@ def api_reimprimir_ticket(request, venta_id):
 def generar_comandos_ticket_bytes(venta, abrir_gaveta=False):
     """
     Genera comandos ESC/POS en formato BYTES para impresora térmica
-    VERSIÓN CORREGIDA - Error de get_metodo_pago_display solucionado
+    ✅ ACTUALIZADO: Usa ConfiguracionSistema
     
     Args:
         venta: Instancia del modelo Venta
+        abrir_gaveta: Si debe abrir la gaveta de dinero
     
     Returns:
         bytes: Comandos ESC/POS listos para enviar a la impresora
     """
-    from django.conf import settings
+    # ✅ Obtener configuración del sistema
+    from apps.system_configuration.models import ConfiguracionSistema
+    config = ConfiguracionSistema.get_config()
     
     # Comandos ESC/POS (BYTES, no strings)
     ESC = b'\x1b'
@@ -3669,14 +3672,29 @@ def generar_comandos_ticket_bytes(venta, abrir_gaveta=False):
     ticket += INIT
     
     # ========================================
-    # ENCABEZADO
+    # ✅ ENCABEZADO CON DATOS DE CONFIGURACIÓN
     # ========================================
     ticket += CENTER
-    ticket += BOLD_ON + DOUBLE_HEIGHT + b"COMMERCEBOX\n" + NORMAL + BOLD_OFF
-    ticket += b"RUC: 1234567890001\n"
-    ticket += b"Av. Principal #123\n"
-    ticket += b"Quito, Ecuador\n"
-    ticket += b"Tel: (02) 123-4567\n"
+    ticket += BOLD_ON + DOUBLE_HEIGHT + config.nombre_empresa.encode('utf-8') + b"\n" + NORMAL + BOLD_OFF
+    
+    if config.ruc_empresa:
+        ticket += f"RUC: {config.ruc_empresa}\n".encode('utf-8')
+    
+    if config.direccion_empresa:
+        # Truncar si es muy larga
+        direccion = config.direccion_empresa[:42]
+        ticket += direccion.encode('utf-8') + b"\n"
+    
+    if config.telefono_empresa:
+        ticket += f"Tel: {config.telefono_empresa}\n".encode('utf-8')
+    
+    if config.email_empresa:
+        ticket += config.email_empresa.encode('utf-8') + b"\n"
+    
+    if config.sitio_web:
+        sitio = config.sitio_web.replace('https://', '').replace('http://', '')
+        ticket += sitio.encode('utf-8') + b"\n"
+    
     ticket += b"\n"
     
     # ========================================
@@ -3702,24 +3720,28 @@ def generar_comandos_ticket_bytes(venta, abrir_gaveta=False):
     ticket += b"CANT  PRODUCTO           PRECIO    TOTAL\n"
     ticket += b"-" * 42 + b"\n"
     
+    # ✅ Usar símbolo de moneda y decimales de configuración
+    simbolo = config.simbolo_moneda
+    decimales = config.decimales_moneda
+    
     for detalle in venta.detalles.all():
         producto = detalle.producto
         nombre = producto.nombre[:20]  # Máximo 20 caracteres
         
         if hasattr(detalle, 'quintal') and detalle.quintal:
             cant_str = f"{detalle.peso_vendido:.2f}kg"
-            precio_str = f"${detalle.precio_por_unidad_peso:.2f}"
+            precio_str = f"{simbolo}{detalle.precio_por_unidad_peso:.{decimales}f}"
         else:
             cant_str = f"{detalle.cantidad_unidades}"
-            precio_str = f"${detalle.precio_unitario:.2f}"
+            precio_str = f"{simbolo}{detalle.precio_unitario:.{decimales}f}"
         
-        total_str = f"${detalle.total:.2f}"
+        total_str = f"{simbolo}{detalle.total:.{decimales}f}"
         
         linea = f"{cant_str:<5} {nombre:<20} {precio_str:>7} {total_str:>7}\n"
         ticket += linea.encode('utf-8')
         
         if detalle.descuento_monto and detalle.descuento_monto > 0:
-            desc_linea = f"      Descuento: -${detalle.descuento_monto:.2f}\n"
+            desc_linea = f"      Descuento: -{simbolo}{detalle.descuento_monto:.{decimales}f}\n"
             ticket += desc_linea.encode('utf-8')
     
     ticket += b"\n"
@@ -3729,17 +3751,19 @@ def generar_comandos_ticket_bytes(venta, abrir_gaveta=False):
     # TOTALES
     # ========================================
     ticket += LEFT
-    ticket += f"{'SUBTOTAL:':<32}${venta.subtotal:>9.2f}\n".encode('utf-8')
+    ticket += f"{'SUBTOTAL:':<32}{simbolo}{venta.subtotal:>9.{decimales}f}\n".encode('utf-8')
     
     if venta.descuento and venta.descuento > 0:
-        ticket += f"{'DESCUENTO:':<32}-${venta.descuento:>8.2f}\n".encode('utf-8')
+        ticket += f"{'DESCUENTO:':<32}-{simbolo}{venta.descuento:>8.{decimales}f}\n".encode('utf-8')
     
-    if venta.impuestos and venta.impuestos > 0:
-        ticket += f"{'IVA (15%):':<32}${venta.impuestos:>9.2f}\n".encode('utf-8')
+    # ✅ Mostrar IVA solo si está activo
+    if config.iva_activo and venta.impuestos and venta.impuestos > 0:
+        iva_label = f"IVA ({config.porcentaje_iva:.0f}%):"
+        ticket += f"{iva_label:<32}{simbolo}{venta.impuestos:>9.{decimales}f}\n".encode('utf-8')
     
     ticket += b"\n"
     ticket += BOLD_ON + DOUBLE_HEIGHT
-    ticket += f"{'TOTAL:':<16}${venta.total:>9.2f}\n".encode('utf-8')
+    ticket += f"{'TOTAL:':<32}{simbolo}{venta.total:>9.{decimales}f}\n".encode('utf-8')
     ticket += NORMAL + BOLD_OFF
     
     # ========================================
@@ -3747,6 +3771,7 @@ def generar_comandos_ticket_bytes(venta, abrir_gaveta=False):
     # ========================================
     if venta.monto_pagado and venta.monto_pagado > 0:
         ticket += b"\n"
+        ticket += b"=" * 42 + b"\n"
         ticket += LEFT
         
         pago = venta.pagos.first()
@@ -3758,21 +3783,27 @@ def generar_comandos_ticket_bytes(venta, abrir_gaveta=False):
             metodo = "EFECTIVO"
         
         ticket += f"Forma de pago: {metodo}\n".encode('utf-8')
-        ticket += f"{'Recibido:':<32}${venta.monto_pagado:>9.2f}\n".encode('utf-8')
+        ticket += f"{'Recibido:':<32}{simbolo}{venta.monto_pagado:>9.{decimales}f}\n".encode('utf-8')
         
         if venta.cambio and venta.cambio > 0:
             ticket += BOLD_ON
-            ticket += f"{'Cambio:':<32}${venta.cambio:>9.2f}\n".encode('utf-8')
+            ticket += f"{'CAMBIO:':<32}{simbolo}{venta.cambio:>9.{decimales}f}\n".encode('utf-8')
             ticket += BOLD_OFF
+    
+    ticket += b"=" * 42 + b"\n"
     
     # ========================================
     # PIE DE PÁGINA
     # ========================================
     ticket += b"\n"
     ticket += CENTER
-    ticket += b"=" * 42 + b"\n"
     ticket += b"GRACIAS POR SU COMPRA!\n"
     ticket += b"\n"
+    
+    if config.sitio_web:
+        sitio = config.sitio_web.replace('https://', '').replace('http://', '')
+        ticket += sitio.encode('utf-8') + b"\n"
+    
     ticket += b"Este documento no tiene\n"
     ticket += b"validez tributaria\n"
     ticket += b"\n"
@@ -3782,11 +3813,14 @@ def generar_comandos_ticket_bytes(venta, abrir_gaveta=False):
     ticket += b"\n"
     ticket += b"\n"
     
-    # Cortar papel
-    # Abrir gaveta si corresponde
+    # ========================================
+    # ABRIR GAVETA DE DINERO
+    # ========================================
     if abrir_gaveta:
-        ticket += b"\x1b\x70\x00\x19\xfa"  # ESC p 0 25 250
+        # ESC p - Pulso a gaveta
+        ticket += ESC + b'p\x00\x32\x32'  # Pin 0, 50ms ON, 50ms OFF
     
+    # Cortar papel
     ticket += CUT
     
     return ticket
