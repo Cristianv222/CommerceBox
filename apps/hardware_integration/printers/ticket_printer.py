@@ -40,10 +40,10 @@ class TicketPrinter:
             # ========================================
             # ENCABEZADO
             # ========================================
-            p.set(align='center', text_type='B', width=2, height=2)
+            p.set(align='center', bold=True, double_width=True, double_height=True)
             p.text(f"{config.nombre_empresa}\n")
             
-            p.set(align='center', text_type='normal')
+            p.set(align='center', bold=False, double_width=False, double_height=False)
             
             # RUC/NIT
             if config.ruc_empresa:
@@ -74,7 +74,7 @@ class TicketPrinter:
             # ========================================
             # DATOS DE LA VENTA
             # ========================================
-            p.set(align='left', text_type='normal')
+            p.set(align='left', bold=False)
             
             # Número de ticket con el prefijo configurado
             numero_venta = f"{config.prefijo_numero_venta}-{venta.numero_venta}"
@@ -94,7 +94,7 @@ class TicketPrinter:
             # ========================================
             # DETALLES DE PRODUCTOS
             # ========================================
-            p.set(text_type='normal')
+            p.set(bold=False)
             p.text("PRODUCTO          CANT      PRECIO     TOTAL\n")
             p.text("-" * 42 + "\n")
             
@@ -122,7 +122,7 @@ class TicketPrinter:
             # ========================================
             # TOTALES
             # ========================================
-            p.set(text_type='B')  # Negrita
+            p.set(bold=True)  # Negrita
             
             simbolo = config.simbolo_moneda
             decimales = config.decimales_moneda
@@ -136,10 +136,10 @@ class TicketPrinter:
             if config.iva_activo and venta.impuestos > 0:
                 p.text(f"{'IVA ({:.0f}%):'.format(config.porcentaje_iva):.<30} {simbolo}{venta.impuestos:>9.{decimales}f}\n")
             
-            p.set(text_type='B', width=2, height=2)
+            p.set(bold=True, double_width=True, double_height=True)
             p.text(f"{'TOTAL:':.<30} {simbolo}{venta.total:>9.{decimales}f}\n")
             
-            p.set(text_type='normal', width=1, height=1)
+            p.set(bold=False, double_width=False, double_height=False)
             p.text("=" * 42 + "\n")
             
             # ========================================
@@ -150,9 +150,9 @@ class TicketPrinter:
                 p.text(f"{forma:.<30} {simbolo}{pago.monto:>9.{decimales}f}\n")
             
             if venta.cambio > 0:
-                p.set(text_type='B')
+                p.set(bold=True)
                 p.text(f"{'CAMBIO:':.<30} {simbolo}{venta.cambio:>9.{decimales}f}\n")
-                p.set(text_type='normal')
+                p.set(bold=False)
             
             p.text("=" * 42 + "\n\n")
             
@@ -244,11 +244,11 @@ class TicketPrinter:
             p = escpos_printer.Dummy()
             
             # Encabezado de prueba
-            p.set(align='center', text_type='B', width=2, height=2)
+            p.set(align='center', bold=True, double_width=True, double_height=True)
             p.text("TICKET DE PRUEBA\n\n")
             
             # Información de la empresa
-            p.set(align='center', text_type='normal', width=1, height=1)
+            p.set(align='center', bold=False, double_width=False, double_height=False)
             p.text(f"{config.nombre_empresa}\n")
             
             if config.ruc_empresa:
@@ -257,7 +257,7 @@ class TicketPrinter:
             p.text("=" * 42 + "\n")
             
             # Información técnica
-            p.set(align='left', text_type='normal')
+            p.set(align='left', bold=False)
             p.text(f"Impresora: {impresora_obj.nombre}\n")
             p.text(f"Modelo: {impresora_obj.modelo}\n")
             p.text(f"Moneda: {config.moneda} ({config.simbolo_moneda})\n")
