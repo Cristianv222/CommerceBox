@@ -120,7 +120,7 @@ def obtener_usuario_para_impresion():
 # ============================================================================
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([])
 @throttle_classes([NoThrottle])
 def registrar_agente(request):
     """
@@ -916,3 +916,84 @@ def imprimir_prueba_codigos(request):
             'success': False,
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# ============================================================================
+# 🔧 ENDPOINT TEMPORAL SIN AUTENTICACIÓN - SOLO PARA DEBUGGING
+# ============================================================================
+
+@api_view(['GET'])
+@permission_classes([])  # Sin autenticación
+@throttle_classes([NoThrottle])
+def obtener_trabajos_sin_auth(request):
+    """
+    TEMPORAL: Endpoint sin autenticación para debugging del agente .exe
+    ⚠️ ELIMINAR EN PRODUCCIÓN
+    """
+    try:
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        try:
+            user = User.objects.get(username='agente_impresion')
+        except User.DoesNotExist:
+            return Response({
+                'error': 'Usuario agente_impresion no existe'
+            }, status=400)
+
+        # Obtener trabajos directamente
+        es_sistema = es_usuario_sistema(user)
+
+        if es_sistema:
+            trabajos_query = TrabajoImpresion.objects.filter(
+                estado='PENDIENTE'
+            ).select_related('impresora', 'venta', 'producto', 'creado_por').order_by(
+                'prioridad', 'fecha_creacion'
+            )[:10]
+        else:
+            trabajos_query = TrabajoImpresion.objects.filter(
+                estado='PENDIENTE',
+                creado_por=user
+            ).select_related('impresora', 'venta', 'producto').order_by(
+                'prioridad', 'fecha_creacion'
+            )[:10]
+
+        trabajos_list = []
+        for trabajo in trabajos_query:
+            if trabajo.impresora and trabajo.impresora.nombre_driver:
+                nombre_impresora = trabajo.impresora.nombre_driver
+            elif trabajo.impresora:
+                nombre_impresora = trabajo.impresora.nombre
+            else:
+                impresora_default = Impresora.objects.filter(
+                    es_principal_tickets=True, estado='ACTIVA'
+                ).first()
+                nombre_impresora = impresora_default.nombre_driver if impresora_default else "PrinterPOS-80"
+
+            nombre_normalizado = normalizar_nombre_impresora(nombre_impresora)
+            
+            usuario_creador = "Sistema"
+            if trabajo.creado_por:
+                usuario_creador = trabajo.creado_por.get_full_name() or trabajo.creado_por.username
+
+            trabajos_list.append({
+                'id': str(trabajo.id),
+                'impresora': nombre_normalizado,
+                'comandos': trabajo.datos_impresion,
+                'tipo': trabajo.tipo,
+                'prioridad': trabajo.prioridad,
+                'fecha_creacion': trabajo.fecha_creacion.isoformat(),
+                'copias': trabajo.copias,
+                'abrir_gaveta': trabajo.abrir_gaveta,
+                'usuario': usuario_creador,
+            })
+            trabajo.marcar_procesando()
+
+        return Response({
+            'trabajos': trabajos_list,
+            'count': len(trabajos_list),
+            'es_sistema': es_sistema,
+            'timestamp': timezone.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Error: {e}", exc_info=True)
+        return Response({'trabajos': [], 'count': 0, 'error': str(e)}, status=500)

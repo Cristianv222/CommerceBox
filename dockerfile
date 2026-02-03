@@ -1,57 +1,125 @@
-# CommerceBox - Sistema de Inventario Comercial Dual
-# Dockerfile para Producción
+FROM python:3.11-slim-bullseye AS builder
 
-FROM python:3.11-slim
+LABEL stage=builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_DEFAULT_TIMEOUT=100
+
+WORKDIR /build
+
+# Instalar dependencias de compilación (solo en builder)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copiar solo requirements para aprovechar cache de Docker
+COPY requirements.txt .
+
+# Instalar dependencias Python en directorio usuario
+RUN pip install --user --no-warn-script-location \
+    --compile \
+    -r requirements.txt
+
+# ==============================================
+# STAGE 2: Runtime - Imagen final
+# ==============================================
+FROM python:3.11-slim-bullseye AS runtime
 
 # Metadatos
-LABEL maintainer="CommerceBox Team"
-LABEL description="Sistema de Inventario Comercial Dual"
-LABEL version="1.0.0"
+LABEL maintainer="CommerceBox Team <operaciones@agrofacil.fronteratech.ec>" \
+      description="Sistema de Inventario Comercial AgroFacil - Producción" \
+      version="1.0.0" \
+      org.opencontainers.image.vendor="FronteraTech"
 
-# Variables de entorno
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV DEBIAN_FRONTEND=noninteractive
+# Variables de entorno optimizadas
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONHASHSEED=random \
+    PIP_NO_CACHE_DIR=1 \
+    PATH=/home/appuser/.local/bin:$PATH \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
 
-# Directorio de trabajo
 WORKDIR /app
 
-# Instalar dependencias del sistema
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        postgresql-client \
-        build-essential \
-        libpq-dev \
-        gettext \
-        curl \
-        wget \
-        git \
-        nano \
-    && rm -rf /var/lib/apt/lists/*
+# Instalar SOLO dependencias runtime (sin compiladores)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # PostgreSQL cliente
+    postgresql-client=13+* \
+    libpq5 \
+    # Utilidades esenciales
+    curl \
+    ca-certificates \
+    # Locale para español Ecuador
+    locales \
+    && echo "es_EC.UTF-8 UTF-8" > /etc/locale.gen \
+    && locale-gen \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean \
+    && rm -rf /tmp/* /var/tmp/*
 
-# Copiar requirements y instalar dependencias Python
-COPY requirements.txt /app/
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+# Crear usuario no-root con UID específico
+RUN groupadd -r -g 1000 appuser && \
+    useradd -r -u 1000 -g appuser -m -d /home/appuser -s /bin/bash appuser
+
+# Copiar dependencias Python compiladas desde builder
+COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
+
+# Crear estructura de directorios
+RUN mkdir -p \
+    /app/logs \
+    /app/media \
+    /app/staticfiles \
+    /app/backups \
+    /app/tmp \
+    && chown -R appuser:appuser /app
 
 # Copiar código del proyecto
-COPY . /app/
+COPY --chown=appuser:appuser . /app/
 
-# Crear directorios necesarios
-RUN mkdir -p /app/logs /app/media /app/static /app/staticfiles /app/backups
-
-# Permisos para el script de entrada
-COPY entrypoint.sh /app/
+# Copiar y dar permisos al entrypoint
+COPY --chown=appuser:appuser entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Crear usuario no root
-RUN adduser --disabled-password --gecos '' appuser \
-    && chown -R appuser:appuser /app
+# ✅ NO eliminar archivos .py - Django los necesita
+# Solo limpiar cache de Python si existe
+RUN find /app -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+
+# Cambiar a usuario no-root
 USER appuser
 
 # Exponer puerto
 EXPOSE 8000
 
-# Comando por defecto - CORREGIDO PARA PRODUCCIÓN
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health/ || exit 1
+
+# Punto de entrada
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["gunicorn", "commercebox.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-"]
+
+# Comando por defecto para producción
+CMD ["gunicorn", \
+     "commercebox.wsgi:application", \
+     "--bind", "0.0.0.0:8000", \
+     "--workers", "5", \
+     "--threads", "2", \
+     "--worker-class", "gthread", \
+     "--worker-tmp-dir", "/dev/shm", \
+     "--timeout", "120", \
+     "--graceful-timeout", "30", \
+     "--keep-alive", "5", \
+     "--max-requests", "1000", \
+     "--max-requests-jitter", "50", \
+     "--preload", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "--log-level", "info", \
+     "--capture-output"]

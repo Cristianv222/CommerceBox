@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 class TicketPrinter:
     """
     Servicio para imprimir tickets de venta
+    ✅ ACTUALIZADO: Usa configuración desde system_configuration
     """
     
     @staticmethod
@@ -28,6 +29,10 @@ class TicketPrinter:
             str: Comandos ESC/POS en formato hexadecimal
         """
         try:
+            # ✅ Obtener configuración del sistema
+            from apps.system_configuration.models import ConfiguracionSistema
+            config = ConfiguracionSistema.get_config()
+            
             # Crear impresora virtual (Dummy) para capturar comandos
             # Esto NO envía a imprimir, solo genera los bytes
             p = escpos_printer.Dummy()
@@ -35,27 +40,49 @@ class TicketPrinter:
             # ========================================
             # ENCABEZADO
             # ========================================
-            p.set(align='center', text_type='B', width=2, height=2)
-            empresa_nombre = getattr(settings, 'EMPRESA_NOMBRE', 'CommerceBox')
-            p.text(f"{empresa_nombre}\n")
+            p.set(align='center', bold=True, double_width=True, double_height=True)
+            p.text(f"{config.nombre_empresa}\n")
             
-            p.set(align='center', text_type='normal')
-            empresa_ruc = getattr(settings, 'EMPRESA_RUC', '0000000000001')
-            empresa_dir = getattr(settings, 'EMPRESA_DIRECCION', 'Ciudad')
-            empresa_tel = getattr(settings, 'EMPRESA_TELEFONO', '000-0000')
+            p.set(align='center', bold=False, double_width=False, double_height=False)
             
-            p.text(f"RUC: {empresa_ruc}\n")
-            p.text(f"{empresa_dir}\n")
-            p.text(f"Tel: {empresa_tel}\n")
+            # RUC/NIT
+            if config.ruc_empresa:
+                p.text(f"RUC: {config.ruc_empresa}\n")
+            
+            # Dirección
+            if config.direccion_empresa:
+                # Truncar dirección si es muy larga (máx 42 caracteres)
+                direccion = config.direccion_empresa[:42]
+                p.text(f"{direccion}\n")
+            
+            # Teléfono
+            if config.telefono_empresa:
+                p.text(f"Tel: {config.telefono_empresa}\n")
+            
+            # Email
+            if config.email_empresa:
+                p.text(f"{config.email_empresa}\n")
+            
+            # Sitio web
+            if config.sitio_web:
+                # Remover http:// o https:// para ahorrar espacio
+                sitio = config.sitio_web.replace('https://', '').replace('http://', '')
+                p.text(f"{sitio}\n")
             
             p.text("=" * 42 + "\n")
             
             # ========================================
             # DATOS DE LA VENTA
             # ========================================
-            p.set(align='left', text_type='normal')
-            p.text(f"Ticket: {venta.numero_venta}\n")
-            p.text(f"Fecha: {venta.fecha_venta.strftime('%d/%m/%Y %H:%M')}\n")
+            p.set(align='left', bold=False)
+            
+            # Número de ticket con el prefijo configurado
+            numero_venta = f"{config.prefijo_numero_venta}-{venta.numero_venta}"
+            p.text(f"Ticket: {numero_venta}\n")
+            
+            # Fecha en formato configurado
+            fecha_formato = venta.fecha_venta.strftime('%d/%m/%Y %H:%M')
+            p.text(f"Fecha: {fecha_formato}\n")
             p.text(f"Vendedor: {venta.vendedor.username}\n")
             
             if venta.cliente:
@@ -67,7 +94,7 @@ class TicketPrinter:
             # ========================================
             # DETALLES DE PRODUCTOS
             # ========================================
-            p.set(text_type='normal')
+            p.set(bold=False)
             p.text("PRODUCTO          CANT      PRECIO     TOTAL\n")
             p.text("-" * 42 + "\n")
             
@@ -81,8 +108,12 @@ class TicketPrinter:
                 else:
                     cant_str = f"{int(detalle.cantidad_unidades):>4} un"
                 
-                precio = f"${detalle.precio_unitario:.2f}".rjust(9)
-                total = f"${detalle.total:.2f}".rjust(9)
+                # ✅ Usar símbolo de moneda configurado
+                simbolo = config.simbolo_moneda
+                decimales = config.decimales_moneda
+                
+                precio = f"{simbolo}{detalle.precio_unitario:.{decimales}f}".rjust(9)
+                total = f"{simbolo}{detalle.total:.{decimales}f}".rjust(9)
                 
                 p.text(f"{nombre} {cant_str:>7} {precio} {total}\n")
             
@@ -91,19 +122,24 @@ class TicketPrinter:
             # ========================================
             # TOTALES
             # ========================================
-            p.set(text_type='B')  # Negrita
-            p.text(f"{'SUBTOTAL:':.<30} ${venta.subtotal:>9.2f}\n")
+            p.set(bold=True)  # Negrita
+            
+            simbolo = config.simbolo_moneda
+            decimales = config.decimales_moneda
+            
+            p.text(f"{'SUBTOTAL:':.<30} {simbolo}{venta.subtotal:>9.{decimales}f}\n")
             
             if venta.descuento > 0:
-                p.text(f"{'DESCUENTO:':.<30} -${venta.descuento:>8.2f}\n")
+                p.text(f"{'DESCUENTO:':.<30} -{simbolo}{venta.descuento:>8.{decimales}f}\n")
             
-            if venta.impuestos > 0:
-                p.text(f"{'IMPUESTOS:':.<30} ${venta.impuestos:>9.2f}\n")
+            # ✅ Mostrar IVA solo si está activo en configuración
+            if config.iva_activo and venta.impuestos > 0:
+                p.text(f"{'IVA ({:.0f}%):'.format(config.porcentaje_iva):.<30} {simbolo}{venta.impuestos:>9.{decimales}f}\n")
             
-            p.set(text_type='B', width=2, height=2)
-            p.text(f"{'TOTAL:':.<30} ${venta.total:>9.2f}\n")
+            p.set(bold=True, double_width=True, double_height=True)
+            p.text(f"{'TOTAL:':.<30} {simbolo}{venta.total:>9.{decimales}f}\n")
             
-            p.set(text_type='normal', width=1, height=1)
+            p.set(bold=False, double_width=False, double_height=False)
             p.text("=" * 42 + "\n")
             
             # ========================================
@@ -111,12 +147,12 @@ class TicketPrinter:
             # ========================================
             for pago in venta.pagos.all():
                 forma = pago.get_forma_pago_display()
-                p.text(f"{forma:.<30} ${pago.monto:>9.2f}\n")
+                p.text(f"{forma:.<30} {simbolo}{pago.monto:>9.{decimales}f}\n")
             
             if venta.cambio > 0:
-                p.set(text_type='B')
-                p.text(f"{'CAMBIO:':.<30} ${venta.cambio:>9.2f}\n")
-                p.set(text_type='normal')
+                p.set(bold=True)
+                p.text(f"{'CAMBIO:':.<30} {simbolo}{venta.cambio:>9.{decimales}f}\n")
+                p.set(bold=False)
             
             p.text("=" * 42 + "\n\n")
             
@@ -125,7 +161,17 @@ class TicketPrinter:
             # ========================================
             p.set(align='center')
             p.text("GRACIAS POR SU COMPRA\n")
-            p.text(f"www.tuempresa.com\n\n")
+            
+            # Mensaje personalizado si existe
+            if hasattr(venta, 'mensaje_personalizado') and venta.mensaje_personalizado:
+                p.text(f"{venta.mensaje_personalizado}\n")
+            
+            # Sitio web en el pie
+            if config.sitio_web:
+                sitio = config.sitio_web.replace('https://', '').replace('http://', '')
+                p.text(f"{sitio}\n")
+            
+            p.text("\n")
             
             # ========================================
             # ABRIR GAVETA DE DINERO
@@ -145,6 +191,9 @@ class TicketPrinter:
             comandos_hex = comandos_bytes.hex()
             
             logger.info(f"✅ Comandos generados: {len(comandos_hex)} caracteres hex")
+            logger.info(f"   Empresa: {config.nombre_empresa}")
+            logger.info(f"   Moneda: {config.simbolo_moneda} ({config.moneda})")
+            logger.info(f"   IVA activo: {config.iva_activo}")
             
             return comandos_hex
             
@@ -185,23 +234,57 @@ class TicketPrinter:
     def imprimir_ticket_prueba(impresora_obj):
         """
         Imprime un ticket de prueba
+        ✅ ACTUALIZADO: Usa configuración del sistema
         """
         try:
+            # ✅ Obtener configuración del sistema
+            from apps.system_configuration.models import ConfiguracionSistema
+            config = ConfiguracionSistema.get_config()
+            
             p = escpos_printer.Dummy()
             
-            p.set(align='center', text_type='B', width=2, height=2)
+            # Encabezado de prueba
+            p.set(align='center', bold=True, double_width=True, double_height=True)
             p.text("TICKET DE PRUEBA\n\n")
             
-            p.set(align='left', text_type='normal', width=1, height=1)
+            # Información de la empresa
+            p.set(align='center', bold=False, double_width=False, double_height=False)
+            p.text(f"{config.nombre_empresa}\n")
+            
+            if config.ruc_empresa:
+                p.text(f"RUC: {config.ruc_empresa}\n")
+            
             p.text("=" * 42 + "\n")
-            p.text("Esta es una prueba de impresion\n")
+            
+            # Información técnica
+            p.set(align='left', bold=False)
             p.text(f"Impresora: {impresora_obj.nombre}\n")
             p.text(f"Modelo: {impresora_obj.modelo}\n")
+            p.text(f"Moneda: {config.moneda} ({config.simbolo_moneda})\n")
+            p.text(f"Decimales: {config.decimales_moneda}\n")
+            p.text(f"IVA: {config.porcentaje_iva}% ")
+            p.text(f"({'Activo' if config.iva_activo else 'Inactivo'})\n")
+            p.text(f"Zona Horaria: {config.zona_horaria}\n")
+            
             p.text("=" * 42 + "\n\n")
             
+            # Mensaje de éxito
             p.set(align='center')
             p.text("Si puede leer esto,\n")
             p.text("su impresora funciona correctamente\n\n")
+            
+            # Información de contacto
+            if config.telefono_empresa:
+                p.text(f"Tel: {config.telefono_empresa}\n")
+            
+            if config.email_empresa:
+                p.text(f"{config.email_empresa}\n")
+            
+            if config.sitio_web:
+                sitio = config.sitio_web.replace('https://', '').replace('http://', '')
+                p.text(f"{sitio}\n")
+            
+            p.text("\n")
             
             # Probar gaveta si está configurada
             if impresora_obj.tiene_gaveta:
@@ -226,6 +309,7 @@ class TicketPrinter:
             )
             
             logger.info(f"✅ Ticket de prueba encolado con ID: {trabajo_id}")
+            logger.info(f"   Configuración: {config.nombre_empresa}")
             return True
             
         except Exception as e:

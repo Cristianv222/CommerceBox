@@ -1436,9 +1436,9 @@ class ReimprimirTicketView(VentasAPIAccessMixin, View):
                 from apps.hardware_integration.printers.ticket_printer import TicketPrinter
                 from apps.hardware_integration.api.agente_views import crear_trabajo_impresion
                 
-                # Obtener impresora activa
+                # ✅ CORREGIDO: Obtener impresora activa con estado='ACTIVA'
                 impresora = Impresora.objects.filter(
-                    activa=True,
+                    estado='ACTIVA',
                     tipo_impresora__in=['TERMICA_FACTURA', 'TERMICA_TICKET']
                 ).first()
                 
