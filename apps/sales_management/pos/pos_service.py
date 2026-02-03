@@ -451,24 +451,17 @@ class POSService:
             from apps.hardware_integration.printers.ticket_printer import TicketPrinter
             from apps.hardware_integration.api.agente_views import crear_trabajo_impresion
             
-            # Obtener la impresora principal activa
+            # ✅ CORREGIDO: Usar estado='ACTIVA' en lugar de activa=True
             impresora = Impresora.objects.filter(
-                activa=True,
+                estado='ACTIVA',
                 tipo_impresora__in=['TERMICA_FACTURA', 'TERMICA_TICKET']
             ).first()
             
             if impresora:
                 logger.info(f"🖨️ Imprimiendo ticket para venta {venta.numero_venta}")
                 
-                # Generar comandos ESC/POS del ticket
-                
-                # Determinar si abrir gaveta (solo si pagó con efectivo)
-                pagos_efectivo = venta.pagos.filter(forma_pago='EFECTIVO').exists()
-                abrir_gaveta = pagos_efectivo
-                logger.info(f"🔍 DEBUG POS: Pagos efectivo={pagos_efectivo}, abrir_gaveta={abrir_gaveta}")
-
-                comandos_hex = TicketPrinter.generar_comandos_ticket(venta, impresora, abrir_gaveta)
-
+                # ✅ CORREGIDO: generar_comandos_ticket solo acepta 2 parámetros
+                comandos_hex = TicketPrinter.generar_comandos_ticket(venta, impresora)
                 
                 # Encolar trabajo de impresión
                 trabajo_id = crear_trabajo_impresion(
