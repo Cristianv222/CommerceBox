@@ -3158,10 +3158,11 @@ def api_obtener_producto(request, producto_id):
 def api_procesar_venta(request):
     """
     API para procesar y guardar la venta con impresión térmica
-    VERSIÓN COMPLETA CORREGIDA:
+    ✅ VERSIÓN COMPLETAMENTE CORREGIDA:
     - IVA selectivo por producto
     - Estado de pago según tipo de venta
     - Validación de cliente para crédito
+    - Usa generar_comandos_ticket_bytes que ahora tiene ConfiguracionSistema
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
@@ -3356,10 +3357,8 @@ def api_procesar_venta(request):
                     orden += 1
                     
                 except Producto.DoesNotExist:
-                    # ❌ SI FALLA UN PRODUCTO, FALLA TODA LA VENTA
                     raise Exception(f"Producto no encontrado: {item.get('producto_id')}")
                 except Exception as e:
-                    # ❌ CUALQUIER ERROR DETIENE LA VENTA
                     raise Exception(f"Error procesando {producto.nombre}: {str(e)}")
             
             # ============================================================================
@@ -3379,47 +3378,29 @@ def api_procesar_venta(request):
             # ============================================================================
             # ✅ ESTABLECER ESTADO DE PAGO SEGÚN TIPO DE VENTA
             # ============================================================================
-            print("=" * 80)
-            print(f"🔍 ESTABLECIENDO ESTADO DE PAGO")
-            print(f"   Venta: {venta.numero_venta}")
-            print(f"   Tipo Venta: {tipo_venta}")
-            print(f"   Método Pago: {metodo_pago}")
-            print(f"   Monto Recibido: ${monto_recibido}")
-            print(f"   Total: ${total}")
-            print("=" * 80)
-            
             if tipo_venta == 'CONTADO':
-                # Ventas al contado siempre quedan como PAGADAS cuando se paga el total
                 if monto_recibido >= total:
                     venta.estado_pago = 'PAGADO'
-                    print(f"✅✅✅ Venta al CONTADO marcada como PAGADA ✅✅✅")
+                    logger.info(f"✅ Venta al CONTADO marcada como PAGADA")
                 else:
                     venta.estado_pago = 'PENDIENTE'
-                    print(f"⏳ Venta al CONTADO - Pago parcial, marcada como PENDIENTE")
-            
+                    logger.info(f"⏳ Venta al CONTADO - Pago parcial")
             elif tipo_venta == 'CREDITO':
-                # Ventas a crédito quedan pendientes hasta liquidar completamente
                 if monto_recibido >= total:
                     venta.estado_pago = 'PAGADO'
-                    print(f"✅ Venta a CRÉDITO liquidada completamente")
+                    logger.info(f"✅ Venta a CRÉDITO liquidada completamente")
                 else:
                     venta.estado_pago = 'PENDIENTE'
                     saldo = total - monto_recibido
-                    print(f"⏳ Venta a CRÉDITO con saldo pendiente: ${saldo}")
-            
+                    logger.info(f"⏳ Venta a CRÉDITO con saldo pendiente: ${saldo}")
             else:
-                # Por defecto, verificar si está completamente pagado
                 venta.estado_pago = 'PAGADO' if monto_recibido >= total else 'PENDIENTE'
-                print(f"❓ Tipo de venta: {tipo_venta}, Estado: {venta.estado_pago}")
             
-            print(f"💾 Guardando venta con estado_pago={venta.estado_pago}")
             venta.save()
-            print(f"✅ VENTA GUARDADA CON ÉXITO - Estado: {venta.estado_pago}")
-            print("=" * 80)
-            print()
+            logger.info(f"💾 Venta guardada con estado_pago: {venta.estado_pago}")
             
             # ============================================================================
-            # CREAR TRABAJO DE IMPRESIÓN
+            # ✅ CREAR TRABAJO DE IMPRESIÓN
             # ============================================================================
             try:
                 impresora = Impresora.objects.filter(
@@ -3434,21 +3415,21 @@ def api_procesar_venta(request):
                     ).first()
                 
                 if impresora:
-                    # Generar comandos ESC/POS
+                    logger.info(f"🖨️ Impresora encontrada: {impresora.nombre}")
+                    logger.info(f"🔍 Método pago: {metodo_pago}")
+                    
                     # Determinar si abrir gaveta
-                    logger.info(f"🔍 DEBUG: metodo_pago={metodo_pago}")
-                    logger.info(f"🔍 DEBUG: Comparacion = {metodo_pago == 'EFECTIVO'}")
                     abrir_gaveta = True if metodo_pago == 'EFECTIVO' else False
                     
+                    # ✅ Generar comandos (generar_comandos_ticket_bytes YA usa ConfiguracionSistema)
                     comandos_bytes = generar_comandos_ticket_bytes(venta, abrir_gaveta)
                     comandos_hex = comandos_bytes.hex()
                     
                     logger.info(f"📄 Comandos generados: {len(comandos_bytes)} bytes → {len(comandos_hex)} chars hex")
-                    logger.info(f"🎯 A punto de crear trabajo de impresión con abrir_gaveta={abrir_gaveta}")
+                    logger.info(f"✅ Ticket con datos de: {config.nombre_empresa}")
                     
-                    # Crear trabajo de impresión
-                    # 🔄 AUTO-IMPRESIÓN DESACTIVADA A PEDIDO DEL CLIENTE
-                    # El ticket solo se imprimirá si el usuario hace clic en "Imprimir Ticket"
+                    # 🔄 AUTO-IMPRESIÓN DESACTIVADA
+                    # Descomentar para activar impresión automática:
                     """
                     trabajo = TrabajoImpresion.objects.create(
                         tipo='TICKET',
@@ -3463,7 +3444,6 @@ def api_procesar_venta(request):
                         creado_por=usuario,
                         max_intentos=3
                     )
-                    
                     logger.info(f"✅ Trabajo de impresión creado: {trabajo.id}")
                     """
                     logger.info(f"ℹ️ Auto-impresión desactivada para venta {venta.numero_venta}")
