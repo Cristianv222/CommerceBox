@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   commercebox-db:
     image: postgres:15-alpine  # ✅ Alpine = 50% más ligera
@@ -24,11 +23,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
     # ✅ Limitar recursos
     deploy:
       resources:
@@ -57,11 +51,6 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
     deploy:
       resources:
         limits:
@@ -102,11 +91,6 @@ services:
       - COMMERCEBOX_REDIS_URL=redis://:${REDIS_PASSWORD}@commercebox-redis:6379/0
       - COMMERCEBOX_SECRET_KEY=${DJANGO_SECRET_KEY}
     restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
     networks:
       - commercebox_network
       - proxy-network
@@ -153,11 +137,6 @@ services:
       - COMMERCEBOX_REDIS_URL=redis://:${REDIS_PASSWORD}@commercebox-redis:6379/0
       - COMMERCEBOX_SECRET_KEY=${DJANGO_SECRET_KEY}
     restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
     networks:
       - commercebox_network
     logging:
