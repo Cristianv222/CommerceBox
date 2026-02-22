@@ -2263,6 +2263,13 @@ def venta_detalle_api(request, pk):
                 'total': str(item.total),
             })
         
+        # Obtener información SRI si existe
+        sri_mensaje = ""
+        from apps.sri.models import SRILog
+        ultimo_log = SRILog.objects.filter(venta=venta).order_by('-fecha_envio').first()
+        if ultimo_log:
+            sri_mensaje = ultimo_log.message
+
         # Construir respuesta
         data = {
             'success': True,
@@ -2280,6 +2287,11 @@ def venta_detalle_api(request, pk):
                 'monto_pagado': str(venta.monto_pagado),
                 'cambio': str(venta.cambio) if venta.cambio else '0.00',
                 'saldo_pendiente': str(venta.saldo_pendiente),
+                # SRI Fields
+                'sri_enviado': venta.factura_electronica_enviada,
+                'sri_clave': venta.factura_electronica_clave,
+                'sri_numero': venta.numero_factura,
+                'sri_mensaje': sri_mensaje,
                 'items': items,
             }
         }
@@ -3789,7 +3801,25 @@ def api_procesar_venta(request):
                     
             except Exception as e:
                 logger.error(f"❌ Error creando trabajo de impresión: {e}", exc_info=True)
+        # ============================================================================
+        # 🔥 PROCESO SRI: FUERA de la transacción atómica para evitar bloqueos largos de DB
+        # ============================================================================
+        enviar_sri = data.get('enviar_sri', False)
+        sri_success = False
+        sri_message = ""
         
+        if enviar_sri:
+            try:
+                from apps.sri.services import APIVendoService
+                sri_success, sri_message = APIVendoService.enviar_factura_sri(venta)
+                if sri_success:
+                    logger.info(f"✅ Factura SRI enviada para venta {venta.numero_venta}")
+                else:
+                    logger.error(f"❌ Error SRI: {sri_message}")
+            except Exception as e:
+                sri_message = f"Error al conectar con SRI: {str(e)}"
+                logger.error(f"❌ Error crítico SRI: {sri_message}")
+
         return JsonResponse({
             'success': True,
             'venta_id': str(venta.id),
@@ -3801,6 +3831,8 @@ def api_procesar_venta(request):
             'cambio': float(cambio),
             'monto_recibido': float(monto_recibido),
             'estado_pago': venta.estado_pago,
+            'sri_success': sri_success,
+            'sri_message': sri_message,
         })
         
     except Exception as e:
@@ -6106,7 +6138,7 @@ def api_productos_stock_list(request):
             productos_data.append({
                 'id': str(estado_stock.producto.id),
                 'nombre': estado_stock.producto.nombre,
-                'codigo': estado_stock.producto.codigo,
+                'codigo': estado_stock.producto.codigo_barras,
                 'tipo_inventario': estado_stock.get_tipo_inventario_display(),
                 'estado_semaforo': estado_stock.get_estado_semaforo_display(),
                 'estado_code': estado_stock.estado_semaforo,

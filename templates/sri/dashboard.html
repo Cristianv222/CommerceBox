@@ -1,0 +1,315 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Facturación Electrónica SRI - Sandbox{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="admin-card d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="card-title"><i class="bi bi-file-earmark-text-fill me-2 text-primary"></i>Facturación
+                        Electrónica SRI</h2>
+                    <p class="text-muted mb-0">Ambiente de Pruebas e Integración con APIVendo</p>
+                </div>
+                <div>
+                    {% if config.is_test_mode %}
+                    <span class="badge-admin badge-warning">Ambiente: TESTING</span>
+                    {% else %}
+                    <span class="badge-admin badge-success">Ambiente: PRODUCCIÓN</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Configuración -->
+        <div class="col-lg-4">
+            <div class="admin-card">
+                <div class="card-header-admin">
+                    <h5 class="card-title">Configuración APIVendo</h5>
+                    <i class="bi bi-gear-fill text-muted"></i>
+                </div>
+                <form action="{% url 'sri:config_update' %}" method="POST">
+                    {% csrf_token %}
+                    <div class="form-group-admin">
+                        <label class="form-label-admin">Token VSR</label>
+                        <input type="text" name="api_token" class="form-control-admin"
+                            value="{{ config.api_token|default:'' }}" placeholder="vsr_xxxxxxxxxxxxxxxx">
+                        <small class="text-muted">Token de autorización para APIVendo.</small>
+                    </div>
+                    <div class="form-group-admin">
+                        <label class="form-label-admin">URL Endpoint</label>
+                        <input type="text" name="api_url" class="form-control-admin"
+                            value="{{ config.api_url|default:'https://apivendo.fronteratech.ec/api/sri/documents/create_and_process_invoice_complete/' }}">
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        {% if config.is_test_mode %}
+                        <input class="form-check-input" type="checkbox" name="is_test_mode" id="testMode" checked>
+                        {% else %}
+                        <input class="form-check-input" type="checkbox" name="is_test_mode" id="testMode">
+                        {% endif %}
+                        <label class="form-check-label" for="testMode">Modo Pruebas (SRI Sandbox)</label>
+                    </div>
+                    <button type="submit" class="btn-primary-admin w-100 justify-content-center">
+                        <i class="bi bi-save me-2"></i> Guardar Configuración
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Pruebas de Envío -->
+        <div class="col-lg-8">
+            <div class="admin-card">
+                <div class="card-header-admin">
+                    <h5 class="card-title">Envío de Facturas de Prueba</h5>
+                    <div class="d-flex gap-2">
+                        <input type="text" id="manualInvoiceNumber" class="form-control-admin form-control-sm"
+                            placeholder="VNT-2025-00001">
+                        <button class="btn-primary-admin btn-sm" onclick="searchAndTest()">
+                            <i class="bi bi-search me-1"></i> Buscar y Probar
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table-admin">
+                        <thead>
+                            <tr>
+                                <th>Nº Venta</th>
+                                <th>Fecha</th>
+                                <th>Cliente</th>
+                                <th>Total</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for venta in ventas_recientes %}
+                            <tr>
+                                <td><strong>{{ venta.numero_venta }}</strong></td>
+                                <td>{{ venta.fecha_venta|date:"d/m/Y H:i" }}</td>
+                                <td>{{ venta.cliente|default:"CONSUMIDOR FINAL" }}</td>
+                                <td>${{ venta.total|floatformat:2 }}</td>
+                                <td>
+                                    <button class="btn-primary-admin btn-sm"
+                                        onclick="sendToSRI('{{ venta.id }}', this)">
+                                        <i class="bi bi-send me-2"></i> Probar SRI
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4">No hay ventas recientes disponibles.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs Historial -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="admin-card">
+                <div class="card-header-admin">
+                    <h5 class="card-title">Cualquier error quedará guardado aquí (Logs)</h5>
+                    <i class="bi bi-journal-text text-muted"></i>
+                </div>
+                <div class="table-responsive">
+                    <table class="table-admin">
+                        <thead>
+                            <tr>
+                                <th>Fecha Envío</th>
+                                <th>Venta</th>
+                                <th>Estado HTTP</th>
+                                <th>Resultado</th>
+                                <th>Nº SRI / Mensaje</th>
+                                <th>Detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTableBody">
+                            {% for log in logs_recientes %}
+                            <tr>
+                                <td>{{ log.fecha_envio|date:"d/m/Y H:i" }}</td>
+                                <td>{{ log.venta.numero_venta }}</td>
+                                <td>
+                                    {% if log.status_code == 201 %}
+                                    <span class="badge-admin badge-success">{{ log.status_code }}</span>
+                                    {% else %}
+                                    <span class="badge-admin badge-danger">{{ log.status_code }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if log.success %}
+                                    <span class="badge-success badge-admin">EXITOSO</span>
+                                    {% else %}
+                                    <span class="badge-danger badge-admin">FALLIDO</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if log.success %}
+                                    <span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>{{
+                                        log.invoice_number_sri }}</span>
+                                    {% else %}
+                                    <span class="text-muted" title="{{ log.message }}">
+                                        {% if log.invoice_number_sri %}
+                                        <small class="d-block text-secondary">{{ log.invoice_number_sri }}</small>
+                                        {% endif %}
+                                        <span class="text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>{{
+                                            log.message|truncatechars:40 }}</span>
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-outline-primary btn-sm"
+                                        onclick="showLogDetail('{{ log.id }}')">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data para los logs (seguro para JS) -->
+<script id="logs-data" type="application/json">
+[
+    {% for log in logs_recientes %}
+    {
+        "id": "{{ log.id }}",
+        "request": {{ log.request_data|default:"{}"|safe }},
+        "response": {{ log.response_data|default:"{}"|safe }}
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+]
+</script>
+
+<!-- Modal para Detalles de Log -->
+<div class="modal fade" id="logModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content admin-card" style="padding: 0;">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title p-3">Detalles de Comunicación SRI</h5>
+                <button type="button" class="btn-close me-2" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>JSON Enviado:</h6>
+                        <pre id="jsonRequest" class="bg-light p-3 rounded"
+                            style="font-size: 0.8rem; max-height: 400px; overflow-y: auto;"></pre>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Respuesta API:</h6>
+                        <pre id="jsonResponse" class="bg-light p-3 rounded"
+                            style="font-size: 0.8rem; max-height: 400px; overflow-y: auto;"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function sendToSRI(ventaId, btn) {
+        if (!confirm('¿Deseas enviar esta factura de prueba al SRI vía APIVendo?')) return;
+
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Enviando...';
+
+        try {
+            const response = await fetch("{% url 'sri:test_send' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ venta_id: ventaId })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('✅ Factura procesada exitosamente: ' + result.message);
+            } else {
+                alert('❌ Error: ' + result.message);
+            }
+            window.location.reload();
+        } catch (error) {
+            console.error(error);
+            alert('❌ Error de conexión al servidor local.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+
+    function searchAndTest() {
+        const num = document.getElementById('manualInvoiceNumber').value;
+        if (!num) return;
+
+        const rows = document.querySelectorAll('tbody tr');
+        let foundId = null;
+        let foundBtn = null;
+
+        rows.forEach(row => {
+            if (row.textContent.includes(num)) {
+                const btn = row.querySelector('button');
+                if (btn && btn.getAttribute('onclick')) {
+                    const match = btn.getAttribute('onclick').match(/'([^']+)'/);
+                    if (match) {
+                        foundId = match[1];
+                        foundBtn = btn;
+                    }
+                }
+            }
+        });
+
+        if (foundId) {
+            sendToSRI(foundId, foundBtn);
+        } else {
+            alert('Venta no encontrada en la lista reciente. Por favor asegúrate de que el número sea correcto y la venta esté COMPLETADA.');
+        }
+    }
+
+    // Parsear los logs data
+    let logsData = {};
+    try {
+        const logsRaw = JSON.parse(document.getElementById('logs-data').textContent);
+        logsRaw.forEach(l => {
+            logsData[l.id] = {
+                request: l.request || {},
+                response: l.response || {}
+            };
+        });
+    } catch (e) {
+        console.error('Error parsing logs data:', e);
+    }
+
+    function showLogDetail(logId) {
+        const data = logsData[logId];
+        if (data) {
+            document.getElementById('jsonRequest').textContent = JSON.stringify(data.request, null, 2);
+            document.getElementById('jsonResponse').textContent = JSON.stringify(data.response, null, 2);
+            const modalElement = document.getElementById('logModal');
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        } else {
+            alert('No hay datos disponibles para este log');
+        }
+    }
+</script>
+{% endblock %}

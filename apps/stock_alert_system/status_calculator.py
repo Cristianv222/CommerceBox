@@ -270,7 +270,7 @@ class StatusCalculator:
             ).exists()
             
             if not alerta_existente:
-                Alerta.objects.create(
+                alerta = Alerta.objects.create(
                     producto=producto,
                     estado_stock=estado_stock,
                     tipo_alerta=tipo_alerta,
@@ -284,6 +284,13 @@ class StatusCalculator:
                         'fecha_deteccion': timezone.now().isoformat()
                     }
                 )
+                
+                # Enviar notificación
+                try:
+                    from apps.notifications.services.notification_service import NotificationService
+                    NotificationService.crear_notificacion_desde_alerta(alerta)
+                except Exception as n_error:
+                    print(f"Error al enviar notificación para alerta {alerta.id}: {str(n_error)}")
     
     @classmethod
     def calcular_todos_los_productos(cls):
@@ -341,30 +348,37 @@ class StatusCalculator:
             alerta_existente = Alerta.objects.filter(
                 quintal=quintal,
                 tipo_alerta='QUINTAL_CRITICO',
-                estado='ACTIVA'
+                resuelta=False
             ).exists()
             
             if not alerta_existente:
                 porcentaje = quintal.porcentaje_restante()
                 
-                Alerta.objects.create(
+                alerta = Alerta.objects.create(
                     producto=quintal.producto,
                     quintal=quintal,
                     tipo_alerta='QUINTAL_CRITICO',
                     prioridad='ALTA',
-                    titulo=f"🌾🔴 Quintal Crítico: {quintal.codigo_unico}",
+                    titulo=f"🌾🔴 Quintal Crítico: {quintal.codigo_quintal}",
                     mensaje=(
-                        f"El quintal {quintal.codigo_unico} de {quintal.producto.nombre} "
+                        f"El quintal {quintal.codigo_quintal} de {quintal.producto.nombre} "
                         f"tiene solo {porcentaje:.1f}% restante. "
                         f"Peso actual: {quintal.peso_actual} {quintal.unidad_medida.abreviatura}"
                     ),
                     datos_adicionales={
-                        'codigo_quintal': quintal.codigo_unico,
+                        'codigo_quintal': quintal.codigo_quintal,
                         'porcentaje_restante': float(porcentaje),
                         'peso_actual': float(quintal.peso_actual),
                         'peso_inicial': float(quintal.peso_inicial)
                     }
                 )
+                
+                # Enviar notificación
+                try:
+                    from apps.notifications.services.notification_service import NotificationService
+                    NotificationService.crear_notificacion_desde_alerta(alerta)
+                except Exception as n_error:
+                    print(f"Error al enviar notificación para alerta quintal {alerta.id}: {str(n_error)}")
     
     @classmethod
     def verificar_proximos_vencer(cls):
@@ -396,31 +410,38 @@ class StatusCalculator:
             # Verificar si ya existe alerta
             alerta_existente = Alerta.objects.filter(
                 quintal=quintal,
-                tipo_alerta='PROXIMO_VENCER',
-                estado='ACTIVA'
+                tipo_alerta='VENCIMIENTO_PROXIMO',
+                resuelta=False
             ).exists()
             
             if not alerta_existente:
                 dias_restantes = (quintal.fecha_vencimiento - hoy).days
                 
-                Alerta.objects.create(
+                alerta = Alerta.objects.create(
                     producto=quintal.producto,
                     quintal=quintal,
-                    tipo_alerta='PROXIMO_VENCER',
+                    tipo_alerta='VENCIMIENTO_PROXIMO',
                     prioridad='ALTA' if dias_restantes <= 3 else 'MEDIA',
-                    titulo=f"⏰ Próximo a Vencer: {quintal.codigo_unico}",
+                    titulo=f"⏰ Próximo a Vencer: {quintal.codigo_quintal}",
                     mensaje=(
-                        f"El quintal {quintal.codigo_unico} de {quintal.producto.nombre} "
+                        f"El quintal {quintal.codigo_quintal} de {quintal.producto.nombre} "
                         f"vence en {dias_restantes} día(s) ({quintal.fecha_vencimiento.strftime('%d/%m/%Y')}). "
                         f"Peso disponible: {quintal.peso_actual} {quintal.unidad_medida.abreviatura}"
                     ),
                     datos_adicionales={
-                        'codigo_quintal': quintal.codigo_unico,
+                        'codigo_quintal': quintal.codigo_quintal,
                         'fecha_vencimiento': quintal.fecha_vencimiento.isoformat(),
                         'dias_restantes': dias_restantes,
                         'peso_disponible': float(quintal.peso_actual)
                     }
                 )
+
+                # Enviar notificación
+                try:
+                    from apps.notifications.services.notification_service import NotificationService
+                    NotificationService.crear_notificacion_desde_alerta(alerta)
+                except Exception as n_error:
+                    print(f"Error al enviar notificación para alerta vencimiento {alerta.id}: {str(n_error)}")
 
 
 class AlertaManager:
@@ -471,7 +492,7 @@ class AlertaManager:
         
         # Resolver alertas de quintales críticos si mejoraron
         alertas_quintales = Alerta.objects.filter(
-            estado='ACTIVA',
+            resuelta=False,
             tipo_alerta='QUINTAL_CRITICO',
             quintal__isnull=False
         )
@@ -481,13 +502,13 @@ class AlertaManager:
             if quintal.estado == 'AGOTADO' or quintal.porcentaje_restante() > 15:
                 alerta.estado = 'RESUELTA'
                 alerta.notas_resolucion = "Quintal agotado o peso mejorado"
-                alerta.fecha_resuelta = timezone.now()
+                alerta.fecha_resolucion = timezone.now()
                 alerta.save()
         
         # Resolver alertas de vencimiento si ya venció o se agotó
         alertas_vencimiento = Alerta.objects.filter(
-            estado='ACTIVA',
-            tipo_alerta='PROXIMO_VENCER',
+            resuelta=False,
+            tipo_alerta='VENCIMIENTO_PROXIMO',
             quintal__isnull=False
         )
         
@@ -496,7 +517,7 @@ class AlertaManager:
             if quintal.estado == 'AGOTADO' or quintal.peso_actual == 0:
                 alerta.estado = 'RESUELTA'
                 alerta.notas_resolucion = "Quintal vendido/agotado"
-                alerta.fecha_resuelta = timezone.now()
+                alerta.fecha_resolucion = timezone.now()
                 alerta.save()
     
     @staticmethod
@@ -510,7 +531,7 @@ class AlertaManager:
         
         alertas_antiguas = Alerta.objects.filter(
             estado__in=['RESUELTA', 'IGNORADA'],
-            fecha_resuelta__lt=fecha_limite
+            fecha_resolucion__lt=fecha_limite
         )
         
         cantidad = alertas_antiguas.count()

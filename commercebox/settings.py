@@ -47,6 +47,7 @@ THIRD_PARTY_APPS = [
     'django_extensions',
     'django_filters',
     'rest_framework.authtoken',
+    'django_celery_beat',
 ]
 
 COMMERCEBOX_APPS = [
@@ -60,6 +61,7 @@ COMMERCEBOX_APPS = [
     'apps.system_configuration',
     'apps.custom_admin',
     'apps.stock_alert_system',
+    'apps.sri',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + COMMERCEBOX_APPS
@@ -269,7 +271,7 @@ from celery.schedules import crontab
 
 CELERY_BEAT_SCHEDULE = {
     'verificar-alertas-stock': {
-        'task': 'apps.stock_alert_system.tasks.verificar_alertas_stock',
+        'task': 'apps.stock_alert_system.tasks.check_stock_alerts',
         'schedule': crontab(minute='*/15'),
         'options': {
             'expires': 10 * 60,

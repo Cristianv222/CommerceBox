@@ -909,6 +909,7 @@
                             <i class="fas fa-flag"></i> Estado
                         </label>
                         <select name="estado" id="estado" class="form-control-admin">
+                            <option value="">Todos</option>
                             {% for value, label in estados %}
                             <option value="{{ value }}" {% if estado_selected == value %}selected{% endif %}>
                                 {{ label }}
@@ -923,6 +924,7 @@
                             <i class="fas fa-credit-card"></i> Tipo de Venta
                         </label>
                         <select name="tipo_venta" id="tipo_venta" class="form-control-admin">
+                            <option value="">Todos</option>
                             {% for value, label in tipos_venta %}
                             <option value="{{ value }}" {% if tipo_venta_selected == value %}selected{% endif %}>
                                 {{ label }}
@@ -1004,6 +1006,7 @@
                         <th>Total</th>
                         <th>Estado</th>
                         <th>Pago</th>
+                        <th>SRI</th>
                         <th style="text-align: center;">Acciones</th>
                     </tr>
                 </thead>
@@ -1076,6 +1079,19 @@
                                 <span style="font-weight: 600; color: #dc2626;">Pendiente</span>
                                 {% endif %}
                             </div>
+                        </td>
+                        <td>
+                            {% if venta.factura_electronica_enviada %}
+                            <span class="badge-admin badge-success"
+                                title="Clave: {{ venta.factura_electronica_clave }}">
+                                <i class="fas fa-check"></i> OK
+                            </span>
+                            {% else %}
+                            <span class="badge-admin badge-secondary"
+                                style="background: rgba(148, 163, 184, 0.1); color: #64748b; border: 1px solid rgba(148, 163, 184, 0.2);">
+                                <i class="fas fa-minus"></i>
+                            </span>
+                            {% endif %}
                         </td>
                         <td style="text-align: center;">
                             <div style="display: inline-flex; gap: 0.3rem; flex-wrap: wrap; justify-content: center;">
@@ -1410,6 +1426,42 @@
                 <div class="detalle-item">
                     <span class="detalle-label">Saldo Pendiente</span>
                     <span class="detalle-value" style="color: #dc2626;">$${parseFloat(venta.saldo_pendiente).toFixed(2)}</span>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+
+        <!-- FACTURACIÓN ELECTRÓNICA (SRI) -->
+        <div class="detalle-section" style="border-left: 5px solid ${venta.sri_enviado ? '#10b981' : '#f59e0b'}; background: ${venta.sri_enviado ? 'rgba(16, 185, 129, 0.05)' : 'rgba(245, 158, 11, 0.05)'};">
+            <div class="detalle-section-title">
+                <i class="fas fa-file-invoice"></i> Facturación Electrónica (SRI)
+            </div>
+            <div class="detalle-grid">
+                <div class="detalle-item">
+                    <span class="detalle-label">Estado SRI</span>
+                    <span class="detalle-value">
+                        ${venta.sri_enviado
+                ? '<span class="badge-admin badge-success"><i class="fas fa-check-circle"></i> AUTORIZADO / ENVIADO</span>'
+                : '<span class="badge-admin badge-warning"><i class="fas fa-clock"></i> NO ENVIADO / PENDIENTE</span>'
+            }
+                    </span>
+                </div>
+                <div class="detalle-item">
+                    <span class="detalle-label">Nro. Factura SRI</span>
+                    <span class="detalle-value">${venta.sri_numero || 'N/A'}</span>
+                </div>
+                <div class="detalle-item" style="grid-column: span 2;">
+                    <span class="detalle-label">Clave de Acceso</span>
+                    <span class="detalle-value" style="font-family: monospace; font-size: 0.85rem; background: #eee; padding: 4px 8px; border-radius: 4px; display: block; word-break: break-all;">
+                        ${venta.sri_clave || 'N/A'}
+                    </span>
+                </div>
+                ${venta.sri_mensaje ? `
+                <div class="detalle-item" style="grid-column: span 2; margin-top: 0.5rem;">
+                    <span class="detalle-label">Última Respuesta SRI</span>
+                    <span class="detalle-value" style="color: ${venta.sri_enviado ? '#059669' : '#dc2626'}; font-size: 0.9rem;">
+                        <i class="fas fa-comment-dots"></i> ${venta.sri_mensaje}
+                    </span>
                 </div>
                 ` : ''}
             </div>

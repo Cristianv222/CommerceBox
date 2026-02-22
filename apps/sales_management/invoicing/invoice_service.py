@@ -51,41 +51,46 @@ class InvoiceService:
     def generar_numero_factura(venta):
         """
         Genera número de factura según normativa
-        
-        Args:
-            venta: Venta
-        
-        Returns:
-            str: Número de factura
+        Garantiza unicidad consultando tanto ventas como logs del SRI
         """
         # ✅ Obtener configuración del sistema
         from apps.system_configuration.models import ConfiguracionSistema
         config = ConfiguracionSistema.get_config()
         
         # Formato: 001-001-000000001
-        # [Establecimiento]-[Punto Emisión]-[Secuencial]
-        
         establecimiento = '001'
         punto_emision = '001'
-        
-        # Obtener último secuencial
-        from apps.sales_management.models import Venta
         
         # ✅ Usar prefijo configurado
         prefijo = f'{establecimiento}-{punto_emision}-'
         
-        ultima_con_factura = Venta.objects.filter(
+        from apps.sales_management.models import Venta
+        from apps.sri.models import SRILog
+        
+        # Buscar en Ventas
+        ultima_venta = Venta.objects.filter(
             numero_factura__startswith=prefijo
         ).order_by('-numero_factura').first()
         
-        if ultima_con_factura:
+        # Buscar en Logs de SRI (para capturar números enviados que fallaron o están en proceso)
+        ultimo_log = SRILog.objects.filter(
+            invoice_number_sri__startswith=prefijo
+        ).exclude(invoice_number_sri="").order_by('-invoice_number_sri').first()
+        
+        secuenciales = [0]
+        
+        if ultima_venta:
             try:
-                ultimo_secuencial = int(ultima_con_factura.numero_factura.split('-')[-1])
-                siguiente = ultimo_secuencial + 1
-            except:
-                siguiente = 1
-        else:
-            siguiente = 1
+                secuenciales.append(int(ultima_venta.numero_factura.split('-')[-1]))
+            except: pass
+            
+        if ultimo_log:
+            try:
+                secuenciales.append(int(ultimo_log.invoice_number_sri.split('-')[-1]))
+            except: pass
+            
+        ultimo_secuencial = max(secuenciales)
+        siguiente = ultimo_secuencial + 1
         
         return f"{establecimiento}-{punto_emision}-{siguiente:09d}"
     

@@ -1,0 +1,142 @@
+services:
+  commercebox-db:
+    image: postgres:15-alpine
+    container_name: commercebox_db_local
+    environment:
+      POSTGRES_DB: ${COMMERCEBOX_DB_NAME:-commercebox}
+      POSTGRES_USER: ${COMMERCEBOX_DB_USER:-cbx_user}
+      POSTGRES_PASSWORD: ${COMMERCEBOX_DB_PASSWORD:-cbx_password}
+    volumes:
+      - commercebox_local_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"  # Exposed to host for debugging if needed
+    restart: unless-stopped
+    networks:
+      - commercebox_local_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${COMMERCEBOX_DB_USER:-cbx_user} -d ${COMMERCEBOX_DB_NAME:-commercebox}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  commercebox-redis:
+    image: redis:7-alpine
+    container_name: commercebox_redis_local
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_password}
+    volumes:
+      - commercebox_local_redis_data:/data
+    restart: unless-stopped
+    networks:
+      - commercebox_local_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_password}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  commercebox-web:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: commercebox_web_local
+    entrypoint: ["/bin/bash", "/app/entrypoint.sh"]
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      commercebox-db:
+        condition: service_healthy
+      commercebox-redis:
+        condition: service_healthy
+    environment:
+      - COMMERCEBOX_DEBUG=1
+      - COMMERCEBOX_ALLOWED_HOSTS=localhost,127.0.0.1,commercebox-web
+      - COMMERCEBOX_CSRF_TRUSTED_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
+      - COMMERCEBOX_DB_HOST=commercebox-db
+      - COMMERCEBOX_DB_PORT=5432
+      - COMMERCEBOX_DB_NAME=${COMMERCEBOX_DB_NAME:-commercebox}
+      - COMMERCEBOX_DB_USER=${COMMERCEBOX_DB_USER:-cbx_user}
+      - COMMERCEBOX_DB_PASSWORD=${COMMERCEBOX_DB_PASSWORD:-cbx_password}
+      - COMMERCEBOX_REDIS_URL=redis://:${REDIS_PASSWORD:-redis_password}@commercebox-redis:6379/0
+      - COMMERCEBOX_SECRET_KEY=${DJANGO_SECRET_KEY:-local-secret-key-12345}
+      - INITIAL_ADMIN_USERNAME=${INITIAL_ADMIN_USERNAME:-admin}
+      - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD:-admin123}
+    networks:
+      - commercebox_local_network
+    shm_size: '2gb'
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+
+  commercebox-celery:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: commercebox_celery_local
+    entrypoint: ["/bin/bash", "/app/entrypoint.sh"]
+    command: ["celery", "-A", "commercebox", "worker", "--loglevel=info"]
+    volumes:
+      - .:/app
+    depends_on:
+      commercebox-db:
+        condition: service_healthy
+      commercebox-redis:
+        condition: service_healthy
+    environment:
+      - COMMERCEBOX_DEBUG=1
+      - COMMERCEBOX_DB_HOST=commercebox-db
+      - COMMERCEBOX_DB_PORT=5432
+      - COMMERCEBOX_DB_NAME=${COMMERCEBOX_DB_NAME:-commercebox}
+      - COMMERCEBOX_DB_USER=${COMMERCEBOX_DB_USER:-cbx_user}
+      - COMMERCEBOX_DB_PASSWORD=${COMMERCEBOX_DB_PASSWORD:-cbx_password}
+      - COMMERCEBOX_REDIS_URL=redis://:${REDIS_PASSWORD:-redis_password}@commercebox-redis:6379/0
+      - COMMERCEBOX_SECRET_KEY=${DJANGO_SECRET_KEY:-local-secret-key-12345}
+    networks:
+      - commercebox_local_network
+    shm_size: '2gb'
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  commercebox-celery-beat:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: commercebox_celery_beat_local
+    entrypoint: ["/bin/bash", "/app/entrypoint.sh"]
+    command: ["celery", "-A", "commercebox", "beat", "--loglevel=info", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"]
+    volumes:
+      - .:/app
+    depends_on:
+      commercebox-db:
+        condition: service_healthy
+      commercebox-redis:
+        condition: service_healthy
+    environment:
+      - COMMERCEBOX_DEBUG=1
+      - COMMERCEBOX_DB_HOST=commercebox-db
+      - COMMERCEBOX_DB_PORT=5432
+      - COMMERCEBOX_DB_NAME=${COMMERCEBOX_DB_NAME:-commercebox}
+      - COMMERCEBOX_DB_USER=${COMMERCEBOX_DB_USER:-cbx_user}
+      - COMMERCEBOX_DB_PASSWORD=${COMMERCEBOX_DB_PASSWORD:-cbx_password}
+      - COMMERCEBOX_REDIS_URL=redis://:${REDIS_PASSWORD:-redis_password}@commercebox-redis:6379/0
+      - COMMERCEBOX_SECRET_KEY=${DJANGO_SECRET_KEY:-local-secret-key-12345}
+    networks:
+      - commercebox_local_network
+    shm_size: '1gb'
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+volumes:
+  commercebox_local_postgres_data:
+  commercebox_local_redis_data:
+
+networks:
+  commercebox_local_network:
+    driver: bridge
