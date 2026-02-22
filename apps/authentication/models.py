@@ -99,7 +99,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         blank=True, 
         validators=[RegexValidator(r'^\+?1?\d{9,15}$', 'Formato de teléfono inválido')]
     )
-    documento_identidad = models.CharField(max_length=20, unique=True, verbose_name='Documento de identidad')
+    documento_identidad = models.CharField(max_length=20, unique=True, blank=True, null=True, verbose_name='Documento de identidad')
     
     # Rol y permisos - AHORA USANDO FOREIGNKEY
     rol = models.ForeignKey(

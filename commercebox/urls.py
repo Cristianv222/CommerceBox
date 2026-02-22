@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from django.http import JsonResponse
 from django.views.decorators.cache import cache_page
 from django.shortcuts import redirect
+from django.db import connection as db_connection
 from apps.custom_admin.views import login_page_view
 from apps.authentication.views import logout_view
 from apps.hardware_integration.api import agente_views  # 🔧 NUEVO: Import para captura de URLs
@@ -54,10 +55,22 @@ def redirect_to_login(request):
     return redirect('/login/')
 
 
+def health_check(request):
+    """Health check endpoint para Docker. Sin autenticación."""
+    try:
+        db_connection.ensure_connection()
+        return JsonResponse({"status": "ok", "db": "connected"}, status=200)
+    except Exception as e:
+        return JsonResponse({"status": "error", "detail": str(e)}, status=503)
+
+
 urlpatterns = [
     # ========================================
     # RUTAS PRINCIPALES
     # ========================================
+    
+    # Health check para Docker (sin autenticación requerida)
+    path('health/', health_check, name='health_check_root'),
     
     # Redirect raíz al login
     path('', redirect_to_login, name='home'),

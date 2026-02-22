@@ -1057,8 +1057,7 @@
                 <select class="form-control-admin" id="filterCategoria" onchange="applyFilters()">
                     <option value="">Todas las categorías</option>
                     {% for cat in categorias %}
-                    <option value="{{ cat.id }}" 
-                        {% if categoria_selected and categoria_selected|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>
+                    <option value="{{ cat.id }}" {% if categoria_selected and categoria_selected|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>
                         {{ cat.nombre }}
                     </option>
                     {% endfor %}
@@ -1072,7 +1071,7 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <button class="btn-success-admin w-100" onclick="showNotification('info', 'Exportación en desarrollo')">
+                <button class="btn-success-admin w-100" data-bs-toggle="modal" data-bs-target="#exportModal">
                     <i class="bi bi-download"></i> Exportar
                 </button>
             </div>
@@ -1189,74 +1188,71 @@
                         </td>
                         <td>
                             {% if producto.tipo_inventario == 'QUINTAL' %}
-                            {% with producto.quintales.all as quintales %}
-                            {% if quintales %}
-                            {% for quintal in quintales %}
-                            {% if quintal.estado == 'DISPONIBLE' %}
-                            <div style="min-width: 120px;">
-                                {% with porcentaje=quintal.porcentaje_restante %}
-                                <div
-                                    class="progress-bar-quintal {% if porcentaje <= 10 %}critical{% elif porcentaje <= 30 %}low{% endif %}">
-                                    <div class="progress-bar-fill" style="width: {{ porcentaje|floatformat:0 }}%;">
-                                        {{ porcentaje|floatformat:0 }}%
-                                    </div>
-                                </div>
-                                <div class="quintal-info">
-                                    {{ quintal.peso_actual|floatformat:1 }}/{{ quintal.peso_inicial|floatformat:0 }} {{ quintal.unidad_medida.abreviatura }}
-                                </div>
+                                {% with producto.quintales.all as quintales %}
+                                    {% if quintales %}
+                                        {% for quintal in quintales %}
+                                            {% if quintal.estado == 'DISPONIBLE' %}
+                                                <div style="min-width: 120px;">
+                                                    {% with porcentaje=quintal.porcentaje_restante %}
+                                                        <div class="progress-bar-quintal {% if porcentaje <= 10 %}critical{% elif porcentaje <= 30 %}low{% endif %}">
+                                                            <div class="progress-bar-fill" style="width: {{ porcentaje|floatformat:0 }}%;">
+                                                                {{ porcentaje|floatformat:0 }}%
+                                                            </div>
+                                                        </div>
+                                                        <div class="quintal-info">
+                                                            {{ quintal.peso_actual|floatformat:1 }}/{{ quintal.peso_inicial|floatformat:0 }} {{ quintal.unidad_medida.abreviatura }}
+                                                        </div>
+                                                    {% endwith %}
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="badge badge-secondary">Sin quintales</span>
+                                    {% endif %}
                                 {% endwith %}
-                            </div>
-                            {% endif %}
-                            {% empty %}
-                            <span class="badge badge-secondary">Sin quintales</span>
-                            {% endfor %}
                             {% else %}
-                            <span class="badge badge-secondary">Sin quintales</span>
-                            {% endif %}
-                            {% endwith %}
-                            {% else %}
-                            {% if producto.inventario_normal %}
-                            {% with stock=producto.inventario_normal.stock_actual %}
-                            {% if stock > 0 %}
-                            <div style="font-weight: 700; color: #10b981; font-size: 1.1rem;">
-                                <i class="bi bi-box-fill me-1"></i>
-                                {{ stock }} und
-                            </div>
-                            {% if stock <= producto.inventario_normal.stock_minimo %}
-                            <div style="font-size: 0.75rem; color: #f59e0b;">
-                                <i class="bi bi-exclamation-circle me-1"></i>Stock bajo
-                            </div>
-                            {% endif %}
-                            {% else %}
-                            <span class="badge-admin badge-danger">
-                                <i class="bi bi-x-circle me-1"></i>Agotado
-                            </span>
-                            {% endif %}
-                            {% endwith %}
-                            {% else %}
-                            <span class="badge-admin badge-warning">
-                                <i class="bi bi-exclamation-triangle me-1"></i>Sin inventario
-                            </span>
-                            {% endif %}
+                                {% if producto.inventario_normal %}
+                                    {% with stock=producto.inventario_normal.stock_actual %}
+                                        {% if stock > 0 %}
+                                            <div style="font-weight: 700; color: #10b981; font-size: 1.1rem;">
+                                                <i class="bi bi-box-fill me-1"></i>
+                                                {{ stock }} und
+                                            </div>
+                                            {% if stock <= producto.inventario_normal.stock_minimo %}
+                                                <div style="font-size: 0.75rem; color: #f59e0b;">
+                                                    <i class="bi bi-exclamation-circle me-1"></i>Stock bajo
+                                                </div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge-admin badge-danger">
+                                                <i class="bi bi-x-circle me-1"></i>Agotado
+                                            </span>
+                                        {% endif %}
+                                    {% endwith %}
+                                {% else %}
+                                    <span class="badge-admin badge-warning">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>Sin inventario
+                                    </span>
+                                {% endif %}
                             {% endif %}
                         </td>
                         <td style="font-weight: 700; font-size: 1.1rem; color: #059669;">
                             {% if producto.tipo_inventario == 'QUINTAL' %}
-                            {% if producto.precio_por_unidad_peso %}
-                            ${{ producto.precio_por_unidad_peso|floatformat:2 }}/{{ producto.unidad_medida_base.abreviatura|default:"kg" }}
+                                {% if producto.precio_por_unidad_peso %}
+                                    ${{ producto.precio_por_unidad_peso|floatformat:2 }}/{{ producto.unidad_medida_base.abreviatura|default:"kg" }}
+                                {% else %}
+                                    <span style="color: #ef4444; font-weight: 600; font-size: 0.85rem;">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Sin precio
+                                    </span>
+                                {% endif %}
                             {% else %}
-                            <span style="color: #ef4444; font-weight: 600; font-size: 0.85rem;">
-                                <i class="bi bi-exclamation-triangle-fill me-1"></i>Sin precio
-                            </span>
-                            {% endif %}
-                            {% else %}
-                            {% if producto.precio_venta %}
-                            ${{ producto.precio_venta|floatformat:2 }}
-                            {% else %}
-                            <span style="color: #ef4444; font-weight: 600; font-size: 0.85rem;">
-                                <i class="bi bi-exclamation-triangle-fill me-1"></i>Sin precio
-                            </span>
-                            {% endif %}
+                                {% if producto.precio_venta %}
+                                    ${{ producto.precio_venta|floatformat:2 }}
+                                {% else %}
+                                    <span style="color: #ef4444; font-weight: 600; font-size: 0.85rem;">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Sin precio
+                                    </span>
+                                {% endif %}
                             {% endif %}
                         </td>
                         <td>
@@ -1329,18 +1325,18 @@
                         {% endif %}
 
                         {% for num in page_obj.paginator.page_range %}
-                        {% if page_obj.number == num %}
-                        <li class="page-item active">
-                            <span class="page-link">{{ num }}</span>
-                        </li>
-                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                        <li class="page-item">
-                            <a class="page-link"
-                                href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if categoria_selected %}&categoria={{ categoria_selected }}{% endif %}{% if tipo_selected %}&tipo={{ tipo_selected }}{% endif %}">
-                                {{ num }}
-                            </a>
-                        </li>
-                        {% endif %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link"
+                                        href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if categoria_selected %}&categoria={{ categoria_selected }}{% endif %}{% if tipo_selected %}&tipo={{ tipo_selected }}{% endif %}">
+                                        {{ num }}
+                                    </a>
+                                </li>
+                            {% endif %}
                         {% endfor %}
 
                         {% if page_obj.has_next %}
@@ -1533,7 +1529,8 @@
                                         name="unidad_medida_base">
                                         <option value="">Seleccionar...</option>
                                         {% for unidad in unidades_medida %}
-                                        <option value="{{ unidad.id }}">{{ unidad.nombre }} ({{ unidad.abreviatura }})</option>
+                                        <option value="{{ unidad.id }}">{{ unidad.nombre }} ({{ unidad.abreviatura }})
+                                        </option>
                                         {% endfor %}
                                     </select>
                                 </div>
@@ -1691,12 +1688,71 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de Exportación (AHORA DENTRO DEL BLOCK CONTENT) -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true" style="z-index: 9999;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-gradient-primary text-white py-3">
+                <h5 class="modal-title d-flex align-items-center text-white">
+                    <i class="bi bi-file-earmark-arrow-down me-2"></i>
+                    Exportar Inventario
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <p class="text-secondary mb-4">Seleccione el formato en el que desea exportar la lista de productos
+                    actual.</p>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <button onclick="exportarProductos('excel')"
+                            class="btn btn-outline-success w-100 py-3 d-flex flex-column align-items-center transition-all hover-lift">
+                            <i class="bi bi-file-earmark-excel fs-1 mb-2"></i>
+                            <span class="fw-bold">Excel (.xlsx)</span>
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button onclick="exportarProductos('pdf')"
+                            class="btn btn-outline-danger w-100 py-3 d-flex flex-column align-items-center transition-all hover-lift">
+                            <i class="bi bi-file-earmark-pdf fs-1 mb-2"></i>
+                            <span class="fw-bold">PDF (.pdf)</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2 border-0">
+                <button type="button" class="btn btn-link text-secondary text-decoration-none fw-bold"
+                    data-bs-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
     let searchTimeout = null;
-    const IVA_DEFAULT = parseFloat('{{ porcentaje_iva|default:"0" }}');  // ✅ CORREGIDO: Usar porcentaje_iva con valor por defecto
+    const IVA_DEFAULT = parseFloat('{{ porcentaje_iva|default:"0" }}');
+
+    function exportarProductos(formato) {
+        // Obtener filtros actuales
+        const search = document.getElementById('searchInput').value;
+        const categoria = document.getElementById('filterCategoria').value;
+        const tipo = document.getElementById('filterTipo').value;
+
+        // Construir URL con parámetros
+        let url = `/panel/inventario/productos/export/${formato}/?`;
+        if (search) url += `search=${encodeURIComponent(search)}&`;
+        if (categoria) url += `categoria=${categoria}&`;
+        if (tipo) url += `tipo=${tipo}&`;
+
+        // Cerrar modal y abrir descarga
+        const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+        if (modal) modal.hide();
+
+        window.location.href = url;
+    }
 
     // Sistema de Notificaciones Toast
     function showNotification(type, message, title = null) {
@@ -2069,7 +2125,7 @@
             categoriaId: row.getAttribute('data-categoria-id'),
             marcaId: row.getAttribute('data-marca-id'),
             tipo: row.getAttribute('data-tipo'),
-            iva: parseFloat(row.getAttribute('data-iva')) || 0,
+            iva: row.getAttribute('data-iva') === 'true' ? IVA_DEFAULT : 0,
             precioUnitario: limpiarPrecio(row.getAttribute('data-precio-unitario')),
             precioPeso: limpiarPrecio(row.getAttribute('data-precio-peso')),
             stockActual: parseInt(row.getAttribute('data-stock-actual')) || 0,

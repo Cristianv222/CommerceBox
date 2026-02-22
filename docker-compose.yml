@@ -8,14 +8,10 @@ services:
       POSTGRES_PASSWORD: ${COMMERCEBOX_DB_PASSWORD}
     volumes:
       - commercebox_postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
     expose:
       - "5432"
     restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
     networks:
       - commercebox_network
     healthcheck:
@@ -23,6 +19,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     # ✅ Limitar recursos
     deploy:
       resources:
@@ -36,14 +37,18 @@ services:
   commercebox-redis:
     image: redis:7-alpine  # ✅ Ya está optimizada
     container_name: commercebox_redis
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --save 60 1000
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - commercebox_redis_data:/data
     expose:
       - "6379"
     restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
     networks:
       - commercebox_network
     healthcheck:
@@ -51,6 +56,11 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:
@@ -68,12 +78,23 @@ services:
         - BUILDKIT_INLINE_CACHE=1  # ✅ Mejor cache
     image: commercebox:latest  # ✅ Reusar imagen
     container_name: commercebox_web
+    command: >
+      gunicorn commercebox.wsgi:application
+      --bind 0.0.0.0:8000
+      --workers 5
+      --threads 2
+      --worker-class gthread
+      --worker-tmp-dir /dev/shm
+      --timeout 120
+      --max-requests 1000
+      --max-requests-jitter 50
+      --preload
     volumes:
       - commercebox_media:/app/media
       - commercebox_static:/app/staticfiles
       - commercebox_logs:/app/logs
     ports:
-      - "8000:8000"
+      - "8015:8000"
     depends_on:
       commercebox-db:
         condition: service_healthy
@@ -95,7 +116,8 @@ services:
       - commercebox_network
       - proxy-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      disable: true
+      # test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -128,7 +150,7 @@ services:
       - commercebox_media:/app/media
     depends_on:
       commercebox-web:
-        condition: service_healthy
+        condition: service_started
     environment:
       - COMMERCEBOX_DB_HOST=commercebox-db
       - COMMERCEBOX_DB_NAME=${COMMERCEBOX_DB_NAME}
@@ -150,6 +172,38 @@ services:
           cpus: '1.0'
           memory: 512M
 
+  commercebox-celery-beat:
+    image: commercebox:latest  # ✅ Reutiliza la imagen
+    container_name: commercebox_celery_beat
+    command: >
+      celery -A commercebox beat
+      --loglevel=info
+      --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - commercebox_logs:/app/logs
+    depends_on:
+      commercebox-web:
+        condition: service_started
+    environment:
+      - COMMERCEBOX_DB_HOST=commercebox-db
+      - COMMERCEBOX_DB_NAME=${COMMERCEBOX_DB_NAME}
+      - COMMERCEBOX_DB_USER=${COMMERCEBOX_DB_USER}
+      - COMMERCEBOX_DB_PASSWORD=${COMMERCEBOX_DB_PASSWORD}
+      - COMMERCEBOX_REDIS_URL=redis://:${REDIS_PASSWORD}@commercebox-redis:6379/0
+      - COMMERCEBOX_SECRET_KEY=${DJANGO_SECRET_KEY}
+    restart: unless-stopped
+    networks:
+      - commercebox_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
 
 volumes:
   commercebox_postgres_data:
@@ -163,3 +217,4 @@ networks:
     driver: bridge
     internal: true
   proxy-network:
+    external: true
