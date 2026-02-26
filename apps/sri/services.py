@@ -96,8 +96,14 @@ class APIVendoService:
                 emission_point = parts[1]
                 sequential = parts[2]
 
+        # ✅ CRÍTICO: Convertir fecha de UTC a hora local de Ecuador antes de formatear.
+        # Con USE_TZ=True Django guarda en UTC. Si son las 23:30 en Ecuador,
+        # en UTC es el 04:30 del día siguiente → el SRI rechaza la factura como extemporánea.
+        from django.utils.timezone import localtime
+        fecha_emision_local = localtime(venta.fecha_venta)
+        
         payload = {
-            "issue_date": venta.fecha_venta.strftime('%Y-%m-%d'),
+            "issue_date": fecha_emision_local.strftime('%Y-%m-%d'),
             "customer_identification_type": id_type,
             "customer_identification": id_number,
             "customer_name": name,

@@ -153,7 +153,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 LANGUAGE_CODE = 'es-ES'
-TIME_ZONE = 'America/Bogota'
+TIME_ZONE = 'America/Guayaquil'  # ✅ Ecuador (UTC-5)
 USE_I18N = True
 USE_TZ = True
 
