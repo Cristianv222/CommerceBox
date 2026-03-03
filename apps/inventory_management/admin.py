@@ -312,13 +312,14 @@ class UnidadMedidaAdmin(admin.ModelAdmin):
 # ============================================================================
 # ADMIN: Producto
 # ============================================================================
+# apps/inventory_management/admin.py - CORREGIR ProductoAdmin
 
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
     list_display = [
         'codigo_barras', 'nombre_display', 'tipo_inventario',
-        'precio_venta', 'marca', 'categoria',
-        'stock_display', 'activo'
+        'precio_display', 'marca', 'categoria',  # ✅ Cambiado de 'precio_venta' a 'precio_display'
+        'stock_display', 'stock_total_display', 'activo'
     ]
     list_filter = [
         'tipo_inventario', 'activo', 'categoria',
@@ -344,19 +345,28 @@ class ProductoAdmin(admin.ModelAdmin):
         }),
         ('Precios e Impuestos', {
             'fields': (
-                'precio_venta', 'aplica_impuestos', 'porcentaje_impuesto'
+                'precio_venta', 'precio_por_unidad_peso',
+                'aplica_impuestos'
             )
+        }),
+        ('✅ Stock Calculado', {
+            'fields': (
+                'cantidad_quintales', 'peso_base_quintal',
+                'stock_total_calculado'
+            ),
+            'description': 'Para quintales: cantidad × peso base = stock total'
         }),
         ('Control', {
             'fields': ('activo', 'imagen')
         }),
-        ('Auditoría', {
-            'fields': ('fecha_creacion', 'fecha_actualizacion'),
-            'classes': ('collapse',)
-        }),
     )
     
+    # ✅ CORREGIDO: Solo campos que realmente existen en el modelo
     readonly_fields = ['fecha_creacion', 'fecha_actualizacion']
+    
+    # ============================================================================
+    # ✅ MÉTODOS PERSONALIZADOS PARA LIST_DISPLAY
+    # ============================================================================
     
     def nombre_display(self, obj):
         if obj.marca:
@@ -368,23 +378,31 @@ class ProductoAdmin(admin.ModelAdmin):
         return format_html('<strong>{}</strong>', obj.nombre)
     nombre_display.short_description = 'Producto'
     
+    def precio_display(self, obj):
+        """Mostrar precio según tipo"""
+        if obj.es_quintal():
+            if obj.precio_por_unidad_peso:
+                unidad = obj.unidad_medida_base.abreviatura if obj.unidad_medida_base else 'kg'
+                return format_html(
+                    '<span style="color: #059669; font-weight: bold;">${}/{}</span>',
+                    obj.precio_por_unidad_peso,
+                    unidad
+                )
+        else:
+            if obj.precio_venta:
+                return format_html(
+                    '<span style="color: #059669; font-weight: bold;">${}</span>',
+                    obj.precio_venta
+                )
+        return format_html('<span style="color: gray;">-</span>')
+    precio_display.short_description = 'Precio'
+    
     def stock_display(self, obj):
         if obj.es_quintal():
-            # Para quintales
-            quintales = obj.quintales.disponibles().count()
-            peso_total = obj.quintales.peso_total_disponible(obj)
-            
-            if quintales == 0:
-                return format_html(
-                    '<span style="color: red; font-weight: bold;">⚫ Sin stock</span>'
-                )
-            
+            # Para quintales - mostrar info resumida
             return format_html(
-                '<span style="color: green; font-weight: bold;">🟢 {} quintales</span>'
-                '<br><small>{} {}</small>',
-                quintales,
-                peso_total,
-                obj.unidad_medida_base.abreviatura if obj.unidad_medida_base else 'kg'
+                '<span style="color: #3b82f6; font-weight: bold;">🌾 {} quintales</span>',
+                obj.cantidad_quintales or 0
             )
         else:
             # Para productos normales
@@ -413,9 +431,35 @@ class ProductoAdmin(admin.ModelAdmin):
                 return format_html(
                     '<span style="color: gray;">Sin inventario</span>'
                 )
-    stock_display.short_description = 'Stock'
+    stock_display.short_description = 'Estado Stock'
     
-    actions = ['activar_productos', 'desactivar_productos', 'aplicar_impuestos', 'quitar_impuestos']
+    def stock_total_display(self, obj):
+        if obj.es_quintal():
+            return format_html(
+                '<span style="color: #3b82f6; font-weight: bold;">{} {}</span>'
+                '<br><small>{} quintales × {} {}</small>',
+                obj.stock_total_calculado,
+                obj.unidad_medida_base.abreviatura if obj.unidad_medida_base else 'lb',
+                obj.cantidad_quintales,
+                obj.peso_base_quintal or 100,
+                obj.unidad_medida_base.abreviatura if obj.unidad_medida_base else 'lb'
+            )
+        else:
+            return format_html(
+                '<span style="color: #059669; font-weight: bold;">{} unidades</span>',
+                obj.stock_total_calculado or 0
+            )
+    stock_total_display.short_description = 'Stock Total'
+    
+    # ============================================================================
+    # ✅ ACCIONES DEL ADMIN
+    # ============================================================================
+    
+    actions = [
+        'activar_productos', 'desactivar_productos', 
+        'aplicar_impuestos', 'quitar_impuestos',
+        'calcular_stock_automaticamente'
+    ]
     
     def activar_productos(self, request, queryset):
         updated = queryset.update(activo=True)
@@ -436,8 +480,13 @@ class ProductoAdmin(admin.ModelAdmin):
         updated = queryset.update(aplica_impuestos=False)
         self.message_user(request, f"{updated} productos ahora NO aplican impuestos.")
     quitar_impuestos.short_description = "Quitar impuestos de productos seleccionados"
-
-
+    
+    def calcular_stock_automaticamente(self, request, queryset):
+        for producto in queryset:
+            producto.actualizar_stock_calculado()
+        self.message_user(request, f"Stock calculado para {queryset.count()} productos.")
+    calcular_stock_automaticamente.short_description = "📊 Calcular stock automáticamente"
+    
 # ============================================================================
 # ADMIN: Quintal
 # ============================================================================

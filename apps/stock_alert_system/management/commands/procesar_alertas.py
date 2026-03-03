@@ -59,7 +59,7 @@ class Command(BaseCommand):
             StatusCalculator.verificar_quintales_individuales()
             alertas_quintales = Alerta.objects.filter(
                 tipo_alerta='QUINTAL_CRITICO',
-                estado='ACTIVA'
+                resuelta=False
             ).count()
             self.stdout.write(self.style.SUCCESS(
                 f'   ✅ Completado. Alertas activas de quintales: {alertas_quintales}'
@@ -72,8 +72,8 @@ class Command(BaseCommand):
         try:
             StatusCalculator.verificar_proximos_vencer()
             alertas_vencimiento = Alerta.objects.filter(
-                tipo_alerta='PROXIMO_VENCER',
-                estado='ACTIVA'
+                tipo_alerta='VENCIMIENTO_PROXIMO',
+                resuelta=False
             ).count()
             self.stdout.write(self.style.SUCCESS(
                 f'   ✅ Completado. Alertas de vencimiento activas: {alertas_vencimiento}'
@@ -88,7 +88,7 @@ class Command(BaseCommand):
                 AlertaManager.resolver_alertas_automaticamente()
                 alertas_resueltas = Alerta.objects.filter(
                     estado='RESUELTA',
-                    fecha_resuelta__gte=inicio
+                    fecha_resolucion__gte=inicio
                 ).count()
                 self.stdout.write(self.style.SUCCESS(
                     f'   ✅ Completado. Alertas resueltas automáticamente: {alertas_resueltas}'
@@ -114,21 +114,21 @@ class Command(BaseCommand):
         self.stdout.write('='*60)
         
         # Contar alertas por estado
-        alertas_activas = Alerta.objects.filter(estado='ACTIVA').count()
-        alertas_urgentes = Alerta.objects.filter(estado='ACTIVA', prioridad='URGENTE').count()
-        alertas_altas = Alerta.objects.filter(estado='ACTIVA', prioridad='ALTA').count()
+        alertas_activas = Alerta.objects.filter(resuelta=False).count()
+        alertas_criticas = Alerta.objects.filter(resuelta=False, prioridad='CRITICA').count()
+        alertas_altas = Alerta.objects.filter(resuelta=False, prioridad='ALTA').count()
         
         self.stdout.write(f'\n🚨 Alertas ACTIVAS: {alertas_activas}')
-        self.stdout.write(f'   - Urgentes: {alertas_urgentes}')
+        self.stdout.write(f'   - Críticas: {alertas_criticas}')
         self.stdout.write(f'   - Prioridad Alta: {alertas_altas}')
         
         # Alertas por tipo
         if verbose:
             self.stdout.write('\n📋 Alertas por tipo:')
-            tipos = Alerta.objects.filter(estado='ACTIVA').values('tipo_alerta').distinct()
+            tipos = Alerta.objects.filter(resuelta=False).values('tipo_alerta').distinct()
             for tipo in tipos:
                 tipo_alerta = tipo['tipo_alerta']
-                cantidad = Alerta.objects.filter(estado='ACTIVA', tipo_alerta=tipo_alerta).count()
+                cantidad = Alerta.objects.filter(resuelta=False, tipo_alerta=tipo_alerta).count()
                 self.stdout.write(f'   - {tipo_alerta}: {cantidad}')
         
         # Tiempo de ejecución

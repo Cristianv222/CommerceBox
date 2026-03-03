@@ -1896,6 +1896,10 @@
 {% block extra_js %}
 <script>
     // ========================================
+    // CSRF TOKEN GLOBAL
+    // ========================================
+    const CSRF_TOKEN = '{{ csrf_token }}';
+    // ========================================
     // ESTADO GLOBAL
     // ========================================
     let productos = [];
@@ -2966,59 +2970,50 @@
     }
 
     async function imprimirCodigoBarras(productoId, cantidadCopias = 1) {
-        console.log('🖨️ Imprimiendo código de barras:', {
-            productoId,
-            cantidadCopias
+    console.log('🖨️ Imprimiendo código de barras:', {
+        productoId,
+        cantidadCopias
+    });
+
+    try {
+        mostrarNotificacion(`⏳ Enviando ${cantidadCopias} etiqueta(s) a la impresora...`, 'success');
+
+        const response = await fetch(`/panel/inventario/productos/${productoId}/imprimir-codigo/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF_TOKEN  // ✅ Usar el token global
+            },
+            body: JSON.stringify({
+                copias: cantidadCopias
+            }),
+            credentials: 'same-origin'
         });
 
-        try {
-            mostrarNotificacion(`⏳ Enviando ${cantidadCopias} etiqueta(s) a la impresora...`, 'success');
+        const data = await response.json();
 
-            const csrfToken = getCookie('csrftoken');
-
-            if (!csrfToken) {
-                throw new Error('Token CSRF no encontrado');
-            }
-
-            const response = await fetch(`/panel/inventario/productos/${productoId}/imprimir-codigo/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({
-                    copias: cantidadCopias
-                }),
-                credentials: 'same-origin'
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Error en la solicitud');
-            }
-
-            if (data.success) {
-                console.log('✅ Impresión enviada correctamente:', data);
-
-                mostrarNotificacion(
-                    `✅ ${cantidadCopias} etiqueta(s) enviada(s) a imprimir en ${data.impresora}`,
-                    'success'
-                );
-
-            } else {
-                throw new Error(data.error || 'Error desconocido');
-            }
-
-        } catch (error) {
-            console.error('❌ Error imprimiendo código de barras:', error);
-
-            mostrarNotificacion(
-                `❌ Error al imprimir: ${error.message}. Verifica que la impresora esté configurada y el agente esté activo.`,
-                'error'
-            );
+        if (!response.ok) {
+            throw new Error(data.error || 'Error en la solicitud');
         }
+
+        if (data.success) {
+            console.log('✅ Impresión enviada correctamente:', data);
+            mostrarNotificacion(
+                `✅ ${cantidadCopias} etiqueta(s) enviada(s) a imprimir en ${data.impresora}`,
+                'success'
+            );
+        } else {
+            throw new Error(data.error || 'Error desconocido');
+        }
+
+    } catch (error) {
+        console.error('❌ Error imprimiendo código de barras:', error);
+        mostrarNotificacion(
+            `❌ Error al imprimir: ${error.message}`,
+            'error'
+        );
     }
+}
 
     function cerrarModalCodigos() {
         document.getElementById('modal-codigos').classList.remove('show');

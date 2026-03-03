@@ -278,8 +278,8 @@ ensure_directories() {
 SERVICE_TYPE="${1:-unknown}"
 
 case "$SERVICE_TYPE" in
-    gunicorn)
-        log_info "Modo: Aplicación Web Django"
+    gunicorn|python)
+        log_info "Modo: Aplicación Web Django / Desarrollo"
         
         # Crear directorios
         ensure_directories
@@ -291,8 +291,12 @@ case "$SERVICE_TYPE" in
         # Ejecutar migraciones
         run_migrations
         
-        # Collectstatic
-        collect_static
+        # Collectstatic (opcional en desarrollo, pero útil para verificar)
+        if [ "$SERVICE_TYPE" = "gunicorn" ]; then
+            collect_static
+        else
+            log_info "Saltando collectstatic en modo desarrollo"
+        fi
         
         # Limpiar sesiones
         clean_sessions
@@ -300,10 +304,12 @@ case "$SERVICE_TYPE" in
         # Crear usuario inicial
         create_initial_user
         
-        # Verificar configuración
-        check_django_config
+        # Verificar configuración (solo en prod)
+        if [ "$SERVICE_TYPE" = "gunicorn" ]; then
+            check_django_config
+        fi
         
-        log_success "Aplicación web lista para iniciar"
+        log_success "Aplicación lista para iniciar"
         ;;
         
     celery)

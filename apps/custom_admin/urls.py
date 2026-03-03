@@ -45,6 +45,8 @@ urlpatterns = [
     path('inventario/productos/<uuid:pk>/', views.producto_detail_view, name='producto_detail'),
     path('inventario/productos/<uuid:producto_id>/editar/', views.producto_editar, name='producto_editar'),
     path('inventario/productos/<uuid:producto_id>/eliminar/', views.producto_eliminar, name='producto_eliminar'),
+    path('inventario/productos/export/excel/', views.exportar_productos_excel, name='exportar_productos_excel'),
+    path('inventario/productos/export/pdf/', views.exportar_productos_pdf, name='exportar_productos_pdf'),
     
     # APIs para productos
     path('api/productos/buscar-codigo/', views.api_buscar_producto_codigo, name='api_buscar_codigo'),
@@ -142,6 +144,7 @@ urlpatterns = [
     # ========================================
     path('ventas/<uuid:pk>/', views.venta_detail_view, name='venta_detail'),
     path('ventas/<uuid:pk>/anular/', views.venta_anular_view, name='venta_anular'),
+    path('ventas/<uuid:pk>/eliminar/', views.api_eliminar_venta, name='venta_eliminar'),
     path('ventas/<uuid:pk>/ticket/', views.venta_ticket_view, name='venta_ticket'),
     path('ventas/<uuid:pk>/factura/', views.venta_factura_view, name='venta_factura'),
     

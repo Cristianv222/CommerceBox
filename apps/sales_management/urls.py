@@ -74,4 +74,11 @@ urlpatterns = [
         views.ReimprimirTicketView.as_view(),
         name='reimprimir_ticket'
     ),
+    
+    # Creación rápida de clientes (POS)
+    path(
+        'api/clientes/crear-rapido/',
+        views.ClienteQuickCreateAPIView.as_view(),
+        name='cliente_crear_rapido_api'
+    ),
 ]

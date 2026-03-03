@@ -25,7 +25,7 @@
         margin-bottom: 0.5rem;
         letter-spacing: -0.5px;
     }
-    
+
     /* ============================================
        STAT CARDS CON GLASSMORPHISM
        ============================================ */
@@ -38,11 +38,12 @@
         position: relative;
         overflow: hidden;
         transition: all 0.3s ease;
-        box-shadow: 
+        box-shadow:
             0 8px 32px rgba(59, 130, 246, 0.08),
             0 2px 8px rgba(147, 197, 253, 0.1),
             inset 0 1px 0 rgba(255, 255, 255, 0.9);
     }
+
     .stat-card::before {
         content: '';
         position: absolute;
@@ -50,19 +51,21 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: 
+        background:
             radial-gradient(ellipse 300px 200px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
         pointer-events: none;
         z-index: 0;
     }
+
     .stat-card:hover {
         transform: translateY(-4px);
-        box-shadow: 
+        box-shadow:
             0 12px 40px rgba(59, 130, 246, 0.15),
             0 4px 12px rgba(96, 165, 250, 0.2),
             inset 0 1px 0 rgba(255, 255, 255, 0.95);
         border-color: rgba(96, 165, 250, 0.6);
     }
+
     .stat-icon {
         width: 50px;
         height: 50px;
@@ -76,6 +79,7 @@
         z-index: 2;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
+
     .stat-value {
         font-size: 2rem;
         font-weight: 800;
@@ -84,6 +88,7 @@
         position: relative;
         z-index: 2;
     }
+
     .stat-label {
         color: #64748b;
         font-size: 0.9rem;
@@ -91,7 +96,7 @@
         position: relative;
         z-index: 2;
     }
-    
+
     /* ============================================
        ADMIN CARD
        ============================================ */
@@ -103,12 +108,13 @@
         padding: 1.5rem;
         position: relative;
         overflow: hidden;
-        box-shadow: 
+        box-shadow:
             0 8px 32px rgba(59, 130, 246, 0.08),
             0 2px 8px rgba(147, 197, 253, 0.1),
             inset 0 1px 0 rgba(255, 255, 255, 0.9);
         margin-bottom: 1.5rem;
     }
+
     .admin-card::before {
         content: '';
         position: absolute;
@@ -116,11 +122,12 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: 
+        background:
             radial-gradient(ellipse 400px 300px at 50% 50%, rgba(219, 234, 254, 0.1) 0%, transparent 60%);
         pointer-events: none;
         z-index: 0;
     }
+
     .admin-card::after {
         content: '';
         position: absolute;
@@ -128,15 +135,15 @@
         left: 0;
         width: 100%;
         height: 3px;
-        background: linear-gradient(90deg, 
-            rgba(59, 130, 246, 0.3) 0%, 
-            rgba(96, 165, 250, 0.5) 25%,
-            rgba(147, 197, 253, 0.4) 50%,
-            rgba(96, 165, 250, 0.5) 75%,
-            rgba(59, 130, 246, 0.3) 100%);
+        background: linear-gradient(90deg,
+                rgba(59, 130, 246, 0.3) 0%,
+                rgba(96, 165, 250, 0.5) 25%,
+                rgba(147, 197, 253, 0.4) 50%,
+                rgba(96, 165, 250, 0.5) 75%,
+                rgba(59, 130, 246, 0.3) 100%);
         border-radius: 16px 16px 0 0;
     }
-    
+
     /* ============================================
        FORM CONTROLS
        ============================================ */
@@ -152,18 +159,20 @@
         position: relative;
         z-index: 1;
     }
+
     .form-control-admin:focus {
         outline: none;
         background: rgba(255, 255, 255, 0.9);
         border-color: rgba(96, 165, 250, 0.6);
-        box-shadow: 
+        box-shadow:
             0 0 0 4px rgba(96, 165, 250, 0.08),
             0 2px 8px rgba(147, 197, 253, 0.15);
     }
+
     .form-control-admin::placeholder {
         color: #9ca3af;
     }
-    
+
     .form-label-admin {
         display: flex;
         align-items: center;
@@ -174,11 +183,11 @@
         position: relative;
         z-index: 2;
     }
-    
+
     .form-group-admin {
         margin-bottom: 1rem;
     }
-    
+
     /* ============================================
        TABLA
        ============================================ */
@@ -187,15 +196,18 @@
         z-index: 2;
         overflow-x: auto;
     }
+
     .table-admin {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
     }
+
     .table-admin thead {
         background: rgba(59, 130, 246, 0.08);
         border-radius: 12px 12px 0 0;
     }
+
     .table-admin thead th {
         padding: 1rem 1rem;
         color: #1e293b;
@@ -206,26 +218,31 @@
         border-bottom: 2px solid rgba(59, 130, 246, 0.15);
         white-space: nowrap;
     }
+
     .table-admin thead th:first-child {
         border-radius: 12px 0 0 0;
     }
+
     .table-admin thead th:last-child {
         border-radius: 0 12px 0 0;
     }
+
     .table-admin tbody tr {
         transition: all 0.2s ease;
         border-bottom: 1px solid rgba(59, 130, 246, 0.08);
     }
+
     .table-admin tbody tr:hover {
         background: rgba(59, 130, 246, 0.05);
     }
+
     .table-admin tbody td {
         padding: 1rem 1rem;
         color: #1e293b;
         font-size: 0.9rem;
         vertical-align: middle;
     }
-    
+
     /* ============================================
        BADGES
        ============================================ */
@@ -238,51 +255,59 @@
         display: inline-block;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     }
+
     .badge-success {
         background: rgba(16, 185, 129, 0.15);
         color: #059669;
         border: 1px solid rgba(16, 185, 129, 0.3);
     }
+
     .badge-danger {
         background: rgba(239, 68, 68, 0.15);
         color: #dc2626;
         border: 1px solid rgba(239, 68, 68, 0.3);
     }
+
     .badge-warning {
         background: rgba(245, 158, 11, 0.15);
         color: #d97706;
         border: 1px solid rgba(245, 158, 11, 0.3);
     }
+
     .badge-info {
         background: rgba(59, 130, 246, 0.15);
         color: #2563eb;
         border: 1px solid rgba(59, 130, 246, 0.3);
     }
-    
+
     /* Estado de pago */
     .pago-status {
         display: flex;
         align-items: center;
         gap: 0.5rem;
     }
+
     .pago-icon {
         width: 10px;
         height: 10px;
         border-radius: 50%;
     }
+
     .pago-icon.pagado {
         background: #10b981;
         box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
     }
+
     .pago-icon.parcial {
         background: #f59e0b;
         box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
     }
+
     .pago-icon.pendiente {
         background: #ef4444;
         box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
     }
-    
+
     /* ============================================
        BOTONES
        ============================================ */
@@ -301,21 +326,22 @@
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
-        box-shadow: 
+        box-shadow:
             0 8px 20px rgba(59, 130, 246, 0.25),
             0 2px 8px rgba(96, 165, 250, 0.2),
             inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
+
     .btn-primary-admin:hover,
     .btn-success-admin:hover {
         transform: translateY(-2px);
-        box-shadow: 
+        box-shadow:
             0 12px 28px rgba(59, 130, 246, 0.3),
             0 4px 12px rgba(96, 165, 250, 0.25),
             inset 0 1px 0 rgba(255, 255, 255, 0.25);
         background: linear-gradient(135deg, rgba(96, 165, 250, 0.95) 0%, rgba(59, 130, 246, 0.95) 100%);
     }
-    
+
     .btn-secondary-admin {
         padding: 12px 24px;
         background: rgba(148, 163, 184, 0.15);
@@ -331,16 +357,17 @@
         justify-content: center;
         gap: 0.5rem;
     }
+
     .btn-secondary-admin:hover {
         background: rgba(148, 163, 184, 0.25);
         transform: translateY(-2px);
     }
-    
+
     .btn-sm-admin {
         padding: 0.5rem 1rem;
         font-size: 0.85rem;
     }
-    
+
     /* Botones de acción */
     .btn-action {
         width: 36px;
@@ -354,46 +381,57 @@
         transition: all 0.2s ease;
         font-size: 1rem;
     }
+
     .btn-action:hover {
         transform: translateY(-2px) scale(1.05);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
+
     .btn-view {
         background: rgba(59, 130, 246, 0.15);
         color: #2563eb;
     }
+
     .btn-view:hover {
         background: rgba(59, 130, 246, 0.25);
     }
+
     .btn-print {
         background: rgba(16, 185, 129, 0.15);
         color: #059669;
     }
+
     .btn-print:hover {
         background: rgba(16, 185, 129, 0.25);
     }
+
     .btn-excel {
         background: rgba(34, 197, 94, 0.15);
         color: #16a34a;
     }
+
     .btn-excel:hover {
         background: rgba(34, 197, 94, 0.25);
     }
+
     .btn-pdf {
         background: rgba(239, 68, 68, 0.15);
         color: #dc2626;
     }
+
     .btn-pdf:hover {
         background: rgba(239, 68, 68, 0.25);
     }
+
     .btn-delete {
         background: rgba(239, 68, 68, 0.15);
         color: #dc2626;
     }
+
     .btn-delete:hover {
         background: rgba(239, 68, 68, 0.25);
     }
-    
+
     /* ============================================
        MODAL DE DETALLES
        ============================================ */
@@ -409,13 +447,13 @@
         z-index: 9998;
         animation: fadeIn 0.3s ease;
     }
-    
+
     .modal-overlay.show {
         display: flex;
         align-items: center;
         justify-content: center;
     }
-    
+
     .modal-container {
         width: 90%;
         max-width: 900px;
@@ -431,7 +469,7 @@
         display: flex;
         flex-direction: column;
     }
-    
+
     .modal-header {
         background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
         color: white;
@@ -441,7 +479,7 @@
         align-items: center;
         flex-shrink: 0;
     }
-    
+
     .modal-title {
         font-size: 1.5rem;
         font-weight: 800;
@@ -450,7 +488,7 @@
         align-items: center;
         gap: 0.75rem;
     }
-    
+
     .modal-close {
         background: rgba(255, 255, 255, 0.2);
         border: none;
@@ -465,18 +503,18 @@
         transition: all 0.2s;
         font-size: 1.2rem;
     }
-    
+
     .modal-close:hover {
         background: rgba(255, 255, 255, 0.3);
         transform: scale(1.1);
     }
-    
+
     .modal-body {
         padding: 2rem;
         overflow-y: auto;
         flex: 1;
     }
-    
+
     .detalle-section {
         background: rgba(248, 250, 252, 0.6);
         border: 1px solid rgba(219, 234, 254, 0.5);
@@ -484,7 +522,7 @@
         padding: 1.5rem;
         margin-bottom: 1.5rem;
     }
-    
+
     .detalle-section-title {
         font-size: 1.1rem;
         font-weight: 700;
@@ -494,43 +532,43 @@
         align-items: center;
         gap: 0.5rem;
     }
-    
+
     .detalle-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 1rem;
     }
-    
+
     .detalle-item {
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
     }
-    
+
     .detalle-label {
         font-size: 0.75rem;
         font-weight: 600;
         color: #64748b;
         text-transform: uppercase;
     }
-    
+
     .detalle-value {
         font-size: 1rem;
         font-weight: 700;
         color: #0f172a;
     }
-    
+
     /* Tabla de productos en modal */
     .productos-table {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
     }
-    
+
     .productos-table thead {
         background: rgba(59, 130, 246, 0.08);
     }
-    
+
     .productos-table th {
         padding: 0.75rem;
         text-align: left;
@@ -540,18 +578,18 @@
         text-transform: uppercase;
         border-bottom: 2px solid rgba(59, 130, 246, 0.15);
     }
-    
+
     .productos-table td {
         padding: 0.75rem;
         font-size: 0.9rem;
         color: #1e293b;
         border-bottom: 1px solid rgba(219, 234, 254, 0.3);
     }
-    
+
     .productos-table tbody tr:hover {
         background: rgba(59, 130, 246, 0.05);
     }
-    
+
     .totales-resumen {
         background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(37, 99, 235, 0.05) 100%);
         border: 2px solid rgba(59, 130, 246, 0.2);
@@ -559,7 +597,7 @@
         padding: 1.5rem;
         margin-top: 1rem;
     }
-    
+
     .total-row {
         display: flex;
         justify-content: space-between;
@@ -567,7 +605,7 @@
         font-size: 1rem;
         font-weight: 600;
     }
-    
+
     .total-row.total-final {
         border-top: 2px solid rgba(59, 130, 246, 0.3);
         margin-top: 0.5rem;
@@ -576,7 +614,7 @@
         font-weight: 900;
         color: #0f172a;
     }
-    
+
     .modal-footer {
         padding: 1.5rem;
         border-top: 1px solid rgba(219, 234, 254, 0.5);
@@ -585,7 +623,7 @@
         justify-content: flex-end;
         flex-shrink: 0;
     }
-    
+
     /* ============================================
        PAGINACIÓN
        ============================================ */
@@ -596,6 +634,7 @@
         justify-content: center;
         margin-top: 1.5rem;
     }
+
     .page-item .page-link {
         padding: 0.5rem 1rem;
         border-radius: 10px;
@@ -606,21 +645,24 @@
         color: #1e293b;
         text-decoration: none;
     }
+
     .page-item.active .page-link {
         background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 0.95) 100%);
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         color: white;
         border-color: transparent;
     }
+
     .page-item:not(.active):not(.disabled) .page-link:hover {
         background: rgba(59, 130, 246, 0.15);
         transform: translateY(-1px);
     }
+
     .page-item.disabled .page-link {
         opacity: 0.5;
         cursor: not-allowed;
     }
-    
+
     /* ============================================
        EMPTY STATE
        ============================================ */
@@ -629,22 +671,25 @@
         padding: 4rem 2rem;
         color: #94a3b8;
     }
+
     .empty-state i {
         font-size: 100px;
         opacity: 0.3;
         margin-bottom: 1rem;
     }
+
     .empty-state h3 {
         color: #475569;
         font-size: 1.5rem;
         font-weight: 700;
         margin-bottom: 0.5rem;
     }
+
     .empty-state p {
         color: #94a3b8;
         font-size: 1rem;
     }
-    
+
     /* ============================================
        RESPONSIVE
        ============================================ */
@@ -652,63 +697,87 @@
         .card-title {
             font-size: 1.5rem;
         }
+
         .stat-card {
             margin-bottom: 1rem;
         }
+
         .table-admin {
             font-size: 0.85rem;
         }
+
         .modal-container {
             width: 95%;
             max-height: 95vh;
         }
+
         .modal-body {
             padding: 1rem;
         }
+
         .detalle-grid {
             grid-template-columns: 1fr;
         }
     }
-    
+
     /* ============================================
        ANIMACIONES
        ============================================ */
     @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
     }
-    
+
     @keyframes slideIn {
         from {
             opacity: 0;
             transform: translateY(-50px);
         }
+
         to {
             opacity: 1;
             transform: translateY(0);
         }
     }
-    
+
     @keyframes fadeInUp {
         from {
             opacity: 0;
             transform: translateY(20px);
         }
+
         to {
             opacity: 1;
             transform: translateY(0);
         }
     }
-    
+
     .stat-card,
     .admin-card {
         animation: fadeInUp 0.5s ease-out backwards;
     }
-    .stat-card:nth-child(1) { animation-delay: 0.05s; }
-    .stat-card:nth-child(2) { animation-delay: 0.1s; }
-    .stat-card:nth-child(3) { animation-delay: 0.15s; }
-    .stat-card:nth-child(4) { animation-delay: 0.2s; }
-    
+
+    .stat-card:nth-child(1) {
+        animation-delay: 0.05s;
+    }
+
+    .stat-card:nth-child(2) {
+        animation-delay: 0.1s;
+    }
+
+    .stat-card:nth-child(3) {
+        animation-delay: 0.15s;
+    }
+
+    .stat-card:nth-child(4) {
+        animation-delay: 0.2s;
+    }
+
     /* Grid para stats */
     .stats-grid {
         display: grid;
@@ -716,7 +785,7 @@
         gap: 1.5rem;
         margin-bottom: 2rem;
     }
-    
+
     /* Header del card */
     .card-header-admin {
         display: flex;
@@ -726,19 +795,20 @@
         position: relative;
         z-index: 2;
     }
-    
+
     /* Filtros */
     .filtros-content {
         position: relative;
         z-index: 2;
     }
+
     .filtros-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 1rem;
         margin-bottom: 1rem;
     }
-    
+
     /* Spinner de carga */
     .spinner {
         display: inline-block;
@@ -749,9 +819,12 @@
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
     }
-    
+
     @keyframes spin {
-        to { transform: rotate(360deg); }}
+        to {
+            transform: rotate(360deg);
+        }
+    }
 </style>
 {% endblock %}
 
@@ -772,7 +845,7 @@
             <div class="stat-value">{{ count_ventas|default:0 }}</div>
             <div class="stat-label">Total Ventas</div>
         </div>
-        
+
         <div class="stat-card">
             <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
                 <i class="fas fa-dollar-sign"></i>
@@ -780,7 +853,7 @@
             <div class="stat-value">${{ total_ventas|floatformat:2|default:"0.00" }}</div>
             <div class="stat-label">Monto Total</div>
         </div>
-        
+
         <div class="stat-card">
             <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
                 <i class="fas fa-calendar-day"></i>
@@ -788,7 +861,7 @@
             <div class="stat-value">{{ ventas_hoy|default:0 }}</div>
             <div class="stat-label">Ventas Hoy</div>
         </div>
-        
+
         <div class="stat-card">
             <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white;">
                 <i class="fas fa-calendar-alt"></i>
@@ -817,11 +890,8 @@
                         <label for="fecha_inicio" class="form-label-admin">
                             <i class="fas fa-calendar-alt"></i> Fecha Inicio
                         </label>
-                        <input type="date" 
-                               name="fecha_inicio" 
-                               id="fecha_inicio" 
-                               class="form-control-admin"
-                               value="{{ fecha_inicio }}">
+                        <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control-admin"
+                            value="{{ fecha_inicio }}">
                     </div>
 
                     <!-- Fecha Fin -->
@@ -829,11 +899,8 @@
                         <label for="fecha_fin" class="form-label-admin">
                             <i class="fas fa-calendar-alt"></i> Fecha Fin
                         </label>
-                        <input type="date" 
-                               name="fecha_fin" 
-                               id="fecha_fin" 
-                               class="form-control-admin"
-                               value="{{ fecha_fin }}">
+                        <input type="date" name="fecha_fin" id="fecha_fin" class="form-control-admin"
+                            value="{{ fecha_fin }}">
                     </div>
 
                     <!-- Estado -->
@@ -842,6 +909,7 @@
                             <i class="fas fa-flag"></i> Estado
                         </label>
                         <select name="estado" id="estado" class="form-control-admin">
+                            <option value="">Todos</option>
                             {% for value, label in estados %}
                             <option value="{{ value }}" {% if estado_selected == value %}selected{% endif %}>
                                 {{ label }}
@@ -856,6 +924,7 @@
                             <i class="fas fa-credit-card"></i> Tipo de Venta
                         </label>
                         <select name="tipo_venta" id="tipo_venta" class="form-control-admin">
+                            <option value="">Todos</option>
                             {% for value, label in tipos_venta %}
                             <option value="{{ value }}" {% if tipo_venta_selected == value %}selected{% endif %}>
                                 {{ label }}
@@ -937,6 +1006,7 @@
                         <th>Total</th>
                         <th>Estado</th>
                         <th>Pago</th>
+                        <th>SRI</th>
                         <th style="text-align: center;">Acciones</th>
                     </tr>
                 </thead>
@@ -957,12 +1027,12 @@
                         </td>
                         <td>
                             {% if venta.cliente %}
-                                <strong style="color: #1e293b;">
-                                    {{ venta.cliente.nombres }} {{ venta.cliente.apellidos }}
-                                </strong>
-                                <br><small style="color: #94a3b8;">{{ venta.cliente.numero_documento }}</small>
+                            <strong style="color: #1e293b;">
+                                {{ venta.cliente.nombres }} {{ venta.cliente.apellidos }}
+                            </strong>
+                            <br><small style="color: #94a3b8;">{{ venta.cliente.numero_documento }}</small>
                             {% else %}
-                                <em style="color: #94a3b8;">Público General</em>
+                            <em style="color: #94a3b8;">Público General</em>
                             {% endif %}
                         </td>
                         <td style="color: #1e293b; font-weight: 500;">
@@ -970,9 +1040,10 @@
                         </td>
                         <td>
                             {% if venta.tipo_venta == 'CONTADO' %}
-                                <span class="badge-admin badge-info"><i class="fas fa-money-bill-wave"></i> Contado</span>
+                            <span class="badge-admin badge-info"><i class="fas fa-money-bill-wave"></i> Contado</span>
                             {% else %}
-                                <span class="badge-admin badge-warning"><i class="fas fa-file-invoice-dollar"></i> Crédito</span>
+                            <span class="badge-admin badge-warning"><i class="fas fa-file-invoice-dollar"></i>
+                                Crédito</span>
                             {% endif %}
                         </td>
                         <td>
@@ -982,75 +1053,87 @@
                         </td>
                         <td>
                             {% if venta.estado == 'COMPLETADA' %}
-                                <span class="badge-admin badge-success"><i class="fas fa-check-circle"></i> Completada</span>
+                            <span class="badge-admin badge-success"><i class="fas fa-check-circle"></i>
+                                Completada</span>
                             {% elif venta.estado == 'PENDIENTE' %}
-                                <span class="badge-admin badge-warning"><i class="fas fa-clock"></i> Pendiente</span>
+                            <span class="badge-admin badge-warning"><i class="fas fa-clock"></i> Pendiente</span>
                             {% else %}
-                                <span class="badge-admin badge-danger"><i class="fas fa-times-circle"></i> Anulada</span>
+                            <span class="badge-admin badge-danger"><i class="fas fa-times-circle"></i> Anulada</span>
                             {% endif %}
                         </td>
                         <td>
                             <div class="pago-status">
                                 {% if venta.monto_pagado >= venta.total %}
-                                    <span class="pago-icon pagado"></span>
-                                    <span style="font-weight: 600; color: #059669;">Pagado</span>
+                                <span class="pago-icon pagado"></span>
+                                <span style="font-weight: 600; color: #059669;">Pagado</span>
                                 {% elif venta.monto_pagado > 0 %}
-                                    <span class="pago-icon parcial"></span>
-                                    <div>
-                                        <span style="font-weight: 600; color: #d97706;">Parcial</span>
-                                        <br><small style="color: #94a3b8;">
-                                            Saldo: ${{ venta.saldo_pendiente|floatformat:2 }}
-                                        </small>
-                                    </div>
+                                <span class="pago-icon parcial"></span>
+                                <div>
+                                    <span style="font-weight: 600; color: #d97706;">Parcial</span>
+                                    <br><small style="color: #94a3b8;">
+                                        Saldo: ${{ venta.saldo_pendiente|floatformat:2 }}
+                                    </small>
+                                </div>
                                 {% else %}
-                                    <span class="pago-icon pendiente"></span>
-                                    <span style="font-weight: 600; color: #dc2626;">Pendiente</span>
+                                <span class="pago-icon pendiente"></span>
+                                <span style="font-weight: 600; color: #dc2626;">Pendiente</span>
                                 {% endif %}
                             </div>
+                        </td>
+                        <td>
+                            {% if venta.factura_electronica_enviada %}
+                            <span class="badge-admin badge-success"
+                                title="Clave: {{ venta.factura_electronica_clave }}">
+                                <i class="fas fa-check"></i> OK
+                            </span>
+                            {% else %}
+                            <span class="badge-admin badge-secondary"
+                                style="background: rgba(148, 163, 184, 0.1); color: #64748b; border: 1px solid rgba(148, 163, 184, 0.2);">
+                                <i class="fas fa-minus"></i>
+                            </span>
+                            {% endif %}
                         </td>
                         <td style="text-align: center;">
                             <div style="display: inline-flex; gap: 0.3rem; flex-wrap: wrap; justify-content: center;">
                                 <!-- Ver Detalle -->
-                                <button type="button"
-                                        class="btn-action btn-view"
-                                        title="Ver Detalle"
-                                        onclick="verDetalleVenta('{{ venta.pk }}')">
+                                <button type="button" class="btn-action btn-view" title="Ver Detalle"
+                                    onclick="verDetalleVenta('{{ venta.pk }}')">
                                     <i class="fas fa-eye"></i>
                                 </button>
 
                                 <!-- Imprimir Ticket -->
-                                <a href="{% url 'custom_admin:venta_ticket' venta.pk %}" 
-                                   target="_blank"
-                                   class="btn-action btn-print"
-                                   title="Imprimir Ticket">
+                                <button type="button" class="btn-action btn-print" title="Imprimir Ticket"
+                                    onclick="reimprimirTicket('{{ venta.pk }}', this)">
                                     <i class="fas fa-print"></i>
-                                </a>
+                                </button>
 
                                 <!-- Excel Individual -->
-                                <button type="button"
-                                        class="btn-action btn-excel"
-                                        title="Exportar a Excel"
-                                        onclick="exportarExcelIndividual('{{ venta.pk }}')">
+                                <button type="button" class="btn-action btn-excel" title="Exportar a Excel"
+                                    onclick="exportarExcelIndividual('{{ venta.pk }}')">
                                     <i class="fas fa-file-excel"></i>
                                 </button>
 
                                 <!-- PDF Individual -->
-                                <button type="button"
-                                        class="btn-action btn-pdf"
-                                        title="Exportar a PDF"
-                                        onclick="exportarPDFIndividual('{{ venta.pk }}')">
+                                <button type="button" class="btn-action btn-pdf" title="Exportar a PDF"
+                                    onclick="exportarPDFIndividual('{{ venta.pk }}')">
                                     <i class="fas fa-file-pdf"></i>
                                 </button>
 
                                 <!-- Anular -->
                                 {% if venta.estado != 'ANULADA' and venta.monto_pagado == 0 %}
-                                <button type="button"
-                                        class="btn-action btn-delete"
-                                        title="Anular Venta"
-                                        onclick="anularVenta('{{ venta.pk }}', '{{ venta.numero_venta }}')">
+                                <button type="button" class="btn-action btn-delete" title="Anular Venta"
+                                    onclick="anularVenta('{{ venta.pk }}', '{{ venta.numero_venta }}')">
                                     <i class="fas fa-ban"></i>
                                 </button>
                                 {% endif %}
+
+                                <!-- Eliminar permanentemente -->
+                                <button type="button" class="btn-action"
+                                    style="background:rgba(220,38,38,0.18);color:#b91c1c;border:1px solid rgba(220,38,38,0.3);"
+                                    title="Eliminar venta permanentemente (revierte stock)"
+                                    onclick="confirmarEliminarVenta('{{ venta.pk }}', '{{ venta.numero_venta }}', '{{ venta.total|floatformat:2 }}')">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -1064,16 +1147,18 @@
         <div style="position: relative; z-index: 2;">
             <ul class="pagination">
                 {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                            <i class="fas fa-angle-double-left"></i> Primera
-                        </a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                            <i class="fas fa-angle-left"></i> Anterior
-                        </a>
-                    </li>
+                <li class="page-item">
+                    <a class="page-link"
+                        href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        <i class="fas fa-angle-double-left"></i> Primera
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link"
+                        href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        <i class="fas fa-angle-left"></i> Anterior
+                    </a>
+                </li>
                 {% endif %}
 
                 <li class="page-item active">
@@ -1083,16 +1168,18 @@
                 </li>
 
                 {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                            Siguiente <i class="fas fa-angle-right"></i>
-                        </a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                            Última <i class="fas fa-angle-double-right"></i>
-                        </a>
-                    </li>
+                <li class="page-item">
+                    <a class="page-link"
+                        href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        Siguiente <i class="fas fa-angle-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link"
+                        href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        Última <i class="fas fa-angle-double-right"></i>
+                    </a>
+                </li>
                 {% endif %}
             </ul>
         </div>
@@ -1121,25 +1208,30 @@
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        
+
         <div class="modal-body" id="modalDetalleBody">
             <div style="text-align: center; padding: 3rem;">
-                <div class="spinner" style="border-color: rgba(59, 130, 246, 0.2); border-top-color: #3b82f6; width: 40px; height: 40px;"></div>
+                <div class="spinner"
+                    style="border-color: rgba(59, 130, 246, 0.2); border-top-color: #3b82f6; width: 40px; height: 40px;">
+                </div>
                 <p style="margin-top: 1rem; color: #64748b;">Cargando detalles...</p>
             </div>
         </div>
-        
+
         <div class="modal-footer">
             <button type="button" class="btn-secondary-admin btn-sm-admin" onclick="cerrarModalDetalle()">
                 <i class="fas fa-times"></i> Cerrar
             </button>
-            <button type="button" class="btn-success-admin btn-sm-admin" id="btnImprimirModalTicket" onclick="imprimirTicketDesdeModal()">
+            <button type="button" class="btn-success-admin btn-sm-admin" id="btnImprimirModalTicket"
+                onclick="imprimirTicketDesdeModal()">
                 <i class="fas fa-print"></i> Imprimir Ticket
             </button>
-            <button type="button" class="btn-success-admin btn-sm-admin" id="btnExportarModalExcel" onclick="exportarExcelDesdeModal()">
+            <button type="button" class="btn-success-admin btn-sm-admin" id="btnExportarModalExcel"
+                onclick="exportarExcelDesdeModal()">
                 <i class="fas fa-file-excel"></i> Excel
             </button>
-            <button type="button" class="btn-success-admin btn-sm-admin" id="btnExportarModalPDF" onclick="exportarPDFDesdeModal()">
+            <button type="button" class="btn-success-admin btn-sm-admin" id="btnExportarModalPDF"
+                onclick="exportarPDFDesdeModal()">
                 <i class="fas fa-file-pdf"></i> PDF
             </button>
         </div>
@@ -1149,75 +1241,74 @@
 
 {% block extra_js %}
 <script>
-// ============================================
-// VARIABLES GLOBALES
-// ============================================
-let ventaIdActual = null;
+    // ============================================
+    // VARIABLES GLOBALES
+    // ============================================
+    let ventaIdActual = null;
 
-// ============================================
-// TOGGLE DE FILTROS
-// ============================================
-function toggleFiltros() {
-    const content = document.getElementById('filtros-content');
-    const icon = document.getElementById('filtros-icon');
-    
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        icon.className = 'fas fa-chevron-down';
-    } else {
-        content.style.display = 'none';
-        icon.className = 'fas fa-chevron-right';
+    // ============================================
+    // TOGGLE DE FILTROS
+    // ============================================
+    function toggleFiltros() {
+        const content = document.getElementById('filtros-content');
+        const icon = document.getElementById('filtros-icon');
+
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            icon.className = 'fas fa-chevron-down';
+        } else {
+            content.style.display = 'none';
+            icon.className = 'fas fa-chevron-right';
+        }
     }
-}
 
-// ============================================
-// LIMPIAR FILTROS
-// ============================================
-function limpiarFiltros() {
-    window.location.href = '{% url "custom_admin:ventas_list" %}';
-}
+    // ============================================
+    // LIMPIAR FILTROS
+    // ============================================
+    function limpiarFiltros() {
+        window.location.href = '{% url "custom_admin:ventas_list" %}';
+    }
 
-// ============================================
-// VER DETALLE DE VENTA (MODAL)
-// ============================================
-function verDetalleVenta(ventaId) {
-    ventaIdActual = ventaId;
-    const modal = document.getElementById('modalDetalle');
-    modal.classList.add('show');
-    document.body.classList.add('modal-open');
-    
-    // ✅ URL CORREGIDA
-    fetch(`/panel/api/ventas/${ventaId}/info/`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                mostrarDetalleEnModal(data.venta);
-            } else {
-                document.getElementById('modalDetalleBody').innerHTML = `
+    // ============================================
+    // VER DETALLE DE VENTA (MODAL)
+    // ============================================
+    function verDetalleVenta(ventaId) {
+        ventaIdActual = ventaId;
+        const modal = document.getElementById('modalDetalle');
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+
+        fetch(`/panel/api/ventas/${ventaId}/info/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mostrarDetalleEnModal(data.venta);
+                } else {
+                    document.getElementById('modalDetalleBody').innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-exclamation-circle"></i>
                         <h3>Error al cargar</h3>
                         <p>${data.error || 'No se pudo cargar el detalle de la venta'}</p>
                     </div>
                 `;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            document.getElementById('modalDetalleBody').innerHTML = `
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('modalDetalleBody').innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-exclamation-circle"></i>
                     <h3>Error de conexión</h3>
                     <p>No se pudo conectar con el servidor</p>
                 </div>
             `;
-        });
-}
+            });
+    }
 
-function mostrarDetalleEnModal(venta) {
-    document.getElementById('modalTituloVenta').textContent = `Venta ${venta.numero_venta}`;
-    
-    const html = `
+    function mostrarDetalleEnModal(venta) {
+        document.getElementById('modalTituloVenta').textContent = `Venta ${venta.numero_venta}`;
+
+        const html = `
         <!-- INFORMACIÓN GENERAL -->
         <div class="detalle-section">
             <div class="detalle-section-title">
@@ -1339,117 +1430,390 @@ function mostrarDetalleEnModal(venta) {
                 ` : ''}
             </div>
         </div>
+
+        <!-- FACTURACIÓN ELECTRÓNICA (SRI) -->
+        <div class="detalle-section" style="border-left: 5px solid ${venta.sri_enviado ? '#10b981' : '#f59e0b'}; background: ${venta.sri_enviado ? 'rgba(16, 185, 129, 0.05)' : 'rgba(245, 158, 11, 0.05)'};">
+            <div class="detalle-section-title">
+                <i class="fas fa-file-invoice"></i> Facturación Electrónica (SRI)
+            </div>
+            <div class="detalle-grid">
+                <div class="detalle-item">
+                    <span class="detalle-label">Estado SRI</span>
+                    <span class="detalle-value">
+                        ${venta.sri_enviado
+                ? '<span class="badge-admin badge-success"><i class="fas fa-check-circle"></i> AUTORIZADO / ENVIADO</span>'
+                : '<span class="badge-admin badge-warning"><i class="fas fa-clock"></i> NO ENVIADO / PENDIENTE</span>'
+            }
+                    </span>
+                </div>
+                <div class="detalle-item">
+                    <span class="detalle-label">Nro. Factura SRI</span>
+                    <span class="detalle-value">${venta.sri_numero || 'N/A'}</span>
+                </div>
+                <div class="detalle-item" style="grid-column: span 2;">
+                    <span class="detalle-label">Clave de Acceso</span>
+                    <span class="detalle-value" style="font-family: monospace; font-size: 0.85rem; background: #eee; padding: 4px 8px; border-radius: 4px; display: block; word-break: break-all;">
+                        ${venta.sri_clave || 'N/A'}
+                    </span>
+                </div>
+                ${venta.sri_mensaje ? `
+                <div class="detalle-item" style="grid-column: span 2; margin-top: 0.5rem;">
+                    <span class="detalle-label">Última Respuesta SRI</span>
+                    <span class="detalle-value" style="color: ${venta.sri_enviado ? '#059669' : '#dc2626'}; font-size: 0.9rem;">
+                        <i class="fas fa-comment-dots"></i> ${venta.sri_mensaje}
+                    </span>
+                </div>
+                ` : ''}
+            </div>
+        </div>
     `;
-    
-    document.getElementById('modalDetalleBody').innerHTML = html;
-}
 
-// ============================================
-// CERRAR MODAL
-// ============================================
-function cerrarModalDetalle() {
-    const modal = document.getElementById('modalDetalle');
-    modal.classList.remove('show');
-    document.body.classList.remove('modal-open');
-    ventaIdActual = null;
-}
-
-function cerrarModalSiFondoClick(event) {
-    if (event.target.id === 'modalDetalle') {
-        cerrarModalDetalle();
+        document.getElementById('modalDetalleBody').innerHTML = html;
     }
-}
 
-// ============================================
-// IMPRIMIR DESDE MODAL
-// ============================================
-function imprimirTicketDesdeModal() {
-    if (ventaIdActual) {
-        window.open(`/panel/ventas/${ventaIdActual}/ticket/`, '_blank');
+    // ============================================
+    // CERRAR MODAL
+    // ============================================
+    function cerrarModalDetalle() {
+        const modal = document.getElementById('modalDetalle');
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+        ventaIdActual = null;
     }
-}
 
-// ============================================
-// EXPORTAR EXCEL INDIVIDUAL
-// ============================================
-function exportarExcelIndividual(ventaId) {
-    // ✅ URL CORREGIDA
-    window.location.href = `/panel/ventas/${ventaId}/export/excel/`;
-}
-
-function exportarExcelDesdeModal() {
-    if (ventaIdActual) {
-        exportarExcelIndividual(ventaIdActual);
-    }
-}
-
-// ============================================
-// EXPORTAR PDF INDIVIDUAL
-// ============================================
-function exportarPDFIndividual(ventaId) {
-    // ✅ URL CORREGIDA
-    window.open(`/panel/ventas/${ventaId}/export/pdf/`, '_blank');
-}
-
-function exportarPDFDesdeModal() {
-    if (ventaIdActual) {
-        exportarPDFIndividual(ventaIdActual);
-    }
-}
-
-// ============================================
-// EXPORTAR EXCEL GENERAL
-// ============================================
-function exportarExcelGeneral() {
-    const params = new URLSearchParams(window.location.search);
-    // ✅ URL CORREGIDA
-    window.location.href = `/panel/ventas/export-all/excel/?${params.toString()}`;
-}
-
-// ============================================
-// EXPORTAR PDF GENERAL
-// ============================================
-function exportarPDFGeneral() {
-    const params = new URLSearchParams(window.location.search);
-    // ✅ URL CORREGIDA
-    window.open(`/panel/ventas/export-all/pdf/?${params.toString()}`, '_blank');
-}
-
-// ============================================
-// ANULAR VENTA
-// ============================================
-function anularVenta(ventaId, numeroVenta) {
-    if (confirm(`¿Está seguro de que desea anular la venta ${numeroVenta}?\n\n⚠️ Esta acción no se puede deshacer y revertirá el inventario.`)) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/panel/ventas/${ventaId}/anular/`;
-        
-        const csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = 'csrfmiddlewaretoken';
-        csrfInput.value = '{{ csrf_token }}';
-        
-        form.appendChild(csrfInput);
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
-// ============================================
-// INICIALIZACIÓN
-// ============================================
-document.addEventListener('DOMContentLoaded', function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.toString() && urlParams.get('page') === null) {
-        document.getElementById('filtros-content').style.display = 'block';
-    }
-    
-    // Cerrar modal con ESC
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
+    function cerrarModalSiFondoClick(event) {
+        if (event.target.id === 'modalDetalle') {
             cerrarModalDetalle();
         }
+    }
+
+    // ============================================
+    // REIMPRIMIR TICKET
+    // ============================================
+    function reimprimirTicket(ventaId, btn) {
+        if (!ventaId) return;
+
+        const btnElement = btn || document.activeElement;
+        const iconoOriginal = btnElement.innerHTML;
+
+        btnElement.disabled = true;
+        btnElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        fetch(`/panel/api/ventas/${ventaId}/reimprimir-ticket/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ abrir_gaveta: false })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mostrarToast('success', '🖨️ ' + (data.mensaje || 'Ticket enviado a la impresora'));
+                } else {
+                    mostrarToast('error', '❌ ' + (data.error || 'Error al enviar a la impresora'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarToast('error', '❌ Error de conexión con el servidor');
+            })
+            .finally(() => {
+                btnElement.disabled = false;
+                btnElement.innerHTML = iconoOriginal;
+            });
+    }
+
+    function imprimirTicketDesdeModal() {
+        if (ventaIdActual) {
+            const btn = document.getElementById('btnImprimirModalTicket');
+            const textoOriginal = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Imprimiendo...';
+
+            fetch(`/panel/api/ventas/${ventaIdActual}/reimprimir-ticket/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ abrir_gaveta: false })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        mostrarToast('success', '🖨️ ' + (data.mensaje || 'Ticket enviado a la impresora'));
+                    } else {
+                        mostrarToast('error', '❌ ' + (data.error || 'No hay impresora configurada'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    mostrarToast('error', '❌ Error de comunicación');
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = textoOriginal;
+                });
+        }
+    }
+
+    // ============================================
+    // EXPORTAR EXCEL INDIVIDUAL
+    // ============================================
+    function exportarExcelIndividual(ventaId) {
+        window.location.href = `/panel/ventas/${ventaId}/export/excel/`;
+    }
+
+    function exportarExcelDesdeModal() {
+        if (ventaIdActual) {
+            exportarExcelIndividual(ventaIdActual);
+        }
+    }
+
+    // ============================================
+    // EXPORTAR PDF INDIVIDUAL
+    // ============================================
+    function exportarPDFIndividual(ventaId) {
+        window.open(`/panel/ventas/${ventaId}/export/pdf/`, '_blank');
+    }
+
+    function exportarPDFDesdeModal() {
+        if (ventaIdActual) {
+            exportarPDFIndividual(ventaIdActual);
+        }
+    }
+
+    // ============================================
+    // EXPORTAR EXCEL GENERAL
+    // ============================================
+    function exportarExcelGeneral() {
+        const params = new URLSearchParams(window.location.search);
+        window.location.href = `/panel/ventas/export-all/excel/?${params.toString()}`;
+    }
+
+    // ============================================
+    // EXPORTAR PDF GENERAL
+    // ============================================
+    function exportarPDFGeneral() {
+        const params = new URLSearchParams(window.location.search);
+        window.open(`/panel/ventas/export-all/pdf/?${params.toString()}`, '_blank');
+    }
+
+    // ============================================
+    // ANULAR VENTA
+    // ============================================
+    function anularVenta(ventaId, numeroVenta) {
+        if (confirm(`¿Está seguro de que desea anular la venta ${numeroVenta}?\n\n⚠️ Esta acción no se puede deshacer y revertirá el inventario.`)) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/panel/ventas/${ventaId}/anular/`;
+
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = '{{ csrf_token }}';
+
+            form.appendChild(csrfInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    // ============================================
+    // INICIALIZACIÓN
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.toString() && urlParams.get('page') === null) {
+            document.getElementById('filtros-content').style.display = 'block';
+        }
+
+        // Cerrar modal con ESC
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                cerrarModalDetalle();
+            }
+        });
     });
-});
+
+    // ============================================
+    // ELIMINAR VENTA PERMANENTEMENTE
+    // ============================================
+    let ventaEliminarId = null;
+    let ventaEliminarNum = null;
+    let ventaEliminarFila = null;
+
+    function confirmarEliminarVenta(ventaId, numeroVenta, total) {
+        ventaEliminarId = ventaId;
+        ventaEliminarNum = numeroVenta;
+
+        // Guardar referencia a la fila para quitarla al eliminar
+        const btn = document.activeElement;
+        ventaEliminarFila = btn ? btn.closest('tr') : null;
+
+        // Rellenar el modal
+        document.getElementById('eliminar-numero-venta').textContent = numeroVenta;
+        document.getElementById('eliminar-total-venta').textContent = '$' + parseFloat(total).toFixed(2);
+
+        document.getElementById('modalEliminarVenta').classList.add('show');
+        document.body.classList.add('modal-open');
+    }
+
+    function cerrarModalEliminar() {
+        document.getElementById('modalEliminarVenta').classList.remove('show');
+        document.body.classList.remove('modal-open');
+        ventaEliminarId = null;
+        ventaEliminarNum = null;
+    }
+
+    function ejecutarEliminarVenta() {
+        if (!ventaEliminarId) return;
+
+        const btn = document.getElementById('btn-confirmar-eliminar');
+        const btnText = document.getElementById('btn-eliminar-text');
+        const spinner = document.getElementById('btn-eliminar-spinner');
+
+        // Estado de carga
+        btn.disabled = true;
+        btnText.textContent = 'Eliminando...';
+        spinner.style.display = 'inline-block';
+
+        fetch(`/panel/ventas/${ventaEliminarId}/eliminar/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({})
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Quitar la fila de la tabla sin recargar
+                    if (ventaEliminarFila) {
+                        ventaEliminarFila.style.transition = 'opacity 0.4s, transform 0.4s';
+                        ventaEliminarFila.style.opacity = '0';
+                        ventaEliminarFila.style.transform = 'translateX(40px)';
+                        setTimeout(() => ventaEliminarFila.remove(), 420);
+                    }
+
+                    cerrarModalEliminar();
+
+                    // Toast de éxito
+                    mostrarToast('success', data.message || '✅ Venta eliminada correctamente');
+                } else {
+                    mostrarToast('error', '❌ Error: ' + (data.error || 'Error desconocido'));
+                    btn.disabled = false;
+                    btnText.textContent = 'Sí, eliminar definitivamente';
+                    spinner.style.display = 'none';
+                }
+            })
+            .catch(err => {
+                mostrarToast('error', '❌ Error de conexión: ' + err.message);
+                btn.disabled = false;
+                btnText.textContent = 'Sí, eliminar definitivamente';
+                spinner.style.display = 'none';
+            });
+    }
+
+    function mostrarToast(tipo, mensaje) {
+        const toast = document.createElement('div');
+        const isSuccess = tipo === 'success';
+        toast.style.cssText = `
+            position: fixed; bottom: 2rem; right: 2rem; z-index: 99999;
+            padding: 1rem 1.5rem; border-radius: 14px;
+            background: ${isSuccess ? 'rgba(16,185,129,0.95)' : 'rgba(220,38,38,0.95)'};
+            color: white; font-weight: 700; font-size: 0.95rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+            animation: slideInToast 0.4s ease;
+            max-width: 420px; line-height: 1.4;
+        `;
+        toast.textContent = mensaje;
+
+        const style = document.createElement('style');
+        style.textContent = '@keyframes slideInToast { from { opacity:0; transform: translateY(20px); } to { opacity:1; transform: translateY(0); } }';
+        document.head.appendChild(style);
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px)';
+            toast.style.transition = 'all 0.4s';
+            setTimeout(() => toast.remove(), 400);
+        }, 4000);
+    }
+
+    // Cerrar modal eliminar si se hace click fuera
+    document.addEventListener('DOMContentLoaded', function () {
+        const modalEl = document.getElementById('modalEliminarVenta');
+        if (modalEl) {
+            modalEl.addEventListener('click', function (e) {
+                if (e.target === modalEl) cerrarModalEliminar();
+            });
+        }
+    });
+
 </script>
+
+<!-- ============================================================
+     MODAL: CONFIRMACIÓN DE ELIMINACIÓN
+     ============================================================ -->
+<div id="modalEliminarVenta" class="modal-overlay" style="z-index:99999;">
+    <div class="modal-container" style="max-width:480px;">
+        <!-- Header rojo -->
+        <div class="modal-header" style="background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);">
+            <h2 class="modal-title">
+                <i class="fas fa-exclamation-triangle"></i>
+                Eliminar Venta
+            </h2>
+            <button class="modal-close" onclick="cerrarModalEliminar()" title="Cerrar">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div class="modal-body" style="text-align:center; padding:2rem;">
+            <div style="font-size:3.5rem; margin-bottom:1rem;">🗑️</div>
+            <h3 style="color:#0f172a; margin-bottom:0.75rem; font-size:1.3rem;">
+                ¿Eliminar permanentemente?
+            </h3>
+            <p style="color:#475569; margin-bottom:1.5rem; line-height:1.6;">
+                Vas a eliminar la venta <strong id="eliminar-numero-venta" style="color:#dc2626;"></strong>
+                por un total de <strong id="eliminar-total-venta" style="color:#dc2626;"></strong>.
+            </p>
+
+            <div style="background:rgba(220,38,38,0.08); border:1px solid rgba(220,38,38,0.25);
+                        border-radius:12px; padding:1rem; text-align:left; margin-bottom:1.5rem;">
+                <p style="margin:0; color:#7f1d1d; font-size:0.9rem; font-weight:600;">
+                    <i class="fas fa-info-circle"></i> Esta acción:
+                </p>
+                <ul style="margin:0.75rem 0 0 1.2rem; color:#7f1d1d; font-size:0.88rem; line-height:1.8;">
+                    <li>Elimina la venta del historial</li>
+                    <li>Regresa el stock de productos al inventario</li>
+                    <li>Elimina los pagos asociados</li>
+                    <li>Afecta los reportes del día</li>
+                    <li><strong>No se puede deshacer</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="modal-footer" style="gap:0.75rem; justify-content:center;">
+            <button type="button" class="btn-secondary-admin" onclick="cerrarModalEliminar()">
+                <i class="fas fa-times"></i> Cancelar
+            </button>
+            <button type="button" id="btn-confirmar-eliminar" onclick="ejecutarEliminarVenta()" style="padding:12px 24px; background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);
+                           border:none; border-radius:12px; color:white; font-weight:700;
+                           cursor:pointer; display:inline-flex; align-items:center; gap:0.5rem;
+                           box-shadow:0 8px 20px rgba(220,38,38,0.3);">
+                <span class="spinner" id="btn-eliminar-spinner"
+                    style="display:none; width:16px; height:16px; border-width:2px;"></span>
+                <i class="fas fa-trash-alt"></i>
+                <span id="btn-eliminar-text">Sí, eliminar definitivamente</span>
+            </button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

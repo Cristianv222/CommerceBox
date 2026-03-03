@@ -571,7 +571,7 @@ class AlertaStock(models.Model):
     def get_referencia_nombre(self):
         """Obtiene el nombre de la referencia"""
         if self.quintal:
-            return f"Quintal: {self.quintal.codigo_unico}"
+            return f"Quintal: {self.quintal.codigo_quintal}"
         elif self.producto_normal:
             return f"Producto: {self.producto_normal.producto.nombre}"
         elif self.producto:

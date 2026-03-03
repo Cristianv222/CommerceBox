@@ -231,7 +231,7 @@ class EstadoStockAdmin(admin.ModelAdmin):
             '<small style="color: #666;">{}</small>',
             url,
             obj.producto.nombre,
-            obj.producto.codigo
+            obj.producto.codigo_barras
         )
     
     @admin.display(description='Stock/Peso')
@@ -587,7 +587,7 @@ class AlertaStockAdmin(admin.ModelAdmin):
         'titulo',
         'mensaje',
         'producto__nombre',
-        'quintal__codigo_unico',
+        'quintal__codigo_quintal',
     )
     
     readonly_fields = (

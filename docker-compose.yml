@@ -150,7 +150,7 @@ services:
       - commercebox_media:/app/media
     depends_on:
       commercebox-web:
-        condition: service_healthy
+        condition: service_started
     environment:
       - COMMERCEBOX_DB_HOST=commercebox-db
       - COMMERCEBOX_DB_NAME=${COMMERCEBOX_DB_NAME}
@@ -183,7 +183,7 @@ services:
       - commercebox_logs:/app/logs
     depends_on:
       commercebox-web:
-        condition: service_healthy
+        condition: service_started
     environment:
       - COMMERCEBOX_DB_HOST=commercebox-db
       - COMMERCEBOX_DB_NAME=${COMMERCEBOX_DB_NAME}

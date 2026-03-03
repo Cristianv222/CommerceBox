@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from django.http import JsonResponse
 from django.views.decorators.cache import cache_page
 from django.shortcuts import redirect
+from django.db import connection as db_connection
 from apps.custom_admin.views import login_page_view
 from apps.authentication.views import logout_view
 from apps.hardware_integration.api import agente_views  # 🔧 NUEVO: Import para captura de URLs
@@ -55,10 +56,22 @@ def redirect_to_login(request):
     return redirect('/login/')
 
 
+def health_check(request):
+    """Health check endpoint para Docker. Sin autenticación."""
+    try:
+        db_connection.ensure_connection()
+        return JsonResponse({"status": "ok", "db": "connected"}, status=200)
+    except Exception as e:
+        return JsonResponse({"status": "error", "detail": str(e)}, status=503)
+
+
 urlpatterns = [
     # ========================================
     # RUTAS PRINCIPALES
     # ========================================
+    
+    # Health check para Docker (sin autenticación requerida)
+    path('health/', health_check, name='health_check_root'),
     
     # Redirect raíz al login
     path('', redirect_to_login, name='home'),
@@ -100,19 +113,15 @@ urlpatterns = [
     path('api/ventas/', include('apps.sales_management.urls')),
     
     # API de finanzas
-    path('api/finanzas/', include('apps.financial_management.urls')),
+    path('api/finanzas/', include('apps.financial_management.urls', namespace='financial_management')),
     
     # API de reportes
-    path('api/reportes/', include('apps.reports_analytics.urls')),
+    path('api/reportes/', include('apps.reports_analytics.urls', namespace='reports_analytics')),
     
     # API de hardware
     path('api/hardware/', include('apps.hardware_integration.api.urls')),
     
     path('api/configuracion/', include('apps.system_configuration.urls', namespace='system_configuration')),
-
-    path('panel/finanzas/', include('apps.financial_management.urls', namespace='financial_management')),
-    
-    path('panel/reportes-analitica/', include('apps.reports_analytics.urls', namespace='reports_analytics')),
     
     # ========================================
     # 🔧 CAPTURA DE URLs MALFORMADAS - AGENTE .EXE
@@ -121,10 +130,10 @@ urlpatterns = [
     # Por eso necesitamos capturar todas las combinaciones posibles
     
     # Captura: //api/hardware/agente/trabajos/ (doble slash al inicio)
-    re_path(r'^/+api/hardware/agente/trabajos/?$', agente_views.obtener_trabajos_sin_auth, name='captura_trabajos_doble_slash'),
+    re_path(r'^api/hardware/agente/trabajos/?$', agente_views.obtener_trabajos_sin_auth, name='captura_trabajos_doble_slash'),
     
     # Captura: //api/hardware/agente/registrar/
-    re_path(r'^/+api/hardware/agente/registrar/?$', agente_views.obtener_trabajos_sin_auth, name='captura_registrar'),
+    re_path(r'^api/hardware/agente/registrar/?$', agente_views.obtener_trabajos_sin_auth, name='captura_registrar'),
     
     # Captura: /api/hardware/agente/trabajos-debug//api/hardware/agente/trabajos/
     re_path(r'^api/hardware/agente/trabajos-debug/.+$', agente_views.obtener_trabajos_sin_auth, name='captura_trabajos_debug'),
@@ -136,8 +145,13 @@ urlpatterns = [
     re_path(r'^.+/api/hardware/agente/trabajos/?$', agente_views.obtener_trabajos_sin_auth, name='captura_trabajos_general'),
     
     # Captura cualquier variación con múltiples slashes
-    re_path(r'^/+api/hardware/agente/estado/?$', agente_views.obtener_estado_agente, name='captura_estado'),
-    re_path(r'^/+api/hardware/agente/resultado/?$', agente_views.reportar_resultado, name='captura_resultado'),
+    re_path(r'^api/hardware/agente/estado/?$', agente_views.obtener_estado_agente, name='captura_estado'),
+    re_path(r'^api/hardware/agente/resultado/?$', agente_views.reportar_resultado, name='captura_resultado'),
+
+    # ========================================
+    # 🇪🇨 INTEGRACIÓN SRI
+    # ========================================
+    path('panel/sri/', include('apps.sri.urls', namespace='sri')),
 ]
 
 

@@ -290,6 +290,239 @@ def productos_view(request):
     
     return render(request, 'custom_admin/inventario/productos_list.html', context)
 
+def exportar_productos_excel(request):
+    """Exportar productos filtrados a Excel con estética premium"""
+    from apps.inventory_management.models import Producto, Quintal
+    from apps.system_configuration.models import ConfiguracionSistema
+    from django.http import HttpResponse
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from datetime import datetime
+    from io import BytesIO
+    from django.db.models import Q, Sum
+
+    # 1. Obtener Filtros (mismos que en la vista principal)
+    search = request.GET.get('search', '')
+    categoria_id = request.GET.get('categoria', '')
+    tipo = request.GET.get('tipo', '')
+
+    productos = Producto.objects.select_related('categoria', 'marca', 'unidad_medida_base').filter(activo=True).order_by('nombre')
+
+    if search:
+        productos = productos.filter(
+            Q(nombre__icontains=search) | 
+            Q(codigo_barras__icontains=search) |
+            Q(descripcion__icontains=search)
+        )
+    if categoria_id:
+        productos = productos.filter(categoria_id=categoria_id)
+    if tipo:
+        productos = productos.filter(tipo_inventario=tipo)
+
+    # 2. Configuración de IVA
+    config = ConfiguracionSistema.get_config()
+    porcentaje_iva = config.porcentaje_iva if config else 0
+
+    # 3. Crear Workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Inventario de Productos"
+
+    # Estilos
+    header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid") # Slate 800
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    title_font = Font(bold=True, size=16, color="0F172A")
+    border = Border(left=Side(style='thin', color="CBD5E1"), right=Side(style='thin', color="CBD5E1"),
+                    top=Side(style='thin', color="CBD5E1"), bottom=Side(style='thin', color="CBD5E1"))
+    
+    # Encabezado del reporte
+    ws.merge_cells('A1:I1')
+    ws['A1'] = f"INVENTARIO DE PRODUCTOS - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    ws['A1'].font = title_font
+    ws['A1'].alignment = Alignment(horizontal="center")
+
+    # Cabeceras de tabla
+    headers = ['Nombre del Producto', 'Código', 'Categoría', 'Marca', 'Tipo', 'IVA (%)', 'Stock Disponible', 'Precio Venta', 'Estado']
+    ws.append([]) # Fila vacía
+    ws.append(headers)
+
+    header_row = ws[3]
+    for cell in header_row:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = border
+
+    # 4. Agregar Datos
+    for prod in productos:
+        # Calcular Stock
+        if prod.tipo_inventario == 'QUINTAL':
+            stock_text = f"{prod.cantidad_quintales} quintales ({prod.stock_total_calculado} {prod.unidad_medida_base.abreviatura if prod.unidad_medida_base else 'kg'})"
+            precio = prod.precio_por_unidad_peso or 0
+        else:
+            stock = prod.inventario_normal.stock_actual if hasattr(prod, 'inventario_normal') else 0
+            stock_text = f"{stock} unidades"
+            precio = prod.precio_venta or 0
+
+        row = [
+            prod.nombre,
+            prod.codigo_barras or "Sin código",
+            prod.categoria.nombre if prod.categoria else "Sin categoría",
+            prod.marca.nombre if prod.marca else "Sin marca",
+            "Quintal" if prod.tipo_inventario == 'QUINTAL' else "Normal",
+            f"{porcentaje_iva}%" if prod.aplica_impuestos else "0%",
+            stock_text,
+            f"${precio:.2f}",
+            "Activo" if prod.activo else "Inactivo"
+        ]
+        ws.append(row)
+        
+        # Estilo para la fila actual
+        for cell in ws[ws.max_row]:
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+            cell.border = border
+
+    # Ajustar ancho de columnas
+    column_widths = [40, 20, 20, 20, 15, 10, 30, 15, 15]
+    for i, width in enumerate(column_widths, 1):
+        ws.column_dimensions[ws.cell(row=3, column=i).column_letter].width = width
+
+    # 5. Generar Respuesta
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    filename = f"Inventario_Productos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    response = HttpResponse(
+        buffer.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+def exportar_productos_pdf(request):
+    """Exportar productos filtrados a PDF con ReportLab (Versión Corregida)"""
+    from apps.inventory_management.models import Producto
+    from apps.system_configuration.models import ConfiguracionSistema
+    from django.http import HttpResponse
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+    from io import BytesIO
+    from datetime import datetime
+    from django.db.models import Q
+
+    try:
+        # 1. Obtener Filtros
+        search = request.GET.get('search', '')
+        categoria_id = request.GET.get('categoria', '')
+        tipo = request.GET.get('tipo', '')
+
+        productos = Producto.objects.select_related('categoria', 'marca', 'unidad_medida_base').filter(activo=True).order_by('nombre')
+
+        if search:
+            productos = productos.filter(
+                Q(nombre__icontains=search) | 
+                Q(codigo_barras__icontains=search) |
+                Q(descripcion__icontains=search)
+            )
+        if categoria_id:
+            productos = productos.filter(categoria_id=categoria_id)
+        if tipo:
+            productos = productos.filter(tipo_inventario=tipo)
+
+        config = ConfiguracionSistema.get_config()
+        porcentaje_iva = config.porcentaje_iva if config else 0
+
+        # 2. Preparar Documento
+        buffer = BytesIO()
+        # Usamos márgenes un poco más amplios para seguridad
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), 
+                                rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+        elements = []
+        styles = getSampleStyleSheet()
+
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=18,
+            textColor=colors.HexColor("#1E293B"),
+            alignment=TA_CENTER,
+            spaceAfter=20
+        )
+
+        elements.append(Paragraph("INVENTARIO DE PRODUCTOS", title_style))
+        elements.append(Paragraph(f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}", styles['Normal']))
+        elements.append(Spacer(1, 0.2*inch))
+
+        # 3. Preparar Datos
+        data = [['Nombre', 'Código', 'Categoría', 'Marca', 'Tipo', 'IVA', 'Stock', 'Precio', 'Estado']]
+
+        for prod in productos:
+            # Manejo robusto de stock y precio
+            if prod.tipo_inventario == 'QUINTAL':
+                unidad = prod.unidad_medida_base.abreviatura if prod.unidad_medida_base else 'kg'
+                stock_text = f"{prod.cantidad_quintales} q. / {prod.stock_total_calculado} {unidad}"
+                precio = prod.precio_por_unidad_peso or 0
+            else:
+                stock_obj = getattr(prod, 'inventario_normal', None)
+                stock = stock_obj.stock_actual if stock_obj else 0
+                stock_text = f"{stock} und."
+                precio = prod.precio_venta or 0
+
+            data.append([
+                (prod.nombre[:35] + '..') if len(prod.nombre) > 35 else prod.nombre,
+                prod.codigo_barras or "-",
+                prod.categoria.nombre if prod.categoria else "-",
+                prod.marca.nombre if prod.marca else "-",
+                "Quintal" if prod.tipo_inventario == 'QUINTAL' else "Normal",
+                f"{porcentaje_iva}%" if prod.aplica_impuestos else "0%",
+                stock_text,
+                f"${float(precio):.2f}",
+                "Activo" if prod.activo else "Inactivo"
+            ])
+
+        # 4. Tabla y Estilos (Ajustado a 9.5 pulgadas total para seguridad en landscape)
+        col_widths = [2.0*inch, 1.0*inch, 1.0*inch, 1.0*inch, 0.7*inch, 0.5*inch, 1.7*inch, 0.8*inch, 0.8*inch]
+        table = Table(data, colWidths=col_widths, repeatRows=1)
+
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1E293B")),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#F8FAFC")),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('ALIGN', (0, 1), (0, -1), 'LEFT'), 
+        ]))
+
+        # Filas alternas
+        for i in range(1, len(data)):
+            if i % 2 == 0:
+                table.setStyle(TableStyle([('BACKGROUND', (0, i), (-1, i), colors.HexColor("#F1F5F9"))]))
+
+        elements.append(table)
+        doc.build(elements)
+        
+        pdf = buffer.getvalue()
+        buffer.close()
+
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="Inventario_{datetime.now().strftime("%Y%m%d")}.pdf"'
+        response.write(pdf)
+        return response
+
+    except Exception as e:
+        import traceback
+        print(f"❌ Error en Exportar PDF: {traceback.format_exc()}")
+        return HttpResponse(f"Error al generar el PDF: {str(e)}", status=500)
+
 @ensure_csrf_cookie
 @auth_required
 def producto_detail_view(request, pk):
@@ -1458,6 +1691,110 @@ def venta_anular_view(request, pk):
 
 @ensure_csrf_cookie
 @auth_required
+def api_eliminar_venta(request, pk):
+    """
+    API para eliminar permanentemente una venta y revertir todo su impacto:
+    - Devuelve el stock a inventario (quintales y productos normales)
+    - Elimina todos los pagos asociados
+    - Elimina la venta del historial
+    Acepta: POST con JSON o form
+    Retorna: JSON {success, message}
+    """
+    from apps.sales_management.models import Venta
+    from django.db import transaction
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
+
+    try:
+        venta = get_object_or_404(Venta, pk=pk)
+
+        numero_venta = venta.numero_venta
+        total_venta  = float(venta.total)
+
+        with transaction.atomic():
+            # ── 1. REVERTIR STOCK ─────────────────────────────────────────────
+            for detalle in venta.detalles.select_related('producto', 'quintal').all():
+                producto = detalle.producto
+
+                if producto.tipo_inventario == 'QUINTAL' and detalle.quintal and detalle.peso_vendido:
+                    # Devolver peso al quintal correspondiente
+                    quintal = detalle.quintal
+                    quintal.peso_actual += detalle.peso_vendido
+                    if quintal.estado == 'AGOTADO':
+                        quintal.estado = 'DISPONIBLE'
+                    quintal.save(update_fields=['peso_actual', 'estado'])
+
+                elif producto.tipo_inventario == 'NORMAL' and detalle.cantidad_unidades:
+                    # Devolver unidades al inventario normal
+                    try:
+                        inventario = producto.inventario_normal
+                        if inventario:
+                            inventario.stock_actual += detalle.cantidad_unidades
+                            inventario.save(update_fields=['stock_actual'])
+                    except Exception as e:
+                        logger.warning(f'No se pudo revertir inventario normal para {producto.nombre}: {e}')
+
+            # ── 2. ELIMINAR MovimientoCaja vinculados (FK PROTECT) ──────────
+            # IMPORTANTE: también revertimos el saldo de la caja para que
+            # el monto_actual de la caja quede correcto.
+            try:
+                from apps.financial_management.models import MovimientoCaja
+                movimientos_venta = MovimientoCaja.objects.filter(venta=venta)
+                for mov in movimientos_venta:
+                    # Revertir el saldo de la caja (deshacer el ingreso de la venta)
+                    try:
+                        caja = mov.caja
+                        caja.monto_actual -= mov.monto
+                        caja.save(update_fields=['monto_actual'])
+                    except Exception as e:
+                        logger.warning(f'No se pudo revertir saldo de caja: {e}')
+                movimientos_venta.delete()
+            except Exception as e:
+                logger.warning(f'Error al eliminar movimientos de caja: {e}')
+
+            # ── 3. ELIMINAR CuentaPorCobrar vinculada (OneToOne PROTECT) ────
+            # Las ventas a crédito generan una CuentaPorCobrar con PROTECT.
+            try:
+                from apps.financial_management.models import CuentaPorCobrar
+                CuentaPorCobrar.objects.filter(venta=venta).delete()
+            except Exception as e:
+                logger.warning(f'Error al eliminar cuenta por cobrar: {e}')
+
+            # ── 4. REVERTIR CRÉDITO DEL CLIENTE (si era crédito) ─────────────
+            if venta.cliente and venta.tipo_venta == 'CREDITO':
+                try:
+                    cliente = venta.cliente
+                    cliente.credito_disponible += venta.total
+                    cliente.save(update_fields=['credito_disponible'])
+                except Exception:
+                    pass
+
+            # ── 5. ELIMINAR LA VENTA (cascada elimina detalles y pagos) ─────
+            venta.delete()
+
+        logger.info(
+            f'Venta {numero_venta} eliminada por {request.user}. '
+            f'Total revertido: ${total_venta:.2f}'
+        )
+
+        return JsonResponse({
+            'success': True,
+            'message': f'✅ Venta {numero_venta} eliminada exitosamente. '
+                       f'Stock y reportes revertidos correctamente.',
+            'numero_venta': numero_venta,
+            'total': total_venta,
+        })
+
+    except Venta.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Venta no encontrada'}, status=404)
+    except Exception as e:
+        logger.error(f'Error al eliminar venta {pk}: {e}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@ensure_csrf_cookie
+@auth_required
 def venta_ticket_view(request, pk):
     """Imprimir ticket de venta"""
     from apps.sales_management.models import Venta
@@ -1926,6 +2263,13 @@ def venta_detalle_api(request, pk):
                 'total': str(item.total),
             })
         
+        # Obtener información SRI si existe
+        sri_mensaje = ""
+        from apps.sri.models import SRILog
+        ultimo_log = SRILog.objects.filter(venta=venta).order_by('-fecha_envio').first()
+        if ultimo_log:
+            sri_mensaje = ultimo_log.message
+
         # Construir respuesta
         data = {
             'success': True,
@@ -1943,6 +2287,11 @@ def venta_detalle_api(request, pk):
                 'monto_pagado': str(venta.monto_pagado),
                 'cambio': str(venta.cambio) if venta.cambio else '0.00',
                 'saldo_pendiente': str(venta.saldo_pendiente),
+                # SRI Fields
+                'sri_enviado': venta.factura_electronica_enviada,
+                'sri_clave': venta.factura_electronica_clave,
+                'sri_numero': venta.numero_factura,
+                'sri_mensaje': sri_mensaje,
                 'items': items,
             }
         }
@@ -3452,7 +3801,25 @@ def api_procesar_venta(request):
                     
             except Exception as e:
                 logger.error(f"❌ Error creando trabajo de impresión: {e}", exc_info=True)
+        # ============================================================================
+        # 🔥 PROCESO SRI: FUERA de la transacción atómica para evitar bloqueos largos de DB
+        # ============================================================================
+        enviar_sri = data.get('enviar_sri', False)
+        sri_success = False
+        sri_message = ""
         
+        if enviar_sri:
+            try:
+                from apps.sri.services import APIVendoService
+                sri_success, sri_message = APIVendoService.enviar_factura_sri(venta)
+                if sri_success:
+                    logger.info(f"✅ Factura SRI enviada para venta {venta.numero_venta}")
+                else:
+                    logger.error(f"❌ Error SRI: {sri_message}")
+            except Exception as e:
+                sri_message = f"Error al conectar con SRI: {str(e)}"
+                logger.error(f"❌ Error crítico SRI: {sri_message}")
+
         return JsonResponse({
             'success': True,
             'venta_id': str(venta.id),
@@ -3464,6 +3831,8 @@ def api_procesar_venta(request):
             'cambio': float(cambio),
             'monto_recibido': float(monto_recibido),
             'estado_pago': venta.estado_pago,
+            'sri_success': sri_success,
+            'sri_message': sri_message,
         })
         
     except Exception as e:
@@ -5769,7 +6138,7 @@ def api_productos_stock_list(request):
             productos_data.append({
                 'id': str(estado_stock.producto.id),
                 'nombre': estado_stock.producto.nombre,
-                'codigo': estado_stock.producto.codigo,
+                'codigo': estado_stock.producto.codigo_barras,
                 'tipo_inventario': estado_stock.get_tipo_inventario_display(),
                 'estado_semaforo': estado_stock.get_estado_semaforo_display(),
                 'estado_code': estado_stock.estado_semaforo,
@@ -7635,56 +8004,58 @@ def editar_caja_chica(request, caja_chica_id):
 @require_http_methods(["GET"])
 def buscar_venta_api(request):
     numero = request.GET.get('numero', '').strip()
-    
+
     print(f"🔍 Buscando venta con número: '{numero}'")
-    
+
     if not numero:
         return JsonResponse({'success': False, 'error': 'Número de venta requerido'})
-    
+
     try:
         venta = Venta.objects.get(numero_venta__iexact=numero)
         print(f"✅ Venta encontrada: {venta.numero_venta}")
-        
-        detalles = venta.detalles.all()
+
+        detalles = venta.detalles.select_related('producto').all()
         print(f"📦 Productos encontrados: {detalles.count()}")
-        
+
         productos = []
         for detalle in detalles:
-            # Debug cada campo
-            print(f"Producto nombre: {type(detalle.producto.nombre)} - {detalle.producto.nombre}")
-            
+            producto = detalle.producto
+            es_quintal = producto.tipo_inventario == 'QUINTAL'
+
+            # Cantidad: peso para quintales, unidades para normales
+            cantidad = float(detalle.peso_vendido or 0) if es_quintal else float(detalle.cantidad_unidades or 0)
+            # Precio por unidad correspondiente
+            precio   = float(detalle.precio_por_unidad_peso or 0) if es_quintal else float(detalle.precio_unitario or 0)
+            # Unidad de medida legible
+            unidad   = str(detalle.unidad_medida.abreviatura) if detalle.unidad_medida else ('kg' if es_quintal else 'und')
+
             producto_data = {
-                'id': str(detalle.id),
-                'nombre': str(detalle.producto.nombre),  # Forzar a string
-                'cantidad': float(detalle.cantidad_unidades),
-                'precio': float(detalle.precio_unitario),
-                'subtotal': float(detalle.subtotal)
+                'id':        str(detalle.id),
+                'nombre':    str(producto.nombre),
+                'es_quintal': es_quintal,
+                'cantidad':  cantidad,
+                'unidad':    unidad,
+                'precio':    precio,
+                'subtotal':  float(detalle.subtotal or 0),
             }
-            print(f"Producto data: {producto_data}")
+            print(f"✅ Detalle: {producto.nombre} | cantidad={cantidad} {unidad} | precio={precio}")
             productos.append(producto_data)
-        
-        # Debug venta
-        print(f"Venta ID: {type(venta.id)} - {venta.id}")
-        print(f"Venta numero: {type(venta.numero_venta)} - {venta.numero_venta}")
-        print(f"Cliente: {type(venta.cliente)} - {venta.cliente}")
-        print(f"Fecha: {type(venta.fecha_venta)} - {venta.fecha_venta}")
-        print(f"Total: {type(venta.total)} - {venta.total}")
-        
+
         venta_data = {
             'success': True,
             'venta': {
-                'id': str(venta.id),
-                'numero': str(venta.numero_venta),
-                'cliente': str(venta.cliente.nombre_completo) if venta.cliente else 'Cliente General',
-                'fecha': str(venta.fecha_venta.strftime('%d/%m/%Y %H:%M')),
-                'total': float(venta.total),
-                'productos': productos
+                'id':       str(venta.id),
+                'numero':   str(venta.numero_venta),
+                'cliente':  str(venta.cliente.nombre_completo) if venta.cliente else 'Cliente General',
+                'fecha':    str(venta.fecha_venta.strftime('%d/%m/%Y %H:%M')),
+                'total':    float(venta.total),
+                'productos': productos,
             }
         }
-        
+
         print(f"✅ Venta data construida correctamente")
         return JsonResponse(venta_data)
-        
+
     except Venta.DoesNotExist:
         print(f"❌ Venta no encontrada con número: '{numero}'")
         return JsonResponse({'success': False, 'error': 'Venta no encontrada'})
@@ -7697,28 +8068,44 @@ def buscar_venta_api(request):
 def procesar_devolucion_api(request):
     import json
     from decimal import Decimal
-    
+
     data = json.loads(request.body)
-    
     print(f"📥 Datos recibidos: {data}")
-    
+
     try:
-        venta = Venta.objects.get(id=data['venta_id'])
-        print(f"✅ Venta encontrada: {venta.numero_venta}")
-        
+        venta  = Venta.objects.get(id=data['venta_id'])
         detalle = DetalleVenta.objects.get(id=data['detalle_venta_id'])
-        print(f"✅ Detalle encontrado: {detalle.producto.nombre}")
-        
-        # Calcular monto de devolución
+        producto = detalle.producto
+        es_quintal = producto.tipo_inventario == 'QUINTAL'
+
+        print(f"✅ Venta: {venta.numero_venta} | Producto: {producto.nombre} | Tipo: {producto.tipo_inventario}")
+
         cantidad_devuelta = Decimal(str(data['cantidad_devuelta']))
-        monto_devolucion = cantidad_devuelta * detalle.precio_unitario
-        
+
+        # Calcular cuánto se vendió originalmente en este detalle
+        max_cantidad = detalle.peso_vendido if es_quintal else Decimal(str(detalle.cantidad_unidades))
+        if not max_cantidad or max_cantidad <= 0:
+             return JsonResponse({'success': False, 'error': 'Cantidad original inválida'})
+
+        if cantidad_devuelta > max_cantidad:
+            return JsonResponse({
+                'success': False,
+                'error': f'La cantidad devuelta ({cantidad_devuelta}) supera la cantidad vendida ({max_cantidad})'
+            })
+
+        # Calcular el precio unitario FINAL (con IVA incluido)
+        # detalle.total ya tiene subtotal + IVA
+        precio_final_unitario = detalle.total / max_cantidad
+        monto_devolucion = (cantidad_devuelta * precio_final_unitario).quantize(Decimal('0.01'))
+
+        print(f"💰 Cantidad devuelta: {cantidad_devuelta} | Precio Final (c/IVA): {precio_final_unitario} | Monto Total: {monto_devolucion}")
+
         # Generar número de devolución
         año = timezone.now().year
         ultimo = Devolucion.objects.filter(
             numero_devolucion__startswith=f'DEV-{año}-'
         ).order_by('-numero_devolucion').first()
-        
+
         if ultimo and ultimo.numero_devolucion:
             try:
                 ultimo_num = int(ultimo.numero_devolucion.split('-')[-1])
@@ -7727,30 +8114,35 @@ def procesar_devolucion_api(request):
                 siguiente_num = 1
         else:
             siguiente_num = 1
-        
+
         numero_devolucion = f'DEV-{año}-{siguiente_num:05d}'
-        
+
         # Crear la devolución
         devolucion = Devolucion.objects.create(
             numero_devolucion=numero_devolucion,
-            venta_original=venta,  # ✅ CORREGIDO
+            venta_original=venta,
             detalle_venta=detalle,
             cantidad_devuelta=cantidad_devuelta,
-            monto_devolucion=monto_devolucion,  # ✅ AGREGADO
+            monto_devolucion=monto_devolucion,
             motivo=data['motivo'],
             descripcion=data.get('descripcion', ''),
             usuario_solicita=request.user,
             estado='PENDIENTE'
         )
-        
-        print(f"✅ Devolución creada: {devolucion.numero_devolucion}")
-        
+
+        print(f"✅ Devolución creada: {devolucion.numero_devolucion} por ${monto_devolucion}")
+
         return JsonResponse({
             'success': True,
             'numero_devolucion': devolucion.numero_devolucion,
-            'message': 'Devolución registrada exitosamente'
+            'monto': float(monto_devolucion),
+            'message': 'Devolución registrada exitosamente. Pendiente de aprobación.'
         })
-        
+
+    except Venta.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Venta no encontrada'})
+    except DetalleVenta.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Detalle de venta no encontrado'})
     except Exception as e:
         import traceback
         print(f"❌ Error completo: {traceback.format_exc()}")
@@ -7860,43 +8252,141 @@ def aprobar_devolucion_api(request, id):
                 devolucion.fecha_procesado = timezone.now()
                 devolucion.save()
                 print(f"✅ Estado actualizado a APROBADA")
-                
-                # ✅ REINTEGRAR AL INVENTARIO
+
+                # ── IMPACTO FINANCIERO: revertir en caja ─────────────────────
+                monto_dev = devolucion.monto_devolucion
+                venta_orig = devolucion.venta_original
+
+                try:
+                    from apps.financial_management.models import MovimientoCaja
+                    # Buscar el movimiento de caja de la venta original
+                    mov_venta = MovimientoCaja.objects.filter(
+                        venta=venta_orig,
+                        tipo_movimiento='VENTA'
+                    ).first()
+
+                    if mov_venta and mov_venta.caja:
+                        caja = mov_venta.caja
+                        saldo_anterior = caja.monto_actual
+                        caja.monto_actual -= monto_dev
+                        caja.save(update_fields=['monto_actual'])
+
+                        # Registrar el movimiento de devolución en caja
+                        MovimientoCaja.objects.create(
+                            caja=caja,
+                            tipo_movimiento='DEVOLUCION',
+                            monto=monto_dev,
+                            saldo_anterior=saldo_anterior,
+                            saldo_nuevo=caja.monto_actual,
+                            usuario=request.user,
+                            observaciones=(
+                                f'Devolución {devolucion.numero_devolucion} '
+                                f'- Venta {venta_orig.numero_venta}'
+                            )
+                        )
+                        print(f"✅ Caja revertida: -{monto_dev} (saldo {saldo_anterior} → {caja.monto_actual})")
+                    else:
+                        print("⚠️ No se encontró movimiento de caja para la venta original")
+                except Exception as e:
+                    import traceback
+                    print(f"⚠️ No se pudo revertir financieramente: {traceback.format_exc()}")
+                    # No interrumpir: la reversión de inventario sigue siendo necesaria
+                # ── ESTADO Y MONTOS DE LA VENTA ORIGINAL ────────────────────
+                try:
+                    detalle = devolucion.detalle_venta
+                    producto = detalle.producto
+                    es_quintal = producto.tipo_inventario == 'QUINTAL'
+                    max_cant = detalle.peso_vendido if es_quintal else Decimal(str(detalle.cantidad_unidades))
+
+                    # Proporción de esta devolución respecto al detalle original
+                    proporcion = Decimal('1')
+                    if max_cant and max_cant > 0:
+                        proporcion = devolucion.cantidad_devuelta / max_cant
+
+                    # Calcular componentes del monto devuelto (subtotal vs IVA)
+                    subtotal_dev = (detalle.subtotal * proporcion).quantize(Decimal('0.01'))
+                    iva_dev = (detalle.monto_iva * proporcion).quantize(Decimal('0.01'))
+
+                    # Actualizar venta
+                    venta_orig.total -= monto_dev
+                    venta_orig.subtotal -= subtotal_dev
+                    venta_orig.impuestos -= iva_dev
+
+                    # IMPORTANTE: También descontamos del monto pagado para que el
+                    # historial refleje que ese dinero ya no está en poder del negocio.
+                    if venta_orig.monto_pagado >= monto_dev:
+                        venta_orig.monto_pagado -= monto_dev
+                    else:
+                        venta_orig.monto_pagado = Decimal('0')
+
+                    # Si el total queda en cero o es negativo, o monto_dev cubre el total inicial
+                    if venta_orig.total <= 0 or monto_dev >= (venta_orig.total + monto_dev):
+                        venta_orig.estado = 'ANULADA'
+                        venta_orig.total = Decimal('0')
+                        venta_orig.subtotal = Decimal('0')
+                        venta_orig.impuestos = Decimal('0')
+                        venta_orig.monto_pagado = Decimal('0')
+                        print(f"✅ Venta {venta_orig.numero_venta} marcada como ANULADA (devolución total)")
+                    else:
+                        print(f"✅ Venta {venta_orig.numero_venta} ajustada: Subtotal -{subtotal_dev}, IVA -{iva_dev}, Total -{monto_dev}")
+
+                    venta_orig.save()
+                except Exception as e:
+                    print(f"⚠️ No se pudo actualizar estado de venta: {e}")
+
+                # ── REINTEGRAR AL INVENTARIO ─────────────────────────────────
                 producto = devolucion.detalle_venta.producto
                 cantidad_devuelta = devolucion.cantidad_devuelta
-                
+
                 print(f"🔍 Producto: {producto.nombre}")
                 print(f"🔍 Tipo inventario: {producto.tipo_inventario}")
                 print(f"🔍 Cantidad devuelta: {cantidad_devuelta}")
                 print(f"🔍 Es quintal?: {producto.es_quintal()}")
-                
+
                 if producto.es_quintal():
                     print("📦 Procesando producto QUINTAL...")
                     try:
-                        # Crear nuevo quintal con el producto devuelto
-                        nuevo_quintal = Quintal.objects.create(
-                            producto=producto,
-                            peso_inicial=cantidad_devuelta,
-                            peso_actual=cantidad_devuelta,
-                            unidad_medida=producto.unidad_medida_base,
-                            precio_por_unidad=producto.precio_por_unidad_peso,
-                            costo_por_unidad=producto.precio_por_unidad_peso * Decimal('0.7'),  # Estimado
-                            costo_total=cantidad_devuelta * producto.precio_por_unidad_peso * Decimal('0.7'),
-                            fecha_ingreso=timezone.now(),
-                            estado='DISPONIBLE',
-                            proveedor=producto.proveedor,
-                            usuario_registro=request.user,
-                            observaciones=f'Devolución {devolucion.numero_devolucion} - Venta {devolucion.venta_original.numero_venta}'
-                        )
-                        
-                        print(f"✅ Quintal creado: ID={nuevo_quintal.codigo_unico}, Peso={nuevo_quintal.peso_actual}")
-                        
-                        # El signal post_save de Quintal creará automáticamente el MovimientoQuintal
-                        
+                        # Devolver el peso al quintal original que se usó en la venta
+                        quintal_original = devolucion.detalle_venta.quintal
+                        if quintal_original:
+                            quintal_original.peso_actual += cantidad_devuelta
+                            if quintal_original.estado == 'AGOTADO':
+                                quintal_original.estado = 'DISPONIBLE'
+                            quintal_original.save(update_fields=['peso_actual', 'estado'])
+
+                            # Registrar movimiento de devolución en el quintal
+                            MovimientoQuintal.objects.create(
+                                quintal=quintal_original,
+                                tipo_movimiento='ENTRADA_DEVOLUCION',
+                                peso_movimiento=cantidad_devuelta,
+                                peso_antes=quintal_original.peso_actual - cantidad_devuelta,
+                                peso_despues=quintal_original.peso_actual,
+                                unidad_medida=quintal_original.unidad_medida,
+                                usuario=request.user,
+                                observaciones=f'Devolución {devolucion.numero_devolucion}'
+                            )
+
+                            print(f"✅ Quintal {quintal_original.codigo_quintal} restaurado: +{cantidad_devuelta} → {quintal_original.peso_actual}")
+                        else:
+                            # Sin quintal original: crear uno nuevo de devolución
+                            nuevo_quintal = Quintal.objects.create(
+                                producto=producto,
+                                peso_inicial=cantidad_devuelta,
+                                peso_actual=cantidad_devuelta,
+                                unidad_medida=producto.unidad_medida_base,
+                                costo_por_unidad=producto.precio_por_unidad_peso * Decimal('0.7'),
+                                costo_total=cantidad_devuelta * producto.precio_por_unidad_peso * Decimal('0.7'),
+                                fecha_ingreso=timezone.now(),
+                                estado='DISPONIBLE',
+                                proveedor=producto.proveedor,
+                                usuario_registro=request.user,
+                            )
+                            print(f"✅ Quintal nuevo creado: {nuevo_quintal.codigo_quintal}")
+
                     except Exception as e:
                         import traceback
-                        print(f"❌ Error al crear quintal: {traceback.format_exc()}")
-                        raise  # Re-lanzar para que el transaction.atomic haga rollback
+                        print(f"❌ Error al reintegrar quintal: {traceback.format_exc()}")
+                        raise
                         
                 else:
                     print("📦 Procesando producto NORMAL...")

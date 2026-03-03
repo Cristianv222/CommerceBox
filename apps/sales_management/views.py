@@ -16,6 +16,7 @@ from decimal import Decimal
 from datetime import timedelta, datetime
 import logging
 import json
+from django.utils.decorators import method_decorator
 
 from .models import Cliente, Venta, DetalleVenta, Pago, Devolucion
 from .forms import (
@@ -842,7 +843,7 @@ class AprobarDevolucionView(VentasAccessMixin, View):
                         quintal.save()
                         
                         logger.info(
-                            f"📦 Inventario revertido - Quintal {quintal.codigo}: "
+                            f"📦 Inventario revertido - Quintal {quintal.codigo_quintal}: "
                             f"+{devolucion.cantidad_devuelta}kg"
                         )
                         
@@ -1282,6 +1283,9 @@ class ProcesarVentaAPIView(LoginRequiredMixin, View):
     """
     
     def post(self, request):
+        sri_success = False
+        sri_message = ""
+
         try:
             # Parsear datos del request
             if request.content_type == 'application/json':
@@ -1298,6 +1302,7 @@ class ProcesarVentaAPIView(LoginRequiredMixin, View):
             metodo_pago = data.get('metodo_pago', 'EFECTIVO')
             monto_recibido = Decimal(str(data.get('monto_recibido', 0)))
             observaciones = data.get('observaciones', '')
+            enviar_sri = data.get('enviar_sri', False)
             
             # Validar que haya items
             if not items:
@@ -1385,17 +1390,33 @@ class ProcesarVentaAPIView(LoginRequiredMixin, View):
                 
                 # Finalizar venta (🖨️ ESTO TAMBIÉN IMPRIME AUTOMÁTICAMENTE EL TICKET)
                 venta = POSService.finalizar_venta(venta)
-                
-                logger.info(f"✅ Venta {venta.numero_venta} procesada exitosamente - Total: ${venta.total}")
-                
-                return JsonResponse({
-                    'success': True,
-                    'venta_id': str(venta.id),
-                    'numero_venta': venta.numero_venta,
-                    'total': float(venta.total),
-                    'cambio': float(venta.cambio),
-                    'mensaje': 'Venta procesada correctamente'
-                })
+            
+            # 🔥 PROCESO SRI: FUERA de la transacción atómica para evitar bloqueos largos de DB
+            # si la API tarda 15-20 segundos en responder.
+            if enviar_sri:
+                try:
+                    from apps.sri.services import APIVendoService
+                    sri_success, sri_message = APIVendoService.enviar_factura_sri(venta)
+                    if sri_success:
+                        logger.info(f"✅ Factura SRI enviada para venta {venta.numero_venta}")
+                    else:
+                        logger.error(f"❌ Error SRI: {sri_message}")
+                except Exception as e:
+                    sri_message = f"Error al conectar con SRI: {str(e)}"
+                    logger.error(f"❌ Error crítico SRI: {sri_message}")
+
+            logger.info(f"✅ Venta {venta.numero_venta} procesada exitosamente - Total: ${venta.total}")
+            
+            return JsonResponse({
+                'success': True,
+                'venta_id': str(venta.id),
+                'numero_venta': venta.numero_venta,
+                'total': float(venta.total),
+                'cambio': float(venta.cambio),
+                'sri_success': sri_success,
+                'sri_message': sri_message,
+                'mensaje': 'Venta procesada correctamente'
+            })
         
         except ValidationError as e:
             logger.warning(f"Validación fallida al procesar venta: {e}")
@@ -1588,7 +1609,7 @@ class ObtenerProductosVentaView(VentasAPIAccessMixin, View):
                     'id': str(detalle.id),
                     'producto_id': str(detalle.producto.id),
                     'producto_nombre': detalle.producto.nombre,
-                    'producto_codigo': detalle.producto.codigo,
+                    'producto_codigo': detalle.producto.codigo_barras,
                     'categoria': detalle.producto.categoria.nombre if detalle.producto.categoria else 'Sin categoría',
                     'cantidad_total': float(cantidad_total),
                     'cantidad_disponible': float(cantidad_disponible),
@@ -1600,7 +1621,7 @@ class ObtenerProductosVentaView(VentasAPIAccessMixin, View):
                     'total': float(detalle.total),
                     'es_quintal': bool(detalle.peso_vendido),
                     'quintal_id': str(detalle.quintal.id) if detalle.quintal else None,
-                    'quintal_codigo': detalle.quintal.codigo if detalle.quintal else None,
+                    'quintal_codigo': detalle.quintal.codigo_quintal if detalle.quintal else None,
                     'puede_devolver': puede_devolver
                 }
                 
@@ -1820,3 +1841,60 @@ class ProcesarDevolucionProductoView(VentasAPIAccessMixin, View):
                 'error': f'Error del servidor: {str(e)}'
             }, status=500)
 
+
+
+@method_decorator(transaction.atomic, name='dispatch')
+class ClienteQuickCreateAPIView(VentasAPIAccessMixin, View):
+    """Creación rápida de clientes desde el POS"""
+    
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            tipo_documento = data.get('tipo_documento', 'CEDULA')
+            numero_documento = data.get('numero_documento')
+            nombres = data.get('nombres')
+            apellidos = data.get('apellidos')
+            email = data.get('email', '')
+            telefono = data.get('telefono', '')
+            direccion = data.get('direccion', '')
+            
+            if not numero_documento or not nombres or not apellidos:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'DNI/RUC, Nombres y Apellidos son obligatorios'
+                }, status=400)
+            
+            # Verificar si ya existe
+            if Cliente.objects.filter(numero_documento=numero_documento).exists():
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Ya existe un cliente con número de documento {numero_documento}'
+                }, status=400)
+            
+            cliente = Cliente.objects.create(
+                tipo_documento=tipo_documento,
+                numero_documento=numero_documento,
+                nombres=nombres,
+                apellidos=apellidos,
+                email=email,
+                telefono=telefono,
+                direccion=direccion,
+                tipo_cliente='OCASIONAL'
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'cliente': {
+                    'id': str(cliente.id),
+                    'display': f"{cliente.nombres} {cliente.apellidos}",
+                    'numero_documento': cliente.numero_documento
+                },
+                'mensaje': 'Cliente creado exitosamente'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error en creación rápida de cliente: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Error al crear cliente: {str(e)}'
+            }, status=500)
