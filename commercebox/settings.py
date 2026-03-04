@@ -182,7 +182,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',  # ✅ Requerido para el agente
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 50,
@@ -425,6 +425,7 @@ CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
     'authorization',
+    'Authorization',  # Added for agent compatibility
     'content-type',
     'dnt',
     'origin',
