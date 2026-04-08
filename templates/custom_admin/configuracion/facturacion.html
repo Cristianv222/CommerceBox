@@ -1,0 +1,239 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Configuración de Facturación SRI - AgroTotal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .config-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .config-card:hover {
+        transform: translateY(-5px);
+    }
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    .status-active { background: rgba(16, 185, 129, 0.1); color: #059669; border: 1px solid rgba(16, 185, 129, 0.2); }
+    .status-pending { background: rgba(245, 158, 11, 0.1); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.2); }
+    .status-inactive { background: rgba(239, 68, 68, 0.1); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.2); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card-header-admin">
+        <h2 class="card-title">
+            <i class="bi bi-receipt-cutoff me-2 text-primary"></i>
+            Configuración de Facturación Electrónica (SRI Ecuador)
+        </h2>
+        <div class="badge-admin {% if sri_config.ambiente == 1 %}badge-warning{% else %}badge-success{% endif %}">
+            Ambiente: {{ sri_config.get_ambiente_display }}
+        </div>
+    </div>
+
+    <!-- RESUMEN DE ESTADO -->
+    <div class="stats-grid mb-4">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-shield-lock"></i></div>
+            <div class="stat-value">{% if certificado %}Activa{% else %}Sin Firma{% endif %}</div>
+            <div class="stat-label">Firma Electrónica</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-building"></i></div>
+            <div class="stat-value">{{ puntos_emision.count }}</div>
+            <div class="stat-label">Puntos de Emisión</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-activity"></i></div>
+            <div class="stat-value">{% if sri_config.ruc %}Configurado{% else %}Pendiente{% endif %}</div>
+            <div class="stat-label">Estado de Empresa</div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- CONFIGURACIÓN GENERAL -->
+        <div class="col-lg-7 mb-4">
+            <div class="admin-card h-100">
+                <div class="card-header-admin">
+                    <h5 class="card-title"><i class="bi bi-gear-fill me-2"></i>Datos de la Empresa (Matriz)</h5>
+                </div>
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="config_general">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-admin">RUC de la Empresa</label>
+                            <input type="text" name="ruc" class="form-control-admin" value="{{ sri_config.ruc }}" placeholder="17xxxxxxxx001" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-admin">Ambiente SRI</label>
+                            <select name="ambiente" class="form-control-admin">
+                                <option value="1" {% if sri_config.ambiente == 1 %}selected{% endif %}>Pruebas</option>
+                                <option value="2" {% if sri_config.ambiente == 2 %}selected{% endif %}>Producción</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-admin">Razón Social</label>
+                        <input type="text" name="razon_social" class="form-control-admin" value="{{ sri_config.razon_social }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-admin">Nombre Comercial</label>
+                        <input type="text" name="nombre_comercial" class="form-control-admin" value="{{ sri_config.nombre_comercial }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-admin">Dirección de la Matriz</label>
+                        <textarea name="direccion_matriz" class="form-control-admin" rows="2">{{ sri_config.direccion_matriz }}</textarea>
+                    </div>
+                    <div class="form-check form-switch mb-4">
+                        <input class="form-check-input" type="checkbox" name="obligado_contabilidad" id="obligadoCheck" {% if sri_config.obligado_contabilidad %}checked{% endif %}>
+                        <label class="form-check-label" for="obligadoCheck">Obligado a llevar Contabilidad</label>
+                    </div>
+                    <button type="submit" class="btn-primary-admin w-100 py-3">
+                        <i class="bi bi-save2 me-2"></i>Guardar Configuración General
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- FIRMA ELECTRÓNICA -->
+        <div class="col-lg-5 mb-4">
+            <div class="admin-card h-100">
+                <div class="card-header-admin">
+                    <h5 class="card-title"><i class="bi bi-key-fill me-2"></i>Firma Electrónica (.p12)</h5>
+                </div>
+                
+                {% if certificado %}
+                <div class="alert alert-info-admin mb-4">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-check-circle-fill fs-3 me-3"></i>
+                        <div>
+                            <div class="fw-bold">Certificado Actual</div>
+                            <small>Cargado el: {{ certificado.fecha_carga|date:"d M Y, H:i" }}</small>
+                            <br>
+                            <span class="badge bg-success mt-2">Protegido con AES-256</span>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-warning-admin mb-4">
+                    <i class="bi bi-exclamation-triangle me-2"></i>No se ha detectado ninguna firma activa.
+                </div>
+                {% endif %}
+
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="subir_firma">
+                    <div class="mb-3">
+                        <label class="form-label-admin">Archivo Certificado (.p12)</label>
+                        <input type="file" name="firma_archivo" class="form-control-admin" accept=".p12" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label-admin">Contraseña de la Firma</label>
+                        <div class="input-group">
+                            <input type="password" name="firma_password" class="form-control-admin" id="pass_firma" required>
+                        </div>
+                        <small class="text-muted">Se encriptará antes de guardarse en la base de datos.</small>
+                    </div>
+                    <button type="submit" class="btn-success-admin w-100 py-3">
+                        <i class="bi bi-cloud-arrow-up-fill me-2"></i>Cargar Nueva Firma
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- PUNTOS DE EMISIÓN -->
+    <div class="admin-card mt-4">
+        <div class="card-header-admin">
+            <h5 class="card-title"><i class="bi bi-shop me-2"></i>Puntos de Emisión y Secuenciales</h5>
+            <button class="btn-primary-admin btn-sm" data-bs-toggle="modal" data-bs-target="#modalPunto">
+                <i class="bi bi-plus-lg me-1"></i>Nuevo Punto
+            </button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-admin">
+                <thead>
+                    <tr>
+                        <th>Establecimiento</th>
+                        <th>Punto Emisión</th>
+                        <th>Ult. Secuencial</th>
+                        <th>Dirección</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in puntos_emision %}
+                    <tr>
+                        <td class="fw-bold">{{ p.establecimiento }}</td>
+                        <td>{{ p.punto_emision }}</td>
+                        <td>
+                            <span class="badge bg-light text-dark px-3 py-2">
+                                {{ p.ultimo_secuencial|default:"0"|stringformat:"09d" }}
+                            </span>
+                        </td>
+                        <td class="small">{{ p.direccion_establecimiento }}</td>
+                        <td>
+                            <span class="status-badge {% if p.activo %}status-active{% else %}status-inactive{% endif %}">
+                                {% if p.activo %}Activo{% else %}Inactivo{% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="bi bi-info-circle me-1"></i>No hay puntos de emisión configurados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nuevo Punto -->
+<div class="modal fade" id="modalPunto" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content admin-card" style="border: none;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle me-2"></i>Nuevo Punto de Emisión</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="nuevo_punto">
+                <div class="modal-body py-4">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-admin">Establ. (3 dígitos)</label>
+                            <input type="text" name="establecimiento" class="form-control-admin" placeholder="001" required maxlength="3">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-admin">Pto. Emisión (3 dígitos)</label>
+                            <input type="text" name="punto_emision" class="form-control-admin" placeholder="001" required maxlength="3">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-admin">Secuencial de Inicio</label>
+                        <input type="number" name="secuencial" class="form-control-admin" value="0" help="El primer comprobante será este + 1">
+                        <small class="text-muted">Si es tu primera factura, deja en 0.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-admin">Dirección del Punto</label>
+                        <textarea name="direccion" class="form-control-admin" rows="2" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-primary-admin">Crear Punto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

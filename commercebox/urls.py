@@ -123,6 +123,9 @@ urlpatterns = [
     
     path('api/configuracion/', include('apps.system_configuration.urls', namespace='system_configuration')),
     
+    # Mapeo de facturación electrónica
+    path('sri/', include('apps.electronic_invoicing.urls', namespace='electronic_invoicing')),
+    
     # ========================================
     # 🔧 CAPTURA DE URLs MALFORMADAS - AGENTE .EXE
     # ========================================
@@ -148,10 +151,6 @@ urlpatterns = [
     re_path(r'^api/hardware/agente/estado/?$', agente_views.obtener_estado_agente, name='captura_estado'),
     re_path(r'^api/hardware/agente/resultado/?$', agente_views.reportar_resultado, name='captura_resultado'),
 
-    # ========================================
-    # 🇪🇨 INTEGRACIÓN SRI
-    # ========================================
-    path('panel/sri/', include('apps.sri.urls', namespace='sri')),
 ]
 
 

@@ -127,14 +127,17 @@ class TicketPrinter:
             simbolo = config.simbolo_moneda
             decimales = config.decimales_moneda
             
+            # Subtotal (Base Imponible)
             p.text(f"{'SUBTOTAL:':.<30} {simbolo}{venta.subtotal:>9.{decimales}f}\n")
             
             if venta.descuento > 0:
                 p.text(f"{'DESCUENTO:':.<30} -{simbolo}{venta.descuento:>8.{decimales}f}\n")
             
-            # ✅ Mostrar IVA solo si está activo en configuración
-            if config.iva_activo and venta.impuestos > 0:
+            # ✅ Mostrar IVA desglosado siempre que el producto lo grabe (PVP Incluido)
+            if venta.impuestos > 0:
                 p.text(f"{'IVA ({:.0f}%):'.format(config.porcentaje_iva):.<30} {simbolo}{venta.impuestos:>9.{decimales}f}\n")
+            else:
+                p.text(f"{'IVA (0%):':.<30} {simbolo}{'0.00':>9}\n")
             
             p.set(bold=True, double_width=True, double_height=True)
             p.text(f"{'TOTAL:':.<30} {simbolo}{venta.total:>9.{decimales}f}\n")
@@ -154,7 +157,33 @@ class TicketPrinter:
                 p.text(f"{'CAMBIO:':.<30} {simbolo}{venta.cambio:>9.{decimales}f}\n")
                 p.set(bold=False)
             
-            p.text("=" * 42 + "\n\n")
+            p.text("=" * 42 + "\n")
+
+            # ========================================
+            # ✅ INFORMACIÓN SRI (SOLO SI ES FACTURA)
+            # ========================================
+            try:
+                if hasattr(venta, 'comprobante_electronico'):
+                    ce = venta.comprobante_electronico
+                    if ce and ce.clave_acceso:
+                        p.set(align='center', bold=True)
+                        p.text("INFORMACION ELECTRONICA SRI\n")
+                        p.set(align='left', bold=False)
+                        
+                        p.text(f"CLAVE DE ACCESO:\n")
+                        p.text(f"{ce.clave_acceso}\n")
+                        
+                        if ce.numero_autorizacion:
+                            p.text(f"AUTORIZACION:\n")
+                            p.text(f"{ce.numero_autorizacion}\n")
+                        
+                        p.text(f"ESTADO: {ce.get_estado_display()}\n")
+                        p.text(f"AMBIENTE: {ce.get_ambiente_display()}\n")
+                        p.text("-" * 42 + "\n")
+            except Exception as e:
+                logger.error(f"Error imprimiendo info SRI en ticket: {e}")
+
+            p.text("\n")
             
             # ========================================
             # PIE DE TICKET
@@ -177,7 +206,7 @@ class TicketPrinter:
             # ABRIR GAVETA DE DINERO
             # ========================================
             if impresora_obj.tiene_gaveta:
-                logger.info("💰 Abriendo gaveta de dinero...")
+                logger.info("Abriendo gaveta de dinero...")
                 p.cashdraw(2)  # Pin 2
                 p.cashdraw(5)  # Pin 5 (por compatibilidad)
             
@@ -190,7 +219,7 @@ class TicketPrinter:
             # Convertir a hexadecimal para enviar al agente
             comandos_hex = comandos_bytes.hex()
             
-            logger.info(f"✅ Comandos generados: {len(comandos_hex)} caracteres hex")
+            logger.info(f"Comandos generados: {len(comandos_hex)} caracteres hex")
             logger.info(f"   Empresa: {config.nombre_empresa}")
             logger.info(f"   Moneda: {config.simbolo_moneda} ({config.moneda})")
             logger.info(f"   IVA activo: {config.iva_activo}")
@@ -198,7 +227,7 @@ class TicketPrinter:
             return comandos_hex
             
         except Exception as e:
-            logger.error(f"❌ Error generando comandos de ticket: {e}", exc_info=True)
+            logger.error(f"Error generando comandos de ticket: {e}", exc_info=True)
             raise
     
     
@@ -222,11 +251,11 @@ class TicketPrinter:
                 prioridad=2
             )
             
-            logger.info(f"✅ Ticket encolado con ID: {trabajo_id}")
+            logger.info(f"Ticket encolado con ID: {trabajo_id}")
             return True
             
         except Exception as e:
-            logger.error(f"❌ Error al imprimir ticket: {e}", exc_info=True)
+            logger.error(f"Error al imprimir ticket: {e}", exc_info=True)
             return False
     
     
@@ -308,10 +337,10 @@ class TicketPrinter:
                 prioridad=3  # Máxima prioridad para pruebas
             )
             
-            logger.info(f"✅ Ticket de prueba encolado con ID: {trabajo_id}")
+            logger.info(f"Ticket de prueba encolado con ID: {trabajo_id}")
             logger.info(f"   Configuración: {config.nombre_empresa}")
             return True
             
         except Exception as e:
-            logger.error(f"❌ Error al imprimir ticket de prueba: {e}", exc_info=True)
+            logger.error(f"Error al imprimir ticket de prueba: {e}", exc_info=True)
             return False

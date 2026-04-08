@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visor XML — {{ comprobante.venta.numero_venta }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .xml-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        .xml-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+        .xml-icon {
+            font-size: 1.4rem;
+            flex-shrink: 0;
+        }
+        .xml-title { font-size: 0.95rem; font-weight: 600; }
+        .xml-subtitle { font-size: 0.75rem; color: #8b949e; margin-top: 2px; }
+
+        /* State badge */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            flex-shrink: 0;
+        }
+        .badge-autorizado  { background: #1f6feb22; color: #58a6ff; border: 1px solid #1f6feb55; }
+        .badge-firmado     { background: #388bfd22; color: #79c0ff; border: 1px solid #388bfd55; }
+        .badge-generado    { background: #bf8700;   color: #f1c40f; border: 1px solid #bf870055; }
+        .badge-rechazado   { background: #da363322; color: #ff7b72; border: 1px solid #da363355; }
+        .badge-error       { background: #6e768133; color: #8b949e; border: 1px solid #6e768155; }
+
+        /* Toolbar */
+        .xml-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            background: #0d1117;
+            border-bottom: 1px solid #21262d;
+            flex-shrink: 0;
+        }
+        .xml-toolbar-info { font-size: 0.72rem; color: #8b949e; margin-right: auto; }
+        .btn-tool {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 14px;
+            border-radius: 6px;
+            font-size: 0.75rem; font-weight: 600;
+            text-decoration: none;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-copy   { background: #21262d; color: #c9d1d9; border-color: #30363d; }
+        .btn-copy:hover { background: #30363d; color: #fff; }
+        .btn-dl     { background: #238636; color: #fff; border-color: #2ea043; }
+        .btn-dl:hover { background: #2ea043; }
+        .btn-close  { background: #21262d; color: #c9d1d9; border-color: #30363d; }
+        .btn-close:hover { background: #da3633; color: #fff; border-color: #da3633; }
+
+        /* Error/Warning messages */
+        .xml-error-msg {
+            display: flex; align-items: flex-start; gap: 10px;
+            margin: 12px 20px;
+            padding: 10px 14px;
+            background: #da363322;
+            border: 1px solid #da363355;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            color: #ff7b72;
+            flex-shrink: 0;
+        }
+        .xml-error-msg.hidden { display: none; }
+
+        /* Code block */
+        .code-wrapper {
+            flex: 1;
+            overflow: auto;
+            padding: 0;
+        }
+        pre {
+            margin: 0 !important;
+            border-radius: 0 !important;
+            height: 100%;
+            min-height: 100%;
+            font-size: 0.82rem !important;
+            line-height: 1.6 !important;
+            tab-size: 2;
+        }
+        pre code { 
+            background: transparent !important;
+            padding: 20px !important;
+            display: block;
+        }
+
+        /* No-XML state */
+        .no-xml {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 16px; color: #8b949e;
+        }
+        .no-xml .icon { font-size: 3rem; }
+        .no-xml p { font-size: 0.9rem; }
+
+        /* Toast */
+        #toast {
+            position: fixed; bottom: 24px; right: 24px;
+            background: #238636; color: #fff;
+            padding: 10px 18px; border-radius: 8px;
+            font-size: 0.8rem; font-weight: 600;
+            opacity: 0; transform: translateY(10px);
+            transition: all 0.25s; pointer-events: none;
+            z-index: 9999;
+        }
+        #toast.show { opacity: 1; transform: translateY(0); }
+
+        @media (max-width: 600px) {
+            .xml-header { flex-wrap: wrap; }
+            .xml-toolbar { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── Header ────────────────────────────────────────── -->
+<div class="xml-header">
+    <div class="xml-header-left">
+        <span class="xml-icon">📄</span>
+        <div>
+            <div class="xml-title">{{ comprobante.venta.numero_venta }}</div>
+            <div class="xml-subtitle">
+                Clave: {{ comprobante.clave_acceso|default:"(pendiente)" }}
+            </div>
+        </div>
+    </div>
+
+    {% if comprobante.estado == 'AUTORIZADO' %}
+        <span class="badge badge-autorizado">✅ Autorizado</span>
+    {% elif comprobante.estado == 'FIRMADO' or comprobante.estado == 'RECIBIDO' %}
+        <span class="badge badge-firmado">🔏 {{ comprobante.estado }}</span>
+    {% elif comprobante.estado in 'RECHAZADO' %}
+        <span class="badge badge-rechazado">❌ Rechazado</span>
+    {% elif comprobante.estado == 'ERROR' %}
+        <span class="badge badge-error">⚠️ Error</span>
+    {% else %}
+        <span class="badge badge-generado">📝 {{ xml_label }}</span>
+    {% endif %}
+</div>
+
+<!-- ── Toolbar ───────────────────────────────────────── -->
+<div class="xml-toolbar">
+    <span class="xml-toolbar-info">
+        XML: <strong>{{ xml_label }}</strong>
+        {% if comprobante.mensajes_error %}
+        &nbsp;·&nbsp; ⚠️ hay errores SRI
+        {% endif %}
+    </span>
+    {% if xml_content %}
+    <button class="btn-tool btn-copy" onclick="copiarXML()">📋 Copiar</button>
+    <a class="btn-tool btn-dl" href="{% url 'electronic_invoicing:descargar_xml' comprobante.pk %}">⬇ Descargar</a>
+    {% endif %}
+    <button class="btn-tool btn-close" onclick="window.close()">✕ Cerrar</button>
+</div>
+
+<!-- ── Error SRI (si existe) ─────────────────────────── -->
+{% if comprobante.mensajes_error %}
+<div class="xml-error-msg" id="error-sri-box">
+    <span>⚠️</span>
+    <div>
+        <strong>Mensaje SRI:</strong><br>
+        {{ comprobante.mensajes_error }}
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Code viewer ───────────────────────────────────── -->
+{% if xml_content %}
+<div class="code-wrapper">
+    <pre><code class="language-xml" id="xml-code">{{ xml_content }}</code></pre>
+</div>
+{% else %}
+<div class="no-xml">
+    <div class="icon">🗂️</div>
+    <p>No hay XML disponible todavía para este comprobante.</p>
+    <p style="font-size:0.75rem">Vuelve a esta pantalla una vez que comience el proceso de facturación.</p>
+</div>
+{% endif %}
+
+<!-- ── Toast ─────────────────────────────────────────── -->
+<div id="toast">✅ XML copiado al portapapeles</div>
+
+<script>
+    hljs.highlightAll();
+
+    function copiarXML() {
+        const code = document.getElementById('xml-code');
+        if (!code) return;
+        navigator.clipboard.writeText(code.textContent).then(() => {
+            const t = document.getElementById('toast');
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2200);
+        }).catch(() => {
+            // Fallback para navegadores sin clipboard API
+            const sel = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(code);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            document.execCommand('copy');
+            sel.removeAllRanges();
+        });
+    }
+</script>
+</body>
+</html>

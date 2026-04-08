@@ -7,6 +7,9 @@ from django.utils import timezone
 from django.db.models import Sum, F, Q
 from decimal import Decimal
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -126,8 +129,8 @@ class Cliente(models.Model):
 
 class Venta(models.Model):
     """
-    Registro de ventas - puede incluir quintales y productos normales
-    ✅ CORREGIDO: Incluye manejo de IVA dinámico
+     Registro de ventas - puede incluir quintales y productos normales
+    CORREGIDO: Incluye manejo de IVA dinámico
     """
     ESTADO_CHOICES = [
         ('PENDIENTE', 'Pendiente'),
@@ -188,7 +191,7 @@ class Venta(models.Model):
         default='CONTADO'
     )
     
-    # ✅ CORREGIDO: Montos con campo para porcentaje de IVA aplicado
+    # CORREGIDO: Montos con campo para porcentaje de IVA aplicado
     subtotal = models.DecimalField(
         max_digits=10, 
         decimal_places=2, 
@@ -214,7 +217,7 @@ class Venta(models.Model):
         help_text="Total final = subtotal - descuento + impuestos"
     )
     
-    # ✅ NUEVO: Campo para registrar el % de IVA aplicado en esta venta
+    # NUEVO: Campo para registrar el % de IVA aplicado en esta venta
     porcentaje_iva_aplicado = models.DecimalField(
         max_digits=5,
         decimal_places=2,
@@ -234,17 +237,7 @@ class Venta(models.Model):
         db_index=True
     )
     
-    # Facturación electrónica (para integración futura)
-    factura_electronica_enviada = models.BooleanField(default=False)
-    factura_electronica_clave = models.CharField(
-        max_length=100,
-        blank=True,
-        help_text="Clave de acceso factura electrónica"
-    )
-    factura_electronica_xml = models.TextField(
-        blank=True,
-        help_text="XML de la factura electrónica"
-    )
+
     
     # Observaciones
     observaciones = models.TextField(blank=True)
@@ -304,7 +297,7 @@ class Venta(models.Model):
     
     def calcular_totales(self):
         """
-        ✅ CORREGIDO: Recalcula los totales de la venta basándose en los detalles
+        CORREGIDO: Recalcula los totales de la venta basándose en los detalles
         Incluye el cálculo correcto de IVA
         """
         detalles = self.detalles.all()
@@ -342,7 +335,7 @@ class DetalleVenta(models.Model):
     """
     Detalle de cada item vendido
     Puede ser quintal (por peso) o producto normal (por unidad)
-    ✅ CORREGIDO: Incluye campos y lógica para calcular IVA
+    CORREGIDO: Incluye campos y lógica para calcular IVA
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
@@ -414,13 +407,13 @@ class DetalleVenta(models.Model):
         default=0
     )
     
-    # ✅ NUEVO: Campo para indicar si este item aplica IVA
+    # NUEVO: Campo para indicar si este item aplica IVA
     aplica_iva = models.BooleanField(
         default=False,
         help_text="Indica si este producto graba IVA (copiado de producto al momento de la venta)"
     )
     
-    # ✅ NUEVO: Campo para guardar el monto de IVA calculado para este item
+    # NUEVO: Campo para guardar el monto de IVA calculado para este item
     monto_iva = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -462,7 +455,7 @@ class DetalleVenta(models.Model):
         indexes = [
             models.Index(fields=['venta', 'orden']),
             models.Index(fields=['producto']),
-            models.Index(fields=['aplica_iva']),  # ✅ NUEVO índice
+            models.Index(fields=['aplica_iva']),  # NUEVO índice
         ]
     
     def __str__(self):
@@ -484,7 +477,7 @@ class DetalleVenta(models.Model):
         if not self.pk:  # Solo validar al crear (no al editar)
             producto = self.producto
             
-            # ✅ Copiar el flag de aplica_impuestos del producto
+            # Copiar el flag de aplica_impuestos del producto
             self.aplica_iva = producto.aplica_impuestos
             
             # Validar stock para productos normales
@@ -516,39 +509,43 @@ class DetalleVenta(models.Model):
     
     def calcular_totales(self):
         """
-        ✅ CORREGIDO: Calcula subtotal, descuento, IVA y total
+        REFACTORIZADO: Calcula totales mediante DESGLOSE de IVA
+        El precio_unitario (o por unidad de peso) se considera PVP FINAL.
         """
-        # 1. Calcular subtotal base (SIN IVA, SIN descuento)
+        # 1. Calcular el Total Bruto (PVP * Cantidad)
         if self.producto.es_quintal():
-            # Cálculo para quintales
-            subtotal_base = self.peso_vendido * self.precio_por_unidad_peso
+            total_bruto = self.peso_vendido * self.precio_por_unidad_peso
         else:
-            # Cálculo para productos normales
-            subtotal_base = self.cantidad_unidades * self.precio_unitario
-        
-        # 2. Aplicar descuento sobre el subtotal base
+            total_bruto = self.cantidad_unidades * self.precio_unitario
+
+        # 2. Aplicar descuento sobre el Total Bruto (PVP)
         if self.descuento_porcentaje > 0:
-            self.descuento_monto = subtotal_base * (self.descuento_porcentaje / Decimal('100'))
+            self.descuento_monto = total_bruto * (self.descuento_porcentaje / Decimal('100'))
         else:
             self.descuento_monto = Decimal('0')
         
-        # 3. Subtotal después de descuento (pero todavía SIN IVA)
-        self.subtotal = subtotal_base - self.descuento_monto
-        
-        # 4. ✅ NUEVO: Calcular IVA si el producto lo requiere
+        # 3. Total Final que paga el cliente
+        self.total = total_bruto - self.descuento_monto
+
+        # 4. Desglosar el IVA desde el Total Final
         if self.aplica_iva:
-            # Obtener porcentaje de IVA desde configuración
             from apps.system_configuration.models import ConfiguracionSistema
             config = ConfiguracionSistema.get_config()
             porcentaje_iva = config.porcentaje_iva
             
-            # Calcular monto de IVA sobre el subtotal (después de descuento)
-            self.monto_iva = self.subtotal * (porcentaje_iva / Decimal('100'))
+            factor_iva = Decimal('1') + (porcentaje_iva / Decimal('100'))
+            # La base imponible (subtotal) es el total dividido para el factor IVA
+            self.subtotal = self.total / factor_iva
+            # El IVA es la diferencia
+            self.monto_iva = self.total - self.subtotal
         else:
+            self.subtotal = self.total
             self.monto_iva = Decimal('0')
-        
-        # 5. Total = Subtotal (después de descuento) + IVA
-        self.total = self.subtotal + self.monto_iva
+            
+        # Redondear campos financieros
+        self.subtotal = self.subtotal.quantize(Decimal('0.01'))
+        self.monto_iva = self.monto_iva.quantize(Decimal('0.01'))
+        self.total = self.total.quantize(Decimal('0.01'))
     
     def utilidad(self):
         """Calcula la utilidad de este item"""
@@ -718,11 +715,13 @@ from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
 from django.db import transaction
 
+@receiver(pre_save, sender=DetalleVenta)
 def detalle_venta_pre_save(sender, instance, **kwargs):
     """Calcular totales antes de guardar"""
     instance.calcular_totales()
 
 
+@receiver(post_save, sender=Pago)
 def pago_post_save(sender, instance, created, **kwargs):
     """Actualizar monto pagado en la venta"""
     venta = instance.venta
@@ -737,6 +736,7 @@ def pago_post_save(sender, instance, created, **kwargs):
     venta.save()
 
 
+@receiver(post_save, sender=Venta)
 def venta_anulada_revertir_stock(sender, instance, **kwargs):
     """
     Si una venta se anula, revertir el stock
@@ -762,4 +762,4 @@ def venta_anulada_revertir_stock(sender, instance, **kwargs):
                             inventario.stock_actual += detalle.cantidad_unidades
                             inventario.save()
                     except Exception as e:
-                        print(f"Error al revertir inventario: {e}")
+                        logger.error(f"Error al revertir inventario: {e}")

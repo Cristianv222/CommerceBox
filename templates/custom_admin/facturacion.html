@@ -1,0 +1,423 @@
+{% extends "custom_admin/base_admin.html" %}
+{% load static %}
+
+{% block title %} Facturación Electrónica SRI - CommerceBox {% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4" x-data="sriMonitor()">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-0 text-gray-800">Facturación Electrónica SRI</h1>
+                <p class="text-muted small">Ecuador - Centro de Mando Profesional</p>
+            </div>
+            <div class="d-flex gap-2">
+                <span class="badge {% if config.ambiente == 1 %}bg-warning{% else %}bg-success{% endif %} p-2">
+                    Ambiente: {{ config.get_ambiente_display|upper }}
+                </span>
+                <div id="ws-status" class="badge bg-secondary p-2">
+                    <i class="fas fa-plug me-1"></i> WebSocket: Conectando...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="flex-shrink-0 bg-primary-subtle p-2 rounded-3 me-3">
+                            <i class="fas fa-file-invoice text-primary"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="card-title text-muted mb-0 small">Total Histórico</h6>
+                            <h3 class="mb-0">{{ stats.total_count }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="flex-shrink-0 bg-success-subtle p-2 rounded-3 me-3">
+                            <i class="fas fa-check-circle text-success"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="card-title text-muted mb-0 small">Autorizados SRI</h6>
+                            <h3 class="mb-0 text-success">{{ stats.autorizados }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="flex-shrink-0 bg-danger-subtle p-2 rounded-3 me-3">
+                            <i class="fas fa-exclamation-triangle text-danger"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="card-title text-muted mb-0 small">Errores / Rechazos</h6>
+                            <h3 class="mb-0 text-danger">{{ stats.errores }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
+                <div class="card-body bg-light-subtle">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="flex-shrink-0 bg-info-subtle p-2 rounded-3 me-3">
+                            <i class="fas fa-calendar-day text-info"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="card-title text-muted mb-0 small">Actividad Hoy</h6>
+                            <h3 class="mb-0">{{ stats.hoy_count }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Certificate and Settings -->
+        <div class="col-lg-4">
+            <!-- Active Certificate Card -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0 font-weight-bold text-primary">Certificado Digital</h6>
+                </div>
+                <div class="card-body">
+                    {% if certificado %}
+                        <div class="d-flex flex-column align-items-center text-center mb-3">
+                            <div class="p-3 bg-primary-subtle rounded-circle mb-3">
+                                <i class="fas fa-signature fa-2x text-primary"></i>
+                            </div>
+                            <h5 class="mb-1">{{ certificado.nombre_titular|default:"Titular Desconocido" }}</h5>
+                            <span class="badge bg-secondary mb-2">RUC: {{ certificado.ruc_titular|default:"Sin RUC" }}</span>
+                        </div>
+                        <div class="list-group list-group-flush mb-3">
+                            <div class="list-group-item d-flex justify-content-between p-2 small">
+                                <span class="text-muted">Entidad:</span>
+                                <span class="font-weight-bold text-truncate ms-2">{{ certificado.emisor|default:"N/A" }}</span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between p-2 small">
+                                <span class="text-muted">Vencimiento:</span>
+                                <span class="font-weight-bold {% if certificado.fecha_vencimiento < hoy %}text-danger{% endif %}">{{ certificado.fecha_vencimiento|date:"d M Y"|default:"Pendiente" }}</span>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4 bg-light rounded-4">
+                            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                            <p class="text-muted small">No hay certificado activo cargado.</p>
+                        </div>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary btn-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#uploadCertModal">
+                            <i class="fas fa-upload me-1"></i> Actualizar Firma
+                        </button>
+                        {% if certificado %}
+                        <button class="btn btn-outline-secondary btn-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#editCertMetadataModal">
+                            <i class="fas fa-edit me-1"></i> Corregir Datos
+                        </button>
+                        {% endif %}
+                    </div>
+                    <p class="text-center text-muted x-small mt-2">Solo archivos .p12 profesionales</p>
+                </div>
+            </div>
+
+            <!-- SRI Setup Card -->
+            <!-- ... (Configuración SRI remains same) ... -->
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 font-weight-bold text-primary">Configuración SRI</h6>
+                    <span class="badge bg-light text-dark">{{ punto_emision }}</span>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label small font-weight-bold">Ambiente de Operación</label>
+                            <select name="ambiente" class="form-select form-select-sm rounded-3">
+                                <option value="1" {% if config.ambiente == 1 %}selected{% endif %}>PRUEBAS</option>
+                                <option value="2" {% if config.ambiente == 2 %}selected{% endif %}>PRODUCCIÓN</option>
+                            </select>
+                        </div>
+                        <button type="submit" name="save_config" class="btn btn-primary btn-sm w-100 mt-3 rounded-pill">
+                            Guardar Cambios
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real time Monitor Widget -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 font-weight-bold text-primary">Monitor de Comprobantes (Tiempo Real)</h6>
+                    <div class="d-flex gap-2">
+                        <input type="text" x-model="search" placeholder="🔍 Buscar factura..." class="form-control form-control-sm rounded-pill border-0 bg-light">
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 500px;">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light sticky-top">
+                                <tr>
+                                    <th class="ps-3 py-3 x-small text-uppercase text-muted font-weight-bold">No. Venta</th>
+                                    <th class="py-3 x-small text-uppercase text-muted font-weight-bold">Código SRI / Estado</th>
+                                    <th class="py-3 x-small text-uppercase text-muted font-weight-bold">Transmisión</th>
+                                    <th class="pe-3 py-3 text-center x-small text-uppercase text-muted font-weight-bold">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="item in filteredTickets" :key="item.id">
+                                    <tr :class="item.estado === 'RECHAZADO' || item.estado === 'ERROR' ? 'table-danger table-danger-soft' : ''">
+                                        <td class="ps-3 py-3">
+                                            <div class="font-weight-bold" x-text="item.venta_numero"></div>
+                                            <div class="x-small text-muted" x-text="item.id_short"></div>
+                                        </td>
+                                        <td>
+                                            <div class="mb-1" x-html="getStatusBadge(item.estado)"></div>
+                                            <div class="x-small text-muted text-truncate" style="max-width:220px" x-text="item.clave_acceso || 'Generando clave...'"></div>
+                                            <div class="x-small text-success font-weight-bold" x-show="item.numero_autorizacion" x-text="'Aut: ' + item.numero_autorizacion"></div>
+                                            <!-- Error SRI inline -->
+                                            <div x-show="item.mensajes_error" class="x-small text-danger mt-1" style="max-width:220px;word-break:break-word">
+                                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                                <span x-text="item.mensajes_error"></span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-grow-1 me-2" style="width: 100px;">
+                                                    <div class="progress rounded-pill" style="height: 6px;">
+                                                        <div class="progress-bar progress-bar-striped progress-bar-animated" :class="getProgressColor(item.estado)" :style="'width: ' + getProgress(item.estado) + '%'"></div>
+                                                    </div>
+                                                </div>
+                                                <span class="x-small text-muted" x-text="item.mensaje || 'Procesando...'"></span>
+                                            </div>
+                                        </td>
+                                        <td class="pe-3 text-center">
+                                            <div class="d-flex justify-content-center gap-1 flex-wrap">
+                                                <!-- Botón Ver XML (siempre disponible si hay id) -->
+                                                <a :href="'/sri/ver/xml/' + item.id + '/'"
+                                                   class="btn btn-sm btn-outline-secondary p-1 rounded-3"
+                                                   target="_blank"
+                                                   title="Ver XML generado">
+                                                    <i class="fas fa-file-code"></i>
+                                                </a>
+                                                <!-- Botón Descargar XML -->
+                                                <a :href="'/sri/descargar/xml/' + item.id + '/'"
+                                                   class="btn btn-sm btn-outline-primary p-1 rounded-3"
+                                                   :class="!item.clave_acceso ? 'disabled opacity-50' : ''"
+                                                   target="_blank"
+                                                   title="Descargar XML">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                                <!-- Botón PDF (RIDE) solo si autorizado -->
+                                                <a x-show="item.estado === 'AUTORIZADO'"
+                                                   :href="'/sri/descargar/pdf/' + item.id + '/'"
+                                                   class="btn btn-sm btn-outline-danger p-1 rounded-3"
+                                                   target="_blank"
+                                                   title="Descargar PDF (RIDE)">
+                                                    <i class="fas fa-file-pdf"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <template x-if="filteredTickets.length === 0">
+                                    <tr>
+                                        <td colspan="4" class="text-center py-5 text-muted">
+                                            <i class="fas fa-inbox fa-2x mb-3 d-block opacity-50"></i>
+                                            <span x-show="search">No hay resultados para "<span x-text="search"></span>"</span>
+                                            <span x-show="!search">Aún no se han procesado comprobantes en esta sesión.</span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Upload Certificate -->
+<div class="modal fade" id="uploadCertModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header">
+                <h5 class="modal-title h6">Cargar Firma Electrónica</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3 text-center">
+                        <div class="p-3 bg-light rounded-4 border-2 border-dashed mb-3">
+                            <input type="file" name="archivo" class="form-control" accept=".p12" required>
+                        </div>
+                        <p class="x-small text-muted mb-0">Solo se admiten archivos .p12 (PKCS12)</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Contraseña del certificado</label>
+                        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light btn-sm rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" name="upload_cert" class="btn btn-primary btn-sm rounded-pill px-4">Procesar Firma</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Edit Certificate Metadata -->
+<div class="modal fade" id="editCertMetadataModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header">
+                <h5 class="modal-title h6">Corregir Datos del Certificado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small">Nombre del Titular (Dueño)</label>
+                        <input type="text" name="nombre_titular" class="form-control" value="{{ certificado.nombre_titular|default:'' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">RUC del Titular</label>
+                        <input type="text" name="ruc_titular" class="form-control" value="{{ certificado.ruc_titular|default:'' }}" maxlength="13" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Fecha de Vencimiento</label>
+                        <input type="date" name="fecha_vencimiento" class="form-control" value="{{ certificado.fecha_vencimiento|date:'Y-m-d' }}">
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light btn-sm rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" name="update_cert_metadata" class="btn btn-primary btn-sm rounded-pill px-4">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .rounded-4 { border-radius: 1rem !important; }
+    .x-small { font-size: 0.75rem !important; }
+    .bg-primary-subtle { background-color: #ccd9ff !important; }
+    .bg-success-subtle { background-color: #ccf2dc !important; }
+    .bg-danger-subtle { background-color: #ffdce0 !important; }
+    .bg-info-subtle { background-color: #d1f3f9 !important; }
+    .font-weight-bold { font-weight: 700 !important; }
+    .table-danger-soft { background-color: rgba(220,53,69,0.06) !important; }
+</style>
+
+    {{ ultimos_comprobantes_json|json_script:"historical-data" }}
+    <script>
+        function sriMonitor() {
+            return {
+                tickets: [],
+                search: '',
+                socket: null,
+                get filteredTickets() {
+                    if (!this.search) return this.tickets;
+                    const q = this.search.toLowerCase();
+                    return this.tickets.filter(t =>
+                        (t.venta_numero && t.venta_numero.toLowerCase().includes(q)) ||
+                        (t.clave_acceso && t.clave_acceso.includes(q)) ||
+                        (t.estado && t.estado.toLowerCase().includes(q))
+                    );
+                },
+                init() {
+                    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+                    const endpoint = `${protocol}://${window.location.host}/ws/sri/monitor/`;
+                    this.socket = new WebSocket(endpoint);
+                    this.socket.onopen = () => {
+                        console.log("✅ Conectado al Monitor SRI");
+                        document.getElementById('ws-status').className = 'badge bg-success p-2';
+                        document.getElementById('ws-status').innerHTML = '<i class="fas fa-circle me-1 animate-pulse"></i> Conectado';
+                    };
+                    this.socket.onmessage = (e) => {
+                        try {
+                            const data = JSON.parse(e.data);
+                            console.log("📩 Mensaje recibido:", data);
+                            this.updateTicket(data);
+                        } catch (err) {
+                            console.error("❌ Error procesando mensaje WebSocket:", err);
+                        }
+                    };
+                    this.socket.onclose = () => {
+                        console.warn("🔌 WebSocket desconectado. Reintentando en 5s...");
+                        document.getElementById('ws-status').className = 'badge bg-danger p-2';
+                        document.getElementById('ws-status').innerHTML = '<i class="fas fa-times me-1"></i> Desconectado';
+                        setTimeout(() => this.init(), 5000);
+                    };
+                    
+                    try {
+                        const dataElement = document.getElementById('historical-data');
+                        if (dataElement) {
+                            this.tickets = JSON.parse(dataElement.textContent);
+                        }
+                    } catch (err) {
+                        console.error("❌ Error cargando datos históricos:", err);
+                    }
+                },
+            updateTicket(data) {
+                const index = this.tickets.findIndex(t => t.id === data.comprobante_id);
+                const newTicket = {
+                    id: data.comprobante_id,
+                    id_short: data.comprobante_id.substring(0, 8),
+                    venta_numero: data.venta_numero,
+                    estado: data.estado,
+                    clave_acceso: data.clave_acceso,
+                    numero_autorizacion: data.numero_autorizacion,
+                    mensaje: data.mensaje,
+                    mensajes_error: data.mensajes_error || null,
+                };
+                if (index !== -1) this.tickets[index] = newTicket;
+                else this.tickets.unshift(newTicket);
+                if (this.tickets.length > 50) this.tickets.pop();
+            },
+            getStatusBadge(estado) {
+                const maps = {
+                    'CREADO': '<span class="badge bg-secondary p-1 x-small">PENDIENTE</span>',
+                    'FIRMADO': '<span class="badge bg-info p-1 x-small">FIRMADO</span>',
+                    'RECIBIDO': '<span class="badge bg-primary p-1 x-small">ENVIADO SRI</span>',
+                    'AUTORIZADO': '<span class="badge bg-success p-1 x-small">AUTORIZADO</span>',
+                    'RECHAZADO': '<span class="badge bg-danger p-1 x-small">RECHAZADO</span>',
+                    'ERROR': '<span class="badge bg-dark p-1 x-small">ERROR</span>'
+                };
+                return maps[estado] || estado;
+            },
+            getProgress(estado) {
+                const maps = { 'CREADO': 10, 'FIRMADO': 30, 'RECIBIDO': 60, 'AUTORIZADO': 100, 'RECHAZADO': 100, 'ERROR': 100 };
+                return maps[estado] || 5;
+            },
+            getProgressColor(estado) {
+                if (estado === 'AUTORIZADO') return 'bg-success';
+                if (['RECHAZADO', 'ERROR', 'DEVUELTO'].includes(estado)) return 'bg-danger';
+                return 'bg-primary';
+            }
+        }
+    }
+</script>
+{% endblock %}

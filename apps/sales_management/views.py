@@ -32,8 +32,9 @@ from apps.inventory_management.mixins import (
     InventarioAccessMixin, FormMessagesMixin, DeleteMessageMixin
 )
 from django.contrib.auth.mixins import LoginRequiredMixin
-logger = logging.getLogger(__name__)
 
+# Los modelos de facturación electrónica se cargarán bajo demanda (Lazy Loading) en la vista
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # MIXINS PARA SALES
@@ -489,109 +490,180 @@ class VaciarCarritoView(VentasAccessMixin, View):
         
         return JsonResponse({'success': True})
 
-
 class ProcesarVentaPOSView(VentasAccessMixin, View):
-    """Procesar venta desde el POS"""
+    """Procesar venta"""
     
-    @transaction.atomic
-    def post(self, request):
+    @method_decorator(transaction.atomic)
+    def post(self, request, *args, **kwargs):
+        # 🧪 DEBUG DE ALTA VISIBILIDAD
+        print("\n" + "="*50)
+        print("🔥 [DEBUG POS] PROCESANDO VENTA")
+        print(f"📡 Method: {request.method}, Content-Type: {request.content_type}")
+        
         try:
-            carrito = request.session.get('carrito', [])
+            # ✅ RESTRUCTURACIÓN: Detección Universal de Datos
+            data = {}
+            carrito_data = []
             
-            if not carrito:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'El carrito está vacío'
-                })
+            # 1. Intentar leer desde el cuerpo (JSON) primero (Prioridad para el POS)
+            if request.body:
+                try:
+                    data = json.loads(request.body)
+                    carrito_data = data.get('items', [])
+                    print(f"📦 [DEBUG POS] JSON Cuerp: {len(carrito_data)} items")
+                except json.JSONDecodeError:
+                    print("⚠️ [DEBUG POS] Fallo al decodificar JSON")
+                    pass
+
+            # 2. Si no hay datos en el cuerpo, intentar sesión/POST (Legacy/Restaurante)
+            if not carrito_data:
+                carrito_data = request.session.get('carrito', [])
+                data = request.POST
+                logger.info("📦 Datos extraídos de Sesión/POST")
+
+            # Extracción normalizada de variables
+            cliente_id = data.get('cliente_id')
+            tipo_venta = data.get('tipo_venta', 'CONTADO')
+            monto_recibido = Decimal(str(data.get('monto_recibido') or data.get('efectivo') or 0))
+            metodo_pago = data.get('metodo_pago') or 'EFECTIVO'
             
-            # Datos de la venta
-            cliente_id = request.POST.get('cliente_id')
-            tipo_venta = request.POST.get('tipo_venta', 'CONTADO')
+            # Flag SRI: Detectar en JSON booleano o en POST 'on'
+            enviar_sri = data.get('enviar_sri', False)
+            if isinstance(enviar_sri, str):
+                enviar_sri = enviar_sri.lower() in ['true', 'on', '1']
             
+            print(f"📡 [DEBUG POS] ENVIAR_SRI Detectado: {enviar_sri}")
+
+            if not carrito_data:
+                print("❌ [DEBUG POS] Carrito vacío")
+                return JsonResponse({'success': False, 'error': 'El carrito está vacío'})
+            
+            # Obtener cliente
             cliente = None
             if cliente_id:
-                cliente = get_object_or_404(Cliente, pk=cliente_id)
+                try:
+                    cliente = Cliente.objects.get(pk=cliente_id)
+                    print(f"👤 [DEBUG POS] Cliente: {cliente.nombre_completo}")
+                except (Cliente.DoesNotExist, ValueError):
+                    print(f"⚠️ [DEBUG POS] Cliente ID {cliente_id} no encontrado")
+                    pass
             
-            # Importar servicio POS
             from .pos.pos_service import POSService
             
-            # Crear venta
+            # Crear venta base
             venta = POSService.crear_venta(
                 vendedor=request.user,
                 cliente=cliente,
                 tipo_venta=tipo_venta
             )
+            print(f"📝 [DEBUG POS] Venta creada: {venta.numero_venta}")
             
-            # Agregar items del carrito
-            for item in carrito:
-                producto = Producto.objects.get(pk=item['id'])
+            # Agregar items (Soporte para ambos formatos de datos)
+            for item in carrito_data:
+                prod_id = item.get('producto_id') or item.get('id')
+                producto = Producto.objects.get(pk=prod_id)
                 
                 try:
-                    if item['tipo'] == 'QUINTAL':
-                        quintal = Quintal.objects.get(pk=item['quintal_id'])
+                    es_quintal = item.get('tipo_inventario') == 'QUINTAL' or item.get('tipo') == 'QUINTAL'
+                    
+                    if es_quintal:
+                        q_id = item.get('quintal_id') or item.get('id_quintal')
+                        quintal = Quintal.objects.get(pk=q_id)
+                        peso = item.get('peso_vendido') or item.get('cantidad')
+                        precio = item.get('precio') or item.get('precio_unitario', 0)
+                        
                         POSService.agregar_item_quintal(
                             venta=venta,
                             producto=producto,
                             quintal=quintal,
-                            peso_vendido=Decimal(str(item['peso_vendido'])),
-                            precio_por_unidad=Decimal(str(item['precio_unitario'])),
+                            peso_vendido=Decimal(str(peso)),
+                            precio_por_unidad=Decimal(str(precio)),
                             descuento_porcentaje=Decimal(str(item.get('descuento_porcentaje', 0)))
                         )
                     else:
+                        cantidad = item.get('cantidad')
+                        precio = item.get('precio') or item.get('precio_unitario', 0)
+                        
                         POSService.agregar_item_normal(
                             venta=venta,
                             producto=producto,
-                            cantidad_unidades=item['cantidad'],
-                            precio_unitario=Decimal(str(item['precio_unitario'])),
+                            cantidad_unidades=Decimal(str(cantidad)),
+                            precio_unitario=Decimal(str(precio)),
                             descuento_porcentaje=Decimal(str(item.get('descuento_porcentaje', 0)))
                         )
                 except (ValueError, ValidationError) as e:
-                    # Si hay error de stock, revertir la transacción
+                    print(f"❌ [DEBUG POS] Error en item {producto.nombre}: {str(e)}")
                     raise ValueError(f'Error al procesar {producto.nombre}: {str(e)}')
             
-            # Procesar pagos
-            formas_pago = []
-            if request.POST.get('efectivo'):
-                formas_pago.append(('EFECTIVO', Decimal(request.POST.get('efectivo'))))
-            if request.POST.get('tarjeta_debito'):
-                formas_pago.append(('TARJETA_DEBITO', Decimal(request.POST.get('tarjeta_debito'))))
-            if request.POST.get('tarjeta_credito'):
-                formas_pago.append(('TARJETA_CREDITO', Decimal(request.POST.get('tarjeta_credito'))))
+            # Procesar pago
+            if monto_recibido > 0:
+                POSService.procesar_pago(
+                    venta=venta,
+                    forma_pago=metodo_pago,
+                    monto=monto_recibido,
+                    usuario=request.user
+                )
+                logger.debug(f"Pago procesado: {monto_recibido} via {metodo_pago}")
             
-            for forma_pago, monto in formas_pago:
-                if monto > 0:
-                    POSService.procesar_pago(
-                        venta=venta,
-                        forma_pago=forma_pago,
-                        monto=monto,
-                        usuario=request.user
-                    )
-            
-            # Finalizar venta (🖨️ IMPRIME AUTOMÁTICAMENTE)
+            # Finalizar venta (Impresión automática)
             POSService.finalizar_venta(venta)
             
-            # Limpiar carrito
+            # ✅ ACTIVADOR SRI ROBUSTO (Carga Dinámica)
+            iniciado_sri = False
+            error_sri = None
+            if enviar_sri:
+                logger.info(f"Activando SRI para {venta.numero_venta}")
+                try:
+                    # Carga dinámica para evitar errores de arranque si el módulo falla
+                    from apps.electronic_invoicing.models import ComprobanteElectronico
+                    from apps.electronic_invoicing.tasks import procesar_factura_electronica
+                    
+                    comprobante, created = ComprobanteElectronico.objects.get_or_create(
+                        venta=venta,
+                        defaults={
+                            'estado': 'CREADO',
+                            'ambiente': 1
+                        }
+                    )
+                    logger.debug(f"Comprobante ID: {comprobante.id}, Creado: {created}")
+                    
+                    if created or comprobante.estado == 'ERROR':
+                        if comprobante.estado == 'ERROR':
+                            comprobante.estado = 'CREADO'
+                            comprobante.save()
+                            
+                        procesar_factura_electronica.delay(str(comprobante.id))
+                        iniciado_sri = True
+                        logger.info(f"Tarea Celery de facturación encolada para venta {venta.numero_venta}")
+                    else:
+                        logger.debug(f"Comprobante ya existía en estado {comprobante.estado}")
+                        iniciado_sri = True
+                except ImportError as ie:
+                    error_sri = f"Error de dependencia SRI: {str(ie)}"
+                    logger.error(f"Error de dependencia SRI: {str(ie)}")
+                except Exception as e:
+                    error_sri = str(e)
+                    logger.error(f"Error SRI: {error_sri}")
+            else:
+                logger.debug("SRI omitido por el usuario o configuración.")
+            
+            # Limpiar sesión
             request.session['carrito'] = []
+            request.session['monto_recibido'] = 0
             request.session.modified = True
             
             return JsonResponse({
                 'success': True,
                 'venta_id': str(venta.id),
                 'numero_venta': venta.numero_venta,
-                'redirect_url': reverse('sales_management:venta_detail', args=[venta.pk])
+                'total': float(venta.total),
+                'iniciado_sri': iniciado_sri,
+                'error_sri': error_sri,
+                'mensaje': "Venta procesada exitosamente." + (" Factura enviada al SRI." if iniciado_sri else "")
             })
         
-        except ValueError as e:
-            return JsonResponse({
-                'success': False,
-                'error': str(e)
-            })
-        except ValidationError as e:
-            return JsonResponse({
-                'success': False,
-                'error': str(e)
-            })
         except Exception as e:
+            logger.exception("Error CRÍTICO en ProcesarVentaPOSView")
             return JsonResponse({
                 'success': False,
                 'error': f'Error al procesar venta: {str(e)}'
@@ -600,7 +672,6 @@ class ProcesarVentaPOSView(VentasAccessMixin, View):
 
 # ============================================================================
 # VISTAS DE VENTAS
-# ============================================================================
 
 class VentaListView(VentasAccessMixin, ListView):
     """Lista de ventas"""
@@ -1283,8 +1354,8 @@ class ProcesarVentaAPIView(LoginRequiredMixin, View):
     """
     
     def post(self, request):
-        sri_success = False
-        sri_message = ""
+        # 🧪 DEBUG DE ALTA VISIBILIDAD (API)
+        logger.debug("RECIBIENDO VENTA DESDE POS")
 
         try:
             # Parsear datos del request
@@ -1302,10 +1373,17 @@ class ProcesarVentaAPIView(LoginRequiredMixin, View):
             metodo_pago = data.get('metodo_pago', 'EFECTIVO')
             monto_recibido = Decimal(str(data.get('monto_recibido', 0)))
             observaciones = data.get('observaciones', '')
-            enviar_sri = data.get('enviar_sri', False)
             
+            # Detectar señal SRI (flexible)
+            enviar_sri = data.get('enviar_sri', False)
+            if isinstance(enviar_sri, str):
+                enviar_sri = enviar_sri.lower() in ['true', 'on', '1']
+            
+            logger.debug(f"Venta: {tipo_venta}, Items: {len(items)}, SRI: {enviar_sri}")
+
             # Validar que haya items
             if not items:
+                logger.warning("Carrito vacío")
                 return JsonResponse({
                     'success': False,
                     'error': 'El carrito está vacío'
@@ -1320,7 +1398,9 @@ class ProcesarVentaAPIView(LoginRequiredMixin, View):
                 if cliente_id:
                     try:
                         cliente = Cliente.objects.get(pk=cliente_id)
+                        logger.debug(f"Cliente: {cliente.nombre_completo}")
                     except Cliente.DoesNotExist:
+                        logger.warning(f"Cliente {cliente_id} no encontrado")
                         return JsonResponse({
                             'success': False,
                             'error': 'Cliente no encontrado'
@@ -1334,7 +1414,42 @@ class ProcesarVentaAPIView(LoginRequiredMixin, View):
                     observaciones=observaciones
                 )
                 
-                logger.info(f"🛒 Procesando venta {venta.numero_venta} con {len(items)} items")
+                # ✅ ACTIVADOR SRI ROBUSTO (Carga Dinámica)
+                iniciado_sri = False
+                if enviar_sri:
+                    logger.info(f"ACTIVANDO SRI para {venta.numero_venta}")
+                    try:
+                        from apps.electronic_invoicing.models import ComprobanteElectronico, SRIConfig
+                        from apps.electronic_invoicing.tasks import procesar_factura_electronica
+                        
+                        config = SRIConfig.objects.first()
+                        ambiente = config.ambiente if config else 1
+                        
+                        comprobante, created = ComprobanteElectronico.objects.get_or_create(
+                            venta=venta,
+                            defaults={
+                                'estado': 'CREADO',
+                                'ambiente': ambiente,
+                                'tipo_comprobante': '01'
+                            }
+                        )
+                        
+                        if created or comprobante.estado == 'ERROR':
+                            if comprobante.estado == 'ERROR':
+                                comprobante.estado = 'CREADO'
+                                comprobante.save()
+                                
+                            # Lanzar tarea asíncrona (Celery)
+                            transaction.on_commit(lambda: procesar_factura_electronica.delay(str(comprobante.id)))
+                            iniciado_sri = True
+                            logger.info(f"Factura electrónica ENCOLADA")
+                        else:
+                            iniciado_sri = True
+                    except Exception as e:
+                        logger.error(f"Error SRI: {str(e)}")
+                        logger.error(f"Error al crear comprobante SRI: {e}", exc_info=True)
+                
+                logger.debug(f"Procesando venta {venta.numero_venta} con {len(items)} items")
                 
                 # Agregar items
                 for item in items:
@@ -1388,24 +1503,11 @@ class ProcesarVentaAPIView(LoginRequiredMixin, View):
                     usuario=request.user
                 )
                 
-                # Finalizar venta (🖨️ ESTO TAMBIÉN IMPRIME AUTOMÁTICAMENTE EL TICKET)
+                # Finalizar venta (Esto también imprime automáticamente el ticket)
                 venta = POSService.finalizar_venta(venta)
             
-            # 🔥 PROCESO SRI: FUERA de la transacción atómica para evitar bloqueos largos de DB
-            # si la API tarda 15-20 segundos en responder.
-            if enviar_sri:
-                try:
-                    from apps.sri.services import APIVendoService
-                    sri_success, sri_message = APIVendoService.enviar_factura_sri(venta)
-                    if sri_success:
-                        logger.info(f"✅ Factura SRI enviada para venta {venta.numero_venta}")
-                    else:
-                        logger.error(f"❌ Error SRI: {sri_message}")
-                except Exception as e:
-                    sri_message = f"Error al conectar con SRI: {str(e)}"
-                    logger.error(f"❌ Error crítico SRI: {sri_message}")
 
-            logger.info(f"✅ Venta {venta.numero_venta} procesada exitosamente - Total: ${venta.total}")
+            logger.info(f"Venta {venta.numero_venta} procesada exitosamente - Total: ${venta.total}")
             
             return JsonResponse({
                 'success': True,
@@ -1413,9 +1515,8 @@ class ProcesarVentaAPIView(LoginRequiredMixin, View):
                 'numero_venta': venta.numero_venta,
                 'total': float(venta.total),
                 'cambio': float(venta.cambio),
-                'sri_success': sri_success,
-                'sri_message': sri_message,
-                'mensaje': 'Venta procesada correctamente'
+                'iniciado_sri': iniciado_sri,
+                'mensaje': 'Venta procesada correctamente' + (' y enviada al SRI' if iniciado_sri else '')
             })
         
         except ValidationError as e:
@@ -1481,7 +1582,7 @@ class ReimprimirTicketView(VentasAPIAccessMixin, View):
                     prioridad=3  # Prioridad normal para reimpresiones
                 )
                 
-                logger.info(f"🔄 Ticket de venta {venta.numero_venta} reencolado con ID: {trabajo_id}")
+                logger.info(f"Ticket de venta {venta.numero_venta} reencolado con ID: {trabajo_id}")
                 
                 return JsonResponse({
                     'success': True,
@@ -1810,7 +1911,7 @@ class ProcesarDevolucionProductoView(VentasAPIAccessMixin, View):
                 )
                 
                 logger.info(
-                    f"✅ Devolución {devolucion.numero_devolucion} creada - "
+                    f"Devolución {devolucion.numero_devolucion} creada - "
                     f"Producto: {detalle_venta.producto.nombre}, "
                     f"Cantidad: {cantidad_devuelta}, "
                     f"Monto: ${monto_devolucion}"

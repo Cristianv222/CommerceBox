@@ -12,11 +12,13 @@
     <link rel="apple-touch-icon" href="{% static 'icons/logo_fav.png' %}">
     <link rel="shortcut icon" href="{% static 'icons/logo_fav.png' %}">
 
-    <!-- URLs originales -->
+    <!-- URLs Base -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- ✅ ALPINE.JS (Requerido para el Monitor SRI) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         :root {
             --sidebar-width: 280px;
@@ -1065,6 +1067,11 @@
                         <i class="bi bi-arrow-return-left menu-item-icon"></i>
                         <span class="menu-item-text">Devoluciones</span>
                     </a>
+                    <a href="/panel/configuracion/facturacion/"
+                        class="menu-item {% if '/configuracion/facturacion/' in request.path %}active{% endif %}">
+                        <i class="bi bi-receipt-cutoff menu-item-icon text-warning"></i>
+                        <span class="menu-item-text fw-bold">Facturación SRI</span>
+                    </a>
                 </div>
             </div>
 
@@ -1177,21 +1184,7 @@
                 </div>
             </div>
 
-            <!-- SECCIÓN SRI -->
-            <div class="menu-group" id="group-sri">
-                <div class="menu-group-header" onclick="toggleMenuGroup('group-sri')">
-                    <i class="bi bi-file-earmark-text-fill menu-group-icon"></i>
-                    <span class="menu-group-title">Facturación SRI</span>
-                    <i class="bi bi-chevron-right menu-group-arrow"></i>
-                </div>
-                <div class="menu-group-items">
-                    <a href="/panel/sri/dashboard/"
-                        class="menu-item {% if '/sri/dashboard/' in request.path %}active{% endif %}">
-                        <i class="bi bi-shield-check menu-item-icon"></i>
-                        <span class="menu-item-text">Ambiente de Pruebas</span>
-                    </a>
-                </div>
-            </div>
+
 
             <div class="menu-divider"></div>
 
@@ -1244,6 +1237,10 @@
                         <div class="user-role" id="dropdownUserRole">...</div>
                     </div>
                     <div class="dropdown-menu-body">
+                        <a href="/panel/configuracion/facturacion/" class="dropdown-menu-item">
+                            <i class="bi bi-receipt-cutoff text-warning"></i>
+                            <span>Facturación SRI</span>
+                        </a>
                         <a href="/panel/configuracion/" class="dropdown-menu-item">
                             <i class="bi bi-gear-fill"></i>
                             <span>Configuración del Sistema</span>

@@ -1,0 +1,150 @@
+🚨 Sistema de Alertas de Stock cargado correctamente
+ 
+ -------------- celery@65accdf0a1d0 v5.3.4 (emerald-rush)
+--- ***** ----- 
+-- ******* ---- Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.41 2026-04-08 01:09:23
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         commercebox:0x7e88e3442310
+- ** ---------- .> transport:   redis://:**@commercebox-redis:6379/0
+- ** ---------- .> results:     redis://:**@commercebox-redis:6379/0
+- *** --- * --- .> concurrency: 2 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . apps.authentication.signals.limpiar_sesiones_inactivas
+  . apps.electronic_invoicing.tasks.procesar_factura_electronica
+  . apps.notifications.tasks.procesar_notificaciones_pendientes
+  . apps.sales_management.tasks.actualizar_estadisticas_clientes
+  . apps.sales_management.tasks.generar_reporte_diario
+  . apps.sales_management.tasks.verificar_creditos_vencidos
+  . apps.stock_alert_system.tasks.check_stock_alerts
+  . commercebox.celery.debug_task
+
+[2026-04-08 01:08:15,788: INFO/ForkPoolWorker-2] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[6b13c0e7-253b-49ca-8b03-8e964f5533d7] retry: Retry in 8s
+[2026-04-08 01:08:23,783: WARNING/ForkPoolWorker-2] 
+🚀 [DEBUG SRI] INICIANDO PROCESO para Comprobante: 2d859579-6bce-4e7b-9443-237b43c026a3
+[2026-04-08 01:08:23,901: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI] Consultando Autorización (Intento 10/10) para 0804202601172259995600120010020000000011234567815
+[2026-04-08 01:08:24,090: INFO/ForkPoolWorker-2] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[6b13c0e7-253b-49ca-8b03-8e964f5533d7] succeeded in 0.3100594310017186s: False
+
+worker: Hitting Ctrl+C again will terminate all running tasks!
+
+worker: Warm shutdown (MainProcess)
+[2026-04-08 01:09:24,210: WARNING/MainProcess] /usr/local/lib/python3.11/site-packages/celery/worker/consumer/consumer.py:507: CPendingDeprecationWarning: The broker_connection_retry configuration setting will no longer determine
+whether broker connection retries are made during startup in Celery 6.0 and above.
+If you wish to retain the existing behavior for retrying connections on startup,
+you should set broker_connection_retry_on_startup to True.
+  warnings.warn(
+
+[2026-04-08 01:09:24,223: INFO/MainProcess] Connected to redis://:**@commercebox-redis:6379/0
+[2026-04-08 01:09:24,225: WARNING/MainProcess] /usr/local/lib/python3.11/site-packages/celery/worker/consumer/consumer.py:507: CPendingDeprecationWarning: The broker_connection_retry configuration setting will no longer determine
+whether broker connection retries are made during startup in Celery 6.0 and above.
+If you wish to retain the existing behavior for retrying connections on startup,
+you should set broker_connection_retry_on_startup to True.
+  warnings.warn(
+
+[2026-04-08 01:09:24,228: INFO/MainProcess] mingle: searching for neighbors
+[2026-04-08 01:09:25,242: INFO/MainProcess] mingle: all alone
+[2026-04-08 01:09:25,254: INFO/MainProcess] celery@65accdf0a1d0 ready.
+[2026-04-08 01:09:47,526: INFO/MainProcess] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] received
+[2026-04-08 01:09:47,531: WARNING/ForkPoolWorker-2] 
+🚀 [DEBUG SRI] INICIANDO PROCESO para Comprobante: 2d859579-6bce-4e7b-9443-237b43c026a3
+[2026-04-08 01:09:47,591: WARNING/ForkPoolWorker-2] 📄 [DEBUG XML] Generando XML para Venta: VNT-2026-00039
+[2026-04-08 01:09:47,592: WARNING/ForkPoolWorker-2] 📄 [DEBUG XML] Secuencial: 000000002, Ambiente: 2
+[2026-04-08 01:09:47,683: WARNING/ForkPoolWorker-2] ✅ XML firmado con éxito para titular: <Name(C=EC,2.5.4.4=GUACHALA QUINCHIGUANGO,2.5.4.42=SANDRA LUCRECIA,2.5.4.5=IDCEC-1722599956,CN=SANDRA LUCRECIA GUACHALA QUINCHIGUANGO,2.5.4.97=TINEC-1722599956001)>
+[2026-04-08 01:09:51,456: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI] Respuesta Recepción: {
+    'estado': 'RECIBIDA',
+    'comprobantes': None
+}
+[2026-04-08 01:09:51,563: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI] Consultando Autorización (Intento 1/10) para 0804202601172259995600120010020000000021234567810
+[2026-04-08 01:09:51,660: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI PEEK] respuesta_aut completa:
+{
+    'claveAccesoConsultada': '0804202601172259995600120010020000000021234567810',
+    'numeroComprobantes': '0',
+    'autorizaciones': None
+}
+[2026-04-08 01:09:51,674: INFO/MainProcess] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] received
+[2026-04-08 01:09:51,681: INFO/ForkPoolWorker-2] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] retry: Retry in 8s
+[2026-04-08 01:09:59,670: WARNING/ForkPoolWorker-2] 
+🚀 [DEBUG SRI] INICIANDO PROCESO para Comprobante: 2d859579-6bce-4e7b-9443-237b43c026a3
+[2026-04-08 01:09:59,884: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI] Consultando Autorización (Intento 2/10) para 0804202601172259995600120010020000000021234567810
+[2026-04-08 01:10:00,007: INFO/MainProcess] Task apps.notifications.tasks.procesar_notificaciones_pendientes[91cc3147-b729-4527-94a7-7b759f669471] received
+[2026-04-08 01:10:00,015: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI PEEK] respuesta_aut completa:
+{
+    'claveAccesoConsultada': '0804202601172259995600120010020000000021234567810',
+    'numeroComprobantes': '0',
+    'autorizaciones': None
+}
+[2026-04-08 01:10:00,022: INFO/MainProcess] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] received
+[2026-04-08 01:10:00,028: INFO/ForkPoolWorker-2] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] retry: Retry in 8s
+[2026-04-08 01:10:00,031: INFO/ForkPoolWorker-1] Task apps.notifications.tasks.procesar_notificaciones_pendientes[91cc3147-b729-4527-94a7-7b759f669471] succeeded in 0.023533903993666172s: {'processed': 0}
+[2026-04-08 01:10:08,025: WARNING/ForkPoolWorker-2] 
+🚀 [DEBUG SRI] INICIANDO PROCESO para Comprobante: 2d859579-6bce-4e7b-9443-237b43c026a3
+[2026-04-08 01:10:08,153: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI] Consultando Autorización (Intento 3/10) para 0804202601172259995600120010020000000021234567810
+[2026-04-08 01:10:08,340: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI PEEK] respuesta_aut completa:
+{
+    'claveAccesoConsultada': '0804202601172259995600120010020000000021234567810',
+    'numeroComprobantes': '0',
+    'autorizaciones': None
+}
+[2026-04-08 01:10:08,345: INFO/MainProcess] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] received
+[2026-04-08 01:10:08,349: INFO/ForkPoolWorker-2] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] retry: Retry in 8s
+[2026-04-08 01:10:16,349: WARNING/ForkPoolWorker-2] 
+🚀 [DEBUG SRI] INICIANDO PROCESO para Comprobante: 2d859579-6bce-4e7b-9443-237b43c026a3
+[2026-04-08 01:10:16,454: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI] Consultando Autorización (Intento 4/10) para 0804202601172259995600120010020000000021234567810
+[2026-04-08 01:10:16,543: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI PEEK] respuesta_aut completa:
+{
+    'claveAccesoConsultada': '0804202601172259995600120010020000000021234567810',
+    'numeroComprobantes': '0',
+    'autorizaciones': None
+}
+[2026-04-08 01:10:16,552: INFO/MainProcess] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] received
+[2026-04-08 01:10:16,555: INFO/ForkPoolWorker-2] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] retry: Retry in 8s
+[2026-04-08 01:10:24,553: WARNING/ForkPoolWorker-2] 
+🚀 [DEBUG SRI] INICIANDO PROCESO para Comprobante: 2d859579-6bce-4e7b-9443-237b43c026a3
+[2026-04-08 01:10:24,654: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI] Consultando Autorización (Intento 5/10) para 0804202601172259995600120010020000000021234567810
+[2026-04-08 01:10:24,747: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI PEEK] respuesta_aut completa:
+{
+    'claveAccesoConsultada': '0804202601172259995600120010020000000021234567810',
+    'numeroComprobantes': '0',
+    'autorizaciones': None
+}
+[2026-04-08 01:10:24,753: INFO/MainProcess] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] received
+[2026-04-08 01:10:24,757: INFO/ForkPoolWorker-2] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] retry: Retry in 8s
+[2026-04-08 01:10:32,756: WARNING/ForkPoolWorker-2] 
+🚀 [DEBUG SRI] INICIANDO PROCESO para Comprobante: 2d859579-6bce-4e7b-9443-237b43c026a3
+[2026-04-08 01:10:32,918: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI] Consultando Autorización (Intento 6/10) para 0804202601172259995600120010020000000021234567810
+[2026-04-08 01:10:33,122: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI PEEK] respuesta_aut completa:
+{
+    'claveAccesoConsultada': '0804202601172259995600120010020000000021234567810',
+    'numeroComprobantes': '0',
+    'autorizaciones': None
+}
+[2026-04-08 01:10:33,129: INFO/MainProcess] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] received
+[2026-04-08 01:10:33,134: INFO/ForkPoolWorker-2] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] retry: Retry in 8s
+[2026-04-08 01:10:41,133: WARNING/ForkPoolWorker-2] 
+🚀 [DEBUG SRI] INICIANDO PROCESO para Comprobante: 2d859579-6bce-4e7b-9443-237b43c026a3
+[2026-04-08 01:10:41,310: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI] Consultando Autorización (Intento 7/10) para 0804202601172259995600120010020000000021234567810
+[2026-04-08 01:10:41,514: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI PEEK] respuesta_aut completa:
+{
+    'claveAccesoConsultada': '0804202601172259995600120010020000000021234567810',
+    'numeroComprobantes': '0',
+    'autorizaciones': None
+}
+[2026-04-08 01:10:41,519: INFO/MainProcess] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] received
+[2026-04-08 01:10:41,522: INFO/ForkPoolWorker-2] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] retry: Retry in 8s
+[2026-04-08 01:10:49,522: WARNING/ForkPoolWorker-2] 
+🚀 [DEBUG SRI] INICIANDO PROCESO para Comprobante: 2d859579-6bce-4e7b-9443-237b43c026a3
+[2026-04-08 01:10:49,713: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI] Consultando Autorización (Intento 8/10) para 0804202601172259995600120010020000000021234567810
+[2026-04-08 01:10:49,897: WARNING/ForkPoolWorker-2] 📡 [DEBUG SRI PEEK] respuesta_aut completa:
+{
+    'claveAccesoConsultada': '0804202601172259995600120010020000000021234567810',
+    'numeroComprobantes': '0',
+    'autorizaciones': None
+}
+[2026-04-08 01:10:49,903: INFO/MainProcess] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] received
+[2026-04-08 01:10:49,905: INFO/ForkPoolWorker-2] Task apps.electronic_invoicing.tasks.procesar_factura_electronica[f5784244-ea7b-4389-adb9-d8fbc83d6ae9] retry: Retry in 8s

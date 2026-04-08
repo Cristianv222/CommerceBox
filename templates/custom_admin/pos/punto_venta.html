@@ -1285,6 +1285,13 @@
         <div class="pos-card">
             <div class="pos-card-content">
                 <div class="pos-card-header">
+                    <div class="pos-card-title"><i class="fas fa-file-invoice"></i> Panel de Facturación</div>
+                    <div class="form-check form-switch">
+                        <input type="checkbox" id="facturacion_electronica" class="form-check-input me-2">
+                        <label class="form-check-label small fw-bold" for="facturacion_electronica">ACTIVAR</label>
+                    </div>
+                </div>
+                <div class="pos-card-header">
                     <h2 class="pos-card-title">
                         <i class="fas fa-search"></i> Productos
                     </h2>
@@ -1341,6 +1348,8 @@
                     </div>
                 </div>
 
+                <!-- El control SRI se movió al panel de opciones derecho -->
+
                 <div class="totales-container">
                     <div class="total-row">
                         <span>Subtotal:</span>
@@ -1370,6 +1379,21 @@
         <div class="pos-card">
             <div class="pos-card-content">
                 <div class="opciones-grid">
+                    <!-- ✅ CONTROL DE FACTURACIÓN ELECTRÓNICA (Ubicación Mejorada) -->
+                    <div class="opcion-item mb-3">
+                        <div class="d-flex justify-content-between align-items-center p-2 px-3" style="background: rgba(59, 130, 246, 0.08); border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2);">
+                            <div>
+                                <span class="opcion-label mb-0" style="color: #1e293b; font-size: 0.8rem;">
+                                    <i class="fas fa-file-invoice-dollar text-primary"></i> Facturación SRI
+                                </span>
+                                <small class="text-muted d-block" style="font-size: 0.6rem;">Comprobante Electrónico</small>
+                            </div>
+                            <div class="form-check form-switch admin-switch">
+                                <input class="form-check-input" type="checkbox" id="toggleSRI" checked>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="opcion-item">
                         <label class="opcion-label">
                             <i class="fas fa-user"></i> Cliente
@@ -1422,17 +1446,7 @@
                         </div>
                     </div>
 
-                    <!-- Facturación Electrónica SRI Toggle -->
-                    <div class="opcion-item mt-3">
-                        <div class="form-check form-switch admin-switch">
-                            <input class="form-check-input" type="checkbox" id="enviarSRI" checked>
-                            <label class="form-check-label fw-bold text-primary" for="enviarSRI">
-                                <i class="fas fa-cloud-upload-alt me-1"></i> Facturación Electrónica SRI
-                            </label>
-                        </div>
-                        <small class="text-muted" style="font-size: 0.7rem;">Se enviará automáticamente al SRI al
-                            procesar</small>
-                    </div>
+
                 </div>
 
                 <div id="pagoContainer" class="pago-container visible">
@@ -1544,21 +1558,7 @@
                 </div>
             </div>
 
-            <!-- SRI Status Card -->
-            <div id="modalSriRow" class="mt-3 p-3 rounded-3"
-                style="display: none; background: #f8fafc; border: 1px solid #e2e8f0;">
-                <div class="d-flex align-items-center gap-2 mb-1">
-                    <i id="sriStatusIcon" class="fas fa-satellite-dish"></i>
-                    <strong id="sriStatusTitle" style="font-size: 0.85rem;">Estado SRI</strong>
-                </div>
-                <p id="modalSriMessage" class="mb-0 text-muted" style="font-size: 0.75rem;"></p>
-                <div id="modalSriRetryContainer" class="mt-2 text-center" style="display: none;">
-                    <button type="button" class="btn btn-danger btn-sm w-100 fw-bold" onclick="reintentarEnvioSRI()"
-                        id="btnRetrySri">
-                        <i class="fas fa-sync-alt me-1"></i> REINTENTAR ENVÍO AHORA
-                    </button>
-                </div>
-            </div>
+
         </div>
         <div class="pos-modal-footer flex-column gap-2">
             <button type="button" class="btn-modal-primary w-100 py-3" onclick="imprimirTicket()">
@@ -2025,6 +2025,17 @@
                     ? '<span class="badge bg-primary" style="font-size: 0.65rem; margin-left: 0.5rem;">+IVA</span>'
                     : '';
 
+                // ✅ Cálculos de Desglose por Item
+                let itemTotal = item.subtotal - item.descuento;
+                let itemBase = itemTotal;
+                let itemIva = 0;
+
+                if (item.aplica_impuestos && IVA_DEFAULT > 0) {
+                    const factorIVA = 1 + (IVA_DEFAULT / 100);
+                    itemBase = itemTotal / factorIVA;
+                    itemIva = itemTotal - itemBase;
+                }
+
                 return `
                 <div class="carrito-item">
                     <div class="carrito-item-header">
@@ -2067,7 +2078,7 @@
                         
                         <div class="carrito-field">
                             <label class="carrito-field-label">
-                                <i class="fas fa-dollar-sign"></i> Precio Unit.
+                                <i class="fas fa-dollar-sign"></i> PVP Final
                             </label>
                             <input type="number" 
                                 class="carrito-field-input" 
@@ -2092,11 +2103,11 @@
                         
                         <div class="carrito-field">
                             <label class="carrito-field-label">
-                                <i class="fas fa-calculator"></i> Subtotal
+                                <i class="fas fa-calculator"></i> Base
                             </label>
                             <input type="text" 
                                 class="carrito-field-input" 
-                                value="$${item.subtotal.toFixed(2)}" 
+                                value="$${itemBase.toFixed(2)}" 
                                 readonly
                                 style="background: rgba(248, 250, 252, 0.7); cursor: not-allowed;">
                         </div>
@@ -2105,17 +2116,17 @@
                     <div class="carrito-item-footer">
                         <div class="item-total-info">
                             <span>
-                                <span class="item-total-info-label">Subtotal</span>
-                                <span class="item-total-info-value">$${item.subtotal.toFixed(2)}</span>
+                                <span class="item-total-info-label">Base</span>
+                                <span class="item-total-info-value">$${itemBase.toFixed(2)}</span>
                             </span>
                             <span>
-                                <span class="item-total-info-label">Desc.</span>
-                                <span class="item-total-info-value descuento">-$${item.descuento.toFixed(2)}</span>
+                                <span class="item-total-info-label">IVA</span>
+                                <span class="item-total-info-value">$${itemIva.toFixed(2)}</span>
                             </span>
                         </div>
                         <div class="item-total-final">
                             <div class="item-total-final-label">TOTAL</div>
-                            <div class="item-total-final-value">$${item.total.toFixed(2)}</div>
+                            <div class="item-total-final-value">$${itemTotal.toFixed(2)}</div>
                         </div>
                     </div>
                 </div>
@@ -2123,59 +2134,67 @@
             }).join('');
         }
 
-        // ✅ CÁLCULO DE TOTALES CON IVA SELECTIVO
-        subtotal = carrito.reduce((sum, item) => sum + item.subtotal, 0);
-        descuentoTotal = carrito.reduce((sum, item) => sum + item.descuento, 0);
-
-        // Subtotal después de descuentos
-        let subtotalConDescuento = subtotal - descuentoTotal;
-
-        // ✅ CALCULAR IVA SOLO SOBRE PRODUCTOS QUE LO TIENEN
-        let subtotalConIVA = 0;
-        let subtotalSinIVA = 0;
+        // ✅ CÁLCULO DE TOTALES MEDIANTE DESGLOSE (IVA INCLUIDO)
+        // El total bruto es la suma de lo que paga el cliente por cada item
+        let totalVenta = carrito.reduce((sum, item) => sum + (item.subtotal - item.descuento), 0);
+        
+        // Separamos los montos que gravan IVA para el desglose
+        let totalGravado = 0;
+        let totalNoGravado = 0;
 
         carrito.forEach(item => {
-            const totalItem = item.subtotal - item.descuento;
+            const montoItem = item.subtotal - item.descuento;
             if (item.aplica_impuestos) {
-                subtotalConIVA += totalItem;
+                totalGravado += montoItem;
             } else {
-                subtotalSinIVA += totalItem;
+                totalNoGravado += montoItem;
             }
         });
 
-        // Calcular IVA solo sobre productos que lo aplican
+        // Desglose de IVA (Solo si el total gravado > 0)
+        let baseImponible = totalGravado;
         let ivaCalculado = 0;
-        if (IVA_DEFAULT > 0 && subtotalConIVA > 0) {
-            ivaCalculado = subtotalConIVA * (IVA_DEFAULT / 100);
+
+        if (IVA_DEFAULT > 0 && totalGravado > 0) {
+            const factorIVA = 1 + (IVA_DEFAULT / 100);
+            baseImponible = totalGravado / factorIVA;
+            ivaCalculado = totalGravado - baseImponible;
         }
 
-        // Total final
-        total = subtotalConDescuento + ivaCalculado;
+        // Subtotal Informativo (Total sin IVA)
+        subtotal = baseImponible + totalNoGravado;
+        total = totalVenta;
 
         // ✅ DEBUG
-        console.log('💰 Cálculos detallados:', {
-            subtotal_total: subtotal.toFixed(2),
-            descuento: descuentoTotal.toFixed(2),
-            subtotal_con_iva: subtotalConIVA.toFixed(2),
-            subtotal_sin_iva: subtotalSinIVA.toFixed(2),
-            iva_porcentaje: IVA_DEFAULT,
-            iva_calculado: ivaCalculado.toFixed(2),
-            total_final: total.toFixed(2)
+        console.log('💰 Desglose SRI:', {
+            total_que_paga_cliente: total.toFixed(2),
+            base_imponible_iva: baseImponible.toFixed(2),
+            monto_iva: ivaCalculado.toFixed(2),
+            subtotal_sin_impuestos: subtotal.toFixed(2)
         });
 
         // Actualizar displays
         document.getElementById('carritoCount').textContent = carrito.length;
         document.getElementById('subtotalDisplay').textContent = `$${subtotal.toFixed(2)}`;
-        document.getElementById('descuentoDisplay').textContent = `-$${descuentoTotal.toFixed(2)}`;
+        
+        // El descuento ya está restado de los subtotales para el desglose, 
+        // pero podemos mostrar el total de descuentos aplicados si lo deseamos.
+        // let descuentoAcumulado = carrito.reduce((s, i) => s + i.descuento, 0);
+        // document.getElementById('descuentoDisplay').textContent = `-$${descuentoAcumulado.toFixed(2)}`;
 
-        // Mostrar IVA si existe
+        // Mostrar IVA desglosado (Cálculo descriptivo)
         const ivaDisplay = document.getElementById('ivaDisplay');
         if (ivaDisplay) {
             if (IVA_DEFAULT > 0 && ivaCalculado > 0) {
                 ivaDisplay.style.display = 'flex';
+                // Cambiar etiqueta para indicar que es DESGLOSE
+                const ivaLabel = ivaDisplay.querySelector('.summary-label');
+                if (ivaLabel) {
+                    ivaLabel.textContent = `IVA Incluido (${IVA_DEFAULT}%)`;
+                }
                 const ivaValue = ivaDisplay.querySelector('.summary-value');
                 if (ivaValue) {
-                    ivaValue.textContent = `+$${ivaCalculado.toFixed(2)}`;
+                    ivaValue.textContent = `$${ivaCalculado.toFixed(2)}`; // Sin el "+" para no sugerir suma
                 }
             } else {
                 ivaDisplay.style.display = 'none';
@@ -2270,7 +2289,7 @@
             tipo_venta: tipoVenta,
             metodo_pago: metodoPago,
             monto_recibido: montoAPagar,
-            enviar_sri: document.getElementById('enviarSRI').checked,
+            enviar_sri: document.getElementById('toggleSRI').checked,
         };
 
         fetch('/panel/api/ventas/procesar/', {
@@ -2302,7 +2321,13 @@
 
                     calcularCambio();
                     actualizarCarrito();
-                    mostrarAlerta('success', '✓ Venta Exitosa', `Venta ${data.numero_venta} procesada correctamente`);
+                    // Mensaje personalizado según SRI
+                    let msjExtra = '';
+                    if (data.iniciado_sri) {
+                        msjExtra = '<br><span class="badge bg-success-soft text-success mt-2"><i class="fas fa-satellite-dish"></i> Enviada al SRI</span>';
+                    }
+
+                    mostrarAlerta('success', '✓ Venta Exitosa', `Venta ${data.numero_venta} procesada.` + msjExtra);
                 } else {
                     mostrarAlerta('error', 'Error en la Venta', data.error || 'No se pudo procesar la venta');
                 }
@@ -2349,97 +2374,12 @@
             document.getElementById('modalCambioRow').style.display = 'none';
         }
 
-        // Mostrar estado SRI
-        const sriRow = document.getElementById('modalSriRow');
-        const sriIcon = document.getElementById('sriStatusIcon');
-        const sriTitle = document.getElementById('sriStatusTitle');
-        const sriMsg = document.getElementById('modalSriMessage');
-        const sriRetryContainer = document.getElementById('modalSriRetryContainer');
 
-        if (data.sri_success !== undefined) {
-            sriRow.style.display = 'block';
-            if (data.sri_success) {
-                sriRow.style.background = '#f0fff4';
-                sriRow.style.borderColor = '#c6f6d5';
-                sriIcon.className = 'fas fa-check-circle text-success';
-                sriTitle.textContent = 'Factura Electrónica: ENVIADA';
-                sriTitle.className = 'fw-bold text-success';
-                sriMsg.innerHTML = '<span class="text-dark">' + (data.sri_message || 'Procesada correctamente por el SRI.') + '</span>';
-                sriRetryContainer.style.display = 'none';
-            } else {
-                sriRow.style.background = '#fff5f5';
-                sriRow.style.borderColor = '#fed7d7';
-                sriIcon.className = 'fas fa-exclamation-triangle text-danger';
-                sriTitle.textContent = 'Factura Electrónica: ERROR';
-                sriTitle.className = 'fw-bold text-danger';
-                sriMsg.innerHTML = '<span class="text-dark">' + (data.sri_message || 'El documento no pudo ser procesado en este momento.') + '</span><br><small class="text-muted">Puede reintentar aquí o desde el historial.</small>';
-                sriRetryContainer.style.display = 'block';
-            }
-        } else {
-            sriRow.style.display = 'none';
-        }
 
         document.getElementById('modalVentaExitosa').classList.add('show');
     }
 
-    function reintentarEnvioSRI() {
-        if (!ventaIdActual) return;
 
-        const btn = document.getElementById('btnRetrySri');
-        const originalHtml = btn.innerHTML;
-        const sriMsg = document.getElementById('modalSriMessage');
-        const sriTitle = document.getElementById('sriStatusTitle');
-        const sriIcon = document.getElementById('sriStatusIcon');
-        const sriRow = document.getElementById('modalSriRow');
-
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> PROCESANDO REINTENTO...';
-        sriMsg.innerHTML = '<span class="text-primary fw-bold">Comunicando con SRI, por favor espere...</span>';
-
-        // Efecto visual de "procesando"
-        sriRow.style.background = '#eff6ff';
-        sriRow.style.borderColor = '#bfdbfe';
-        sriIcon.className = 'fas fa-sync fa-spin text-primary';
-        sriTitle.textContent = 'REINTENTANDO ENVÍO...';
-        sriTitle.className = 'fw-bold text-primary';
-
-        fetch(`/panel/sri/retry/${ventaIdActual}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json'
-            }
-        })
-            .then(response => response.json())
-            .then(data => {
-                // Re-usar la lógica de mostrar resultado pero sin cerrar el modal
-                if (data.success || data.sri_success) {
-                    sriRow.style.background = '#f0fff4';
-                    sriRow.style.borderColor = '#c6f6d5';
-                    sriIcon.className = 'fas fa-check-circle text-success';
-                    sriTitle.textContent = 'Factura Electrónica: ENVIADA';
-                    sriTitle.className = 'fw-bold text-success';
-                    sriMsg.innerHTML = '<span class="text-dark">' + (data.message || data.sri_message || 'Procesada correctamente.') + '</span>';
-                    document.getElementById('modalSriRetryContainer').style.display = 'none';
-                    mostrarAlerta('success', 'Éxito SRI', 'La factura ha sido autorizada correctamente.');
-                } else {
-                    sriRow.style.background = '#fff5f5';
-                    sriRow.style.borderColor = '#fed7d7';
-                    sriIcon.className = 'fas fa-exclamation-triangle text-danger';
-                    sriTitle.textContent = 'Factura Electrónica: SIGUE CON ERROR';
-                    sriTitle.className = 'fw-bold text-danger';
-                    sriMsg.innerHTML = '<span class="text-dark">' + (data.message || data.sri_message || 'Fallo nuevamente.') + '</span><br><small class="text-muted">Intente una vez más o revise en el historial.</small>';
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i> VOLVER A INTENTAR';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                sriMsg.innerHTML = '<span class="text-danger">Error de comunicación con el servidor.</span>';
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-            });
-    }
 
     function cerrarModalVenta() {
         document.getElementById('modalVentaExitosa').classList.remove('show');

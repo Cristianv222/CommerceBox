@@ -409,9 +409,9 @@ class Producto(models.Model):
         ]
     
     def __str__(self):
-        tipo_icon = "🌾" if self.tipo_inventario == 'QUINTAL' else "📦"
+        tipo_str = "Quintal" if self.tipo_inventario == 'QUINTAL' else "Normal"
         marca_texto = f" - {self.marca.nombre}" if self.marca else ""
-        return f"{tipo_icon} {self.nombre}{marca_texto} ({self.codigo_barras})"
+        return f"[{tipo_str}] {self.nombre}{marca_texto} ({self.codigo_barras})"
     
     # ============================================================================
     # MÉTODOS DE UTILIDAD BÁSICOS
@@ -427,121 +427,95 @@ class Producto(models.Model):
     
     def get_precio_base(self):
         """
-        Retorna el precio base según el tipo (SIN IVA)
-        - Quintales: precio por unidad de peso
-        - Normales: precio de venta por unidad
+        Retorna el precio base desglosado (SIN IVA)
+        - Si aplica_impuestos=True: retorna precio / (1 + IVA)
+        - Si aplica_impuestos=False: retorna el precio tal cual
         """
-        if self.es_quintal():
-            return self.precio_por_unidad_peso or Decimal('0')
-        return self.precio_venta or Decimal('0')
-    
+        precio_final = (self.precio_por_unidad_peso if self.es_quintal() else self.precio_venta) or Decimal('0')
+        porcentaje_iva = self.obtener_porcentaje_iva()
+
+        if porcentaje_iva > 0:
+            factor_iva = Decimal('1') + (porcentaje_iva / Decimal('100'))
+            precio_base = precio_final / factor_iva
+            return precio_base.quantize(Decimal('0.0001')) # Mayor precisión para la base
+        
+        return precio_final or Decimal('0')
+
     # ============================================================================
-    # MÉTODOS PARA MANEJO DE IVA - ✅ NUEVO
+    # MÉTODOS PARA MANEJO DE IVA - ✅ REFACTORIZADO PARA DESGLOSE
     # ============================================================================
     
     def obtener_porcentaje_iva(self):
         """
         Obtiene el porcentaje de IVA desde configuración del sistema
-        SOLO si este producto aplica impuestos
-        
-        Returns:
-            Decimal: Porcentaje de IVA (ej: 15.00) o 0 si no aplica
         """
         if not self.aplica_impuestos:
             return Decimal('0')
         
         try:
             from apps.system_configuration.models import ConfiguracionSistema
-            
             config = ConfiguracionSistema.objects.first()
             if config and config.iva_activo:
                 return config.porcentaje_iva
-        except Exception as e:
-            print(f"⚠️ Error al obtener IVA desde configuración: {e}")
+        except Exception:
+            pass
         
         return Decimal('0')
     
     def calcular_precio_con_iva(self, cantidad_peso=None):
         """
-        Calcula el precio con IVA incluido
-        
-        Args:
-            cantidad_peso (Decimal, optional): Para quintales, la cantidad de peso a calcular
-        
-        Returns:
-            Decimal: Precio con IVA incluido
+        Retorna el PVP Final (ya incluye IVA si aplica)
         """
-        precio_base = self.get_precio_base()
+        precio_final = (self.precio_por_unidad_peso if self.es_quintal() else self.precio_venta) or Decimal('0')
         
-        # Si es quintal y se especifica cantidad, calcular sobre esa cantidad
         if self.es_quintal() and cantidad_peso:
-            precio_base = precio_base * Decimal(str(cantidad_peso))
+            precio_final = precio_final * Decimal(str(cantidad_peso))
         
-        porcentaje_iva = self.obtener_porcentaje_iva()
-        
-        if porcentaje_iva > 0:
-            iva_decimal = porcentaje_iva / Decimal('100')
-            precio_con_iva = precio_base * (Decimal('1') + iva_decimal)
-            return precio_con_iva.quantize(Decimal('0.01'))
-        
-        return precio_base.quantize(Decimal('0.01'))
+        return precio_final.quantize(Decimal('0.01'))
     
     def calcular_monto_iva(self, cantidad_peso=None):
         """
-        Calcula solo el monto del IVA
-        
-        Args:
-            cantidad_peso (Decimal, optional): Para quintales, la cantidad de peso a calcular
-        
-        Returns:
-            Decimal: Monto del IVA
+        Calcula el monto del IVA desglosado del precio final
+        Fórmula: Total - (Total / (1+IVA))
         """
-        precio_base = self.get_precio_base()
+        precio_final = (self.precio_por_unidad_peso if self.es_quintal() else self.precio_venta) or Decimal('0')
         
-        # Si es quintal y se especifica cantidad, calcular sobre esa cantidad
         if self.es_quintal() and cantidad_peso:
-            precio_base = precio_base * Decimal(str(cantidad_peso))
-        
+            precio_final = precio_final * Decimal(str(cantidad_peso))
+            
         porcentaje_iva = self.obtener_porcentaje_iva()
         
         if porcentaje_iva > 0:
-            iva_decimal = porcentaje_iva / Decimal('100')
-            monto_iva = precio_base * iva_decimal
+            factor_iva = Decimal('1') + (porcentaje_iva / Decimal('100'))
+            precio_base = precio_final / factor_iva
+            monto_iva = precio_final - precio_base
             return monto_iva.quantize(Decimal('0.01'))
         
         return Decimal('0.00')
     
     def get_info_precio_completa(self, cantidad_peso=None):
         """
-        Retorna información completa sobre precios e impuestos
-        Útil para serializers, API y punto de venta
-        
-        Args:
-            cantidad_peso (Decimal, optional): Para quintales, la cantidad de peso a calcular
-        
-        Returns:
-            dict: Información completa de precios
+        Retorna información completa sobre precios e impuestos (DESGLOSADOS)
         """
-        precio_base = self.get_precio_base()
+        precio_final_unitario = (self.precio_por_unidad_peso if self.es_quintal() else self.precio_venta) or Decimal('0')
         
-        # Si es quintal y se especifica cantidad
         if self.es_quintal() and cantidad_peso:
-            precio_total_base = precio_base * Decimal(str(cantidad_peso))
+            total_final = precio_final_unitario * Decimal(str(cantidad_peso))
         else:
-            precio_total_base = precio_base
+            total_final = precio_final_unitario
         
         porcentaje_iva = self.obtener_porcentaje_iva()
         monto_iva = self.calcular_monto_iva(cantidad_peso)
-        precio_con_iva = self.calcular_precio_con_iva(cantidad_peso)
+        precio_base_total = total_final - monto_iva
         
         return {
             'tipo_producto': self.tipo_inventario,
             'aplica_impuestos': self.aplica_impuestos,
             'porcentaje_iva': float(porcentaje_iva),
-            'precio_base_unitario': float(precio_base),
-            'precio_base_total': float(precio_total_base),
+            'precio_final_unitario': float(precio_final_unitario),
+            'precio_final_total': float(total_final),
             'monto_iva': float(monto_iva),
-            'precio_final_con_iva': float(precio_con_iva),
+            'precio_base_total': float(precio_base_total),
             'cantidad_peso': float(cantidad_peso) if cantidad_peso else None,
             'unidad_medida': self.unidad_medida_base.abreviatura if self.unidad_medida_base else 'unidad'
         }
@@ -705,9 +679,9 @@ class Quintal(models.Model):
     """
     
     ESTADO_CHOICES = [
-        ('DISPONIBLE', '🟢 Disponible - Tiene peso disponible'),
-        ('RESERVADO', '🟡 Reservado - En proceso de venta'),
-        ('AGOTADO', '⚫ Agotado - Peso en cero'),
+        ('DISPONIBLE', 'Disponible - Tiene peso disponible'),
+        ('RESERVADO', 'Reservado - En proceso de venta'),
+        ('AGOTADO', 'Agotado - Peso en cero'),
     ]
     
     # Identificadores
@@ -742,7 +716,7 @@ class Quintal(models.Model):
         help_text="Compra asociada a este quintal"
     )
     
-    # ⚖️ CONTROL DE PESO (Núcleo del sistema)
+    # CONTROL DE PESO (Núcleo del sistema)
     peso_inicial = models.DecimalField(
         max_digits=10,
         decimal_places=3,

@@ -1018,7 +1018,7 @@
                     <label class="form-label-custom">
                         <span>📊 ¿Aplica IVA?</span>
                     </label>
-                    <select id="input_iva" class="form-input" onchange="mostrarInfoIVA()">
+                    <select id="input_iva" class="form-input" onchange="mostrarInfoIVA(); calcularPrecioVenta();">
                         <option value="0">No aplica IVA (0%)</option>
                         <option value="{{ iva_default }}" selected>Sí, aplica IVA ({{ iva_default }}%)</option>
                     </select>
@@ -1311,7 +1311,7 @@
                         <label class="form-label-custom">
                             <span>📊 ¿Aplica IVA?</span>
                         </label>
-                        <select id="edit_iva" class="form-input">
+                        <select id="edit_iva" class="form-input" onchange="calcularPrecioVentaEditar()">
                             <option value="0">No aplica IVA (0%)</option>
                             <option value="{{ iva_default }}">Sí, aplica IVA ({{ iva_default }}%)</option>
                         </select>
@@ -2264,7 +2264,9 @@
             const categoriaId = document.getElementById('input_categoria').value;
             const costoInput = document.getElementById('input_costo');
             const precioInput = document.getElementById('input_precio');
+            const ivaSelect = document.getElementById('input_iva');
             const costoUnitario = parseFloat(costoInput.value) || 0;
+            const valorIva = parseFloat(ivaSelect.value) || 0;
 
             if (costoUnitario <= 0) {
                 precioInput.value = '';
@@ -2287,14 +2289,18 @@
             }
 
             const margenGanancia = parseFloat(categoria.margen_ganancia) || 0;
-            const ganancia = costoUnitario * (margenGanancia / 100);
-            const precioVenta = costoUnitario + ganancia;
+            
+            // FÓRMULA: (COSTO + MARGEN) + IVA
+            const subtotalConMargen = costoUnitario * (1 + margenGanancia / 100);
+            const gananciaDinero = subtotalConMargen - costoUnitario;
+            const ivaDinero = subtotalConMargen * (valorIva / 100);
+            const precioVentaFinal = subtotalConMargen + ivaDinero;
 
             precioInput.style.background = 'linear-gradient(135deg, #d1fae5, #a7f3d0)';
             precioInput.style.borderColor = '#10b981';
-            precioInput.value = precioVenta.toFixed(2);
+            precioInput.value = precioVentaFinal.toFixed(2);
 
-            actualizarInfoCalculo(costoUnitario, margenGanancia, ganancia, precioVenta);
+            actualizarInfoCalculo(costoUnitario, margenGanancia, gananciaDinero, valorIva, ivaDinero, precioVentaFinal);
         } catch (error) {
             console.error('❌ Error en calcularPrecioVenta:', error);
         }
@@ -2305,7 +2311,9 @@
             const categoriaId = document.getElementById('edit_categoria').value;
             const costoInput = document.getElementById('edit_costo');
             const precioInput = document.getElementById('edit_precio');
+            const ivaSelect = document.getElementById('edit_iva');
             const costoUnitario = parseFloat(costoInput.value) || 0;
+            const valorIva = parseFloat(ivaSelect.value) || 0;
 
             if (costoUnitario <= 0) {
                 precioInput.value = '';
@@ -2321,40 +2329,47 @@
             }
 
             const categoria = categoriasData[categoriaId] || categoriasData[String(categoriaId)];
-
-            if (!categoria) {
-                console.error('Categoría no encontrada:', categoriaId);
-                return;
-            }
-
             const margenGanancia = parseFloat(categoria.margen_ganancia) || 0;
-            const ganancia = costoUnitario * (margenGanancia / 100);
-            const precioVenta = costoUnitario + ganancia;
+            
+            const subtotalConMargen = costoUnitario * (1 + margenGanancia / 100);
+            const gananciaDinero = subtotalConMargen - costoUnitario;
+            const ivaDinero = subtotalConMargen * (valorIva / 100);
+            const precioVentaFinal = subtotalConMargen + ivaDinero;
 
             precioInput.style.background = 'linear-gradient(135deg, #d1fae5, #a7f3d0)';
             precioInput.style.borderColor = '#10b981';
-            precioInput.value = precioVenta.toFixed(2);
+            precioInput.value = precioVentaFinal.toFixed(2);
 
-            actualizarInfoCalculoEditar(costoUnitario, margenGanancia, ganancia, precioVenta);
+            actualizarInfoCalculoEditar(costoUnitario, margenGanancia, gananciaDinero, valorIva, ivaDinero, precioVentaFinal);
         } catch (error) {
             console.error('Error en calcularPrecioVentaEditar:', error);
         }
     }
 
-    function actualizarInfoCalculo(costo, margen, ganancia, precioFinal) {
+    function actualizarInfoCalculo(costo, margen, ganancia, ivaPorc, ivaDinero, precioFinal) {
         try {
             let infoDiv = document.getElementById('info-calculo-precio');
             if (!infoDiv) {
                 infoDiv = document.createElement('div');
                 infoDiv.id = 'info-calculo-precio';
-                infoDiv.style.cssText = 'margin-top: 0.5rem; background: #dcfce7; border: 2px solid #10b981; border-radius: 8px; padding: 0.75rem; animation: fadeIn 0.3s ease;';
+                infoDiv.style.cssText = 'margin-top: 0.5rem; background: #f0fdf4; border: 2px solid #16a34a; border-radius: 12px; padding: 1rem; animation: fadeIn 0.3s ease;';
                 document.getElementById('input_precio').parentElement.appendChild(infoDiv);
             }
 
             infoDiv.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 0.5rem; color: #065f46; font-weight: 700; font-size: 0.9rem;">
-                <span>✅</span>
-                <span>$${costo.toFixed(2)} + ${margen}% ($${ganancia.toFixed(2)}) = <strong style="color: #059669; font-size: 1.1rem;">$${precioFinal.toFixed(2)}</strong></span>
+            <div style="font-size: 0.9rem; color: #166534;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span>Costo Base:</span> <strong>$${costo.toFixed(2)}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span>Margen (${margen}%):</span> <strong style="color: #2563eb;">+$${ganancia.toFixed(2)}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #bbf7d0;">
+                    <span>IVA (${ivaPorc}%):</span> <strong style="color: #ea580c;">+$${ivaDinero.toFixed(2)}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 1.1rem; color: #15803d;">
+                    <span>PRECIO FINAL:</span> <span>$${precioFinal.toFixed(2)}</span>
+                </div>
             </div>
         `;
         } catch (error) {
@@ -2362,20 +2377,30 @@
         }
     }
 
-    function actualizarInfoCalculoEditar(costo, margen, ganancia, precioFinal) {
+    function actualizarInfoCalculoEditar(costo, margen, ganancia, ivaPorc, ivaDinero, precioFinal) {
         try {
             let infoDiv = document.getElementById('info-calculo-precio-editar');
             if (!infoDiv) {
                 infoDiv = document.createElement('div');
                 infoDiv.id = 'info-calculo-precio-editar';
-                infoDiv.style.cssText = 'margin-top: 0.5rem; background: #dcfce7; border: 2px solid #10b981; border-radius: 8px; padding: 0.75rem; animation: fadeIn 0.3s ease;';
+                infoDiv.style.cssText = 'margin-top: 0.5rem; background: #f0fdf4; border: 2px solid #16a34a; border-radius: 12px; padding: 1rem; animation: fadeIn 0.3s ease;';
                 document.getElementById('edit_precio').parentElement.appendChild(infoDiv);
             }
 
             infoDiv.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 0.5rem; color: #065f46; font-weight: 700; font-size: 0.9rem;">
-                <span>✅</span>
-                <span>$${costo.toFixed(2)} + ${margen}% ($${ganancia.toFixed(2)}) = <strong style="color: #059669; font-size: 1.1rem;">$${precioFinal.toFixed(2)}</strong></span>
+            <div style="font-size: 0.9rem; color: #166534;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span>Costo Base:</span> <strong>$${costo.toFixed(2)}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span>Margen (${margen}%):</span> <strong style="color: #2563eb;">+$${ganancia.toFixed(2)}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #bbf7d0;">
+                    <span>IVA (${ivaPorc}%):</span> <strong style="color: #ea580c;">+$${ivaDinero.toFixed(2)}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 1.1rem; color: #15803d;">
+                    <span>PRECIO FINAL:</span> <span>$${precioFinal.toFixed(2)}</span>
+                </div>
             </div>
         `;
         } catch (error) {

@@ -151,7 +151,7 @@ class VentaAdmin(admin.ModelAdmin):
     ]
     list_filter = [
         'estado', 'tipo_venta', 'fecha_venta',
-        'vendedor', 'factura_electronica_enviada'
+        'vendedor'
     ]
     search_fields = [
         'numero_venta', 'numero_factura',
@@ -176,14 +176,6 @@ class VentaAdmin(admin.ModelAdmin):
         }),
         ('Estado', {
             'fields': ('estado', 'observaciones')
-        }),
-        ('Facturación Electrónica', {
-            'fields': (
-                'factura_electronica_enviada',
-                'factura_electronica_clave',
-                'factura_electronica_xml'
-            ),
-            'classes': ('collapse',)
         }),
         ('Auditoría', {
             'fields': ('caja', 'fecha_creacion', 'fecha_actualizacion'),

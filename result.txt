@@ -1,0 +1,2 @@
+🚨 Sistema de Alertas de Stock cargado correctamente
+Est: 001, Pto: 001, Sec: 109, Act: True

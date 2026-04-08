@@ -57,7 +57,7 @@ class ConfiguracionSistema(models.Model):
         help_text='Sitio web de la empresa'
     )
     
-    # ✅ NUEVO: Logo de la empresa
+    # NUEVO: Logo de la empresa
     logo_empresa = models.ImageField(
         upload_to='empresa/logos/',
         blank=True,
@@ -131,7 +131,7 @@ class ConfiguracionSistema(models.Model):
         default='VNT',
         help_text='Prefijo para números de venta'
     )
-    # ✅ CORREGIDO: Control de IVA
+    # CORREGIDO: Control de IVA
     iva_activo = models.BooleanField(
         default=True,
         help_text='Activar cálculo automático de IVA en ventas'
@@ -437,10 +437,10 @@ class RegistroBackup(models.Model):
     ]
     
     ESTADO_CHOICES = [
-        ('EXITOSO', '✅ Exitoso'),
-        ('FALLIDO', '❌ Fallido'),
-        ('EN_PROCESO', '⏳ En Proceso'),
-        ('CANCELADO', '⚠️ Cancelado'),
+        ('EXITOSO', 'Exitoso'),
+        ('FALLIDO', 'Fallido'),
+        ('EN_PROCESO', 'En Proceso'),
+        ('CANCELADO', 'Cancelado'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

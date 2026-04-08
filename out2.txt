@@ -1,0 +1,19 @@
+🚨 Sistema de Alertas de Stock cargado correctamente
+=== ESTADO === DEVUELTA
+=== COMPROBANTES === {
+    'comprobante': [
+        {
+            'claveAcceso': '0804202601172259995600110010020000000041234567813',
+            'mensajes': {
+                'mensaje': [
+                    {
+                        'identificador': '70',
+                        'mensaje': 'CLAVE DE ACCESO EN PROCESAMIENTO ',
+                        'informacionAdicional': 'La clave de acceso 0804202601172259995600110010020000000041234567813  esta en procesamiento VALOR DEVUELTO POR EL PROCEDIMIENTO: SI',
+                        'tipo': 'ERROR'
+                    }
+                ]
+            }
+        }
+    ]
+}

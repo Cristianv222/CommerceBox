@@ -34,9 +34,18 @@ class TicketGenerator:
             'sitio_web': config.sitio_web,
         }
         
+        # ✅ Verificar si hay comprobante electrónico para esta venta
+        comprobante = None
+        try:
+            from apps.electronic_invoicing.models import ComprobanteElectronico
+            comprobante = ComprobanteElectronico.objects.filter(venta=venta).first()
+        except ImportError:
+            pass
+
         context = {
             'empresa': empresa,
             'venta': venta,
+            'comprobante': comprobante, # ✅ Pasar comprobante al template
             'detalles': venta.detalles.all().select_related(
                 'producto', 'quintal', 'unidad_medida'
             ),
@@ -159,8 +168,23 @@ class TicketGenerator:
         lineas.append('=' * ancho)
         
         # ========================================
-        # PIE DE TICKET
+        # PIE DE TICKET / INFORMACIÓN FISCAL
         # ========================================
+        # ✅ Verificar si hay comprobante electrónico
+        try:
+            from apps.electronic_invoicing.models import ComprobanteElectronico
+            comprobante = ComprobanteElectronico.objects.filter(venta=venta).first()
+            if comprobante and comprobante.clave_acceso:
+                lineas.append("INFORMACION ELECTRONICA".center(ancho))
+                lineas.append(f"Clave de Acceso:".center(ancho))
+                # Dividir la clave de acceso en dos líneas para que quepa (49 dígitos)
+                clave = comprobante.clave_acceso
+                lineas.append(clave[:25].center(ancho))
+                lineas.append(clave[25:].center(ancho))
+                lineas.append("-" * ancho)
+        except (ImportError, Exception):
+            pass
+
         lineas.append("GRACIAS POR SU COMPRA".center(ancho))
         
         if config.sitio_web:

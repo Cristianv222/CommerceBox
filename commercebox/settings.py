@@ -31,6 +31,7 @@ ALLOWED_HOSTS = ['*']
 
 # Application definition
 DJANGO_APPS = [
+    'daphne',  # ✅ Debe ir primero
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -48,6 +49,7 @@ THIRD_PARTY_APPS = [
     'django_filters',
     'rest_framework.authtoken',
     'django_celery_beat',
+    'channels',
 ]
 
 COMMERCEBOX_APPS = [
@@ -61,7 +63,7 @@ COMMERCEBOX_APPS = [
     'apps.system_configuration',
     'apps.custom_admin',
     'apps.stock_alert_system',
-    'apps.sri',
+    'apps.electronic_invoicing',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + COMMERCEBOX_APPS
@@ -87,6 +89,8 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'commercebox.urls'
+WSGI_APPLICATION = 'commercebox.wsgi.application'
+ASGI_APPLICATION = 'commercebox.asgi.application'
 
 TEMPLATES = [
     {
@@ -463,6 +467,9 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@commercebox.com')
 
+# Resend API Configuration
+RESEND_API_KEY = config('RESEND_API_KEY', default='')
+
 # ============================================================================
 # 🔧 CORRECCIÓN 6: CONFIGURACIÓN DE SESIONES - CRÍTICO PARA AUTENTICACIÓN
 # ============================================================================
@@ -507,6 +514,16 @@ CACHES = {
         'KEY_PREFIX': 'commercebox',
         'TIMEOUT': 300,
     }
+}
+
+# Configuración de Channel Layers para WebSockets
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [config('COMMERCEBOX_REDIS_URL', default='redis://localhost:6379/0')],
+        },
+    },
 }
 
 # Password Reset Configuration

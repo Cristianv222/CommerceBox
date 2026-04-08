@@ -40,6 +40,7 @@ from apps.system_configuration.models import (
     get_parametro,
     set_parametro
 )
+from apps.electronic_invoicing.models import SRIConfig, CertificadoDigital, PuntoEmision
 
 logger = logging.getLogger(__name__)
 
@@ -1002,6 +1003,127 @@ def categorias_view(request):
     }
     
     return render(request, 'custom_admin/inventario/categorias_list.html', context)
+
+
+@ensure_csrf_cookie
+@auth_required
+def config_facturacion_view(request):
+    """Configuración de facturación electrónica SRI - Dashboard Profesional"""
+    try:
+        from apps.electronic_invoicing.models import SRIConfig, CertificadoDigital, PuntoEmision, ComprobanteElectronico
+        from apps.electronic_invoicing.services.certificate_reader import CertificateReaderSRI
+        from django.db.models import Count
+        from django.utils import timezone
+        
+        # Obtener o crear configuración Singleton
+        config, _ = SRIConfig.objects.get_or_create(pk=1)
+        certificado = CertificadoDigital.objects.filter(activo=True).first()
+        punto_emision = PuntoEmision.objects.filter(activo=True).first()
+
+        if request.method == 'POST':
+            # 1. Guardar Configuración General y URLs SRI
+            if 'save_config' in request.POST:
+                config.ambiente = int(request.POST.get('ambiente', 1))
+                config.wsdl_recepcion_pruebas = request.POST.get('wsdl_recepcion_pruebas', config.wsdl_recepcion_pruebas)
+                config.wsdl_autorizacion_pruebas = request.POST.get('wsdl_autorizacion_pruebas', config.wsdl_autorizacion_pruebas)
+                config.wsdl_recepcion_produccion = request.POST.get('wsdl_recepcion_produccion', config.wsdl_recepcion_produccion)
+                config.wsdl_autorizacion_produccion = request.POST.get('wsdl_autorizacion_produccion', config.wsdl_autorizacion_produccion)
+                config.save()
+                messages.success(request, f"✅ Configuración SRI actualizada (Ambiente: {config.get_ambiente_display()})")
+
+            # 2. Procesar y Subir Firma Electrónica (.p12)
+            elif 'upload_cert' in request.POST:
+                p12_file = request.FILES.get('archivo')
+                password = request.POST.get('password')
+                
+                if p12_file and password:
+                    try:
+                        # Extraer metadata antes de guardar
+                        p12_content = p12_file.read()
+                        p12_file.seek(0)
+                        
+                        metadata = CertificateReaderSRI.extraer_metadata(p12_content, password)
+                        
+                        # Crear registro y encriptar password
+                        CertificadoDigital.objects.filter(activo=True).update(activo=False)
+                        nuevo_cert = CertificadoDigital(
+                            archivo=p12_file,
+                            activo=True,
+                            nombre_titular=metadata['nombre_titular'],
+                            ruc_titular=metadata['ruc_titular'],
+                            emisor=metadata['emisor'],
+                            fecha_vencimiento=metadata['fecha_vencimiento']
+                        )
+                        nuevo_cert.set_password(password)
+                        nuevo_cert.save()
+                        
+                        messages.success(request, f"✅ Firma de {nuevo_cert.nombre_titular} cargada correctamente.")
+                    except Exception as e:
+                        messages.error(request, f"❌ Error al procesar firma: {str(e)}")
+                else:
+                    messages.error(request, "Debe proporcionar el archivo .p12 y la clave.")
+
+            # 3. Corregir Metadata del Certificado Actual (Manual)
+            elif 'update_cert_metadata' in request.POST:
+                if certificado:
+                    certificado.nombre_titular = request.POST.get('nombre_titular', certificado.nombre_titular)
+                    certificado.ruc_titular = request.POST.get('ruc_titular', certificado.ruc_titular)
+                    # Asegurar formato RUC
+                    if certificado.ruc_titular:
+                        certificado.ruc_titular = "".join(filter(str.isdigit, certificado.ruc_titular))[:13]
+                    
+                    # Vencimiento (opcional corrección)
+                    fecha_venc = request.POST.get('fecha_vencimiento')
+                    if fecha_venc:
+                        certificado.fecha_vencimiento = fecha_venc
+                        
+                    certificado.save()
+                    messages.success(request, "✅ Datos del certificado corregidos manualmente.")
+                else:
+                    messages.error(request, "No hay un certificado activo para corregir.")
+
+            return redirect('custom_admin:config_facturacion')
+
+        # 3. Cargar Estadísticas para el Dashboard
+        comprobantes = ComprobanteElectronico.objects.all()
+        stats = {
+            'total_count': comprobantes.count(),
+            'autorizados': comprobantes.filter(estado='AUTORIZADO').count(),
+            'errores': comprobantes.filter(estado__in=['RECHAZADO', 'ERROR', 'DEVUELTO']).count(),
+            'hoy_count': comprobantes.filter(fecha_registro__date=timezone.now().date()).count(),
+        }
+        
+        # Últimos comprobantes para el monitor (Serialización segura)
+        ultimos_comprobantes = comprobantes.select_related('venta').order_by('-fecha_registro')[:20]
+        
+        ultimos_datos = []
+        for c in ultimos_comprobantes:
+            ultimos_datos.append({
+                'id': str(c.id),
+                'id_short': str(c.id)[:8],
+                'venta_numero': c.venta.numero_venta,
+                'estado': c.estado,
+                'clave_acceso': c.clave_acceso or '',
+                'numero_autorizacion': c.numero_autorizacion or '',
+                'mensaje': (c.mensajes_error or 'Sin errores detallados')[:100]
+            })
+        
+        context = {
+            'segment': 'configuracion_sri',
+            'config': config,
+            'punto_emision': punto_emision,
+            'certificado': certificado,
+            'stats': stats,
+            'ultimos_comprobantes_json': ultimos_datos,
+            'hoy': timezone.now().date(),
+        }
+        return render(request, 'custom_admin/facturacion.html', context)
+
+    except Exception as e:
+        import logging
+        logging.error(f"Error en panel SRI: {e}")
+        messages.error(request, f"Error en el panel SRI: {str(e)}")
+        return redirect('custom_admin:dashboard')
 
 
 @ensure_csrf_cookie
@@ -2263,12 +2385,6 @@ def venta_detalle_api(request, pk):
                 'total': str(item.total),
             })
         
-        # Obtener información SRI si existe
-        sri_mensaje = ""
-        from apps.sri.models import SRILog
-        ultimo_log = SRILog.objects.filter(venta=venta).order_by('-fecha_envio').first()
-        if ultimo_log:
-            sri_mensaje = ultimo_log.message
 
         # Construir respuesta
         data = {
@@ -2287,11 +2403,6 @@ def venta_detalle_api(request, pk):
                 'monto_pagado': str(venta.monto_pagado),
                 'cambio': str(venta.cambio) if venta.cambio else '0.00',
                 'saldo_pendiente': str(venta.saldo_pendiente),
-                # SRI Fields
-                'sri_enviado': venta.factura_electronica_enviada,
-                'sri_clave': venta.factura_electronica_clave,
-                'sri_numero': venta.numero_factura,
-                'sri_mensaje': sri_mensaje,
                 'items': items,
             }
         }
@@ -3541,6 +3652,14 @@ def api_procesar_venta(request):
         tipo_venta = data.get('tipo_venta', 'CONTADO')
         metodo_pago = data.get('metodo_pago', 'EFECTIVO')
         
+        # ✅ DETECTAR SEÑAL SRI
+        enviar_sri = data.get('enviar_sri', False)
+        if isinstance(enviar_sri, str):
+            enviar_sri = enviar_sri.lower() in ['true', 'on', '1']
+        
+        print("\n" + "="*50)
+        print(f"🔥 [DEBUG REAL] PROCESANDO VENTA: {tipo_venta}, SRI: {enviar_sri}")
+
         # ✅ VALIDAR QUE VENTAS A CRÉDITO TENGAN CLIENTE
         if tipo_venta == 'CREDITO' and not cliente_id:
             logger.warning("⚠️ Intento de venta a crédito sin cliente")
@@ -3643,6 +3762,48 @@ def api_procesar_venta(request):
             )
             
             logger.info(f"✅ Venta creada: {venta.numero_venta} - Total: ${total} (IVA: ${impuestos_total})")
+            print(f"📝 [DEBUG REAL] Venta creada: {venta.numero_venta}")
+
+            # ✅ ACTIVADOR SRI ROBUSTO (Carga Dinámica)
+            iniciado_sri = False
+            if enviar_sri:
+                print(f"🚀 [DEBUG REAL] ACTIVANDO SRI para {venta.numero_venta}")
+                try:
+                    # Carga dinámica para evitar errores de arranque si el módulo falla
+                    from apps.electronic_invoicing.models import ComprobanteElectronico, SRIConfig
+                    from apps.electronic_invoicing.tasks import procesar_factura_electronica
+                    
+                    config_sri = SRIConfig.objects.first()
+                    ambiente = config_sri.ambiente if config_sri else 1
+                    
+                    comprobante, created = ComprobanteElectronico.objects.get_or_create(
+                        venta=venta,
+                        defaults={
+                            'estado': 'CREADO',
+                            'ambiente': ambiente,
+                            'tipo_comprobante': '01' # Factura
+                        }
+                    )
+                    print(f"📄 [DEBUG REAL] Comprobante ID: {comprobante.id}, Creado: {created}")
+                    
+                    if created or comprobante.estado == 'ERROR':
+                        if comprobante.estado == 'ERROR':
+                            comprobante.estado = 'CREADO'
+                            comprobante.save()
+                            
+                        # Encolar para Celery después del commit
+                        transaction.on_commit(lambda: procesar_factura_electronica.delay(str(comprobante.id)))
+                        iniciado_sri = True
+                        print(f"✅ [DEBUG REAL] Tarea Celery encolada")
+                    else:
+                        iniciado_sri = True
+                        print(f"⚠️ [DEBUG REAL] Comprobante ya existía")
+
+                except Exception as e:
+                    print(f"❌ [DEBUG REAL] Error SRI: {str(e)}")
+                    logger.error(f"Error al crear comprobante SRI: {e}", exc_info=True)
+            else:
+                print(f"ℹ️ [DEBUG REAL] SRI omitido por el usuario")
             
             # Crear detalles
             orden = 1
@@ -3801,24 +3962,6 @@ def api_procesar_venta(request):
                     
             except Exception as e:
                 logger.error(f"❌ Error creando trabajo de impresión: {e}", exc_info=True)
-        # ============================================================================
-        # 🔥 PROCESO SRI: FUERA de la transacción atómica para evitar bloqueos largos de DB
-        # ============================================================================
-        enviar_sri = data.get('enviar_sri', False)
-        sri_success = False
-        sri_message = ""
-        
-        if enviar_sri:
-            try:
-                from apps.sri.services import APIVendoService
-                sri_success, sri_message = APIVendoService.enviar_factura_sri(venta)
-                if sri_success:
-                    logger.info(f"✅ Factura SRI enviada para venta {venta.numero_venta}")
-                else:
-                    logger.error(f"❌ Error SRI: {sri_message}")
-            except Exception as e:
-                sri_message = f"Error al conectar con SRI: {str(e)}"
-                logger.error(f"❌ Error crítico SRI: {sri_message}")
 
         return JsonResponse({
             'success': True,
@@ -3831,8 +3974,8 @@ def api_procesar_venta(request):
             'cambio': float(cambio),
             'monto_recibido': float(monto_recibido),
             'estado_pago': venta.estado_pago,
-            'sri_success': sri_success,
-            'sri_message': sri_message,
+            'iniciado_sri': iniciado_sri,
+            'mensaje': 'Venta procesada exitosamente' + (' y enviada al SRI' if iniciado_sri else '')
         })
         
     except Exception as e:
@@ -6243,11 +6386,7 @@ def config_empresa_view(request):
     return render(request, 'custom_admin/configuracion/empresa.html')
 
 
-@ensure_csrf_cookie
-@auth_required
-def config_facturacion_view(request):
-    """Configuración de facturación"""
-    return render(request, 'custom_admin/configuracion/facturacion.html')
+
 
 
 # ========================================

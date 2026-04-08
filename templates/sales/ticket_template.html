@@ -1,0 +1,174 @@
+{# templates/sales/ticket_template.html #}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Ticket de Venta</title>
+    <style>
+        body {
+            font-family: 'Courier', monospace;
+            width: 80mm;
+            margin: 0;
+            padding: 5mm;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 5mm;
+        }
+        .empresa-nombre {
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .linea {
+            border-top: 1px dashed #000;
+            margin: 2mm 0;
+        }
+        .detalles {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .detalles th {
+            text-align: left;
+            border-bottom: 1px solid #000;
+        }
+        .item-nombre {
+            font-size: 11px;
+        }
+        .totales {
+            width: 100%;
+            margin-top: 2mm;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+        }
+        .total-grande {
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 1mm;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 5mm;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="empresa-nombre">{{ empresa.nombre }}</div>
+        <div>RUC: {{ empresa.ruc }}</div>
+        <div>{{ empresa.direccion }}</div>
+        <div>Tel: {{ empresa.telefono }}</div>
+        {% if empresa.email %}<div>Email: {{ empresa.email }}</div>{% endif %}
+    </div>
+
+    <div class="linea"></div>
+    
+    <div>
+        <strong>Ticket: {{ config.prefijo_numero_venta }}-{{ venta.numero_venta }}</strong><br>
+        Fecha: {{ venta.fecha_venta|date:"d/m/Y H:i" }}<br>
+        Vendedor: {{ venta.vendedor.username }}<br>
+        {% if venta.cliente %}
+        Cliente: {{ venta.cliente.nombre_completo }}<br>
+        Doc: {{ venta.cliente.numero_documento }}
+        {% else %}
+        Cliente: CONSUMIDOR FINAL
+        {% endif %}
+    </div>
+
+    <div class="linea"></div>
+
+    <table class="detalles">
+        <thead>
+            <tr>
+                <th width="10%">Cant</th>
+                <th width="60%">Desc</th>
+                <th width="30%">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for detalle in detalles %}
+            <tr>
+                <td>
+                    {% if detalle.producto.es_quintal %}
+                        {{ detalle.peso_vendido|floatformat:2 }}
+                    {% else %}
+                        {{ detalle.cantidad_unidades|floatformat:0 }}
+                    {% endif %}
+                </td>
+                <td class="item-nombre">{{ detalle.producto.nombre|truncatechars:25 }}</td>
+                <td align="right">{{ config.simbolo_moneda }}{{ detalle.total|floatformat:config.decimales_moneda }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="linea"></div>
+
+    <div class="totales">
+        <div class="total-row">
+            <span>SUBTOTAL</span>
+            <span>{{ config.simbolo_moneda }}{{ venta.subtotal|floatformat:config.decimales_moneda }}</span>
+        </div>
+        
+        {% if venta.descuento > 0 %}
+        <div class="total-row">
+            <span>DESCUENTO</span>
+            <span>-{{ config.simbolo_moneda }}{{ venta.descuento|floatformat:config.decimales_moneda }}</span>
+        </div>
+        {% endif %}
+
+        {% if config.iva_activo and venta.impuestos > 0 %}
+        <div class="total-row">
+            <span>IVA ({{ config.porcentaje_iva|floatformat:0 }}%)</span>
+            <span>{{ config.simbolo_moneda }}{{ venta.impuestos|floatformat:config.decimales_moneda }}</span>
+        </div>
+        {% endif %}
+
+        <div class="total-row total-grande">
+            <span>TOTAL</span>
+            <span>{{ config.simbolo_moneda }}{{ venta.total|floatformat:config.decimales_moneda }}</span>
+        </div>
+    </div>
+
+    <div class="linea"></div>
+
+    <div class="pagos">
+        {% for pago in pagos %}
+        <div class="total-row">
+            <span>{{ pago.get_forma_pago_display }}</span>
+            <span>{{ config.simbolo_moneda }}{{ pago.monto|floatformat:config.decimales_moneda }}</span>
+        </div>
+        {% endfor %}
+        
+        {% if venta.cambio > 0 %}
+        <div class="total-row">
+            <span>CAMBIO</span>
+            <span>{{ config.simbolo_moneda }}{{ venta.cambio|floatformat:config.decimales_moneda }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="linea"></div>
+
+    <div class="footer">
+        {% if comprobante and comprobante.clave_acceso %}
+        <div style="font-size: 9px; line-height: 1.1; margin-bottom: 10px;">
+            <strong>INFORMACIÓN ELECTRÓNICA</strong><br>
+            Clave de Acceso:<br>
+            <span style="word-break: break-all;">{{ comprobante.clave_acceso }}</span>
+        </div>
+        <div class="linea"></div>
+        {% endif %}
+
+        <strong>GRACIAS POR SU COMPRA</strong><br>
+        {% if config.sitio_web %}{{ config.sitio_web }}{% endif %}
+        <br>
+        Fecha Imp: {{ fecha_impresion|date:"d/m/Y H:i:s" }}
+    </div>
+</body>
+</html>

@@ -17,7 +17,7 @@ django-celery-beat==2.5.0
 # Autenticación y seguridad
 django-allauth==0.57.0
 djangorestframework-simplejwt==5.3.0
-cryptography==41.0.7
+cryptography==44.0.2
 bcrypt==4.1.2
 
 # APIs y servicios web
@@ -31,12 +31,10 @@ reportlab==4.0.7
 openpyxl==3.1.2
 
 # Hardware integration (NUEVOS - esenciales para printer_service.py)
-pyserial==3.5
-pyusb==1.2.1
 python-escpos==3.0
 qrcode==7.4.2
-pyserial
-pyusb
+pyserial==3.5
+pyusb==1.2.1
 
 # Utilidades
 python-decouple==3.8
@@ -73,8 +71,12 @@ structlog==23.2.0
 django-structlog==7.0.0
 
 # Facturación electrónica
-lxml==4.9.3
+lxml==5.1.0
 xmltodict==0.13.0
+zeep==4.2.1
+# Dependencias para firma manual (XAdES-BES)
+asn1crypto==1.5.1
+cryptography==44.0.2
 
 # Optimización de imágenes
 django-imagekit==5.0.0
@@ -129,6 +131,7 @@ tablib==3.5.0
 xlwt==1.3.0
 
 # WebSocket support para notificaciones en tiempo real
+daphne==4.0.0
 channels==4.0.0
 channels-redis==4.1.0
 
@@ -138,3 +141,4 @@ prometheus-client==0.19.0
 
 psutil==5.9.6
 whitenoise==6.6.0
+resend==2.1.0

@@ -6,6 +6,8 @@ services:
       POSTGRES_DB: ${COMMERCEBOX_DB_NAME}
       POSTGRES_USER: ${COMMERCEBOX_DB_USER}
       POSTGRES_PASSWORD: ${COMMERCEBOX_DB_PASSWORD}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL}
+      TZ: America/Guayaquil
     volumes:
       - commercebox_postgres_data:/var/lib/postgresql/data
       - ./backups:/backups
@@ -76,20 +78,13 @@ services:
       dockerfile: Dockerfile
       args:
         - BUILDKIT_INLINE_CACHE=1  # ✅ Mejor cache
+        - INITIAL_ADMIN_EMAIL=${INITIAL_ADMIN_EMAIL}
+        - TZ=America/Guayaquil
     image: commercebox:latest  # ✅ Reusar imagen
     container_name: commercebox_web
-    command: >
-      gunicorn commercebox.wsgi:application
-      --bind 0.0.0.0:8000
-      --workers 5
-      --threads 2
-      --worker-class gthread
-      --worker-tmp-dir /dev/shm
-      --timeout 120
-      --max-requests 1000
-      --max-requests-jitter 50
-      --preload
+    command: daphne -b 0.0.0.0 -p 8000 commercebox.asgi:application
     volumes:
+      - .:/app  # ✅ Sincronización en tiempo real para desarrollo
       - commercebox_media:/app/media
       - commercebox_static:/app/staticfiles
       - commercebox_logs:/app/logs
@@ -127,6 +122,9 @@ services:
       options:
         max-size: "50m"
         max-file: "5"
+    extra_hosts:
+      - "celcer.sri.gob.ec:181.188.238.9"
+      - "cel.sri.gob.ec:181.188.238.10"
     deploy:
       resources:
         limits:
@@ -146,6 +144,7 @@ services:
       --max-tasks-per-child=100
       --time-limit=300
     volumes:
+      - .:/app
       - commercebox_logs:/app/logs
       - commercebox_media:/app/media
     depends_on:
@@ -158,6 +157,7 @@ services:
       - COMMERCEBOX_DB_PASSWORD=${COMMERCEBOX_DB_PASSWORD}
       - COMMERCEBOX_REDIS_URL=redis://:${REDIS_PASSWORD}@commercebox-redis:6379/0
       - COMMERCEBOX_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - TZ=America/Guayaquil
     restart: unless-stopped
     networks:
       - commercebox_network
@@ -166,11 +166,17 @@ services:
       options:
         max-size: "30m"
         max-file: "3"
+    extra_hosts:
+      - "celcer.sri.gob.ec:181.188.238.9"
+      - "cel.sri.gob.ec:181.188.238.10"
     deploy:
       resources:
         limits:
           cpus: '1.0'
           memory: 512M
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
 
   commercebox-celery-beat:
     image: commercebox:latest  # ✅ Reutiliza la imagen
@@ -180,6 +186,7 @@ services:
       --loglevel=info
       --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
+      - .:/app
       - commercebox_logs:/app/logs
     depends_on:
       commercebox-web:
@@ -215,6 +222,5 @@ volumes:
 networks:
   commercebox_network:
     driver: bridge
-    internal: true
   proxy-network:
     external: true

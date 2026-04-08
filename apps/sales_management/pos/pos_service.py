@@ -50,7 +50,7 @@ class POSService:
         # Generar número de venta automáticamente
         venta.save()
         
-        logger.info(f"✅ Venta creada: {venta.numero_venta} - Vendedor: {vendedor.username}")
+        logger.info(f"Venta creada: {venta.numero_venta} - Vendedor: {vendedor.username}")
         
         return venta
     
@@ -123,7 +123,7 @@ class POSService:
         # Recalcular totales de la venta
         venta.calcular_totales()
         
-        logger.info(f"📦 Item agregado a {venta.numero_venta}: {producto.nombre} x{cantidad_unidades}")
+        logger.info(f"Item agregado a {venta.numero_venta}: {producto.nombre} x{cantidad_unidades}")
         
         return detalle
     
@@ -201,7 +201,7 @@ class POSService:
         venta.calcular_totales()
         
         logger.info(
-            f"⚖️ Item agregado a {venta.numero_venta}: "
+            f"Item agregado a {venta.numero_venta}: "
             f"{producto.nombre} - {peso_vendido} {quintal.unidad_medida.abreviatura}"
         )
         
@@ -245,7 +245,7 @@ class POSService:
         # Recalcular totales
         venta.calcular_totales()
         
-        logger.info(f"🗑️ Item eliminado de {venta.numero_venta}")
+        logger.info(f"Item eliminado de {venta.numero_venta}")
     
     @staticmethod
     @transaction.atomic
@@ -255,12 +255,7 @@ class POSService:
         """
         from ..models import Pago
         
-        print("=" * 80)
-        print(f"🔥 PROCESAR_PAGO LLAMADO")
-        print(f"   Venta: {venta.numero_venta}")
-        print(f"   Forma Pago: {forma_pago}")
-        print(f"   Monto: {monto}")
-        print("=" * 80)
+        logger.debug(f"Procesando pago para venta {venta.numero_venta} - Monto: {monto} - Forma: {forma_pago}")
         
         # Validaciones
         if venta.estado == 'ANULADA':
@@ -276,7 +271,7 @@ class POSService:
                 f'El monto del pago (${monto}) excede el saldo pendiente (${saldo})'
             )
         
-        print("✅ Validaciones pasadas, creando objeto Pago...")
+        logger.debug("Validaciones pasadas, creando objeto Pago...")
         
         # Crear pago
         pago = Pago.objects.create(
@@ -289,8 +284,7 @@ class POSService:
             fecha_pago=timezone.now()
         )
         
-        print(f"✅ Pago creado con ID: {pago.id}")
-        print(f"   Ahora debería ejecutarse el signal pago_post_save...")
+        logger.debug(f"Pago creado con ID: {pago.id}")
         
         # Actualizar monto pagado de la venta
         venta.monto_pagado += monto
@@ -300,39 +294,34 @@ class POSService:
             venta.cambio = venta.monto_pagado - venta.total
         
         # ✅ DETERMINAR ESTADO DE PAGO SEGÚN TIPO DE VENTA
-        print(f"🔍 Evaluando estado_pago en pos_service...")
-        print(f"   tipo_venta: {venta.tipo_venta}")
-        print(f"   monto_pagado: {venta.monto_pagado}")
-        print(f"   total: {venta.total}")
+        logger.debug(f"Evaluando estado_pago - Tipo: {venta.tipo_venta} - Pagado: {venta.monto_pagado} - Total: {venta.total}")
         
         if venta.tipo_venta == 'CONTADO':
             # Ventas al contado siempre quedan como PAGADAS
             if venta.monto_pagado >= venta.total:
                 venta.estado_pago = 'PAGADO'
-                print(f"✅ POS Service: Venta al CONTADO marcada como PAGADA")
+                logger.debug("Venta al CONTADO marcada como PAGADA")
             else:
                 venta.estado_pago = 'PENDIENTE'
-                print(f"⏳ POS Service: Venta al CONTADO - Pago parcial")
+                logger.debug("Venta al CONTADO - Pago parcial")
         
         elif venta.tipo_venta == 'CREDITO':
             # Ventas a crédito quedan pendientes hasta liquidar la deuda
             if venta.monto_pagado >= venta.total:
                 venta.estado_pago = 'PAGADO'
-                print(f"✅ POS Service: Venta a CRÉDITO liquidada")
+                logger.debug("Venta a CRÉDITO liquidada")
             else:
                 venta.estado_pago = 'PENDIENTE'
-                print(f"⏳ POS Service: Venta a CRÉDITO pendiente")
+                logger.debug("Venta a CRÉDITO pendiente")
         
         else:
             # Por defecto, verificar si está completamente pagado
             venta.estado_pago = 'PAGADO' if venta.monto_pagado >= venta.total else 'PENDIENTE'
         
-        print(f"💾 Guardando venta con estado_pago: {venta.estado_pago}")
+        logger.debug(f"Guardando venta con estado_pago: {venta.estado_pago}")
         venta.save()
         
-        print(f"✅ PROCESAR_PAGO COMPLETADO")
-        print("=" * 80)
-        print()
+        logger.debug("Procesar pago completado")
         
         return pago
     
@@ -341,7 +330,7 @@ class POSService:
     def finalizar_venta(venta):
         """
         Finaliza una venta y actualiza el estado
-        🖨️ AHORA TAMBIÉN IMPRIME AUTOMÁTICAMENTE EL TICKET
+        Finaliza una venta y actualiza el estado (ahora también imprime automáticamente el ticket)
         
         Args:
             venta: Venta a finalizar
@@ -438,14 +427,14 @@ class POSService:
             
             cliente.save()
             
-            logger.info(f"👤 Cliente actualizado: {cliente.nombre}")
+            logger.info(f"Cliente actualizado: {cliente.nombre}")
         
-        logger.info(f"✅ Venta finalizada: {venta.numero_venta} - Total: ${venta.total}")
+        logger.info(f"Venta finalizada: {venta.numero_venta} - Total: ${venta.total}")
         
         # NOTA: El registro en caja se hace automáticamente vía signal
         # No es necesario registrarlo aquí para evitar duplicados
         
-        # 🖨️ IMPRIMIR TICKET AUTOMÁTICAMENTE
+        # IMPRIMIR TICKET AUTOMÁTICAMENTE
         try:
             from apps.hardware_integration.models import Impresora
             from apps.hardware_integration.printers.ticket_printer import TicketPrinter
@@ -458,7 +447,7 @@ class POSService:
             ).first()
             
             if impresora:
-                logger.info(f"🖨️ Imprimiendo ticket para venta {venta.numero_venta}")
+                logger.info(f"Imprimiendo ticket para venta {venta.numero_venta}")
                 
                 # ✅ CORREGIDO: generar_comandos_ticket solo acepta 2 parámetros
                 comandos_hex = TicketPrinter.generar_comandos_ticket(venta, impresora)
@@ -472,16 +461,16 @@ class POSService:
                     prioridad=2  # Alta prioridad para tickets de venta
                 )
                 
-                logger.info(f"✅ Ticket encolado exitosamente con ID: {trabajo_id}")
+                logger.info(f"Ticket encolado exitosamente con ID: {trabajo_id}")
                 
             else:
-                logger.warning("⚠️ No hay impresora activa configurada. Ticket no impreso.")
+                logger.warning("No hay impresora activa configurada. Ticket no impreso.")
                 
         except ImportError:
-            logger.warning("⚠️ Módulo de impresión no disponible. Ticket no impreso.")
+            logger.warning("Módulo de impresión no disponible. Ticket no impreso.")
         except Exception as e:
             # No fallar la venta si hay error de impresión
-            logger.error(f"❌ Error al imprimir ticket: {e}", exc_info=True)
+            logger.error(f"Error al imprimir ticket: {e}", exc_info=True)
         
         return venta
     
@@ -581,7 +570,7 @@ class POSService:
         venta.observaciones = f"ANULADA por {usuario_str} el {timezone.now()}\nMotivo: {motivo}"
         venta.save()
         
-        logger.warning(f"⚠️ Venta anulada: {venta.numero_venta} - Motivo: {motivo}")
+        logger.warning(f"Venta anulada: {venta.numero_venta} - Motivo: {motivo}")
         
         return venta
     
@@ -658,6 +647,6 @@ class POSService:
                 logger.error(f"Error al procesar devolución: {e}")
                 raise ValidationError(f"Error al procesar devolución: {str(e)}")
         
-        logger.info(f"🔄 Devolución procesada: {devolucion.numero_devolucion}")
+        logger.info(f"Devolución procesada: {devolucion.numero_devolucion}")
         
         return devolucion
