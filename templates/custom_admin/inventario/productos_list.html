@@ -1512,7 +1512,7 @@
                                 step="0.01" min="0" placeholder="0.00">
                             <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
                                 <i class="bi bi-info-circle me-1"></i>
-                                Precio de venta por unidad (sin IVA)
+                                Precio final de venta (PVP - IVA Incluido)
                             </div>
                         </div>
                     </div>
@@ -1544,7 +1544,7 @@
                                         name="precio_por_unidad_peso" step="0.01" min="0" placeholder="0.00">
                                     <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
                                         <i class="bi bi-info-circle me-1"></i>
-                                        Precio de venta por unidad de peso (sin IVA)
+                                        Precio final por unidad de peso (PVP - IVA Incluido)
                                     </div>
                                 </div>
                             </div>
@@ -1828,44 +1828,43 @@
         btnRemove.style.display = 'none';
     }
 
-    // ✅ CORREGIDO: Función updateIVAInfo para trabajar con CHECKBOX
-    function updateIVAInfo() {
+    // ✅ CORREGIDO: Función updateIVAInfo para trabajar con CHECKBOX y RECALCULAR precios
+    function updateIVAInfo(event = null) {
         const ivaCheckbox = document.getElementById('aplica_iva');
         const ivaInfo = document.getElementById('ivaInfo');
 
-        // Si no existe el checkbox, intentar buscar el select (backward compatibility)
-        if (!ivaCheckbox) {
-            const ivaSelect = document.getElementById('iva');
-            if (ivaSelect) {
-                const ivaValue = parseFloat(ivaSelect.value);
+        if (!ivaCheckbox) return;
 
-                if (ivaValue > 0) {
-                    ivaInfo.style.display = 'flex';
-                    ivaInfo.style.background = 'rgba(34, 197, 94, 0.1)';
-                    ivaInfo.style.borderColor = 'rgba(34, 197, 94, 0.3)';
-                    ivaInfo.innerHTML = `
-                        <i class="bi bi-info-circle-fill" style="color: #16a34a; font-size: 1.2rem;"></i>
-                        <span style="color: #16a34a; font-weight: 600; font-size: 0.9rem;">
-                            Se aplicará <strong>${ivaValue}%</strong> de IVA al precio del producto
-                        </span>
-                    `;
+        const aplicaIva = ivaCheckbox.checked;
+        const factor = 1 + (IVA_DEFAULT / 100);
+
+        // ✅ RECALCULAR PRECIOS SOLO SI ES UN EVENTO DE CAMBIO (no al abrir modal)
+        if (event && event.type === 'change') {
+            console.log('🔄 Recalculando precios por cambio en IVA...');
+            
+            const precioUnitario = document.getElementById('precio_unitario');
+            const precioPeso = document.getElementById('precio_por_unidad_peso');
+
+            if (precioUnitario && precioUnitario.value) {
+                let valor = parseFloat(precioUnitario.value);
+                if (aplicaIva) {
+                    precioUnitario.value = (valor * factor).toFixed(2);
                 } else {
-                    ivaInfo.style.display = 'flex';
-                    ivaInfo.style.background = 'rgba(100, 116, 139, 0.1)';
-                    ivaInfo.style.borderColor = 'rgba(100, 116, 139, 0.3)';
-                    ivaInfo.innerHTML = `
-                        <i class="bi bi-x-circle-fill" style="color: #64748b; font-size: 1.2rem;"></i>
-                        <span style="color: #64748b; font-weight: 600; font-size: 0.9rem;">
-                            Este producto <strong>no aplica IVA</strong>
-                        </span>
-                    `;
+                    precioUnitario.value = (valor / factor).toFixed(2);
                 }
             }
-            return;
-        }
 
-        // Nuevo sistema con checkbox
-        const aplicaIva = ivaCheckbox.checked;
+            if (precioPeso && precioPeso.value) {
+                let valor = parseFloat(precioPeso.value);
+                if (aplicaIva) {
+                    precioPeso.value = (valor * factor).toFixed(2);
+                } else {
+                    precioPeso.value = (valor / factor).toFixed(2);
+                }
+            }
+            
+            showNotification('info', aplicaIva ? 'Precio ajustado (+IVA)' : 'Precio ajustado (-IVA)');
+        }
 
         if (aplicaIva) {
             ivaInfo.style.display = 'flex';

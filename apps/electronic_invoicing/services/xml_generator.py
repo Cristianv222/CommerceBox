@@ -86,17 +86,24 @@ class XMLGeneratorSRI:
 
         # Totales Impuestos
         total_con_impuestos = etree.SubElement(info_factura, "totalConImpuestos")
-        total_impuesto = etree.SubElement(total_con_impuestos, "totalImpuesto")
-        etree.SubElement(total_impuesto, "codigo").text = "2" # 2 = IVA
         
-        # Mapeo de porcentaje de IVA según tarifa (SRI: 4 = 15%, 2 = 12%, 0 = 0%)
-        # Nota: Ajustamos para obtenerlo de forma segura (campo puede no existir en SRIConfig)
-        tarifa_iva = getattr(self.config, 'porcentaje_iva', 15) # Default a 15% (actual Ecuador)
-        codigo_porcentaje = "4" if tarifa_iva == 15 else ("2" if tarifa_iva == 12 else "0")
-        
-        etree.SubElement(total_impuesto, "codigoPorcentaje").text = str(codigo_porcentaje)
-        etree.SubElement(total_impuesto, "baseImponible").text = f"{venta.subtotal:.2f}"
-        etree.SubElement(total_impuesto, "valor").text = f"{venta.impuestos:.2f}"
+        # Tarifa Estándar (15%)
+        base_iva_15 = venta.get_base_iva_standard()
+        if base_iva_15 > 0:
+            total_impuesto_15 = etree.SubElement(total_con_impuestos, "totalImpuesto")
+            etree.SubElement(total_impuesto_15, "codigo").text = "2" # 2 = IVA
+            etree.SubElement(total_impuesto_15, "codigoPorcentaje").text = "4" # 4 = 15%
+            etree.SubElement(total_impuesto_15, "baseImponible").text = f"{base_iva_15:.2f}"
+            etree.SubElement(total_impuesto_15, "valor").text = f"{venta.get_total_iva_standard():.2f}"
+            
+        # Tarifa 0%
+        base_iva_0 = venta.get_base_iva_0()
+        if base_iva_0 > 0:
+            total_impuesto_0 = etree.SubElement(total_con_impuestos, "totalImpuesto")
+            etree.SubElement(total_impuesto_0, "codigo").text = "2" # 2 = IVA
+            etree.SubElement(total_impuesto_0, "codigoPorcentaje").text = "0" # 0 = 0%
+            etree.SubElement(total_impuesto_0, "baseImponible").text = f"{base_iva_0:.2f}"
+            etree.SubElement(total_impuesto_0, "valor").text = "0.00"
 
         etree.SubElement(info_factura, "propina").text = "0.00"
         etree.SubElement(info_factura, "importeTotal").text = f"{venta.total:.2f}"
@@ -122,7 +129,10 @@ class XMLGeneratorSRI:
             etree.SubElement(det_xml, "cantidad").text = f"{cantidad:.2f}"
             
             # El precio unitario debe ser el desglosado (sin IVA)
-            factor_iva = Decimal('1') + (Decimal(str(tarifa_iva)) / Decimal('100')) if detalle.aplica_iva else Decimal('1')
+            tarifa_item = 15 if detalle.aplica_iva else 0
+            codigo_punto_item = "4" if detalle.aplica_iva else "0"
+            
+            factor_iva = Decimal('1.15') if detalle.aplica_iva else Decimal('1.00')
             precio_unitario_sin_iva = detalle.precio_unitario / factor_iva
             
             etree.SubElement(det_xml, "precioUnitario").text = f"{precio_unitario_sin_iva:.6f}"
@@ -133,8 +143,8 @@ class XMLGeneratorSRI:
             impuestos_xml = etree.SubElement(det_xml, "impuestos")
             impuesto_xml = etree.SubElement(impuestos_xml, "impuesto")
             etree.SubElement(impuesto_xml, "codigo").text = "2"
-            etree.SubElement(impuesto_xml, "codigoPorcentaje").text = str(codigo_porcentaje if detalle.aplica_iva else "0")
-            etree.SubElement(impuesto_xml, "tarifa").text = f"{tarifa_iva if detalle.aplica_iva else 0:.0f}"
+            etree.SubElement(impuesto_xml, "codigoPorcentaje").text = codigo_punto_item
+            etree.SubElement(impuesto_xml, "tarifa").text = str(tarifa_item)
             etree.SubElement(impuesto_xml, "baseImponible").text = f"{detalle.subtotal:.2f}"
             etree.SubElement(impuesto_xml, "valor").text = f"{detalle.monto_iva:.2f}"
 

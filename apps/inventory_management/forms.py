@@ -318,14 +318,14 @@ class ProductoForm(forms.ModelForm):
         }
         labels = {
             'marca': 'Marca (opcional)',
-            'aplica_impuestos': 'Graba IVA',  # ✅ NUEVO
-            'precio_venta': 'Precio de Venta (sin IVA)',  # ✅ NUEVO
-            'precio_por_unidad_peso': 'Precio por Unidad de Peso (sin IVA)'  # ✅ NUEVO
+            'aplica_impuestos': 'Aplica IVA',
+            'precio_venta': 'Precio de Venta (PVP - IVA Incluido)',
+            'precio_por_unidad_peso': 'Precio por Unidad de Peso (PVP - IVA Incluido)'
         }
         help_texts = {
-            'aplica_impuestos': 'Marcar si este producto graba IVA al venderse',
-            'precio_venta': 'Precio SIN IVA - el IVA se calculará automáticamente en la venta',
-            'precio_por_unidad_peso': 'Precio SIN IVA por kg/lb - el IVA se calculará en la venta'
+            'aplica_impuestos': 'Marcar si este producto incluye IVA en su precio de venta',
+            'precio_venta': 'Ingrese el precio FINAL al público (con IVA incluido si aplica)',
+            'precio_por_unidad_peso': 'Ingrese el precio FINAL por kg/lb (con IVA incluido si aplica)'
         }
     
     def __init__(self, *args, **kwargs):

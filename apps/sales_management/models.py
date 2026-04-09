@@ -326,6 +326,27 @@ class Venta(models.Model):
         """Retorna el saldo pendiente de pago"""
         return max(self.total - self.monto_pagado, Decimal('0'))
 
+    # ==========================================
+    # NUEVOS MÉTODOS PARA IVA DIFERENCIADO
+    # ==========================================
+    def get_base_iva_0(self):
+        """Retorna la suma de subtotales de productos que no graban IVA"""
+        return self.detalles.filter(aplica_iva=False).aggregate(
+            total=Sum('subtotal')
+        )['total'] or Decimal('0.00')
+
+    def get_base_iva_standard(self):
+        """Retorna la suma de subtotales de productos que graban IVA (standard)"""
+        return self.detalles.filter(aplica_iva=True).aggregate(
+            total=Sum('subtotal')
+        )['total'] or Decimal('0.00')
+
+    def get_total_iva_standard(self):
+        """Retorna el monto total de IVA de los productos gravados"""
+        return self.detalles.filter(aplica_iva=True).aggregate(
+            total=Sum('monto_iva')
+        )['total'] or Decimal('0.00')
+
 
 # ============================================================================
 # DETALLE DE VENTA (Items individuales)
