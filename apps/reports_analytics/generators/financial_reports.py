@@ -6,7 +6,7 @@ Análisis de caja, flujo de efectivo, rentabilidad
 """
 
 from decimal import Decimal
-from django.db.models import Sum, Count, Avg, F, Q, DecimalField, ExpressionWrapper
+from django.db.models import Sum, Count, Avg, F, Q, DecimalField, ExpressionWrapper, Case, When
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 from datetime import timedelta
@@ -232,7 +232,8 @@ class FinancialReportGenerator:
             venta__fecha_venta__date__lte=self.fecha_hasta,
             venta__estado='COMPLETADA'
         ).aggregate(
-            ventas_totales=Coalesce(Sum('total'), Decimal('0')),
+            ventas_brutas_totales=Coalesce(Sum('total'), Decimal('0')),
+            ventas_totales=Coalesce(Sum('subtotal'), Decimal('0')),
             costos_totales=Coalesce(Sum('costo_total'), Decimal('0')),
             descuentos_totales=Coalesce(Sum('descuento_monto'), Decimal('0'))
         )
@@ -273,15 +274,20 @@ class FinancialReportGenerator:
             venta__fecha_venta__date__lte=self.fecha_hasta,
             venta__estado='COMPLETADA'
         ).values('producto__tipo_inventario').annotate(
-            ventas=Sum('total'),
+            ventas_brutas=Sum('total'),
+            ventas=Sum('subtotal'),
             costos=Sum('costo_total')
         ).annotate(
             utilidad=ExpressionWrapper(
                 F('ventas') - F('costos'),
                 output_field=DecimalField(max_digits=12, decimal_places=2)
             ),
-            margen=ExpressionWrapper(
-                ((F('ventas') - F('costos')) / F('ventas') * 100),
+            margen=Case(
+                When(ventas__gt=0, then=ExpressionWrapper(
+                    ((F('ventas') - F('costos')) / F('ventas') * 100),
+                    output_field=DecimalField(max_digits=5, decimal_places=2)
+                )),
+                default=Decimal('0'),
                 output_field=DecimalField(max_digits=5, decimal_places=2)
             )
         )
@@ -293,7 +299,8 @@ class FinancialReportGenerator:
                 'dias': (self.fecha_hasta - self.fecha_desde).days + 1
             },
             'ventas': {
-                'total': detalles['ventas_totales'],
+                'total_bruto': detalles['ventas_brutas_totales'],
+                'total_sin_iva': detalles['ventas_totales'],
                 'descuentos': detalles['descuentos_totales']
             },
             'costos': {

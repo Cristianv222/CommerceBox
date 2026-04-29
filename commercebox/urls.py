@@ -90,8 +90,11 @@ urlpatterns = [
     path('manifest.json', manifest_view, name='pwa_manifest'),
     
     # ========================================
-    # PANEL ADMINISTRATIVO
+    # PANEL ADMINISTRATIVO Y MÓDULOS DEL PANEL
     # ========================================
+    # Mapear reportes ANTES del panel general para que no haya conflictos 404
+    path('panel/reportes-analitica/', include('apps.reports_analytics.urls', namespace='reports_analytics')),
+    
     path('panel/', include('apps.custom_admin.urls', namespace='custom_admin')),
     
     # ========================================
@@ -115,8 +118,8 @@ urlpatterns = [
     # API de finanzas
     path('api/finanzas/', include('apps.financial_management.urls', namespace='financial_management')),
     
-    # API de reportes
-    path('api/reportes/', include('apps.reports_analytics.urls', namespace='reports_analytics')),
+    # (Reportes movido arriba dentro de panel/)
+    # path('api/reportes/', include('apps.reports_analytics.urls', namespace='reports_analytics')),
     
     # API de hardware
     path('api/hardware/', include('apps.hardware_integration.api.urls')),

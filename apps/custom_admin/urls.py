@@ -3,6 +3,7 @@
 
 from django.urls import path
 from . import views
+from apps.financial_management import views as finanzas_views
 
 app_name = 'custom_admin'
 
@@ -220,6 +221,11 @@ urlpatterns = [
     path('finanzas/caja-chica/<uuid:caja_chica_id>/movimientos/', views.caja_chica_movimientos_api, name='caja_chica_movimientos_api'),
     path('finanzas/caja-chica/<uuid:caja_chica_id>/editar/', views.editar_caja_chica, name='editar_caja_chica'),
     
+    # ========================================
+    # FINANZAS - Cuentas por Cobrar y Pagar
+    # ========================================
+    path('finanzas/cuentas-por-cobrar/', finanzas_views.CuentaPorCobrarListView.as_view(), name='cuentas_por_cobrar_list_admin'),
+    path('finanzas/cuentas-por-pagar/', finanzas_views.CuentaPorPagarListView.as_view(), name='cuentas_por_pagar_list_admin'),
     
     # ========================================
     # ALERTAS Y NOTIFICACIONES

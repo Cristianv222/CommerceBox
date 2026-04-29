@@ -75,7 +75,7 @@ services:
   commercebox-web:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: dockerfile
       args:
         - BUILDKIT_INLINE_CACHE=1  # ✅ Mejor cache
         - INITIAL_ADMIN_EMAIL=${INITIAL_ADMIN_EMAIL}

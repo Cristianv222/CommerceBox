@@ -4,7 +4,7 @@ Análisis completo de ventas, rentabilidad, clientes y vendedores
 """
 
 from decimal import Decimal
-from django.db.models import Sum, Count, Avg, F, Q, DecimalField, ExpressionWrapper, Max, Min
+from django.db.models import Sum, Count, Avg, F, Q, DecimalField, ExpressionWrapper, Max, Min, Case, When
 from django.db.models.functions import Coalesce, TruncDate, TruncMonth, TruncWeek, ExtractHour, ExtractWeekDay
 from django.utils import timezone
 from datetime import timedelta, datetime
@@ -69,7 +69,8 @@ class SalesReportGenerator:
             venta__fecha_venta__date__lte=self.fecha_hasta,
             venta__estado='COMPLETADA'
         ).aggregate(
-            ventas_totales=Coalesce(Sum('total'), Decimal('0')),
+            ventas_brutas_totales=Coalesce(Sum('total'), Decimal('0')),
+            ventas_totales=Coalesce(Sum('subtotal'), Decimal('0')),
             costos_totales=Coalesce(Sum('costo_total'), Decimal('0')),
             subtotal_sin_iva=Coalesce(Sum('subtotal'), Decimal('0'))
         )
@@ -157,11 +158,12 @@ class SalesReportGenerator:
                 'total_iva_recaudado': metricas['total_iva']
             },
             'rentabilidad': {
-                'ventas_totales': detalles['ventas_totales'],
+                'ventas_brutas': detalles['ventas_brutas_totales'],
+                'ventas_netas_sin_iva': detalles['ventas_totales'],
                 'costos_totales': detalles['costos_totales'],
                 'utilidad_bruta': utilidad_bruta.quantize(Decimal('0.01')),
                 'margen_porcentaje': margen_porcentaje.quantize(Decimal('0.01')),
-                'subtotal_sin_iva': detalles['subtotal_sin_iva']
+                'subtotal_sin_iva': detalles['ventas_totales']
             },
             'por_tipo_producto': {
                 'quintales': {
@@ -211,13 +213,14 @@ class SalesReportGenerator:
                 venta__fecha_venta__date=dia_data['dia'],
                 venta__estado='COMPLETADA'
             ).aggregate(
+                subtotal=Coalesce(Sum('subtotal'), Decimal('0')),
                 costos=Coalesce(Sum('costo_total'), Decimal('0'))
             )
             
-            utilidad = dia_data['total_ventas'] - detalles_dia['costos']
+            utilidad = detalles_dia['subtotal'] - detalles_dia['costos']
             margen = (
-                (utilidad / dia_data['total_ventas'] * 100)
-                if dia_data['total_ventas'] > 0 else Decimal('0')
+                (utilidad / detalles_dia['subtotal'] * 100)
+                if detalles_dia['subtotal'] > 0 else Decimal('0')
             )
             
             # Promedio móvil de 3 días
@@ -274,17 +277,22 @@ class SalesReportGenerator:
             'producto__marca__nombre'
         ).annotate(
             total_vendido=Sum('total'),
+            subtotal_vendido=Sum('subtotal'),
             cantidad_ventas=Count('id'),
             costo_total=Sum('costo_total'),
             cantidad_items=Sum('cantidad_unidades'),  # Para productos normales
             peso_total=Sum('peso_vendido')  # Para quintales
         ).annotate(
             utilidad=ExpressionWrapper(
-                F('total_vendido') - F('costo_total'),
+                F('subtotal_vendido') - F('costo_total'),
                 output_field=DecimalField(max_digits=12, decimal_places=2)
             ),
-            margen=ExpressionWrapper(
-                ((F('total_vendido') - F('costo_total')) / F('total_vendido') * 100),
+            margen=Case(
+                When(subtotal_vendido__gt=0, then=ExpressionWrapper(
+                    ((F('subtotal_vendido') - F('costo_total')) / F('subtotal_vendido') * 100),
+                    output_field=DecimalField(max_digits=5, decimal_places=2)
+                )),
+                default=Decimal('0'),
                 output_field=DecimalField(max_digits=5, decimal_places=2)
             )
         ).order_by('-total_vendido')[:limite]
@@ -316,17 +324,22 @@ class SalesReportGenerator:
             'producto__categoria__nombre'
         ).annotate(
             total_ventas=Sum('total'),
+            subtotal_ventas=Sum('subtotal'),
             cantidad_items=Count('id'),
             costo_total=Sum('costo_total'),
             descuento_total=Sum('descuento_monto'),
             productos_distintos=Count('producto', distinct=True)
         ).annotate(
             utilidad=ExpressionWrapper(
-                F('total_ventas') - F('costo_total'),
+                F('subtotal_ventas') - F('costo_total'),
                 output_field=DecimalField(max_digits=12, decimal_places=2)
             ),
-            margen=ExpressionWrapper(
-                ((F('total_ventas') - F('costo_total')) / F('total_ventas') * 100),
+            margen=Case(
+                When(subtotal_ventas__gt=0, then=ExpressionWrapper(
+                    ((F('subtotal_ventas') - F('costo_total')) / F('subtotal_ventas') * 100),
+                    output_field=DecimalField(max_digits=5, decimal_places=2)
+                )),
+                default=Decimal('0'),
                 output_field=DecimalField(max_digits=5, decimal_places=2)
             )
         ).order_by('-total_ventas')
@@ -394,13 +407,14 @@ class SalesReportGenerator:
                 venta__fecha_venta__date__lte=self.fecha_hasta,
                 venta__estado='COMPLETADA'
             ).aggregate(
+                subtotal=Coalesce(Sum('subtotal'), Decimal('0')),
                 costos=Coalesce(Sum('costo_total'), Decimal('0'))
             )
             
-            utilidad = vend['total_ventas'] - detalles['costos']
+            utilidad = detalles['subtotal'] - detalles['costos']
             margen = (
-                (utilidad / vend['total_ventas'] * 100)
-                if vend['total_ventas'] > 0 else Decimal('0')
+                (utilidad / detalles['subtotal'] * 100)
+                if detalles['subtotal'] > 0 else Decimal('0')
             )
             
             resultado.append({
@@ -734,10 +748,15 @@ class SalesReportGenerator:
             'producto__nombre'
         ).annotate(
             total_vendido=Sum('total'),
+            subtotal_vendido=Sum('subtotal'),
             costo_total=Sum('costo_total')
         ).annotate(
-            margen=ExpressionWrapper(
-                ((F('total_vendido') - F('costo_total')) / F('total_vendido') * 100),
+            margen=Case(
+                When(subtotal_vendido__gt=0, then=ExpressionWrapper(
+                    ((F('subtotal_vendido') - F('costo_total')) / F('subtotal_vendido') * 100),
+                    output_field=DecimalField(max_digits=5, decimal_places=2)
+                )),
+                default=Decimal('0'),
                 output_field=DecimalField(max_digits=5, decimal_places=2)
             )
         ).order_by('-margen')[:10]
@@ -751,10 +770,15 @@ class SalesReportGenerator:
             'producto__nombre'
         ).annotate(
             total_vendido=Sum('total'),
+            subtotal_vendido=Sum('subtotal'),
             costo_total=Sum('costo_total')
         ).annotate(
-            margen=ExpressionWrapper(
-                ((F('total_vendido') - F('costo_total')) / F('total_vendido') * 100),
+            margen=Case(
+                When(subtotal_vendido__gt=0, then=ExpressionWrapper(
+                    ((F('subtotal_vendido') - F('costo_total')) / F('subtotal_vendido') * 100),
+                    output_field=DecimalField(max_digits=5, decimal_places=2)
+                )),
+                default=Decimal('0'),
                 output_field=DecimalField(max_digits=5, decimal_places=2)
             )
         ).filter(margen__gt=0).order_by('margen')[:10]

@@ -116,7 +116,8 @@ class DashboardDataGenerator:
         )
         
         utilidad_dia = ventas_dia.aggregate(
-            ventas=Coalesce(Sum('total'), Decimal('0')),
+            ventas=Coalesce(Sum('subtotal'), Decimal('0')),
+            ventas_brutas=Coalesce(Sum('total'), Decimal('0')),
             costos=Coalesce(Sum('costo_total'), Decimal('0'))
         )
         utilidad_dia['utilidad'] = utilidad_dia['ventas'] - utilidad_dia['costos']
@@ -156,7 +157,8 @@ class DashboardDataGenerator:
         
         return {
             'dia': {
-                'ventas_totales': utilidad_dia['ventas'],
+                'ventas_totales': utilidad_dia['ventas_brutas'],
+                'ventas_netas_sin_iva': utilidad_dia['ventas'],
                 'costos_totales': utilidad_dia['costos'],
                 'utilidad_bruta': utilidad_dia['utilidad'],
                 'margen_porcentaje': utilidad_dia['margen'].quantize(Decimal('0.01'))
@@ -397,13 +399,14 @@ class DashboardDataGenerator:
             'producto__categoria__nombre'
         ).annotate(
             total=Sum('total'),
+            subtotal=Sum('subtotal'),
             cantidad=Count('id'),
             total_costos=Sum('costo_total')
         ).order_by('-total')
         
         resultados = []
         for item in ventas_cat:
-            item['utilidad'] = (item['total'] or Decimal('0')) - (item['total_costos'] or Decimal('0'))
+            item['utilidad'] = (item['subtotal'] or Decimal('0')) - (item['total_costos'] or Decimal('0'))
             resultados.append(item)
         
         return resultados
@@ -474,8 +477,9 @@ class DashboardDataGenerator:
                 )
                 
                 total_ventas = ventas_dia.aggregate(
-                    total=Coalesce(Sum('total'), Decimal('0'))
-                )['total']
+                    total=Coalesce(Sum('subtotal'), Decimal('0')),
+                    total_con_iva=Coalesce(Sum('total'), Decimal('0'))
+                )
                 
                 detalles_dia = DetalleVenta.objects.filter(
                     venta__fecha_venta__date=dia,
@@ -505,13 +509,13 @@ class DashboardDataGenerator:
                             
                             costo_total += costo_unitario * detalle.cantidad
                 
-                utilidad_total = total_ventas - costo_total
-                margen_porcentaje = float((utilidad_total / total_ventas) * 100) if total_ventas > 0 else 0
+                utilidad_total = total_ventas['total'] - costo_total
+                margen_porcentaje = float((utilidad_total / total_ventas['total']) * 100) if total_ventas['total'] > 0 else 0
                 
                 utilidad_por_dia.append({
                     'dia': dia.strftime('%Y-%m-%d'),
                     'utilidad_total': utilidad_total,
-                    'ventas_total': total_ventas,
+                    'ventas_total': total_ventas['total_con_iva'],
                     'costo_total': costo_total,
                     'margen_porcentaje': margen_porcentaje
                 })
