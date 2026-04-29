@@ -139,9 +139,9 @@ services:
     container_name: commercebox_celery
     command: >
       celery -A commercebox worker
-      --loglevel=info
-      --concurrency=2
-      --max-tasks-per-child=100
+      --loglevel=warning
+      --concurrency=1
+      --max-tasks-per-child=50
       --time-limit=300
     volumes:
       - .:/app
@@ -183,7 +183,7 @@ services:
     container_name: commercebox_celery_beat
     command: >
       celery -A commercebox beat
-      --loglevel=info
+      --loglevel=warning
       --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
       - .:/app
