@@ -1018,23 +1018,26 @@ def config_facturacion_view(request):
         # Obtener o crear configuración Singleton
         config, _ = SRIConfig.objects.get_or_create(pk=1)
         certificado = CertificadoDigital.objects.filter(activo=True).first()
-        punto_emision = PuntoEmision.objects.filter(activo=True).first()
+        puntos_emision = PuntoEmision.objects.all().order_by('establecimiento', 'punto_emision')
 
         if request.method == 'POST':
-            # 1. Guardar Configuración General y URLs SRI
-            if 'save_config' in request.POST:
+            action = request.POST.get('action')
+            
+            # 1. Guardar Configuración General
+            if action == 'config_general':
+                config.ruc = request.POST.get('ruc', config.ruc)
                 config.ambiente = int(request.POST.get('ambiente', 1))
-                config.wsdl_recepcion_pruebas = request.POST.get('wsdl_recepcion_pruebas', config.wsdl_recepcion_pruebas)
-                config.wsdl_autorizacion_pruebas = request.POST.get('wsdl_autorizacion_pruebas', config.wsdl_autorizacion_pruebas)
-                config.wsdl_recepcion_produccion = request.POST.get('wsdl_recepcion_produccion', config.wsdl_recepcion_produccion)
-                config.wsdl_autorizacion_produccion = request.POST.get('wsdl_autorizacion_produccion', config.wsdl_autorizacion_produccion)
+                config.razon_social = request.POST.get('razon_social', config.razon_social)
+                config.nombre_comercial = request.POST.get('nombre_comercial', config.nombre_comercial)
+                config.direccion_matriz = request.POST.get('direccion_matriz', config.direccion_matriz)
+                config.obligado_contabilidad = request.POST.get('obligado_contabilidad') == 'on'
                 config.save()
                 messages.success(request, f"✅ Configuración SRI actualizada (Ambiente: {config.get_ambiente_display()})")
 
             # 2. Procesar y Subir Firma Electrónica (.p12)
-            elif 'upload_cert' in request.POST:
-                p12_file = request.FILES.get('archivo')
-                password = request.POST.get('password')
+            elif action == 'subir_firma' or 'upload_cert' in request.POST:
+                p12_file = request.FILES.get('firma_archivo') or request.FILES.get('archivo')
+                password = request.POST.get('firma_password') or request.POST.get('password')
                 
                 if p12_file and password:
                     try:
@@ -1063,7 +1066,62 @@ def config_facturacion_view(request):
                 else:
                     messages.error(request, "Debe proporcionar el archivo .p12 y la clave.")
 
-            # 3. Corregir Metadata del Certificado Actual (Manual)
+            # 3. Nuevo Punto de Emisión
+            elif action == 'nuevo_punto':
+                establecimiento = request.POST.get('establecimiento')
+                punto_emision_codigo = request.POST.get('punto_emision')
+                secuencial = int(request.POST.get('secuencial', 0))
+                direccion = request.POST.get('direccion')
+                
+                if establecimiento and punto_emision_codigo:
+                    try:
+                        PuntoEmision.objects.create(
+                            establecimiento=establecimiento.zfill(3),
+                            punto_emision=punto_emision_codigo.zfill(3),
+                            direccion_establecimiento=direccion,
+                            ultimo_secuencial=secuencial
+                        )
+                        messages.success(request, f"✅ Punto de emisión {establecimiento}-{punto_emision_codigo} creado.")
+                    except IntegrityError:
+                        messages.error(request, "❌ Ya existe un punto de emisión con ese código para el establecimiento.")
+                    except Exception as e:
+                        messages.error(request, f"❌ Error al crear punto de emisión: {str(e)}")
+
+            # 3.5 Editar Punto de Emisión
+            elif action == 'editar_punto':
+                punto_id = request.POST.get('punto_id')
+                establecimiento = request.POST.get('establecimiento')
+                punto_emision_codigo = request.POST.get('punto_emision')
+                secuencial = int(request.POST.get('secuencial', 0))
+                direccion = request.POST.get('direccion')
+                try:
+                    punto = PuntoEmision.objects.get(id=punto_id)
+                    punto.establecimiento = establecimiento.zfill(3)
+                    punto.punto_emision = punto_emision_codigo.zfill(3)
+                    punto.ultimo_secuencial = secuencial
+                    punto.direccion_establecimiento = direccion
+                    punto.save()
+                    messages.success(request, f"✅ Punto de emisión {establecimiento}-{punto_emision_codigo} actualizado.")
+                except PuntoEmision.DoesNotExist:
+                    messages.error(request, "❌ Punto de emisión no encontrado.")
+                except IntegrityError:
+                    messages.error(request, "❌ Ya existe un punto de emisión con ese código para el establecimiento.")
+                except Exception as e:
+                    messages.error(request, f"❌ Error al editar punto de emisión: {str(e)}")
+
+            # 3.6 Eliminar Punto de Emisión
+            elif action == 'eliminar_punto':
+                punto_id = request.POST.get('punto_id')
+                try:
+                    punto = PuntoEmision.objects.get(id=punto_id)
+                    punto.delete()
+                    messages.success(request, "✅ Punto de emisión eliminado correctamente.")
+                except PuntoEmision.DoesNotExist:
+                    messages.error(request, "❌ Punto de emisión no encontrado.")
+                except Exception as e:
+                    messages.error(request, f"❌ Error al eliminar punto de emisión: {str(e)}")
+
+            # 4. Corregir Metadata del Certificado Actual (Manual)
             elif 'update_cert_metadata' in request.POST:
                 if certificado:
                     certificado.nombre_titular = request.POST.get('nombre_titular', certificado.nombre_titular)
@@ -1110,8 +1168,9 @@ def config_facturacion_view(request):
         
         context = {
             'segment': 'configuracion_sri',
-            'config': config,
-            'punto_emision': punto_emision,
+            'sri_config': config,
+            'config': config,  # Mantener por retrocompatibilidad si es necesario
+            'puntos_emision': puntos_emision,
             'certificado': certificado,
             'stats': stats,
             'ultimos_comprobantes_json': ultimos_datos,

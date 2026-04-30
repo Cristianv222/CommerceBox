@@ -138,15 +138,18 @@
             </div>
 
             <!-- SRI Setup Card -->
-            <!-- ... (Configuración SRI remains same) ... -->
             <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 font-weight-bold text-primary">Configuración SRI</h6>
-                    <span class="badge bg-light text-dark">{{ punto_emision }}</span>
                 </div>
                 <div class="card-body">
                     <form method="POST">
                         {% csrf_token %}
+                        <input type="hidden" name="action" value="config_general">
+                        <div class="mb-3">
+                            <label class="form-label small font-weight-bold">RUC de la Empresa</label>
+                            <input type="text" name="ruc" class="form-control form-control-sm rounded-3" value="{{ config.ruc|default:'' }}" placeholder="17xxxxxxxx001" required>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label small font-weight-bold">Ambiente de Operación</label>
                             <select name="ambiente" class="form-select form-select-sm rounded-3">
@@ -154,10 +157,123 @@
                                 <option value="2" {% if config.ambiente == 2 %}selected{% endif %}>PRODUCCIÓN</option>
                             </select>
                         </div>
-                        <button type="submit" name="save_config" class="btn btn-primary btn-sm w-100 mt-3 rounded-pill">
+                        <div class="mb-3">
+                            <label class="form-label small font-weight-bold">Razón Social</label>
+                            <input type="text" name="razon_social" class="form-control form-control-sm rounded-3" value="{{ config.razon_social|default:'' }}" required>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" name="obligado_contabilidad" id="obligadoCheck" {% if config.obligado_contabilidad %}checked{% endif %}>
+                            <label class="form-check-label small" for="obligadoCheck">Obligado a Contabilidad</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-100 mt-2 rounded-pill">
                             Guardar Cambios
                         </button>
                     </form>
+                </div>
+            </div>
+
+            <!-- Puntos de Emisión Card -->
+            <div class="card border-0 shadow-sm rounded-4 mt-4">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 font-weight-bold text-primary">Puntos de Emisión</h6>
+                    <button class="btn btn-sm btn-outline-primary rounded-pill" data-bs-toggle="modal" data-bs-target="#modalPunto">
+                        <i class="bi bi-plus-lg"></i> Nuevo
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush rounded-bottom-4">
+                        {% for p in puntos_emision %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                            <div>
+                                <div class="fw-bold">{{ p.establecimiento }}-{{ p.punto_emision }}</div>
+                                <div class="small text-muted text-truncate" style="max-width: 150px;">{{ p.direccion_establecimiento }}</div>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-light text-dark border d-block mb-1">Sec: {{ p.ultimo_secuencial|stringformat:"09d" }}</span>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" data-bs-toggle="modal" data-bs-target="#modalEditarPunto{{ p.id }}" title="Editar Punto">
+                                        <i class="bi bi-pencil-square small"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" data-bs-toggle="modal" data-bs-target="#modalEliminarPunto{{ p.id }}" title="Eliminar Punto">
+                                        <i class="bi bi-trash small"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Editar Punto -->
+                        <div class="modal fade" id="modalEditarPunto{{ p.id }}" tabindex="-1">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content border-0 shadow rounded-4">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title h6">Editar Punto de Emisión</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form method="POST">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="editar_punto">
+                                        <input type="hidden" name="punto_id" value="{{ p.id }}">
+                                        <div class="modal-body text-start">
+                                            <div class="row">
+                                                <div class="col-6 mb-3">
+                                                    <label class="form-label small font-weight-bold">Establecimiento</label>
+                                                    <input type="text" name="establecimiento" class="form-control form-control-sm rounded-3" value="{{ p.establecimiento }}" required maxlength="3">
+                                                </div>
+                                                <div class="col-6 mb-3">
+                                                    <label class="form-label small font-weight-bold">Punto Emisión</label>
+                                                    <input type="text" name="punto_emision" class="form-control form-control-sm rounded-3" value="{{ p.punto_emision }}" required maxlength="3">
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label small font-weight-bold">Secuencial Inicial / Actual</label>
+                                                <input type="number" name="secuencial" class="form-control form-control-sm rounded-3" value="{{ p.ultimo_secuencial }}">
+                                                <small class="text-muted x-small">Modificar esto puede causar saltos o duplicados en el SRI. Hágalo con cuidado.</small>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label small font-weight-bold">Dirección del Establecimiento</label>
+                                                <textarea name="direccion" class="form-control form-control-sm rounded-3" rows="2" required>{{ p.direccion_establecimiento }}</textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer border-0">
+                                            <button type="button" class="btn btn-light btn-sm rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4">Guardar Cambios</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Eliminar Punto -->
+                        <div class="modal fade" id="modalEliminarPunto{{ p.id }}" tabindex="-1">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content border-0 shadow rounded-4">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title h6 text-danger">Eliminar Punto de Emisión</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form method="POST">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="eliminar_punto">
+                                        <input type="hidden" name="punto_id" value="{{ p.id }}">
+                                        <div class="modal-body text-start">
+                                            <p>¿Está seguro que desea eliminar el punto de emisión <strong>{{ p.establecimiento }}-{{ p.punto_emision }}</strong>?</p>
+                                            <p class="text-danger small"><i class="bi bi-exclamation-triangle"></i> Esta acción no se puede deshacer.</p>
+                                        </div>
+                                        <div class="modal-footer border-0">
+                                            <button type="button" class="btn btn-light btn-sm rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-danger btn-sm rounded-pill px-4">Eliminar</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="p-4 text-center text-muted small">
+                            <i class="bi bi-info-circle mb-2 fs-2 opacity-50"></i><br>
+                            No hay puntos de emisión.
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
@@ -266,6 +382,7 @@
             </div>
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
+                <input type="hidden" name="action" value="subir_firma">
                 <div class="modal-body">
                     <div class="mb-3 text-center">
                         <div class="p-3 bg-light rounded-4 border-2 border-dashed mb-3">
@@ -314,6 +431,47 @@
                 <div class="modal-footer border-0">
                     <button type="button" class="btn btn-light btn-sm rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" name="update_cert_metadata" class="btn btn-primary btn-sm rounded-pill px-4">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Nuevo Punto de Emisión -->
+<div class="modal fade" id="modalPunto" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header">
+                <h5 class="modal-title h6">Nuevo Punto de Emisión</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="nuevo_punto">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label small font-weight-bold">Establecimiento</label>
+                            <input type="text" name="establecimiento" class="form-control form-control-sm rounded-3" placeholder="001" required maxlength="3">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label small font-weight-bold">Punto Emisión</label>
+                            <input type="text" name="punto_emision" class="form-control form-control-sm rounded-3" placeholder="001" required maxlength="3">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small font-weight-bold">Secuencial Inicial</label>
+                        <input type="number" name="secuencial" class="form-control form-control-sm rounded-3" value="0">
+                        <small class="text-muted x-small">El siguiente comprobante sumará 1 a este número.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small font-weight-bold">Dirección del Establecimiento</label>
+                        <textarea name="direccion" class="form-control form-control-sm rounded-3" rows="2" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light btn-sm rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4">Crear Punto</button>
                 </div>
             </form>
         </div>
