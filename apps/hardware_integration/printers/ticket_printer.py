@@ -10,6 +10,49 @@ import io
 logger = logging.getLogger(__name__)
 
 
+def precalcular_clave_acceso_sri(venta):
+    """
+    Intenta calcular la clave de acceso del SRI antes de que el comprobante sea guardado.
+    Útil para impresión inmediata de tickets en el POS.
+    """
+    try:
+        from apps.electronic_invoicing.models import SRIConfig, PuntoEmision
+        from apps.electronic_invoicing.utils import generar_clave_acceso
+        import random
+        
+        config_sri = SRIConfig.objects.first()
+        if not config_sri:
+            return None
+            
+        # Determinar el punto de emisión (usamos el primero activo por defecto si no se especifica)
+        punto = PuntoEmision.objects.filter(activo=True).first()
+        if not punto:
+            return None
+            
+        # Datos para la clave
+        fecha = venta.fecha_venta
+        tipo_comprobante = "01"  # Factura
+        ruc = config_sri.ruc
+        ambiente = str(config_sri.ambiente)
+        serie = f"{punto.establecimiento}{punto.punto_emision}"
+        
+        # El secuencial debe ser el número de venta formateado a 9 dígitos
+        # NOTA: Esto asume que el numero_venta coincide con el secuencial del SRI
+        secuencial = str(venta.numero_venta).zfill(9)
+        
+        # El código numérico suele ser aleatorio o fijo (usamos uno basado en la venta)
+        codigo_numerico = str(venta.id.int)[:8]
+        tipo_emision = str(config_sri.tipo_emision)
+        
+        clave = generar_clave_acceso(
+            fecha, tipo_comprobante, ruc, ambiente, serie, secuencial, codigo_numerico, tipo_emision
+        )
+        return clave
+    except Exception as e:
+        logger.error(f"Error precalculando clave SRI: {e}")
+        return None
+
+
 class TicketPrinter:
     """
     Servicio para imprimir tickets de venta
@@ -163,23 +206,36 @@ class TicketPrinter:
             # ✅ INFORMACIÓN SRI (SOLO SI ES FACTURA)
             # ========================================
             try:
-                if hasattr(venta, 'comprobante_electronico'):
+                clave_acceso = None
+                ambiente_str = "PRUEBAS"
+                
+                # 1. Intentar obtener del objeto real si ya existe
+                if hasattr(venta, 'comprobante_electronico') and venta.comprobante_electronico:
                     ce = venta.comprobante_electronico
-                    if ce and ce.clave_acceso:
-                        p.set(align='center', bold=True)
-                        p.text("INFORMACION ELECTRONICA SRI\n")
-                        p.set(align='left', bold=False)
-                        
-                        p.text(f"CLAVE DE ACCESO:\n")
-                        p.text(f"{ce.clave_acceso}\n")
-                        
-                        if ce.numero_autorizacion:
-                            p.text(f"AUTORIZACION:\n")
-                            p.text(f"{ce.numero_autorizacion}\n")
-                        
-                        p.text(f"ESTADO: {ce.get_estado_display()}\n")
-                        p.text(f"AMBIENTE: {ce.get_ambiente_display()}\n")
-                        p.text("-" * 42 + "\n")
+                    clave_acceso = ce.clave_acceso
+                    ambiente_str = ce.get_ambiente_display().upper()
+                
+                # 2. Si no existe aún (POS inmediato), precalcularla
+                if not clave_acceso:
+                    clave_acceso = precalcular_clave_acceso_sri(venta)
+                    from apps.electronic_invoicing.models import SRIConfig
+                    cfg = SRIConfig.objects.first()
+                    if cfg:
+                        ambiente_str = cfg.get_ambiente_display().upper()
+                
+                if clave_acceso:
+                    p.set(align='center', bold=True)
+                    p.text("\nFACTURA ELECTRONICA SRI\n")
+                    p.set(align='left', bold=False)
+                    
+                    p.text(f"CLAVE DE ACCESO:\n")
+                    p.set(font='b') # Fuente más pequeña para la clave larga
+                    p.text(f"{clave_acceso}\n")
+                    p.set(font='a')
+                    
+                    p.text(f"AMBIENTE: {ambiente_str}\n")
+                    p.text(f"EMISION: NORMAL\n")
+                    p.text("-" * 42 + "\n")
             except Exception as e:
                 logger.error(f"Error imprimiendo info SRI en ticket: {e}")
 

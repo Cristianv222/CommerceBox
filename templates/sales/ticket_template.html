@@ -163,6 +163,14 @@
             <span style="word-break: break-all;">{{ comprobante.clave_acceso }}</span>
         </div>
         <div class="linea"></div>
+        {% elif sri_extra %}
+        <div style="font-size: 9px; line-height: 1.1; margin-bottom: 10px;">
+            <strong>FACTURA ELECTRÓNICA</strong><br>
+            Clave de Acceso:<br>
+            <span style="word-break: break-all;">{{ sri_extra.clave_acceso }}</span><br>
+            <small>AMBIENTE: {{ sri_extra.ambiente }}</small>
+        </div>
+        <div class="linea"></div>
         {% endif %}
 
         <strong>GRACIAS POR SU COMPRA</strong><br>

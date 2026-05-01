@@ -105,12 +105,10 @@
                         <table class="table table-hover align-middle mb-0">
                             <thead class="bg-light sticky-top">
                                 <tr>
-                                <tr>
                                     <th class="ps-3 py-3 x-small text-uppercase text-muted font-weight-bold">Venta / Cliente</th>
                                     <th class="py-3 x-small text-uppercase text-muted font-weight-bold">Estado SRI</th>
                                     <th class="py-3 x-small text-uppercase text-muted font-weight-bold text-end">Total</th>
                                     <th class="pe-3 py-3 text-center x-small text-uppercase text-muted font-weight-bold">Acciones</th>
-                                </tr>
                                 </tr>
                             </thead>
                             <tbody>
@@ -118,6 +116,7 @@
                                     <tr :class="item.estado === 'RECHAZADO' || item.estado === 'ERROR' ? 'table-danger table-danger-soft' : ''"
                                         class="animate-entry"
                                         :style="'animation-delay: ' + (index < 10 ? index * 50 : 0) + 'ms'">
+                                        <!-- Columna 1: Venta / Cliente -->
                                         <td class="ps-3 py-3">
                                             <div class="d-flex align-items-center">
                                                 <div class="me-3 text-center" style="width: 45px;">
@@ -132,8 +131,8 @@
                                                 </div>
                                             </div>
                                         </td>
+                                        <!-- Columna 2: Estado SRI / Progreso -->
                                         <td>
-                                            <!-- Stepped Progress with Pulse -->
                                             <div class="d-flex align-items-center mb-2 mt-1 px-2">
                                                 <div class="step-container d-flex align-items-center flex-grow-1">
                                                     <div class="step-dot" :class="getStepClass(item, 0)" title="Generado">1</div>
@@ -149,64 +148,73 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <!-- Status & Access Key -->
                                             <div class="d-flex align-items-center gap-2">
                                                 <div x-html="getStatusBadge(item.estado)" class="status-badge-live"></div>
+                                                
                                                 <div class="access-key-pill d-flex align-items-center bg-light rounded-pill px-2 py-0 border shadow-hover" x-show="item.clave_acceso">
                                                     <span class="x-small text-muted font-monospace" x-text="item.clave_acceso.substring(0,10) + '...' + item.clave_acceso.substring(39)"></span>
                                                     <button class="btn btn-link p-0 ms-1 text-primary" @click="copyToClipboard(item.clave_acceso)" title="Copiar Clave">
                                                         <i class="bi bi-clipboard x-small"></i>
                                                     </button>
                                                 </div>
+
+                                                <div x-show="item.mensajes_error" class="dropdown">
+                                                    <button class="btn btn-link p-0 text-danger" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Ver detalle del error">
+                                                        <i class="bi bi-info-circle-fill pulse-error"></i>
+                                                    </button>
+                                                    <div class="dropdown-menu p-3 shadow-lg border-danger border-opacity-25 rounded-4" style="width: 300px;">
+                                                        <h6 class="dropdown-header px-0 text-danger font-weight-bold d-flex align-items-center">
+                                                            <i class="bi bi-bug-fill me-2"></i> Diagnóstico SRI
+                                                        </h6>
+                                                        <div class="bg-danger bg-opacity-10 p-2 rounded small text-danger font-monospace" style="word-break: break-all;" x-text="item.mensajes_error"></div>
+                                                        <div class="mt-2 text-center">
+                                                            <button class="btn btn-xs btn-outline-danger rounded-pill" @click="retrySRI(item)">
+                                                                <i class="bi bi-arrow-clockwise"></i> Reintentar ahora
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </td>
+                                        <!-- Columna 3: Total -->
                                         <td class="text-end">
                                             <div class="h6 mb-0 font-weight-bold" x-text="'$' + parseFloat(item.total).toFixed(2)"></div>
                                         </td>
-                                        <td class="pe-3 text-center">
-                                            <!-- Error Messages -->
-                                            <div x-show="item.mensajes_error" class="x-small text-danger mt-1 bg-white p-1 rounded border border-danger border-opacity-25" style="max-width:350px">
-                                                <i class="fas fa-info-circle me-1"></i>
-                                                <span x-text="item.mensaje"></span>
-                                            </div>
-                                        </td>
-                                        <td class="text-end">
-                                            <div class="h6 mb-0 font-weight-bold" x-text="'$' + parseFloat(item.total).toFixed(2)"></div>
-                                        </td>
+                                        <!-- Columna 4: Acciones -->
                                         <td class="pe-3 text-center">
                                             <div class="d-flex justify-content-center gap-1 flex-wrap">
-                                                <!-- Email Status / Resend -->
-                                                <button class="btn btn-sm p-1 rounded-3" 
-                                                        @click="resendEmail(item)"
-                                                        :class="item.email_enviado ? 'btn-success' : (item.error_email ? 'btn-danger' : 'btn-outline-secondary')"
-                                                        :title="item.email_enviado ? 'Email enviado (Reenviar)' : (item.error_email ? 'Error: ' + item.error_email : 'Enviar Email')"
-                                                        :disabled="item.estado !== 'AUTORIZADO'">
-                                                    <i class="bi" :class="item.email_enviado ? 'bi-envelope-check-fill' : 'bi-envelope'"></i>
-                                                </button>
+                                                <div class="dropdown">
+                                                    <button class="btn btn-sm p-1 rounded-3" data-bs-toggle="dropdown"
+                                                            :class="item.email_enviado ? 'btn-success' : (item.error_email ? 'btn-danger' : 'btn-outline-secondary')"
+                                                            :disabled="item.estado !== 'AUTORIZADO'">
+                                                        <i class="bi" :class="item.email_enviado ? 'bi-envelope-check-fill' : 'bi-envelope'"></i>
+                                                    </button>
+                                                    <div class="dropdown-menu p-3 shadow-lg border-0 rounded-4" style="min-width: 200px;">
+                                                        <h6 class="dropdown-header px-0 font-weight-bold d-flex align-items-center">
+                                                            <i class="bi bi-envelope-at me-2 text-primary"></i> Estado del Correo
+                                                        </h6>
+                                                        <div x-show="item.email_enviado" class="alert alert-success py-1 px-2 small mb-2 rounded-3">
+                                                            <i class="bi bi-check2-all me-1"></i> Entregado
+                                                        </div>
+                                                        <div x-show="item.error_email" class="alert alert-danger py-1 px-2 small mb-2 rounded-3">
+                                                            <div x-text="item.error_email" class="x-small"></div>
+                                                        </div>
+                                                        <button class="btn btn-sm btn-primary w-100 rounded-pill mt-1" @click="resendEmail(item)">
+                                                            <i class="bi bi-arrow-repeat me-1"></i> Reenviar
+                                                        </button>
+                                                    </div>
+                                                </div>
 
-                                                <!-- Reintentar SRI -->
-                                                <button x-show="item.estado === 'ERROR' || item.estado === 'RECHAZADO'"
-                                                        @click="retrySRI(item)"
-                                                        class="btn btn-sm btn-warning p-1 rounded-3"
-                                                        title="Reintentar Proceso SRI">
+                                                <button x-show="item.estado === 'ERROR' || item.estado === 'RECHAZADO'" @click="retrySRI(item)"
+                                                        class="btn btn-sm btn-warning p-1 rounded-3 shadow-sm" title="Reintentar">
                                                     <i class="bi bi-arrow-clockwise"></i>
                                                 </button>
 
                                                 <div class="btn-group btn-group-sm rounded-3 overflow-hidden border">
-                                                    <!-- Botón Ver XML -->
-                                                    <a :href="'/sri/ver/xml/' + item.id + '/'"
-                                                       class="btn btn-light p-1"
-                                                       target="_blank"
-                                                       title="Ver XML">
+                                                    <a :href="'/sri/ver/xml/' + item.id + '/'" class="btn btn-light p-1" target="_blank" title="Ver XML">
                                                         <i class="bi bi-filetype-xml text-info"></i>
                                                     </a>
-                                                    
-                                                    <!-- Botón PDF (RIDE) -->
-                                                    <a x-show="item.estado === 'AUTORIZADO'"
-                                                       :href="'/sri/descargar/pdf/' + item.id + '/'"
-                                                       class="btn btn-light p-1"
-                                                       target="_blank"
-                                                       title="Descargar PDF">
+                                                    <a x-show="item.estado === 'AUTORIZADO'" :href="'/sri/descargar/pdf/' + item.id + '/'" class="btn btn-light p-1" target="_blank" title="PDF">
                                                         <i class="bi bi-file-pdf text-danger"></i>
                                                     </a>
                                                 </div>
@@ -594,6 +602,19 @@
     
     .status-badge-live {
         transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    .pulse-error {
+        animation: error-pulse 2s infinite;
+    }
+    @keyframes error-pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.2); opacity: 0.7; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    
+    .dropdown-menu {
+        z-index: 1050;
     }
 </style>
 

@@ -2,6 +2,48 @@
 
 from django.template.loader import render_to_string
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def precalcular_clave_acceso_sri(venta):
+    """
+    Intenta calcular la clave de acceso del SRI antes de que el comprobante sea guardado.
+    Útil para impresión inmediata de tickets en el POS.
+    """
+    try:
+        from apps.electronic_invoicing.models import SRIConfig, PuntoEmision
+        from apps.electronic_invoicing.utils import generar_clave_acceso
+        
+        config_sri = SRIConfig.objects.first()
+        if not config_sri:
+            return None
+            
+        punto = PuntoEmision.objects.filter(activo=True).first()
+        if not punto:
+            return None
+            
+        # Datos para la clave
+        fecha = venta.fecha_venta
+        tipo_comprobante = "01"  # Factura
+        ruc = config_sri.ruc
+        ambiente = str(config_sri.ambiente)
+        serie = f"{punto.establecimiento}{punto.punto_emision}"
+        secuencial = str(venta.numero_venta).zfill(9)
+        codigo_numerico = str(venta.id.int)[:8]
+        tipo_emision = str(config_sri.tipo_emision)
+        
+        clave = generar_clave_acceso(
+            fecha, tipo_comprobante, ruc, ambiente, serie, secuencial, codigo_numerico, tipo_emision
+        )
+        return {
+            'clave_acceso': clave,
+            'ambiente': config_sri.get_ambiente_display().upper()
+        }
+    except Exception as e:
+        logger.error(f"Error precalculando clave SRI: {e}")
+        return None
 
 
 class TicketGenerator:
@@ -36,9 +78,14 @@ class TicketGenerator:
         
         # ✅ Verificar si hay comprobante electrónico para esta venta
         comprobante = None
+        sri_extra = None
         try:
             from apps.electronic_invoicing.models import ComprobanteElectronico
             comprobante = ComprobanteElectronico.objects.filter(venta=venta).first()
+            
+            # Si no existe, precalcular para la vista previa
+            if not comprobante:
+                sri_extra = precalcular_clave_acceso_sri(venta)
         except ImportError:
             pass
 
@@ -46,6 +93,7 @@ class TicketGenerator:
             'empresa': empresa,
             'venta': venta,
             'comprobante': comprobante, # ✅ Pasar comprobante al template
+            'sri_extra': sri_extra,      # ✅ Pasar pre-calculo si no hay comprobante
             'detalles': venta.detalles.all().select_related(
                 'producto', 'quintal', 'unidad_medida'
             ),
@@ -174,13 +222,21 @@ class TicketGenerator:
         try:
             from apps.electronic_invoicing.models import ComprobanteElectronico
             comprobante = ComprobanteElectronico.objects.filter(venta=venta).first()
+            clave_acceso = None
+            
             if comprobante and comprobante.clave_acceso:
-                lineas.append("INFORMACION ELECTRONICA".center(ancho))
+                clave_acceso = comprobante.clave_acceso
+            else:
+                sri_data = precalcular_clave_acceso_sri(venta)
+                if sri_data:
+                    clave_acceso = sri_data['clave_acceso']
+
+            if clave_acceso:
+                lineas.append("FACTURA ELECTRONICA SRI".center(ancho))
                 lineas.append(f"Clave de Acceso:".center(ancho))
                 # Dividir la clave de acceso en dos líneas para que quepa (49 dígitos)
-                clave = comprobante.clave_acceso
-                lineas.append(clave[:25].center(ancho))
-                lineas.append(clave[25:].center(ancho))
+                lineas.append(clave_acceso[:25].center(ancho))
+                lineas.append(clave_acceso[25:].center(ancho))
                 lineas.append("-" * ancho)
         except (ImportError, Exception):
             pass
