@@ -81,4 +81,18 @@ urlpatterns = [
         views.ClienteQuickCreateAPIView.as_view(),
         name='cliente_crear_rapido_api'
     ),
+    
+    # Validar existencia de email
+    path(
+        'api/clientes/validar-email/',
+        views.ValidarEmailAPIView.as_view(),
+        name='validar_email_api'
+    ),
+
+    # Actualizar email de cliente
+    path(
+        'api/clientes/<uuid:pk>/actualizar-email/',
+        views.ActualizarEmailClienteAPIView.as_view(),
+        name='actualizar_email_api'
+    ),
 ]

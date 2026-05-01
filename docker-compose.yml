@@ -17,7 +17,7 @@ services:
     networks:
       - commercebox_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${COMMERCEBOX_DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${COMMERCEBOX_DB_USER} -d ${COMMERCEBOX_DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5

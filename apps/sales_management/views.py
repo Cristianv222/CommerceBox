@@ -1628,11 +1628,7 @@ class ObtenerProductosVentaView(VentasAPIAccessMixin, View):
                 "cantidad": 2.5,
                 "unidad": "kg",
                 "precio_unitario": 25.50,
-                "subtotal": 63.75,
-                "es_quintal": true,
-                "quintal_id": "uuid-quintal",
-                "puede_devolver": true,
-                "cantidad_ya_devuelta": 0.5
+                "subtotal": 63.75
             }
         ]
     }
@@ -1946,8 +1942,6 @@ class ProcesarDevolucionProductoView(VentasAPIAccessMixin, View):
 
 @method_decorator(transaction.atomic, name='dispatch')
 class ClienteQuickCreateAPIView(VentasAPIAccessMixin, View):
-    """Creación rápida de clientes desde el POS"""
-    
     def post(self, request):
         try:
             data = json.loads(request.body)
@@ -1988,7 +1982,8 @@ class ClienteQuickCreateAPIView(VentasAPIAccessMixin, View):
                 'cliente': {
                     'id': str(cliente.id),
                     'display': f"{cliente.nombres} {cliente.apellidos}",
-                    'numero_documento': cliente.numero_documento
+                    'numero_documento': cliente.numero_documento,
+                    'email': cliente.email
                 },
                 'mensaje': 'Cliente creado exitosamente'
             })
@@ -1999,3 +1994,91 @@ class ClienteQuickCreateAPIView(VentasAPIAccessMixin, View):
                 'success': False,
                 'error': f'Error al crear cliente: {str(e)}'
             }, status=500)
+
+class ValidarEmailAPIView(VentasAPIAccessMixin, View):
+    def get(self, request):
+        import re
+        import socket
+        import requests
+        
+        email = request.GET.get('email', '').strip()
+        
+        if not email:
+            return JsonResponse({'valid': False, 'message': 'Email vacío'})
+            
+        # 1. Validar sintaxis
+        regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(regex, email):
+            return JsonResponse({'valid': False, 'message': 'Formato de correo inválido'})
+            
+        domain = email.split('@')[1]
+        
+        try:
+            # 2. Verificar existencia del dominio vía Google DNS (Ultra rápido)
+            # Buscamos registros MX (correo) o A (host)
+            response = requests.get(
+                f'https://dns.google/resolve?name={domain}&type=MX', 
+                timeout=2
+            )
+            
+            domain_exists = False
+            if response.status_code == 200:
+                data = response.json()
+                # Si tiene Answer de tipo MX o A, el dominio existe y puede recibir correos
+                if 'Answer' in data:
+                    domain_exists = True
+                else:
+                    # Si no hay MX, probamos con registro A
+                    resp_a = requests.get(
+                        f'https://dns.google/resolve?name={domain}&type=A', 
+                        timeout=1.5
+                    )
+                    if resp_a.status_code == 200 and 'Answer' in resp_a.json():
+                        domain_exists = True
+
+            if domain_exists:
+                return JsonResponse({
+                    'valid': True, 
+                    'message': f'Dominio @{domain} verificado.',
+                    'details': 'El dominio existe y puede recibir correos.'
+                })
+            else:
+                return JsonResponse({
+                    'valid': False, 
+                    'message': f'El dominio @{domain} NO existe.',
+                    'details': 'No se encontraron registros de correo para este dominio.'
+                })
+
+        except Exception:
+            # Fallback local si falla la API
+            try:
+                socket.gethostbyname(domain)
+                return JsonResponse({
+                    'valid': True, 
+                    'message': f'Dominio @{domain} activo.',
+                    'details': 'Verificado mediante resolución local.'
+                })
+            except:
+                return JsonResponse({
+                    'valid': False, 
+                    'message': f'No se pudo encontrar el dominio @{domain}.'
+                })
+
+class ActualizarEmailClienteAPIView(VentasAPIAccessMixin, View):
+    def post(self, request, pk):
+        try:
+            data = json.loads(request.body)
+            email = data.get('email', '').strip()
+            
+            from apps.sales_management.models import Cliente
+            cliente = Cliente.objects.get(pk=pk)
+            cliente.email = email
+            cliente.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Correo actualizado correctamente',
+                'email': email
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)

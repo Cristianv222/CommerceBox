@@ -180,6 +180,14 @@ urlpatterns = [
     path('api/clientes/', views.api_clientes_list, name='api_clientes_list'),
     path('api/clientes/<uuid:pk>/', views.api_cliente_detail, name='api_cliente_detail'),
     
+    # Redundancia para validación de email
+    path('api/clientes/validar-email/', 
+         __import__('apps.sales_management.views', fromlist=['ValidarEmailAPIView']).ValidarEmailAPIView.as_view(), 
+         name='api_validar_email_redundant'),
+    path('api/clientes/<uuid:pk>/actualizar-email/', 
+         __import__('apps.sales_management.views', fromlist=['ActualizarEmailClienteAPIView']).ActualizarEmailClienteAPIView.as_view(), 
+         name='api_actualizar_email_redundant'),
+    
     # ========================================
     # VENTAS - Devoluciones
     # ========================================

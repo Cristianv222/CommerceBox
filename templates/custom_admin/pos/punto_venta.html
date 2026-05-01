@@ -153,6 +153,12 @@
         box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.08);
     }
 
+    .border-warning-pos {
+        border-color: #f59e0b !important;
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15) !important;
+        background-color: rgba(255, 251, 235, 0.9) !important;
+    }
+
     .btn-mostrar-todos {
         width: 100%;
         padding: 7px;
@@ -1392,17 +1398,27 @@
                         <label class="opcion-label">
                             <i class="fas fa-user"></i> Cliente
                         </label>
-                        <div class="d-flex gap-2">
-                            <select id="clienteSelect" class="cliente-select">
-                                <option value="">Consumidor Final</option>
-                                {% for cliente in clientes %}
-                                <option value="{{ cliente.id }}">{{ cliente.nombres }} {{ cliente.apellidos }}</option>
-                                {% endfor %}
-                            </select>
-                            <button type="button" class="btn btn-primary btn-sm" style="border-radius: 8px;"
-                                onclick="abrirModalNuevoCliente()" title="Agregar Nuevo Cliente">
-                                <i class="fas fa-plus"></i>
-                            </button>
+                        <div class="flex-grow-1">
+                            <div class="d-flex gap-2">
+                                <select id="clienteSelect" class="cliente-select" onchange="validarEmailCliente()">
+                                    <option value="" data-email="">Consumidor Final</option>
+                                    {% for cliente in clientes %}
+                                    <option value="{{ cliente.id }}" data-email="{{ cliente.email|default:'' }}">
+                                        {{ cliente.nombres }} {{ cliente.apellidos }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button type="button" class="btn btn-primary btn-sm" style="border-radius: 8px;"
+                                    onclick="abrirModalNuevoCliente()" title="Agregar Nuevo Cliente">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            <div id="emailWarning" class="text-warning fw-bold mt-1 animate__animated animate__fadeIn" style="display: none; font-size: 0.65rem;">
+                                <i class="fas fa-exclamation-triangle"></i> Sin correo para factura electrónica.
+                                <button type="button" class="btn btn-link p-0 ms-1 text-info x-small fw-bold" onclick="abrirEdicionRapidaEmail()" style="text-decoration: none;">
+                                    <i class="fas fa-edit"></i> Corregir
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -1509,7 +1525,13 @@
                     </div>
                     <div class="col-12">
                         <label class="form-label-admin">Correo Electrónico</label>
-                        <input type="email" name="email" class="form-control-admin">
+                        <div class="input-group">
+                            <input type="email" name="email" id="nuevoClienteEmail" class="form-control-admin" placeholder="ejemplo@correo.com">
+                            <button type="button" class="btn btn-outline-info btn-sm" onclick="verificarEmailReal()" id="btnVerificarEmail" style="border-radius: 0 8px 8px 0; border-left: none;">
+                                <i class="fas fa-search"></i> Verificar
+                            </button>
+                        </div>
+                        <div id="emailStatusMsg" class="x-small mt-1" style="display: none;"></div>
                     </div>
                     <div class="col-12">
                         <label class="form-label-admin">Teléfono</label>
@@ -1707,7 +1729,34 @@
                 validarProcesarVenta();
             });
         });
+
+        // Validar email al activar/desactivar SRI
+        document.getElementById('toggleSRI').addEventListener('change', function() {
+            validarEmailCliente();
+        });
     });
+
+    // ============================================
+    // VALIDAR EMAIL DEL CLIENTE SELECCIONADO
+    // ============================================
+    function validarEmailCliente() {
+        const select = document.getElementById('clienteSelect');
+        const selectedOption = select.options[select.selectedIndex];
+        const email = selectedOption.dataset.email || "";
+        const warning = document.getElementById('emailWarning');
+        const enviarSRI = document.getElementById('toggleSRI').checked;
+
+        if (!email && selectedOption.value !== "") {
+            select.classList.add('border-warning-pos');
+            warning.style.display = 'block';
+            if (enviarSRI) {
+                mostrarAlerta('warning', '📧 Falta Email', 'Este cliente no tiene correo. La factura electrónica no podrá ser enviada.');
+            }
+        } else {
+            select.classList.remove('border-warning-pos');
+            warning.style.display = 'none';
+        }
+    }
 
     // ============================================
     // CARGAR TODOS LOS PRODUCTOS
@@ -2231,11 +2280,22 @@
         }
 
         // ✅ VALIDAR QUE VENTAS A CRÉDITO TENGAN CLIENTE
-        const clienteId = document.getElementById('clienteSelect').value;
+        const select = document.getElementById('clienteSelect');
+        const clienteId = select.value;
+        const enviarSRI = document.getElementById('toggleSRI').checked;
+        const selectedOption = select.options[select.selectedIndex];
+        const email = selectedOption.dataset.email || "";
 
         if (tipoVenta === 'CREDITO' && !clienteId) {
             mostrarAlerta('error', '❌ Cliente Requerido', 'Las ventas a crédito requieren seleccionar un cliente');
             return;
+        }
+
+        // ✅ VALIDAR EMAIL SI SE ENVÍA AL SRI
+        if (enviarSRI && clienteId && !email) {
+            if (!confirm('⚠️ El cliente seleccionado no tiene correo electrónico. La factura se autorizará en el SRI pero NO se enviará al cliente. ¿Deseas continuar?')) {
+                return;
+            }
         }
 
         // ✅ CALCULAR MONTO A PAGAR SEGÚN TIPO DE VENTA Y MÉTODO DE PAGO
@@ -2494,6 +2554,14 @@
             return;
         }
 
+        // Validar si el email fue marcado como inválido
+        const emailInput = document.getElementById('nuevoClienteEmail');
+        if (emailInput.classList.contains('is-invalid')) {
+            if (!confirm('⚠️ El correo electrónico parece ser inválido. ¿Deseas guardarlo de todas formas?')) {
+                return;
+            }
+        }
+
         const btn = document.querySelector('#modalNuevoCliente .btn-modal-primary');
         const originalText = btn.innerHTML;
         btn.disabled = true;
@@ -2517,8 +2585,12 @@
                 const option = document.createElement('option');
                 option.value = result.cliente.id;
                 option.text = result.cliente.display;
+                option.dataset.email = result.cliente.email || ""; // ✅ Guardar email en el dataset
                 option.selected = true;
                 select.add(option);
+                
+                // Disparar validación
+                validarEmailCliente();
 
                 mostrarAlerta('success', '✓ Cliente Creado', result.mensaje);
                 cerrarModalNuevoCliente();
@@ -2531,6 +2603,103 @@
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalText;
+        }
+    }
+
+    // ========================================
+    // ✅ VERIFICACIÓN REAL DE EMAIL
+    // ========================================
+    async function verificarEmailReal() {
+        const emailInput = document.getElementById('nuevoClienteEmail');
+        const email = emailInput.value.trim();
+        const btn = document.getElementById('btnVerificarEmail');
+        const msg = document.getElementById('emailStatusMsg');
+        
+        if (!email) {
+            mostrarAlerta('warning', 'Email Vacío', 'Ingresa un correo para verificar');
+            return;
+        }
+
+        const originalHTML = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        msg.style.display = 'block';
+        msg.className = 'x-small mt-1 text-info';
+        msg.innerHTML = '<i class="fas fa-sync fa-spin"></i> Consultando DNS...';
+
+        try {
+            const response = await fetch(`/api/ventas/api/clientes/validar-email/?email=${encodeURIComponent(email)}`);
+            const result = await response.json();
+
+            if (result.valid) {
+                btn.className = 'btn btn-success btn-sm';
+                btn.innerHTML = '<i class="fas fa-check"></i> Válido';
+                msg.className = result.warning ? 'x-small mt-1 text-warning fw-bold' : 'x-small mt-1 text-success fw-bold';
+                let icon = result.warning ? 'exclamation-triangle' : 'check-circle';
+                msg.innerHTML = `<i class="fas fa-${icon}"></i> ${result.message}`;
+                if (result.details) {
+                    msg.innerHTML += `<br><span class="text-muted" style="font-size: 0.8em;">${result.details}</span>`;
+                }
+                emailInput.classList.remove('is-invalid');
+                emailInput.classList.add('is-valid');
+            } else {
+                btn.className = 'btn btn-danger btn-sm';
+                btn.innerHTML = '<i class="fas fa-times"></i> Inválido';
+                msg.className = 'x-small mt-1 text-danger fw-bold';
+                msg.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${result.message}`;
+                if (result.details) {
+                    msg.innerHTML += `<br><span class="text-muted" style="font-size: 0.8em;">${result.details}</span>`;
+                }
+                emailInput.classList.add('is-invalid');
+                emailInput.classList.remove('is-valid');
+            }
+        } catch (error) {
+            console.error(error);
+            msg.innerHTML = 'Error al conectar con el servicio de validación';
+        } finally {
+            btn.disabled = false;
+            if (!msg.textContent.includes('Válido') && !msg.textContent.includes('Inválido')) {
+                btn.innerHTML = originalHTML;
+            }
+        }
+    }
+
+    // ========================================
+    // ✅ ACTUALIZAR EMAIL RÁPIDAMENTE
+    // ========================================
+    async function abrirEdicionRapidaEmail() {
+        const select = document.getElementById('clienteSelect');
+        const clienteId = select.value;
+        const selectedOption = select.options[select.selectedIndex];
+        
+        if (!clienteId) return;
+
+        const nuevoEmail = prompt(`Ingresa el nuevo correo para ${selectedOption.text}:`, selectedOption.dataset.email || "");
+        
+        if (nuevoEmail !== null && nuevoEmail.trim() !== "") {
+            try {
+                const response = await fetch(`/api/ventas/api/clientes/${clienteId}/actualizar-email/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ email: nuevoEmail.trim() })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    selectedOption.dataset.email = nuevoEmail.trim();
+                    mostrarAlerta('success', '✓ Actualizado', 'El correo ha sido guardado');
+                    validarEmailCliente();
+                } else {
+                    mostrarAlerta('error', 'Error', result.error);
+                }
+            } catch (error) {
+                console.error(error);
+                mostrarAlerta('error', 'Error', 'No se pudo conectar con el servidor');
+            }
         }
     }
 
