@@ -29,6 +29,8 @@ def notificar_monitor(comprobante, mensaje=None):
             "numero_autorizacion": comprobante.numero_autorizacion,
             "mensaje": mensaje,
             "mensajes_error": comprobante.mensajes_error,
+            "email_enviado": comprobante.email_enviado,
+            "error_email": comprobante.error_email,
         }
     )
 

@@ -1144,32 +1144,38 @@ def config_facturacion_view(request):
 
         # 3. Cargar Estadísticas para el Dashboard
         comprobantes = ComprobanteElectronico.objects.all()
+        hoy = timezone.now().date()
         stats = {
             'total_count': comprobantes.count(),
-            'autorizados': comprobantes.filter(estado='AUTORIZADO').count(),
-            'errores': comprobantes.filter(estado__in=['RECHAZADO', 'ERROR', 'DEVUELTO']).count(),
-            'hoy_count': comprobantes.filter(fecha_registro__date=timezone.now().date()).count(),
+            'autorizados_hoy': comprobantes.filter(estado='AUTORIZADO', fecha_registro__date=hoy).count(),
+            'errores_hoy': comprobantes.filter(estado__in=['RECHAZADO', 'ERROR', 'DEVUELTO'], fecha_registro__date=hoy).count(),
+            'emails_fallidos': comprobantes.filter(email_enviado=False, estado='AUTORIZADO').exclude(error_email='').count(),
         }
         
         # Últimos comprobantes para el monitor (Serialización segura)
-        ultimos_comprobantes = comprobantes.select_related('venta').order_by('-fecha_registro')[:20]
-        
+        ultimos_comprobantes = comprobantes.select_related('venta', 'venta__cliente').order_by('-fecha_registro')[:50]
         ultimos_datos = []
         for c in ultimos_comprobantes:
             ultimos_datos.append({
                 'id': str(c.id),
                 'id_short': str(c.id)[:8],
+                'venta_id': str(c.venta.id),
                 'venta_numero': c.venta.numero_venta,
+                'cliente_nombre': c.venta.cliente.nombre_completo() if c.venta.cliente else "Consumidor Final",
+                'total': float(c.venta.total),
                 'estado': c.estado,
                 'clave_acceso': c.clave_acceso or '',
                 'numero_autorizacion': c.numero_autorizacion or '',
-                'mensaje': (c.mensajes_error or 'Sin errores detallados')[:100]
+                'mensaje': (c.mensajes_error or 'Procesando...')[:150],
+                'email_enviado': c.email_enviado,
+                'error_email': c.error_email or '',
+                'fecha': c.fecha_registro.strftime('%H:%M'),
             })
         
         context = {
             'segment': 'configuracion_sri',
             'sri_config': config,
-            'config': config,  # Mantener por retrocompatibilidad si es necesario
+            'config': config,
             'puntos_emision': puntos_emision,
             'certificado': certificado,
             'stats': stats,

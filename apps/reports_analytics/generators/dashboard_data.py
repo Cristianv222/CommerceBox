@@ -477,7 +477,7 @@ class DashboardDataGenerator:
                 )
                 
                 total_ventas = ventas_dia.aggregate(
-                    total=Coalesce(Sum('subtotal'), Decimal('0')),
+                    total_sin_iva=Coalesce(Sum('subtotal'), Decimal('0')),
                     total_con_iva=Coalesce(Sum('total'), Decimal('0'))
                 )
                 
@@ -509,8 +509,8 @@ class DashboardDataGenerator:
                             
                             costo_total += costo_unitario * detalle.cantidad
                 
-                utilidad_total = total_ventas['total'] - costo_total
-                margen_porcentaje = float((utilidad_total / total_ventas['total']) * 100) if total_ventas['total'] > 0 else 0
+                utilidad_total = total_ventas['total_sin_iva'] - costo_total
+                margen_porcentaje = float((utilidad_total / total_ventas['total_sin_iva']) * 100) if total_ventas['total_sin_iva'] > 0 else 0
                 
                 utilidad_por_dia.append({
                     'dia': dia.strftime('%Y-%m-%d'),

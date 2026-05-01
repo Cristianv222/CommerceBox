@@ -4,6 +4,7 @@ import resend
 import os
 import logging
 from django.conf import settings
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -66,12 +67,13 @@ class ResendInvoicingService:
 
         # 3. Preparar y enviar el correo
         try:
-            # Forzamos onboarding@resend.dev para asegurar compatibilidad con cuenta gratuita/sin dominio
-            from_email = "onboarding@resend.dev"
+            # Usar el correo configurado en settings
+            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'onboarding@resend.dev')
             
             # Usar API Key desde settings preferiblemente
-            resend.api_key = getattr(settings, 'RESEND_API_KEY', os.getenv('RESEND_API_KEY'))
-
+            api_key = str(getattr(settings, 'RESEND_API_KEY', os.getenv('RESEND_API_KEY'))).strip()
+            resend.api_key = api_key
+            
             params = {
                 "from": from_email,
                 "to": [cliente.email],
@@ -98,8 +100,22 @@ class ResendInvoicingService:
             logger.info(f"Intentando enviar email a {cliente.email}...")
             email_response = resend.Emails.send(params)
             logger.info(f"Email enviado exitosamente: {email_response}")
+            
+            # ✅ Actualizar estado en el comprobante
+            comprobante.email_enviado = True
+            comprobante.fecha_envio_email = timezone.now()
+            comprobante.error_email = None
+            comprobante.save()
+            
             return True
             
         except Exception as e:
-            logger.error(f"Error crítico al enviar correo: {str(e)}")
+            error_msg = str(e)
+            logger.error(f"Error crítico al enviar correo: {error_msg}")
+            
+            # ✅ Registrar el error en el comprobante
+            comprobante.email_enviado = False
+            comprobante.error_email = error_msg
+            comprobante.save()
+            
             return False

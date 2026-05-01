@@ -13,6 +13,9 @@
                 <p class="text-muted small">Ecuador - Centro de Mando Profesional</p>
             </div>
             <div class="d-flex gap-2">
+                <button class="btn btn-primary btn-sm rounded-pill px-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasConfig">
+                    <i class="bi bi-gear-fill me-1"></i> Configuración
+                </button>
                 <span class="badge {% if config.ambiente == 1 %}bg-warning{% else %}bg-success{% endif %} p-2">
                     Ambiente: {{ config.get_ambiente_display|upper }}
                 </span>
@@ -26,11 +29,56 @@
     <!-- Stats Cards -->
     <div class="row g-3 mb-4">
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
+            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden bg-primary text-white">
                 <div class="card-body">
-                    <div class="d-flex align-items-center mb-2">
-                        <div class="flex-shrink-0 bg-primary-subtle p-2 rounded-3 me-3">
-                            <i class="fas fa-file-invoice text-primary"></i>
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 bg-white bg-opacity-25 p-2 rounded-3 me-3">
+                            <i class="fas fa-check-double fa-lg"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="card-title mb-0 small opacity-75">Autorizados Hoy</h6>
+                            <h3 class="mb-0 font-weight-bold">{{ stats.autorizados_hoy }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden" :class="stats.errores_hoy > 0 ? 'bg-danger text-white' : 'bg-white'">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 p-2 rounded-3 me-3" :class="stats.errores_hoy > 0 ? 'bg-white bg-opacity-25' : 'bg-danger-subtle'">
+                            <i class="fas fa-exclamation-circle fa-lg" :class="stats.errores_hoy > 0 ? '' : 'text-danger'"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="card-title mb-0 small" :class="stats.errores_hoy > 0 ? 'opacity-75' : 'text-muted'">Errores SRI Hoy</h6>
+                            <h3 class="mb-0 font-weight-bold" :class="stats.errores_hoy > 0 ? '' : 'text-danger'">{{ stats.errores_hoy }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden" :class="stats.emails_fallidos > 0 ? 'bg-warning text-dark' : 'bg-white'">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 p-2 rounded-3 me-3" :class="stats.emails_fallidos > 0 ? 'bg-white bg-opacity-50' : 'bg-warning-subtle'">
+                            <i class="fas fa-envelope-open-text fa-lg" :class="stats.emails_fallidos > 0 ? '' : 'text-warning'"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="card-title mb-0 small" :class="stats.emails_fallidos > 0 ? 'opacity-75' : 'text-muted'">Emails Fallidos</h6>
+                            <h3 class="mb-0 font-weight-bold">{{ stats.emails_fallidos }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden bg-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 bg-info-subtle p-2 rounded-3 me-3">
+                            <i class="fas fa-history text-info fa-lg"></i>
                         </div>
                         <div class="flex-grow-1">
                             <h6 class="card-title text-muted mb-0 small">Total Histórico</h6>
@@ -40,246 +88,11 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-2">
-                        <div class="flex-shrink-0 bg-success-subtle p-2 rounded-3 me-3">
-                            <i class="fas fa-check-circle text-success"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <h6 class="card-title text-muted mb-0 small">Autorizados SRI</h6>
-                            <h3 class="mb-0 text-success">{{ stats.autorizados }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-2">
-                        <div class="flex-shrink-0 bg-danger-subtle p-2 rounded-3 me-3">
-                            <i class="fas fa-exclamation-triangle text-danger"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <h6 class="card-title text-muted mb-0 small">Errores / Rechazos</h6>
-                            <h3 class="mb-0 text-danger">{{ stats.errores }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
-                <div class="card-body bg-light-subtle">
-                    <div class="d-flex align-items-center mb-2">
-                        <div class="flex-shrink-0 bg-info-subtle p-2 rounded-3 me-3">
-                            <i class="fas fa-calendar-day text-info"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <h6 class="card-title text-muted mb-0 small">Actividad Hoy</h6>
-                            <h3 class="mb-0">{{ stats.hoy_count }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <div class="row g-4">
-        <!-- Certificate and Settings -->
-        <div class="col-lg-4">
-            <!-- Active Certificate Card -->
-            <div class="card border-0 shadow-sm rounded-4 mb-4">
-                <div class="card-header bg-white py-3">
-                    <h6 class="mb-0 font-weight-bold text-primary">Certificado Digital</h6>
-                </div>
-                <div class="card-body">
-                    {% if certificado %}
-                        <div class="d-flex flex-column align-items-center text-center mb-3">
-                            <div class="p-3 bg-primary-subtle rounded-circle mb-3">
-                                <i class="fas fa-signature fa-2x text-primary"></i>
-                            </div>
-                            <h5 class="mb-1">{{ certificado.nombre_titular|default:"Titular Desconocido" }}</h5>
-                            <span class="badge bg-secondary mb-2">RUC: {{ certificado.ruc_titular|default:"Sin RUC" }}</span>
-                        </div>
-                        <div class="list-group list-group-flush mb-3">
-                            <div class="list-group-item d-flex justify-content-between p-2 small">
-                                <span class="text-muted">Entidad:</span>
-                                <span class="font-weight-bold text-truncate ms-2">{{ certificado.emisor|default:"N/A" }}</span>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between p-2 small">
-                                <span class="text-muted">Vencimiento:</span>
-                                <span class="font-weight-bold {% if certificado.fecha_vencimiento < hoy %}text-danger{% endif %}">{{ certificado.fecha_vencimiento|date:"d M Y"|default:"Pendiente" }}</span>
-                            </div>
-                        </div>
-                    {% else %}
-                        <div class="text-center py-4 bg-light rounded-4">
-                            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
-                            <p class="text-muted small">No hay certificado activo cargado.</p>
-                        </div>
-                    {% endif %}
-                    
-                    <hr>
-                    
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-outline-primary btn-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#uploadCertModal">
-                            <i class="fas fa-upload me-1"></i> Actualizar Firma
-                        </button>
-                        {% if certificado %}
-                        <button class="btn btn-outline-secondary btn-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#editCertMetadataModal">
-                            <i class="fas fa-edit me-1"></i> Corregir Datos
-                        </button>
-                        {% endif %}
-                    </div>
-                    <p class="text-center text-muted x-small mt-2">Solo archivos .p12 profesionales</p>
-                </div>
-            </div>
-
-            <!-- SRI Setup Card -->
-            <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 font-weight-bold text-primary">Configuración SRI</h6>
-                </div>
-                <div class="card-body">
-                    <form method="POST">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="config_general">
-                        <div class="mb-3">
-                            <label class="form-label small font-weight-bold">RUC de la Empresa</label>
-                            <input type="text" name="ruc" class="form-control form-control-sm rounded-3" value="{{ config.ruc|default:'' }}" placeholder="17xxxxxxxx001" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small font-weight-bold">Ambiente de Operación</label>
-                            <select name="ambiente" class="form-select form-select-sm rounded-3">
-                                <option value="1" {% if config.ambiente == 1 %}selected{% endif %}>PRUEBAS</option>
-                                <option value="2" {% if config.ambiente == 2 %}selected{% endif %}>PRODUCCIÓN</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small font-weight-bold">Razón Social</label>
-                            <input type="text" name="razon_social" class="form-control form-control-sm rounded-3" value="{{ config.razon_social|default:'' }}" required>
-                        </div>
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" name="obligado_contabilidad" id="obligadoCheck" {% if config.obligado_contabilidad %}checked{% endif %}>
-                            <label class="form-check-label small" for="obligadoCheck">Obligado a Contabilidad</label>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-sm w-100 mt-2 rounded-pill">
-                            Guardar Cambios
-                        </button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Puntos de Emisión Card -->
-            <div class="card border-0 shadow-sm rounded-4 mt-4">
-                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 font-weight-bold text-primary">Puntos de Emisión</h6>
-                    <button class="btn btn-sm btn-outline-primary rounded-pill" data-bs-toggle="modal" data-bs-target="#modalPunto">
-                        <i class="bi bi-plus-lg"></i> Nuevo
-                    </button>
-                </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush rounded-bottom-4">
-                        {% for p in puntos_emision %}
-                        <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                            <div>
-                                <div class="fw-bold">{{ p.establecimiento }}-{{ p.punto_emision }}</div>
-                                <div class="small text-muted text-truncate" style="max-width: 150px;">{{ p.direccion_establecimiento }}</div>
-                            </div>
-                            <div class="text-end">
-                                <span class="badge bg-light text-dark border d-block mb-1">Sec: {{ p.ultimo_secuencial|stringformat:"09d" }}</span>
-                                <div class="btn-group btn-group-sm">
-                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" data-bs-toggle="modal" data-bs-target="#modalEditarPunto{{ p.id }}" title="Editar Punto">
-                                        <i class="bi bi-pencil-square small"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" data-bs-toggle="modal" data-bs-target="#modalEliminarPunto{{ p.id }}" title="Eliminar Punto">
-                                        <i class="bi bi-trash small"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Modal Editar Punto -->
-                        <div class="modal fade" id="modalEditarPunto{{ p.id }}" tabindex="-1">
-                            <div class="modal-dialog modal-dialog-centered">
-                                <div class="modal-content border-0 shadow rounded-4">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title h6">Editar Punto de Emisión</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <form method="POST">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="action" value="editar_punto">
-                                        <input type="hidden" name="punto_id" value="{{ p.id }}">
-                                        <div class="modal-body text-start">
-                                            <div class="row">
-                                                <div class="col-6 mb-3">
-                                                    <label class="form-label small font-weight-bold">Establecimiento</label>
-                                                    <input type="text" name="establecimiento" class="form-control form-control-sm rounded-3" value="{{ p.establecimiento }}" required maxlength="3">
-                                                </div>
-                                                <div class="col-6 mb-3">
-                                                    <label class="form-label small font-weight-bold">Punto Emisión</label>
-                                                    <input type="text" name="punto_emision" class="form-control form-control-sm rounded-3" value="{{ p.punto_emision }}" required maxlength="3">
-                                                </div>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label small font-weight-bold">Secuencial Inicial / Actual</label>
-                                                <input type="number" name="secuencial" class="form-control form-control-sm rounded-3" value="{{ p.ultimo_secuencial }}">
-                                                <small class="text-muted x-small">Modificar esto puede causar saltos o duplicados en el SRI. Hágalo con cuidado.</small>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label small font-weight-bold">Dirección del Establecimiento</label>
-                                                <textarea name="direccion" class="form-control form-control-sm rounded-3" rows="2" required>{{ p.direccion_establecimiento }}</textarea>
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer border-0">
-                                            <button type="button" class="btn btn-light btn-sm rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-                                            <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4">Guardar Cambios</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Modal Eliminar Punto -->
-                        <div class="modal fade" id="modalEliminarPunto{{ p.id }}" tabindex="-1">
-                            <div class="modal-dialog modal-dialog-centered">
-                                <div class="modal-content border-0 shadow rounded-4">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title h6 text-danger">Eliminar Punto de Emisión</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <form method="POST">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="action" value="eliminar_punto">
-                                        <input type="hidden" name="punto_id" value="{{ p.id }}">
-                                        <div class="modal-body text-start">
-                                            <p>¿Está seguro que desea eliminar el punto de emisión <strong>{{ p.establecimiento }}-{{ p.punto_emision }}</strong>?</p>
-                                            <p class="text-danger small"><i class="bi bi-exclamation-triangle"></i> Esta acción no se puede deshacer.</p>
-                                        </div>
-                                        <div class="modal-footer border-0">
-                                            <button type="button" class="btn btn-light btn-sm rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-                                            <button type="submit" class="btn btn-danger btn-sm rounded-pill px-4">Eliminar</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <div class="p-4 text-center text-muted small">
-                            <i class="bi bi-info-circle mb-2 fs-2 opacity-50"></i><br>
-                            No hay puntos de emisión.
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Real time Monitor Widget -->
-        <div class="col-lg-8">
+        <div class="col-12">
             <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 font-weight-bold text-primary">Monitor de Comprobantes (Tiempo Real)</h6>
@@ -292,64 +105,111 @@
                         <table class="table table-hover align-middle mb-0">
                             <thead class="bg-light sticky-top">
                                 <tr>
-                                    <th class="ps-3 py-3 x-small text-uppercase text-muted font-weight-bold">No. Venta</th>
-                                    <th class="py-3 x-small text-uppercase text-muted font-weight-bold">Código SRI / Estado</th>
-                                    <th class="py-3 x-small text-uppercase text-muted font-weight-bold">Transmisión</th>
-                                    <th class="pe-3 py-3 text-center x-small text-uppercase text-muted font-weight-bold">Acción</th>
+                                <tr>
+                                    <th class="ps-3 py-3 x-small text-uppercase text-muted font-weight-bold">Venta / Cliente</th>
+                                    <th class="py-3 x-small text-uppercase text-muted font-weight-bold">Estado SRI</th>
+                                    <th class="py-3 x-small text-uppercase text-muted font-weight-bold text-end">Total</th>
+                                    <th class="pe-3 py-3 text-center x-small text-uppercase text-muted font-weight-bold">Acciones</th>
+                                </tr>
                                 </tr>
                             </thead>
                             <tbody>
-                                <template x-for="item in filteredTickets" :key="item.id">
-                                    <tr :class="item.estado === 'RECHAZADO' || item.estado === 'ERROR' ? 'table-danger table-danger-soft' : ''">
+                                <template x-for="(item, index) in filteredTickets" :key="item.id">
+                                    <tr :class="item.estado === 'RECHAZADO' || item.estado === 'ERROR' ? 'table-danger table-danger-soft' : ''"
+                                        class="animate-entry"
+                                        :style="'animation-delay: ' + (index < 10 ? index * 50 : 0) + 'ms'">
                                         <td class="ps-3 py-3">
-                                            <div class="font-weight-bold" x-text="item.venta_numero"></div>
-                                            <div class="x-small text-muted" x-text="item.id_short"></div>
-                                        </td>
-                                        <td>
-                                            <div class="mb-1" x-html="getStatusBadge(item.estado)"></div>
-                                            <div class="x-small text-muted text-truncate" style="max-width:220px" x-text="item.clave_acceso || 'Generando clave...'"></div>
-                                            <div class="x-small text-success font-weight-bold" x-show="item.numero_autorizacion" x-text="'Aut: ' + item.numero_autorizacion"></div>
-                                            <!-- Error SRI inline -->
-                                            <div x-show="item.mensajes_error" class="x-small text-danger mt-1" style="max-width:220px;word-break:break-word">
-                                                <i class="fas fa-exclamation-triangle me-1"></i>
-                                                <span x-text="item.mensajes_error"></span>
+                                            <div class="d-flex align-items-center">
+                                                <div class="me-3 text-center" style="width: 45px;">
+                                                    <div class="x-small text-muted mb-1" x-text="item.fecha"></div>
+                                                    <div class="badge bg-white text-dark border shadow-sm p-1 x-small" x-text="item.id_short"></div>
+                                                </div>
+                                                <div>
+                                                    <button class="btn btn-link p-0 font-weight-bold text-decoration-none text-primary h6 mb-0 hover-lift" 
+                                                            @click="viewSaleDetails(item.venta_numero)" 
+                                                            x-text="item.venta_numero"></button>
+                                                    <div class="x-small text-muted text-truncate" style="max-width: 150px;" x-text="item.cliente_nombre"></div>
+                                                </div>
                                             </div>
                                         </td>
                                         <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="flex-grow-1 me-2" style="width: 100px;">
-                                                    <div class="progress rounded-pill" style="height: 6px;">
-                                                        <div class="progress-bar progress-bar-striped progress-bar-animated" :class="getProgressColor(item.estado)" :style="'width: ' + getProgress(item.estado) + '%'"></div>
+                                            <!-- Stepped Progress with Pulse -->
+                                            <div class="d-flex align-items-center mb-2 mt-1 px-2">
+                                                <div class="step-container d-flex align-items-center flex-grow-1">
+                                                    <div class="step-dot" :class="getStepClass(item, 0)" title="Generado">1</div>
+                                                    <div class="step-line" :class="getStepClass(item, 1)"></div>
+                                                    <div class="step-dot" :class="getStepClass(item, 1)" :class="isStepActive(item, 1) ? 'pulse-active' : ''" title="Firmado">2</div>
+                                                    <div class="step-line" :class="getStepClass(item, 2)"></div>
+                                                    <div class="step-dot" :class="getStepClass(item, 2)" :class="isStepActive(item, 2) ? 'pulse-active' : ''" title="Recibido SRI">3</div>
+                                                    <div class="step-line" :class="getStepClass(item, 3)"></div>
+                                                    <div class="step-dot" :class="getStepClass(item, 3)" :class="isStepActive(item, 3) ? 'pulse-active' : ''" title="Autorizado">4</div>
+                                                    <div class="step-line" :class="getStepClass(item, 4)"></div>
+                                                    <div class="step-dot" :class="getStepClass(item, 4)" title="Email">
+                                                        <i class="bi bi-envelope-fill x-small"></i>
                                                     </div>
                                                 </div>
-                                                <span class="x-small text-muted" x-text="item.mensaje || 'Procesando...'"></span>
                                             </div>
+                                            <!-- Status & Access Key -->
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div x-html="getStatusBadge(item.estado)" class="status-badge-live"></div>
+                                                <div class="access-key-pill d-flex align-items-center bg-light rounded-pill px-2 py-0 border shadow-hover" x-show="item.clave_acceso">
+                                                    <span class="x-small text-muted font-monospace" x-text="item.clave_acceso.substring(0,10) + '...' + item.clave_acceso.substring(39)"></span>
+                                                    <button class="btn btn-link p-0 ms-1 text-primary" @click="copyToClipboard(item.clave_acceso)" title="Copiar Clave">
+                                                        <i class="bi bi-clipboard x-small"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="h6 mb-0 font-weight-bold" x-text="'$' + parseFloat(item.total).toFixed(2)"></div>
+                                        </td>
+                                        <td class="pe-3 text-center">
+                                            <!-- Error Messages -->
+                                            <div x-show="item.mensajes_error" class="x-small text-danger mt-1 bg-white p-1 rounded border border-danger border-opacity-25" style="max-width:350px">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                <span x-text="item.mensaje"></span>
+                                            </div>
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="h6 mb-0 font-weight-bold" x-text="'$' + parseFloat(item.total).toFixed(2)"></div>
                                         </td>
                                         <td class="pe-3 text-center">
                                             <div class="d-flex justify-content-center gap-1 flex-wrap">
-                                                <!-- Botón Ver XML (siempre disponible si hay id) -->
-                                                <a :href="'/sri/ver/xml/' + item.id + '/'"
-                                                   class="btn btn-sm btn-outline-secondary p-1 rounded-3"
-                                                   target="_blank"
-                                                   title="Ver XML generado">
-                                                    <i class="fas fa-file-code"></i>
-                                                </a>
-                                                <!-- Botón Descargar XML -->
-                                                <a :href="'/sri/descargar/xml/' + item.id + '/'"
-                                                   class="btn btn-sm btn-outline-primary p-1 rounded-3"
-                                                   :class="!item.clave_acceso ? 'disabled opacity-50' : ''"
-                                                   target="_blank"
-                                                   title="Descargar XML">
-                                                    <i class="fas fa-download"></i>
-                                                </a>
-                                                <!-- Botón PDF (RIDE) solo si autorizado -->
-                                                <a x-show="item.estado === 'AUTORIZADO'"
-                                                   :href="'/sri/descargar/pdf/' + item.id + '/'"
-                                                   class="btn btn-sm btn-outline-danger p-1 rounded-3"
-                                                   target="_blank"
-                                                   title="Descargar PDF (RIDE)">
-                                                    <i class="fas fa-file-pdf"></i>
-                                                </a>
+                                                <!-- Email Status / Resend -->
+                                                <button class="btn btn-sm p-1 rounded-3" 
+                                                        @click="resendEmail(item)"
+                                                        :class="item.email_enviado ? 'btn-success' : (item.error_email ? 'btn-danger' : 'btn-outline-secondary')"
+                                                        :title="item.email_enviado ? 'Email enviado (Reenviar)' : (item.error_email ? 'Error: ' + item.error_email : 'Enviar Email')"
+                                                        :disabled="item.estado !== 'AUTORIZADO'">
+                                                    <i class="bi" :class="item.email_enviado ? 'bi-envelope-check-fill' : 'bi-envelope'"></i>
+                                                </button>
+
+                                                <!-- Reintentar SRI -->
+                                                <button x-show="item.estado === 'ERROR' || item.estado === 'RECHAZADO'"
+                                                        @click="retrySRI(item)"
+                                                        class="btn btn-sm btn-warning p-1 rounded-3"
+                                                        title="Reintentar Proceso SRI">
+                                                    <i class="bi bi-arrow-clockwise"></i>
+                                                </button>
+
+                                                <div class="btn-group btn-group-sm rounded-3 overflow-hidden border">
+                                                    <!-- Botón Ver XML -->
+                                                    <a :href="'/sri/ver/xml/' + item.id + '/'"
+                                                       class="btn btn-light p-1"
+                                                       target="_blank"
+                                                       title="Ver XML">
+                                                        <i class="bi bi-filetype-xml text-info"></i>
+                                                    </a>
+                                                    
+                                                    <!-- Botón PDF (RIDE) -->
+                                                    <a x-show="item.estado === 'AUTORIZADO'"
+                                                       :href="'/sri/descargar/pdf/' + item.id + '/'"
+                                                       class="btn btn-light p-1"
+                                                       target="_blank"
+                                                       title="Descargar PDF">
+                                                        <i class="bi bi-file-pdf text-danger"></i>
+                                                    </a>
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
@@ -372,6 +232,179 @@
     </div>
 </div>
 
+<!-- Modal Detalle de Venta -->
+<div class="modal fade" id="modalDetalleVenta" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 bg-light rounded-top-4 py-3">
+                <h5 class="modal-title font-weight-bold text-primary">
+                    <i class="fas fa-shopping-cart me-2"></i> Detalle de Venta: <span x-text="selectedSale.numero_venta"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" x-show="loadingSale">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted">Cargando detalles...</p>
+                </div>
+            </div>
+            <div class="modal-body p-0" x-show="!loadingSale">
+                <!-- Info Cliente -->
+                <div class="bg-primary bg-opacity-10 p-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-uppercase x-small font-weight-bold text-primary">Cliente</div>
+                        <div class="h6 mb-0 font-weight-bold" x-text="selectedSale.cliente ? selectedSale.cliente.nombre : 'Consumidor Final'"></div>
+                        <div class="x-small text-muted" x-text="selectedSale.cliente ? selectedSale.cliente.documento : ''"></div>
+                    </div>
+                    <div class="text-end">
+                        <div class="text-uppercase x-small font-weight-bold text-primary">Total Venta</div>
+                        <div class="h4 mb-0 font-weight-bold text-primary" x-text="'$' + parseFloat(selectedSale.total || 0).toFixed(2)"></div>
+                    </div>
+                </div>
+                <!-- Tabla Productos -->
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-3 py-2 x-small text-uppercase">Producto</th>
+                                <th class="py-2 x-small text-uppercase text-center">Cant.</th>
+                                <th class="py-2 x-small text-uppercase text-end">Precio</th>
+                                <th class="pe-3 py-2 x-small text-uppercase text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="prod in selectedSaleProducts" :key="prod.id">
+                                <tr>
+                                    <td class="ps-3 py-2">
+                                        <div class="font-weight-bold small" x-text="prod.producto_nombre"></div>
+                                        <div class="x-small text-muted" x-text="prod.producto_codigo"></div>
+                                    </td>
+                                    <td class="text-center small" x-text="parseFloat(prod.cantidad_total).toFixed(2) + ' ' + prod.unidad"></td>
+                                    <td class="text-end small" x-text="'$' + parseFloat(prod.precio_unitario).toFixed(2)"></td>
+                                    <td class="pe-3 text-end font-weight-bold small" x-text="'$' + parseFloat(prod.total).toFixed(2)"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light rounded-bottom-4">
+                <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4" data-bs-data-bs-dismiss="modal" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Offcanvas Configuración -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasConfig" aria-labelledby="offcanvasConfigLabel" style="width: 400px;">
+    <div class="offcanvas-header bg-light">
+        <h5 class="offcanvas-title font-weight-bold text-primary" id="offcanvasConfigLabel">Configuración SRI</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body p-4">
+        <!-- Active Certificate Card -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4 bg-light">
+            <div class="card-header bg-transparent border-0 pt-3">
+                <h6 class="mb-0 font-weight-bold text-dark small text-uppercase">Certificado Digital</h6>
+            </div>
+            <div class="card-body">
+                {% if certificado %}
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="p-2 bg-primary-subtle rounded-circle me-3">
+                            <i class="bi bi-patch-check-fill text-primary"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 small font-weight-bold">{{ certificado.nombre_titular|default:"Titular Desconocido" }}</h6>
+                            <span class="x-small text-muted">RUC: {{ certificado.ruc_titular|default:"Sin RUC" }}</span>
+                        </div>
+                    </div>
+                    <div class="list-group list-group-flush mb-3">
+                        <div class="list-group-item d-flex justify-content-between p-2 x-small bg-transparent">
+                            <span class="text-muted">Vencimiento:</span>
+                            <span class="font-weight-bold {% if certificado.fecha_vencimiento < hoy %}text-danger{% endif %}">{{ certificado.fecha_vencimiento|date:"d M Y"|default:"Pendiente" }}</span>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-3 bg-white rounded-3 mb-3 border-2 border-dashed">
+                        <i class="bi bi-cloud-upload text-muted fs-3"></i>
+                        <p class="text-muted x-small mb-0">No hay certificado activo.</p>
+                    </div>
+                {% endif %}
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary btn-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#uploadCertModal">
+                        <i class="bi bi-upload me-1"></i> Actualizar Firma
+                    </button>
+                    {% if certificado %}
+                    <button class="btn btn-outline-secondary btn-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#editCertMetadataModal">
+                        <i class="bi bi-pencil-square me-1"></i> Corregir Datos
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <!-- SRI Setup Form -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-header bg-transparent border-0 pt-3">
+                <h6 class="mb-0 font-weight-bold text-dark small text-uppercase">Parámetros SRI</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="config_general">
+                    <div class="mb-3">
+                        <label class="form-label x-small font-weight-bold">RUC de la Empresa</label>
+                        <input type="text" name="ruc" class="form-control form-control-sm rounded-3" value="{{ config.ruc|default:'' }}" placeholder="17xxxxxxxx001" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small font-weight-bold">Ambiente</label>
+                        <select name="ambiente" class="form-select form-select-sm rounded-3">
+                            <option value="1" {% if config.ambiente == 1 %}selected{% endif %}>PRUEBAS</option>
+                            <option value="2" {% if config.ambiente == 2 %}selected{% endif %}>PRODUCCIÓN</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small font-weight-bold">Razón Social</label>
+                        <input type="text" name="razon_social" class="form-control form-control-sm rounded-3" value="{{ config.razon_social|default:'' }}" required>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="obligado_contabilidad" id="obligadoCheck" {% if config.obligado_contabilidad %}checked{% endif %}>
+                        <label class="form-check-label x-small" for="obligadoCheck">Obligado a Contabilidad</label>
+                    </div>
+                    <button type="submit" class="btn btn-dark btn-sm w-100 rounded-pill">
+                        Guardar Cambios
+                    </button>
+                </form>
+            </div>
+        </div>
+        <!-- Puntos de Emisión -->
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 font-weight-bold text-dark small text-uppercase">Puntos de Emisión</h6>
+                <button class="btn btn-xs btn-primary rounded-circle" data-bs-toggle="modal" data-bs-target="#modalPunto">
+                    <i class="bi bi-plus"></i>
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for p in puntos_emision %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-2 bg-transparent">
+                        <div>
+                            <div class="fw-bold x-small">{{ p.establecimiento }}-{{ p.punto_emision }}</div>
+                            <div class="x-small text-muted">Sec: {{ p.ultimo_secuencial }}</div>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-link text-secondary p-0 me-2" data-bs-toggle="modal" data-bs-target="#modalEditarPunto{{ p.id }}"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-link text-danger p-0" data-bs-toggle="modal" data-bs-target="#modalEliminarPunto{{ p.id }}"><i class="bi bi-trash"></i></button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
 <!-- Modal: Upload Certificate -->
 <div class="modal fade" id="uploadCertModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -478,6 +511,8 @@
     </div>
 </div>
 
+</div> <!-- Cierre del container-fluid -->
+
 <style>
     .rounded-4 { border-radius: 1rem !important; }
     .x-small { font-size: 0.75rem !important; }
@@ -487,93 +522,243 @@
     .bg-info-subtle { background-color: #d1f3f9 !important; }
     .font-weight-bold { font-weight: 700 !important; }
     .table-danger-soft { background-color: rgba(220,53,69,0.06) !important; }
+    .btn-xs { padding: 0.1rem 0.3rem; font-size: 0.7rem; }
+    
+    /* Timeline Steps */
+    .step-dot {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: bold;
+        z-index: 2;
+        transition: all 0.3s ease;
+    }
+    .step-line {
+        height: 2px;
+        flex-grow: 1;
+        background-color: #e9ecef;
+        z-index: 1;
+    }
+    .step-line.bg-success { background-color: #28a745 !important; }
+    .step-container { max-width: 250px; }
+    
+    .access-key-pill {
+        font-size: 0.65rem;
+        letter-spacing: 0.5px;
+    }
+    .animate-pulse {
+        animation: pulse-animation 2s infinite;
+    }
+    @keyframes pulse-animation {
+        0% { opacity: 1; }
+        50% { opacity: 0.4; }
+        100% { opacity: 1; }
+    }
+    
+    .animate-entry {
+        animation: slideInDown 0.5s ease-out both;
+    }
+    @keyframes slideInDown {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .pulse-active {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+        animation: dot-pulse 1.5s infinite;
+    }
+    @keyframes dot-pulse {
+        0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(40, 167, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+    }
+    
+    tr.table-active-flash {
+        background-color: rgba(40, 167, 69, 0.1) !important;
+        transition: background-color 2s ease;
+    }
+    
+    .hover-lift:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.1);
+        transition: all 0.2s;
+    }
+    
+    .shadow-hover:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+    }
+    
+    .status-badge-live {
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
 </style>
 
-    {{ ultimos_comprobantes_json|json_script:"historical-data" }}
-    <script>
-        function sriMonitor() {
-            return {
-                tickets: [],
-                search: '',
-                socket: null,
-                get filteredTickets() {
-                    if (!this.search) return this.tickets;
-                    const q = this.search.toLowerCase();
-                    return this.tickets.filter(t =>
-                        (t.venta_numero && t.venta_numero.toLowerCase().includes(q)) ||
-                        (t.clave_acceso && t.clave_acceso.includes(q)) ||
-                        (t.estado && t.estado.toLowerCase().includes(q))
-                    );
-                },
-                init() {
-                    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-                    const endpoint = `${protocol}://${window.location.host}/ws/sri/monitor/`;
-                    this.socket = new WebSocket(endpoint);
-                    this.socket.onopen = () => {
-                        console.log("✅ Conectado al Monitor SRI");
-                        document.getElementById('ws-status').className = 'badge bg-success p-2';
-                        document.getElementById('ws-status').innerHTML = '<i class="fas fa-circle me-1 animate-pulse"></i> Conectado';
-                    };
-                    this.socket.onmessage = (e) => {
-                        try {
-                            const data = JSON.parse(e.data);
-                            console.log("📩 Mensaje recibido:", data);
-                            this.updateTicket(data);
-                        } catch (err) {
-                            console.error("❌ Error procesando mensaje WebSocket:", err);
-                        }
-                    };
-                    this.socket.onclose = () => {
-                        console.warn("🔌 WebSocket desconectado. Reintentando en 5s...");
-                        document.getElementById('ws-status').className = 'badge bg-danger p-2';
-                        document.getElementById('ws-status').innerHTML = '<i class="fas fa-times me-1"></i> Desconectado';
-                        setTimeout(() => this.init(), 5000);
-                    };
-                    
-                    try {
-                        const dataElement = document.getElementById('historical-data');
-                        if (dataElement) {
-                            this.tickets = JSON.parse(dataElement.textContent);
-                        }
-                    } catch (err) {
-                        console.error("❌ Error cargando datos históricos:", err);
+{{ ultimos_comprobantes_json|json_script:"historical-data" }}
+<script>
+    function sriMonitor() {
+        return {
+            tickets: [],
+            search: '',
+            socket: null,
+            selectedSale: {},
+            selectedSaleProducts: [],
+            loadingSale: false,
+            get filteredTickets() {
+                if (!this.search) return this.tickets;
+                const q = this.search.toLowerCase();
+                return this.tickets.filter(t =>
+                    (t.venta_numero && t.venta_numero.toLowerCase().includes(q)) ||
+                    (t.clave_acceso && t.clave_acceso.includes(q)) ||
+                    (t.estado && t.estado.toLowerCase().includes(q)) ||
+                    (t.cliente_nombre && t.cliente_nombre.toLowerCase().includes(q))
+                );
+            },
+            init() {
+                const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+                const endpoint = `${protocol}://${window.location.host}/ws/sri/monitor/`;
+                this.socket = new WebSocket(endpoint);
+                this.socket.onopen = () => {
+                    const wsBadge = document.getElementById('ws-status');
+                    if (wsBadge) {
+                        wsBadge.className = 'badge bg-success p-2';
+                        wsBadge.innerHTML = '<i class="fas fa-circle me-1 animate-pulse"></i> Conectado';
                     }
-                },
+                };
+                this.socket.onmessage = (e) => {
+                    try {
+                        const data = JSON.parse(e.data);
+                        this.updateTicket(data);
+                    } catch (err) {
+                        console.error("❌ Error procesando mensaje WebSocket:", err);
+                    }
+                };
+                this.socket.onclose = () => {
+                    const wsBadge = document.getElementById('ws-status');
+                    if (wsBadge) {
+                        wsBadge.className = 'badge bg-danger p-2';
+                        wsBadge.innerHTML = '<i class="fas fa-times me-1"></i> Desconectado';
+                    }
+                    setTimeout(() => this.init(), 5000);
+                };
+                
+                try {
+                    const dataElement = document.getElementById('historical-data');
+                    if (dataElement) {
+                        this.tickets = JSON.parse(dataElement.textContent);
+                    }
+                } catch (err) {
+                    console.error("❌ Error cargando datos históricos:", err);
+                }
+            },
             updateTicket(data) {
                 const index = this.tickets.findIndex(t => t.id === data.comprobante_id);
-                const newTicket = {
-                    id: data.comprobante_id,
-                    id_short: data.comprobante_id.substring(0, 8),
-                    venta_numero: data.venta_numero,
-                    estado: data.estado,
-                    clave_acceso: data.clave_acceso,
-                    numero_autorizacion: data.numero_autorizacion,
-                    mensaje: data.mensaje,
-                    mensajes_error: data.mensajes_error || null,
-                };
-                if (index !== -1) this.tickets[index] = newTicket;
-                else this.tickets.unshift(newTicket);
-                if (this.tickets.length > 50) this.tickets.pop();
+                if (index !== -1) {
+                    this.tickets[index].estado = data.estado;
+                    this.tickets[index].clave_acceso = data.clave_acceso;
+                    this.tickets[index].numero_autorizacion = data.numero_autorizacion;
+                    this.tickets[index].mensaje = data.mensaje;
+                    this.tickets[index].mensajes_error = data.mensajes_error || null;
+                    this.tickets[index].email_enviado = data.email_enviado || false;
+                    this.tickets[index].error_email = data.error_email || null;
+                } else {
+                    const newTicket = {
+                        id: data.comprobante_id,
+                        id_short: data.comprobante_id.substring(0, 8),
+                        venta_numero: data.venta_numero,
+                        estado: data.estado,
+                        clave_acceso: data.clave_acceso,
+                        numero_autorizacion: data.numero_autorizacion,
+                        mensaje: data.mensaje,
+                        mensajes_error: data.mensajes_error || null,
+                        email_enviado: data.email_enviado || false,
+                        error_email: data.error_email || null,
+                        cliente_nombre: 'Nuevo...',
+                        total: 0.0,
+                        fecha: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                    };
+                    this.tickets.unshift(newTicket);
+                }
             },
             getStatusBadge(estado) {
                 const maps = {
-                    'CREADO': '<span class="badge bg-secondary p-1 x-small">PENDIENTE</span>',
-                    'FIRMADO': '<span class="badge bg-info p-1 x-small">FIRMADO</span>',
-                    'RECIBIDO': '<span class="badge bg-primary p-1 x-small">ENVIADO SRI</span>',
-                    'AUTORIZADO': '<span class="badge bg-success p-1 x-small">AUTORIZADO</span>',
-                    'RECHAZADO': '<span class="badge bg-danger p-1 x-small">RECHAZADO</span>',
-                    'ERROR': '<span class="badge bg-dark p-1 x-small">ERROR</span>'
+                    'CREADO': '<span class="badge bg-secondary-subtle text-secondary border p-1 x-small"><i class="bi bi-clock me-1"></i>PENDIENTE</span>',
+                    'FIRMADO': '<span class="badge bg-info-subtle text-info border p-1 x-small animate-pulse"><i class="bi bi-pen me-1"></i>FIRMANDO...</span>',
+                    'RECIBIDO': '<span class="badge bg-primary-subtle text-primary border p-1 x-small animate-pulse"><i class="bi bi-cloud-arrow-up me-1"></i>RECIBIENDO...</span>',
+                    'AUTORIZADO': '<span class="badge bg-success text-white p-1 x-small shadow-sm animate__animated animate__bounceIn"><i class="bi bi-check-circle-fill me-1"></i>AUTORIZADO</span>',
+                    'RECHAZADO': '<span class="badge bg-danger text-white p-1 x-small shadow-sm"><i class="bi bi-x-circle-fill me-1"></i>RECHAZADO</span>',
+                    'ERROR': '<span class="badge bg-dark text-white p-1 x-small"><i class="bi bi-exclamation-triangle-fill me-1"></i>ERROR</span>'
                 };
                 return maps[estado] || estado;
             },
-            getProgress(estado) {
-                const maps = { 'CREADO': 10, 'FIRMADO': 30, 'RECIBIDO': 60, 'AUTORIZADO': 100, 'RECHAZADO': 100, 'ERROR': 100 };
-                return maps[estado] || 5;
+            isStepActive(item, step) {
+                const levels = { 'CREADO': 0, 'FIRMADO': 1, 'RECIBIDO': 2, 'AUTORIZADO': 3 };
+                const current = levels[item.estado] !== undefined ? levels[item.estado] : -1;
+                return current + 1 === step && !['RECHAZADO', 'ERROR'].includes(item.estado);
             },
-            getProgressColor(estado) {
-                if (estado === 'AUTORIZADO') return 'bg-success';
-                if (['RECHAZADO', 'ERROR', 'DEVUELTO'].includes(estado)) return 'bg-danger';
-                return 'bg-primary';
+            getStepClass(item, step) {
+                const levels = { 'CREADO': 0, 'FIRMADO': 1, 'RECIBIDO': 2, 'AUTORIZADO': 3 };
+                const current = levels[item.estado] !== undefined ? levels[item.estado] : -1;
+                const emailDone = item.email_enviado;
+                
+                if (step === 4) return emailDone ? 'bg-success text-white' : 'bg-light text-muted';
+                if (current >= step) return 'bg-success text-white shadow-sm';
+                if (['RECHAZADO', 'ERROR'].includes(item.estado) && current + 1 === step) return 'bg-danger text-white';
+                return 'bg-light text-muted';
+            },
+            copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    const toast = document.createElement('div');
+                    toast.className = 'position-fixed bottom-0 end-0 p-3';
+                    toast.style.zIndex = '9999';
+                    toast.innerHTML = '<div class="alert alert-dark shadow-sm rounded-pill py-1 px-3 x-small">Clave copiada</div>';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 2000);
+                });
+            },
+            async viewSaleDetails(ventaNumero) {
+                this.loadingSale = true;
+                const modalElement = document.getElementById('modalDetalleVenta');
+                const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+                modal.show();
+                try {
+                    const response = await fetch(`/panel/ventas/api/obtener-productos-venta/?numero=${ventaNumero}`);
+                    const result = await response.json();
+                    if (result.success) {
+                        this.selectedSale = result.venta;
+                        this.selectedSaleProducts = result.productos;
+                    }
+                } catch (err) { console.error(err); } finally { this.loadingSale = false; }
+            },
+            async retrySRI(item) {
+                item.mensaje = 'Reiniciando...';
+                try {
+                    const response = await fetch(`/sri/reintentar-sri/${item.id}/`);
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        item.estado = 'CREADO';
+                    } else { alert(result.message); }
+                } catch (err) { console.error(err); }
+            },
+            async resendEmail(item) {
+                if (item.estado !== 'AUTORIZADO') return;
+                item.mensaje = 'Enviando email...';
+                try {
+                    const response = await fetch(`/sri/reenviar-email/${item.id}/`);
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        item.email_enviado = true;
+                        item.error_email = null;
+                        item.mensaje = '¡Enviado!';
+                    } else {
+                        item.email_enviado = false;
+                        item.error_email = result.message;
+                        item.mensaje = 'Error';
+                    }
+                } catch (err) { console.error(err); }
             }
         }
     }

@@ -131,3 +131,61 @@ def actualizar_secuencial_sri(request):
     
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
+
+@login_required
+def reenviar_email_sri(request, pk):
+    """Reintenta enviar el email del comprobante."""
+    comprobante = get_object_or_404(ComprobanteElectronico, pk=pk)
+    
+    if comprobante.estado != 'AUTORIZADO':
+        return JsonResponse({
+            'status': 'error', 
+            'message': 'Solo se pueden enviar correos de comprobantes AUTORIZADOS.'
+        }, status=400)
+    
+    try:
+        from .services.resend_service import ResendInvoicingService
+        success = ResendInvoicingService.enviar_comprobante(comprobante)
+        
+        if success:
+            return JsonResponse({
+                'status': 'success', 
+                'message': 'Email enviado correctamente.',
+                'email_enviado': True
+            })
+        else:
+            return JsonResponse({
+                'status': 'error', 
+                'message': f'Error al enviar: {comprobante.error_email}',
+                'error_email': comprobante.error_email
+            }, status=500)
+            
+    except Exception as e:
+        logger.error(f"Error reenviando email para {comprobante.id}: {e}")
+        return JsonResponse({
+            'status': 'error', 
+            'message': str(e)
+        }, status=500)
+
+@login_required
+def retry_procesar_factura(request, pk):
+    """Reintenta el proceso completo de una factura fallida"""
+    try:
+        from .tasks import procesar_factura_electronica
+        comprobante = get_object_or_404(ComprobanteElectronico, pk=pk)
+        
+        # Solo permitir si no está autorizado
+        if comprobante.estado == 'AUTORIZADO':
+            return JsonResponse({'status': 'error', 'message': 'El comprobante ya está autorizado.'}, status=400)
+            
+        # Resetear estado y mensajes para el reintento
+        comprobante.estado = 'CREADO'
+        comprobante.mensajes_error = None
+        comprobante.save()
+        
+        # Disparar tarea Celery
+        procesar_factura_electronica.delay(str(comprobante.id))
+        
+        return JsonResponse({'status': 'success', 'message': 'Reintento iniciado exitosamente.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
