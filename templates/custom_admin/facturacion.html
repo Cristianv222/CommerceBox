@@ -131,69 +131,34 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <!-- Columna 2: Estado SRI / Progreso -->
-                                        <td>
-                                            <div class="d-flex align-items-center mb-2 mt-1 px-2">
-                                                <div class="step-container d-flex align-items-center flex-grow-1">
-                                                    <div class="step-dot" :class="getStepClass(item, 0)" title="Generado">1</div>
-                                                    <div class="step-line" :class="getStepClass(item, 1)"></div>
-                                                    <div class="step-dot" :class="getStepClass(item, 1)" :class="isStepActive(item, 1) ? 'pulse-active' : ''" title="Firmado">2</div>
-                                                    <div class="step-line" :class="getStepClass(item, 2)"></div>
-                                                    <div class="step-dot" :class="getStepClass(item, 2)" :class="isStepActive(item, 2) ? 'pulse-active' : ''" title="Recibido SRI">3</div>
-                                                    <div class="step-line" :class="getStepClass(item, 3)"></div>
-                                        <td class="px-3" style="min-width: 280px;">
+                                        <td class="px-3" style="min-width: 380px;">
                                             <div class="d-flex flex-column gap-2 py-1">
                                                 <!-- Timeline de Etapas -->
                                                 <div class="d-flex align-items-center justify-content-between step-container w-100 mb-1">
-                                                    <!-- Paso 1: Firmado -->
-                                                    <div class="step-dot" :class="getStepClass(item, 1)" title="Firma Electrónica">
-                                                        <i class="bi bi-pen-fill" style="font-size: 8px;"></i>
-                                                    </div>
+                                                    <div class="step-dot" :class="getStepClass(item, 1)" title="Firma Electrónica"><i class="bi bi-pen-fill" style="font-size: 8px;"></i></div>
                                                     <div class="step-line" :class="levels[item.estado] >= 2 ? 'bg-success' : ''"></div>
-                                                    
-                                                    <!-- Paso 2: Recibido -->
-                                                    <div class="step-dot" :class="getStepClass(item, 2)" title="Recibido por SRI">
-                                                        <i class="bi bi-cloud-fill" style="font-size: 8px;"></i>
-                                                    </div>
+                                                    <div class="step-dot" :class="getStepClass(item, 2)" title="Recibido por SRI"><i class="bi bi-cloud-fill" style="font-size: 8px;"></i></div>
                                                     <div class="step-line" :class="levels[item.estado] >= 3 ? 'bg-success' : ''"></div>
-                                                    
-                                                    <!-- Paso 3: Autorizado -->
-                                                    <div class="step-dot" :class="getStepClass(item, 3)" :class="item.estado === 'AUTORIZADO' ? 'pulse-active' : ''" title="Autorizado por SRI">
-                                                        <i class="bi bi-check-lg" style="font-size: 10px;"></i>
-                                                    </div>
+                                                    <div class="step-dot" :class="getStepClass(item, 3)" :class="item.estado === 'AUTORIZADO' ? 'pulse-active' : ''" title="Autorizado por SRI"><i class="bi bi-check-lg" style="font-size: 10px;"></i></div>
                                                     <div class="step-line" :class="item.email_enviado ? 'bg-success' : ''"></div>
-                                                    
-                                                    <!-- Paso 4: Email -->
-                                                    <div class="step-dot" :class="getStepClass(item, 4)" title="Enviado al Cliente">
-                                                        <i class="bi bi-envelope-fill" style="font-size: 8px;"></i>
-                                                    </div>
+                                                    <div class="step-dot" :class="getStepClass(item, 4)" title="Enviado al Cliente"><i class="bi bi-envelope-fill" style="font-size: 8px;"></i></div>
                                                 </div>
 
                                                 <div class="d-flex align-items-center gap-2">
                                                     <div x-html="getStatusBadge(item.estado)" class="status-badge-live"></div>
                                                     
-                                                    <div class="access-key-pill d-flex align-items-center bg-light rounded-pill px-2 py-0 border shadow-hover" x-show="item.clave_acceso">
-                                                        <span class="x-small text-muted font-monospace" x-text="item.clave_acceso.substring(0,10) + '...' + item.clave_acceso.substring(39)"></span>
-                                                        <button class="btn btn-link p-0 ms-1 text-primary" @click="copyToClipboard(item.clave_acceso)" title="Copiar Clave">
-                                                            <i class="bi bi-clipboard x-small"></i>
+                                                    <!-- Cuadro de Clave de Acceso Original -->
+                                                    <div class="input-group input-group-sm shadow-sm" x-show="item.clave_acceso" style="width: 180px;">
+                                                        <input type="text" class="form-control x-small bg-white" :value="item.clave_acceso" readonly style="font-size: 9px; height: 22px;">
+                                                        <button class="btn btn-outline-secondary p-0 px-2" type="button" @click="copyToClipboard(item.clave_acceso)">
+                                                            <i class="bi bi-clipboard" style="font-size: 10px;"></i>
                                                         </button>
                                                     </div>
 
-                                                    <div x-show="item.mensajes_error" class="dropdown">
-                                                        <button class="btn btn-link p-0 text-danger" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Ver detalle del error">
-                                                            <i class="bi bi-info-circle-fill pulse-error"></i>
-                                                        </button>
-                                                        <div class="dropdown-menu p-3 shadow-lg border-danger border-opacity-25 rounded-4" style="width: 300px;">
-                                                            <h6 class="dropdown-header px-0 text-danger font-weight-bold d-flex align-items-center">
-                                                                <i class="bi bi-bug-fill me-2"></i> Diagnóstico SRI
-                                                            </h6>
-                                                            <div class="bg-danger bg-opacity-10 p-2 rounded small text-danger font-monospace" style="word-break: break-all;" x-text="item.mensajes_error"></div>
-                                                            <div class="mt-2 text-center">
-                                                                <button class="btn btn-xs btn-outline-danger rounded-pill" @click="retrySRI(item)">
-                                                                    <i class="bi bi-arrow-clockwise"></i> Reintentar ahora
-                                                                </button>
-                                                            </div>
-                                                        </div>
+                                                    <!-- Diagnóstico de Error: Ventana Modal (Única forma de que no se corte) -->
+                                                    <div x-show="item.mensajes_error" class="ms-1">
+                                                        <i class="bi bi-exclamation-triangle-fill text-danger pulse-error" style="font-size: 16px; cursor: pointer;" 
+                                                           title="Ver Diagnóstico" @click="selectedItem = item; new bootstrap.Modal(document.getElementById('modalErrorSRI')).show();"></i>
                                                     </div>
                                                 </div>
                                             </div>
@@ -410,8 +375,8 @@
         <div class="card border-0 shadow-sm rounded-4">
             <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
                 <h6 class="mb-0 font-weight-bold text-dark small text-uppercase">Puntos de Emisión</h6>
-                <button class="btn btn-xs btn-primary rounded-circle" data-bs-toggle="modal" data-bs-target="#modalPunto">
-                    <i class="bi bi-plus"></i>
+                <button class="btn btn-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalPunto">
+                    <i class="bi bi-plus-circle me-1"></i> Nuevo
                 </button>
             </div>
             <div class="card-body p-0">
@@ -425,6 +390,73 @@
                         <div class="btn-group btn-group-sm">
                             <button class="btn btn-link text-secondary p-0 me-2" data-bs-toggle="modal" data-bs-target="#modalEditarPunto{{ p.id }}"><i class="bi bi-pencil"></i></button>
                             <button class="btn btn-link text-danger p-0" data-bs-toggle="modal" data-bs-target="#modalEliminarPunto{{ p.id }}"><i class="bi bi-trash"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Modal: Editar Punto de Emisión -->
+                    <div class="modal fade" id="modalEditarPunto{{ p.id }}" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-0 shadow rounded-4">
+                                <div class="modal-header">
+                                    <h5 class="modal-title h6">Editar Punto: {{ p.establecimiento }}-{{ p.punto_emision }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="editar_punto">
+                                    <input type="hidden" name="punto_id" value="{{ p.id }}">
+                                    <div class="modal-body">
+                                        <div class="row">
+                                            <div class="col-6 mb-3">
+                                                <label class="form-label small font-weight-bold">Establecimiento</label>
+                                                <input type="text" name="establecimiento" class="form-control form-control-sm rounded-3" value="{{ p.establecimiento }}" required maxlength="3">
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <label class="form-label small font-weight-bold">Punto Emisión</label>
+                                                <input type="text" name="punto_emision" class="form-control form-control-sm rounded-3" value="{{ p.punto_emision }}" required maxlength="3">
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label small font-weight-bold">Secuencial Actual</label>
+                                            <input type="number" name="secuencial" class="form-control form-control-sm rounded-3" value="{{ p.ultimo_secuencial }}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label small font-weight-bold">Dirección del Establecimiento</label>
+                                            <textarea name="direccion" class="form-control form-control-sm rounded-3" rows="2" required>{{ p.direccion_establecimiento }}</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer border-0">
+                                        <button type="button" class="btn btn-light btn-sm rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4">Guardar Cambios</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal: Eliminar Punto de Emisión -->
+                    <div class="modal fade" id="modalEliminarPunto{{ p.id }}" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-0 shadow rounded-4">
+                                <div class="modal-header bg-danger text-white">
+                                    <h5 class="modal-title h6">Eliminar Punto de Emisión</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="eliminar_punto">
+                                    <input type="hidden" name="punto_id" value="{{ p.id }}">
+                                    <div class="modal-body text-center py-4">
+                                        <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                                        <p class="mt-3 mb-0">¿Estás seguro de que deseas eliminar el punto de emisión <strong>{{ p.establecimiento }}-{{ p.punto_emision }}</strong>?</p>
+                                        <p class="text-muted small">Esta acción no se puede deshacer.</p>
+                                    </div>
+                                    <div class="modal-footer border-0">
+                                        <button type="button" class="btn btn-light btn-sm rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-danger btn-sm rounded-pill px-4">Eliminar Definitivamente</button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                     {% endfor %}
@@ -650,6 +682,9 @@
             selectedSale: {},
             selectedSaleProducts: [],
             loadingSale: false,
+            errorDetailMsg: '',
+            errorDetailVenta: '',
+            selectedItem: null,
             levels: { 'CREADO': 0, 'FIRMADO': 1, 'RECIBIDO': 2, 'AUTORIZADO': 3 },
             get filteredTickets() {
                 if (!this.search) return this.tickets;
@@ -803,8 +838,46 @@
                         item.mensaje = 'Error';
                     }
                 } catch (err) { console.error(err); }
+            },
+            showErrorDetail(errorMsg, ventaNum) {
+                this.errorDetailMsg = errorMsg;
+                this.errorDetailVenta = ventaNum;
+                const modal = new bootstrap.Modal(document.getElementById('modalErrorSRI'));
+                modal.show();
             }
         }
     }
 </script>
+
+<!-- Modal: Detalle de Error SRI Flotante -->
+<div class="modal fade" id="modalErrorSRI" tabindex="-1" aria-hidden="true" style="z-index: 2000;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-danger text-white border-0 py-3">
+                <h5 class="modal-title h6 d-flex align-items-center">
+                    <i class="bi bi-bug-fill me-2"></i> 
+                    Diagnóstico de Error SRI - Venta <span x-text="errorDetailVenta"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center" x-if="selectedItem">
+                <div class="bg-danger bg-opacity-10 p-4 rounded-4 mb-3">
+                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                    <p class="mt-3 text-danger fw-bold mb-1">El SRI reporta el siguiente error:</p>
+                    <div class="text-dark font-monospace x-small p-2 bg-white rounded border mt-2" 
+                         style="word-break: break-all; max-height: 200px; overflow-y: auto;" 
+                         x-text="selectedItem.mensajes_error"></div>
+                </div>
+                <p class="small text-muted">Venta: <span class="fw-bold" x-text="selectedItem.venta_numero"></span></p>
+            </div>
+            <div class="modal-footer border-0 p-3 bg-light">
+                <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-danger btn-sm rounded-pill px-4 shadow-sm" 
+                        @click="retrySRI(selectedItem); bootstrap.Modal.getInstance(document.getElementById('modalErrorSRI')).hide();">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Reintentar Facturación
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
