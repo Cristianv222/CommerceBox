@@ -8,6 +8,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.graphics.barcode import code128
 from datetime import datetime
+from django.utils import timezone
 from django.conf import settings
 from apps.system_configuration.models import ConfiguracionSistema
 from decimal import Decimal
@@ -96,7 +97,7 @@ class RIDEGenerator:
             [Paragraph(f"<b>NÚMERO DE AUTORIZACIÓN:</b>", self.styles['Small'])],
             [Paragraph(f"{self.comprobante.clave_acceso or 'PENDIENTE'}", ParagraphStyle('Clave', parent=self.styles['Small'], fontSize=8))],
             [Paragraph(f"<b>FECHA Y HORA DE AUTORIZACIÓN:</b>", self.styles['Small'])],
-            [Paragraph(f"{self.comprobante.fecha_autorizacion.strftime('%Y-%m-%d %H:%M:%S') if self.comprobante.fecha_autorizacion else 'PENDIENTE'}", self.styles['Small'])],
+            [Paragraph(f"{timezone.localtime(self.comprobante.fecha_autorizacion).strftime('%Y-%m-%d %H:%M:%S') if self.comprobante.fecha_autorizacion else 'PENDIENTE'}", self.styles['Small'])],
             [Paragraph(f"<b>AMBIENTE:</b> {'PRODUCCIÓN' if self.comprobante.ambiente == 2 else 'PRUEBAS'}", self.styles['Small'])],
             [Paragraph(f"<b>EMISIÓN:</b> NORMAL", self.styles['Small'])],
             [Paragraph("<b>CLAVE DE ACCESO:</b>", self.styles['Small'])],
@@ -118,7 +119,7 @@ class RIDEGenerator:
         cliente = self.venta.cliente
         cliente_data = [
             [f"Razón Social / Nombres y Apellidos: {cliente.nombre_completo() if cliente else 'CONSUMIDOR FINAL'}", f"Identificación: {cliente.numero_documento if cliente else '9999999999999'}"],
-            [f"Fecha Emisión: {self.venta.fecha_venta.strftime('%d/%m/%Y')}", f"Guía Remisión: "]
+            [f"Fecha Emisión: {timezone.localtime(self.venta.fecha_venta).strftime('%d/%m/%Y')}", f"Guía Remisión: "]
         ]
         cliente_table = Table(cliente_data, colWidths=[doc.width*0.7, doc.width*0.3])
         cliente_table.setStyle(TableStyle([

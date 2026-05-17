@@ -124,7 +124,9 @@ class TicketPrinter:
             p.text(f"Ticket: {numero_venta}\n")
             
             # Fecha en formato configurado
-            fecha_formato = venta.fecha_venta.strftime('%d/%m/%Y %H:%M')
+            from django.utils import timezone
+            fecha_local = timezone.localtime(venta.fecha_venta)
+            fecha_formato = fecha_local.strftime('%d/%m/%Y %H:%M')
             p.text(f"Fecha: {fecha_formato}\n")
             p.text(f"Vendedor: {venta.vendedor.username}\n")
             
@@ -228,7 +230,7 @@ class TicketPrinter:
                     p.text("\nFACTURA ELECTRONICA SRI\n")
                     p.set(align='left', bold=False)
                     
-                    p.text(f"CLAVE DE ACCESO:\n")
+                    p.text(f"AUTORIZACION / CLAVE ACCESO:\n")
                     p.set(font='b') # Fuente más pequeña para la clave larga
                     p.text(f"{clave_acceso}\n")
                     p.set(font='a')

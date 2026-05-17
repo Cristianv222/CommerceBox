@@ -133,7 +133,11 @@ class XMLGeneratorSRI:
             codigo_punto_item = "4" if detalle.aplica_iva else "0"
             
             factor_iva = Decimal('1.15') if detalle.aplica_iva else Decimal('1.00')
-            precio_unitario_sin_iva = detalle.precio_unitario / factor_iva
+            
+            # Usar el precio correcto dependiendo del tipo de producto
+            precio_venta = detalle.precio_por_unidad_peso if detalle.producto.es_quintal() else detalle.precio_unitario
+            precio_venta = precio_venta or Decimal('0.00')
+            precio_unitario_sin_iva = precio_venta / factor_iva
             
             etree.SubElement(det_xml, "precioUnitario").text = f"{precio_unitario_sin_iva:.6f}"
             etree.SubElement(det_xml, "descuento").text = f"{detalle.descuento_monto:.2f}"
