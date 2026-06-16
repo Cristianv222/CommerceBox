@@ -173,4 +173,4 @@ docker-compose.override.yml
 # Temporary files
 tmp/
 temp/
-.tmp
+.tmp*.backup.*
