@@ -93,7 +93,7 @@ class RIDEGenerator:
         datos_fiscales = [
             [Paragraph(f"<b>R.U.C.:</b> {ruc_emisor}", self.styles['Normal'])],
             [Paragraph("<b>FACTURA</b>", self.styles['BoldLarge'])],
-            [Paragraph(f"No. {self.venta.numero_venta}", self.styles['Normal'])],
+            [Paragraph(f"No. {self.venta.numero_factura or self.venta.numero_venta}", self.styles['Normal'])],
             [Paragraph(f"<b>NÚMERO DE AUTORIZACIÓN:</b>", self.styles['Small'])],
             [Paragraph(f"{self.comprobante.clave_acceso or 'PENDIENTE'}", ParagraphStyle('Clave', parent=self.styles['Small'], fontSize=8))],
             [Paragraph(f"<b>FECHA Y HORA DE AUTORIZACIÓN:</b>", self.styles['Small'])],

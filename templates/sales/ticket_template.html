@@ -69,7 +69,11 @@
     <div class="linea"></div>
     
     <div>
+        {% if venta.numero_factura %}
+        <strong>Factura: {{ venta.numero_factura }}</strong><br>
+        {% else %}
         <strong>Ticket: {{ config.prefijo_numero_venta }}-{{ venta.numero_venta }}</strong><br>
+        {% endif %}
         Fecha: {{ venta.fecha_venta|date:"d/m/Y H:i" }}<br>
         Vendedor: {{ venta.vendedor.username }}<br>
         {% if venta.cliente %}

@@ -2,6 +2,7 @@
 
 from django.template.loader import render_to_string
 from datetime import datetime
+from django.utils import timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -98,7 +99,7 @@ class TicketGenerator:
                 'producto', 'quintal', 'unidad_medida'
             ),
             'pagos': venta.pagos.all(),
-            'fecha_impresion': datetime.now(),
+            'fecha_impresion': timezone.localtime(timezone.now()),
             'config': config,  # ✅ Pasar config completo al template
         }
         
@@ -150,9 +151,14 @@ class TicketGenerator:
         # ========================================
         # DATOS DE VENTA
         # ========================================
-        numero_venta = f"{config.prefijo_numero_venta}-{venta.numero_venta}"
-        lineas.append(f"Ticket: {numero_venta}")
-        lineas.append(f"Fecha: {venta.fecha_venta.strftime('%d/%m/%Y %H:%M')}")
+        if venta.numero_factura:
+            lineas.append(f"Factura: {venta.numero_factura}")
+        else:
+            numero_venta = f"{config.prefijo_numero_venta}-{venta.numero_venta}"
+            lineas.append(f"Ticket: {numero_venta}")
+        
+        fecha_local = timezone.localtime(venta.fecha_venta)
+        lineas.append(f"Fecha: {fecha_local.strftime('%d/%m/%Y %H:%M')}")
         lineas.append(f"Vendedor: {venta.vendedor.username}")
         
         if venta.cliente:
