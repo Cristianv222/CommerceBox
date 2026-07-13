@@ -6,9 +6,9 @@ from . import agente_views
 app_name = 'hardware_api'
 
 urlpatterns = [
-    # 🔧 TEMPORAL - Sin autenticación para debugging
-    path('agente/trabajos/', agente_views.obtener_trabajos_sin_auth, name='agente_trabajos'),
-    path('agente/registrar/', agente_views.obtener_trabajos_sin_auth, name='agente_registrar'),
+    # Rutas normales con autenticación
+    path('agente/trabajos/', agente_views.obtener_trabajos_pendientes, name='agente_trabajos'),
+    path('agente/registrar/', agente_views.registrar_agente, name='agente_registrar'),
     
     # Rutas normales
     path('agente/resultado/', agente_views.reportar_resultado, name='agente_resultado'),
