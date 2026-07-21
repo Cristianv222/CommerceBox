@@ -18,10 +18,16 @@ from .models import (
 def quintal_pre_save(sender, instance, **kwargs):
     """
     Antes de guardar un quintal:
+    0. Generar código de quintal si no existe
     1. Calcular costo_por_unidad automáticamente
     2. Actualizar estado según peso_actual
     3. Validar que peso_actual no sea negativo
     """
+    # 0. Generar código de quintal único si no existe
+    if not instance.codigo_quintal:
+        from .utils.barcode_generator import BarcodeGenerator
+        instance.codigo_quintal = BarcodeGenerator.generar_codigo_quintal(instance.producto)
+
     # 1. Calcular costo por unidad si no existe
     if instance.peso_inicial and instance.peso_inicial > 0:
         if not instance.costo_por_unidad or instance.costo_por_unidad == 0:

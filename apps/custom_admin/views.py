@@ -624,6 +624,7 @@ def producto_crear(request):
                 
                 if cantidad_quintales > 0 and stock_total > 0:
                     from apps.inventory_management.models import Quintal, Proveedor
+                    from apps.inventory_management.utils.barcode_generator import BarcodeGenerator
                     from datetime import datetime
                     
                     peso_por_quintal = stock_total / cantidad_quintales
@@ -632,6 +633,7 @@ def producto_crear(request):
                     for i in range(cantidad_quintales):
                         Quintal.objects.create(
                             producto=producto,
+                            codigo_quintal=BarcodeGenerator.generar_codigo_quintal(producto),
                             peso_inicial=peso_por_quintal,
                             peso_actual=peso_por_quintal,
                             unidad_medida=producto.unidad_medida_base,
@@ -813,10 +815,12 @@ def producto_editar(request, producto_id):
                             quintal.peso_actual = peso_por_quintal
                             quintal.save()
                         
+                        from apps.inventory_management.utils.barcode_generator import BarcodeGenerator
                         # Crear quintales faltantes
                         for i in range(cantidad_quintales_nueva - cantidad_existente):
                             Quintal.objects.create(
                                 producto=producto,
+                                codigo_quintal=BarcodeGenerator.generar_codigo_quintal(producto),
                                 peso_inicial=peso_por_quintal,
                                 peso_actual=peso_por_quintal,
                                 unidad_medida=producto.unidad_medida_base,
