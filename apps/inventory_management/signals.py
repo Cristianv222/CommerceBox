@@ -25,7 +25,16 @@ def quintal_pre_save(sender, instance, **kwargs):
     # 1. Calcular costo por unidad si no existe
     if instance.peso_inicial and instance.peso_inicial > 0:
         if not instance.costo_por_unidad or instance.costo_por_unidad == 0:
-            instance.costo_por_unidad = instance.costo_total / instance.peso_inicial
+            if instance.costo_total is not None:
+                instance.costo_por_unidad = instance.costo_total / instance.peso_inicial
+            else:
+                instance.costo_total = Decimal('0.00')
+                instance.costo_por_unidad = Decimal('0.0000')
+    elif not instance.costo_por_unidad:
+        instance.costo_por_unidad = Decimal('0.0000')
+        
+    if instance.costo_total is None:
+        instance.costo_total = Decimal('0.00')
     
     # 2. Validar que peso_actual no sea negativo
     if instance.peso_actual < 0:
@@ -46,17 +55,21 @@ def quintal_post_save(sender, instance, created, **kwargs):
     - Registrar movimiento inicial de ENTRADA automáticamente
     """
     if created:
-        # Crear movimiento de entrada inicial
-        MovimientoQuintal.objects.create(
-            quintal=instance,
-            tipo_movimiento='ENTRADA',
-            peso_movimiento=instance.peso_inicial,
-            peso_antes=Decimal('0.000'),
-            peso_despues=instance.peso_inicial,
-            unidad_medida=instance.unidad_medida,
-            usuario=instance.usuario_registro,
-            observaciones=f"Entrada inicial - Recepción de quintal desde {instance.proveedor.nombre_comercial}"
-        )
+        nombre_proveedor = instance.proveedor.nombre_comercial if (hasattr(instance, 'proveedor') and instance.proveedor) else "Sistema"
+        usuario = instance.usuario_registro if (hasattr(instance, 'usuario_registro') and instance.usuario_registro) else (getattr(instance.producto, 'usuario_registro', None))
+        
+        if usuario:
+            # Crear movimiento de entrada inicial
+            MovimientoQuintal.objects.create(
+                quintal=instance,
+                tipo_movimiento='ENTRADA',
+                peso_movimiento=instance.peso_inicial,
+                peso_antes=Decimal('0.000'),
+                peso_despues=instance.peso_inicial,
+                unidad_medida=instance.unidad_medida,
+                usuario=usuario,
+                observaciones=f"Entrada inicial - Recepción de quintal desde {nombre_proveedor}"
+            )
 
 
 # ============================================================================

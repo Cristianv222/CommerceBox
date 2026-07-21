@@ -606,7 +606,7 @@ def producto_crear(request):
             # Crear producto
             producto = Producto.objects.create(**producto_data)
             
-            # Stock inicial para productos normales
+            # Stock inicial para productos normales o quintales
             if tipo_inventario == 'NORMAL':
                 stock_inicial = request.POST.get('stock_actual', '0').strip()
                 ProductoNormal.objects.create(
@@ -616,6 +616,36 @@ def producto_crear(request):
                     stock_maximo=1000,
                     costo_unitario=Decimal('0.00')
                 )
+            elif tipo_inventario == 'QUINTAL':
+                quintales_str = request.POST.get('quintales', '0').strip()
+                libras_str = request.POST.get('libras', '0').strip()
+                cantidad_quintales = int(quintales_str) if quintales_str else 0
+                stock_total = Decimal(libras_str) if libras_str else Decimal('0.00')
+                
+                if cantidad_quintales > 0 and stock_total > 0:
+                    from apps.inventory_management.models import Quintal, Proveedor
+                    from datetime import datetime
+                    
+                    peso_por_quintal = stock_total / cantidad_quintales
+                    proveedor_default = Proveedor.objects.first()
+                    
+                    for i in range(cantidad_quintales):
+                        Quintal.objects.create(
+                            producto=producto,
+                            peso_inicial=peso_por_quintal,
+                            peso_actual=peso_por_quintal,
+                            unidad_medida=producto.unidad_medida_base,
+                            estado='DISPONIBLE',
+                            fecha_ingreso=datetime.now(),
+                            usuario_registro=usuario,
+                            proveedor=proveedor_default,
+                            costo_total=Decimal('0.00'),
+                            costo_por_unidad=Decimal('0.0000')
+                        )
+                    
+                    producto.cantidad_quintales = cantidad_quintales
+                    producto.stock_total_calculado = stock_total
+                    producto.save()
             
             messages.success(request, f'✅ Producto "{producto.nombre}" creado exitosamente')
             
@@ -746,7 +776,7 @@ def producto_editar(request, producto_id):
                 print(f"🔍 libras_str recibido: '{libras_str}'")
                 
                 try:
-                    from apps.inventory_management.models import Quintal
+                    from apps.inventory_management.models import Quintal, Proveedor
                     from datetime import datetime
                     
                     cantidad_quintales_nueva = int(quintales_str) if quintales_str else 0
@@ -771,6 +801,8 @@ def producto_editar(request, producto_id):
                     
                     print(f"🔍 Peso por quintal calculado: {peso_por_quintal} lb")
                     
+                    proveedor_default = Proveedor.objects.first()
+                    
                     # CASO 1: Necesitamos MÁS quintales
                     if cantidad_quintales_nueva > cantidad_existente:
                         print(f"📦 Creando {cantidad_quintales_nueva - cantidad_existente} quintales nuevos")
@@ -789,7 +821,11 @@ def producto_editar(request, producto_id):
                                 peso_actual=peso_por_quintal,
                                 unidad_medida=producto.unidad_medida_base,
                                 estado='DISPONIBLE',
-                                fecha_ingreso=datetime.now()
+                                fecha_ingreso=datetime.now(),
+                                usuario_registro=usuario,
+                                proveedor=proveedor_default,
+                                costo_total=Decimal('0.00'),
+                                costo_por_unidad=Decimal('0.0000')
                             )
                     
                     # CASO 2: Necesitamos MENOS quintales
@@ -828,7 +864,9 @@ def producto_editar(request, producto_id):
                     
                 except (ValueError, TypeError) as e:
                     print(f"❌ Error al convertir stock quintal: {e}")
-                    messages.warning(request, 'Los valores de stock deben ser numéricos')
+                    import traceback
+                    traceback.print_exc()
+                    messages.warning(request, f'Los valores de stock deben ser numéricos: {e}')
                 except Exception as e:
                     print(f"❌ Error al actualizar quintales: {e}")
                     import traceback
