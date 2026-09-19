@@ -1,4 +1,4 @@
-FROM python:3.11-slim-bullseye AS builder
+FROM python:3.11-slim-bookworm AS builder
 
 LABEL stage=builder
 
@@ -30,7 +30,7 @@ RUN pip install --user --no-warn-script-location \
 # ==============================================
 # STAGE 2: Runtime - Imagen final
 # ==============================================
-FROM python:3.11-slim-bullseye AS runtime
+FROM python:3.11-slim-bookworm AS runtime
 
 # Metadatos
 LABEL maintainer="CommerceBox Team <operaciones@agrofacil.fronteratech.ec>" \
@@ -52,7 +52,7 @@ WORKDIR /app
 # Instalar SOLO dependencias runtime (sin compiladores)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # PostgreSQL cliente
-    postgresql-client=13+* \
+    postgresql-client \
     libpq5 \
     # Utilidades esenciales
     curl \

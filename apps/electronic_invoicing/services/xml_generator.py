@@ -12,12 +12,13 @@ class XMLGeneratorSRI:
         self.config = config
         self.punto_emision = punto_emision
 
-    def generar_xml_factura(self, venta):
+    def generar_xml_factura(self, venta, secuencial_num=None):
         """Genera el XML para una factura específica"""
         
         punto_emision = self.punto_emision
-        secuencial_num = punto_emision.ultimo_secuencial + 1
-        secuencial_str = f"{secuencial_num:09d}"
+        if secuencial_num is None:
+            secuencial_num = punto_emision.ultimo_secuencial + 1
+        secuencial_str = f"{int(secuencial_num):09d}"
         
         
         # 1. Generar la Clave de Acceso

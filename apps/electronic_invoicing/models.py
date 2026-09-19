@@ -20,7 +20,7 @@ class SRIConfig(models.Model):
     razon_social = models.CharField(max_length=300)
     nombre_comercial = models.CharField(max_length=300, blank=True, null=True)
     direccion_matriz = models.TextField()
-    obligado_contabilidad = models.BooleanField(default=True)
+    obligado_contabilidad = models.BooleanField(default=False)
     
     # Configuración de resolución (si aplica)
     contribuyente_especial = models.CharField(max_length=20, blank=True, null=True)

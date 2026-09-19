@@ -92,28 +92,20 @@ def procesar_factura_electronica(comprobante_id):
             comprobante.save()
             notificar_monitor(comprobante, "XML Generado")
             
-            # Obtener el secuencial antes de incrementar
+            # Obtener el secuencial actual disponible sin incrementarlo aún en la BD
             secuencial_num = punto_emision.ultimo_secuencial + 1
             
             generator = XMLGeneratorSRI(config, punto_emision)
-            xml_bruto, clave_acceso = generator.generar_xml_factura(venta)
+            xml_bruto, clave_acceso = generator.generar_xml_factura(venta, secuencial_num=secuencial_num)
             
-            # Incrementar secuencial
-            from django.db.models import F
-            punto_emision.ultimo_secuencial = F('ultimo_secuencial') + 1
-            punto_emision.save(update_fields=['ultimo_secuencial'])
-            punto_emision.refresh_from_db()
-
             comprobante.clave_acceso = clave_acceso
             comprobante.xml_generado = xml_bruto.decode('utf-8')
-            
-            # Guardar el número de factura secuencial real en la venta
-            venta.numero_factura = f"{punto_emision.establecimiento}-{punto_emision.punto_emision}-{secuencial_num:09d}"
-            venta.save(update_fields=['numero_factura'])
+            comprobante.save()
             
             # 2. FIRMAR XML
             certificado = CertificadoDigital.objects.filter(activo=True).first()
             if not certificado:
+                # No incrementamos secuencial si falla la firma
                 raise ValueError("No hay certificado digital (firma) activo.")
                 
             signer = SignatureServiceSRI(certificado)
@@ -129,15 +121,10 @@ def procesar_factura_electronica(comprobante_id):
         else:
             xml_firmado_str = comprobante.xml_firmado
             clave_acceso = comprobante.clave_acceso
-            
-            # Si ya existe la clave de acceso, asegurar que la venta tenga el número de factura
-            if not venta.numero_factura:
-                try:
-                    if len(clave_acceso) >= 39:
-                        venta.numero_factura = f"{clave_acceso[24:27]}-{clave_acceso[27:30]}-{clave_acceso[30:39]}"
-                        venta.save(update_fields=['numero_factura'])
-                except Exception as e:
-                    logger.error(f"Error parsing clave_acceso for numero_factura: {e}")
+            try:
+                secuencial_num = int(clave_acceso[30:39])
+            except Exception:
+                secuencial_num = punto_emision.ultimo_secuencial + 1
 
         # 3. ENVIAR AL SRI (RECEPCIÓN) - Si no ha sido recibido aún
         if comprobante.estado != 'RECIBIDO' and comprobante.estado != 'AUTORIZADO':
@@ -172,12 +159,22 @@ def procesar_factura_electronica(comprobante_id):
             if respuesta_recepcion.estado == 'RECIBIDA':
                 comprobante.estado = 'RECIBIDO'
                 comprobante.save()
+
+                # ✅ EL SRI HA RECIBIDO EL DOCUMENTO: Confirmamos el secuencial en la BD y en la Venta
+                if 'secuencial_num' in locals() and secuencial_num:
+                    if punto_emision.ultimo_secuencial < secuencial_num:
+                        punto_emision.ultimo_secuencial = secuencial_num
+                        punto_emision.save(update_fields=['ultimo_secuencial'])
+                    venta.numero_factura = f"{punto_emision.establecimiento}-{punto_emision.punto_emision}-{secuencial_num:09d}"
+                    venta.save(update_fields=['numero_factura'])
+
                 notificar_monitor(comprobante, "Recibido por SRI")
             else:
                 comprobante.estado = 'RECHAZADO'
                 error_detalles = extraer_errores_sri(respuesta_recepcion)
                 comprobante.mensajes_error = f"Recepción SRI ({respuesta_recepcion.estado}): {error_detalles}"
-                
+                # Al ser rechazado sin ser recibido, reseteamos la clave de acceso para que no queme la secuencia
+                comprobante.clave_acceso = None
                 comprobante.save()
                 notificar_monitor(comprobante, "Rechazo SRI")
                 return False
