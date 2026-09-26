@@ -136,7 +136,8 @@ services:
 volumes:
   commercebox_local_postgres_data:
   commercebox_local_redis_data:
-
+ 
 networks:
   commercebox_local_network:
     driver: bridge
+ 

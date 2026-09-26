@@ -160,14 +160,9 @@ def procesar_factura_electronica(comprobante_id):
                 comprobante.estado = 'RECIBIDO'
                 comprobante.save()
 
-                # ✅ EL SRI HA RECIBIDO EL DOCUMENTO: Confirmamos el secuencial en la BD y en la Venta
-                if 'secuencial_num' in locals() and secuencial_num:
-                    if punto_emision.ultimo_secuencial < secuencial_num:
-                        punto_emision.ultimo_secuencial = secuencial_num
-                        punto_emision.save(update_fields=['ultimo_secuencial'])
-                    venta.numero_factura = f"{punto_emision.establecimiento}-{punto_emision.punto_emision}-{secuencial_num:09d}"
-                    venta.save(update_fields=['numero_factura'])
-
+                # NOTA: "RECIBIDA" solo significa que el SRI aceptó el documento para
+                # procesarlo, NO que esté autorizado. El secuencial NO se confirma aquí.
+                # Se confirma únicamente cuando el SRI AUTORIZA (más abajo, paso 4).
                 notificar_monitor(comprobante, "Recibido por SRI")
             else:
                 comprobante.estado = 'RECHAZADO'
@@ -205,7 +200,17 @@ def procesar_factura_electronica(comprobante_id):
                             comprobante.xml_autorizado = autorizacion.comprobante  # Guardamos el XML oficial autorizado
                             comprobante.mensajes_error = None
                             comprobante.save()
-                            
+
+                            # ✅ SOLO AHORA que el SRI AUTORIZÓ confirmamos el secuencial en la BD
+                            # y asignamos el número de factura fiscal a la venta. Si la factura
+                            # hubiera sido rechazada, este número NO se consume y se reutiliza.
+                            if 'secuencial_num' in locals() and secuencial_num:
+                                if punto_emision.ultimo_secuencial < secuencial_num:
+                                    punto_emision.ultimo_secuencial = secuencial_num
+                                    punto_emision.save(update_fields=['ultimo_secuencial'])
+                                venta.numero_factura = f"{punto_emision.establecimiento}-{punto_emision.punto_emision}-{secuencial_num:09d}"
+                                venta.save(update_fields=['numero_factura'])
+
                             # Generar RIDE
                             try:
                                 from .services.ride_generator import RIDEGenerator
@@ -237,10 +242,13 @@ def procesar_factura_electronica(comprobante_id):
                                 notificar_monitor(comprobante, "SRI colapsado")
                                 return False
                         else:
-                            # RECHAZADA o NO AUTORIZADA
+                            # RECHAZADA o NO AUTORIZADA: el secuencial NO se consumió (nunca se
+                            # confirmó, porque solo se confirma al AUTORIZAR). Reseteamos la clave
+                            # de acceso para que el próximo intento reutilice el mismo número.
                             error_detalles = extraer_errores_sri(respuesta_aut)
                             comprobante.estado = 'RECHAZADO'
                             comprobante.mensajes_error = f"SRI {estado_sri}: {error_detalles}"
+                            comprobante.clave_acceso = None
                             comprobante.save()
                             notificar_monitor(comprobante, "SRI Rechazado")
                             return False
@@ -249,9 +257,11 @@ def procesar_factura_electronica(comprobante_id):
                             notificar_monitor(comprobante, f"Esperando SRI ({intento_actual}/{max_intentos})")
                             continue
                         else:
-                            # Silencio total del SRI
+                            # Silencio total del SRI: tratado como rechazo. El secuencial no se
+                            # consumió; reseteamos la clave para reutilizar el mismo número.
                             comprobante.estado = 'RECHAZADO'
                             comprobante.mensajes_error = "Rechazo Silencioso del SRI. El documento no coincide con los estándares semánticos o RUC/Firma/Clave de Acceso irregulares."
+                            comprobante.clave_acceso = None
                             comprobante.save()
                             notificar_monitor(comprobante, "SRI Rechazo Silencioso")
                             return False
