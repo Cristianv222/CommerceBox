@@ -261,7 +261,7 @@ class PrinterService:
         comandos += b'--------------------------------\n'
         
         # Fecha y hora
-        fecha_actual = timezone.now()
+        fecha_actual = timezone.localtime(timezone.now())
         comandos += agregar_linea("Fecha", fecha_actual.strftime('%d/%m/%Y'))
         comandos += agregar_linea("Hora", fecha_actual.strftime('%H:%M:%S'))
         

@@ -2121,7 +2121,7 @@ def venta_ticket_view(request, pk):
             </div>
             <div class="info-row">
                 <span><strong>Fecha:</strong></span>
-                <span>{venta.fecha_venta.strftime('%d/%m/%Y %H:%M')}</span>
+                <span>{timezone.localtime(venta.fecha_venta).strftime('%d/%m/%Y %H:%M')}</span>
             </div>
             <div class="info-row">
                 <span><strong>Vendedor:</strong></span>
@@ -4302,7 +4302,7 @@ def generar_comandos_ticket_bytes(venta, abrir_gaveta=False):
     ticket += LEFT
     ticket += b"=" * 42 + b"\n"
     ticket += BOLD_ON + f"TICKET: {venta.numero_venta}\n".encode('utf-8') + BOLD_OFF
-    ticket += f"Fecha: {venta.fecha_creacion.strftime('%d/%m/%Y %H:%M')}\n".encode('utf-8')
+    ticket += f"Fecha: {timezone.localtime(venta.fecha_creacion).strftime('%d/%m/%Y %H:%M')}\n".encode('utf-8')
     ticket += f"Cajero: {venta.vendedor.get_full_name()}\n".encode('utf-8')
     
     if venta.cliente:
