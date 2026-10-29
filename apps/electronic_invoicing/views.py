@@ -171,21 +171,30 @@ def reenviar_email_sri(request, pk):
 def retry_procesar_factura(request, pk):
     """Reintenta el proceso completo de una factura fallida"""
     try:
-        from .tasks import procesar_factura_electronica
+        from .tasks import procesar_factura_electronica, consultar_autorizacion_sri
         comprobante = get_object_or_404(ComprobanteElectronico, pk=pk)
-        
+
         # Solo permitir si no está autorizado
         if comprobante.estado == 'AUTORIZADO':
             return JsonResponse({'status': 'error', 'message': 'El comprobante ya está autorizado.'}, status=400)
-            
-        # Resetear estado y mensajes para el reintento
+
+        # Si el documento YA fue recibido por el SRI (tiene clave y está en RECIBIDO),
+        # NO lo reenviamos (eso chocaría con "clave/secuencial ya registrado"): solo
+        # volvemos a consultar su autorización.
+        if comprobante.clave_acceso and comprobante.estado == 'RECIBIDO':
+            comprobante.mensajes_error = None
+            comprobante.save(update_fields=['mensajes_error'])
+            consultar_autorizacion_sri.delay(str(comprobante.id))
+            return JsonResponse({'status': 'success', 'message': 'Reconsultando autorización en el SRI.'})
+
+        # Caso contrario: reproceso completo (regenera si no hay clave, o reenvía).
         comprobante.estado = 'CREADO'
         comprobante.mensajes_error = None
         comprobante.save()
-        
+
         # Disparar tarea Celery
         procesar_factura_electronica.delay(str(comprobante.id))
-        
+
         return JsonResponse({'status': 'success', 'message': 'Reintento iniciado exitosamente.'})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

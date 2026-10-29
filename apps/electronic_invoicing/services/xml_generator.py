@@ -1,4 +1,5 @@
 import os
+import random
 from lxml import etree
 from datetime import datetime
 from decimal import Decimal
@@ -24,6 +25,11 @@ class XMLGeneratorSRI:
         # 1. Generar la Clave de Acceso
         # IMPORTANTE: Convertir a la hora local de Ecuador para evitar errores de fecha futura
         hoy = timezone.localtime(venta.fecha_venta)
+        # El código numérico debe ser ALEATORIO de 8 dígitos (no fijo). Si fuera fijo,
+        # al regenerar un comprobante se produce exactamente la misma clave de acceso y
+        # el SRI responde "[43] CLAVE ACCESO REGISTRADA". Con un valor aleatorio, cada
+        # emisión tiene una clave única y un reintento genuino nunca choca por esta causa.
+        codigo_numerico = f"{random.randint(10000000, 99999999)}"
         clave_acceso = generar_clave_acceso(
             fecha=hoy,
             tipo_comprobante='01', # 01 es Factura
@@ -31,7 +37,7 @@ class XMLGeneratorSRI:
             ambiente=self.config.ambiente,
             serie=f"{punto_emision.establecimiento}{punto_emision.punto_emision}",
             secuencial=secuencial_str,
-            codigo_numerico='12345678', # Código numérico sugerido
+            codigo_numerico=codigo_numerico,
             tipo_emision='1' # 1 es Emisión Normal
         )
 
